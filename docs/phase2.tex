@@ -1,0 +1,368 @@
+% SIMC C++/ROOT Conversion - Phase 2 Documentation
+% Compile with: pdflatex simc_phase2.tex
+
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{tcolorbox}
+
+% Code listing style
+\lstdefinestyle{cpp}{
+    language=C++,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue}\bfseries,
+    commentstyle=\color{gray}\itshape,
+    stringstyle=\color{red},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    numbersep=5pt,
+    backgroundcolor=\color{white},
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    frame=single,
+    tabsize=2,
+    captionpos=b,
+    breaklines=true,
+    breakatwhitespace=false,
+    escapeinside={(*@}{@*)},
+    morekeywords={override, final, constexpr, nullptr}
+}
+
+\lstdefinestyle{cmake}{
+    language=bash,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue}\bfseries,
+    commentstyle=\color{gray}\itshape,
+    frame=single,
+    breaklines=true
+}
+
+\title{\textbf{SIMC C++/ROOT Conversion}\\
+       Phase 2: Core Infrastructure\\
+       Implementation Documentation}
+\author{SIMC Development Team\\Jefferson Lab}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This document describes Phase 2 of the SIMC Fortran to C++/ROOT conversion project. Phase 2 establishes the core infrastructure including fundamental data structures, configuration management, random number generation, and ROOT I/O. All code follows modern C++17 standards with complete header/source separation and comprehensive documentation.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+\section{Introduction}
+
+\subsection{Phase 2 Objectives}
+Phase 2 implements the foundational components required for the SIMC Monte Carlo:
+\begin{itemize}
+    \item Core event data structures with ROOT integration
+    \item Configuration management system
+    \item Modern random number generation
+    \item ROOT-based output management
+    \item Basic unit testing framework
+\end{itemize}
+
+\subsection{Design Philosophy}
+The implementation follows these principles:
+\begin{itemize}
+    \item \textbf{Modern C++17}: Use standard library features, smart pointers, RAII
+    \item \textbf{Header/Source Separation}: Clean interface definitions
+    \item \textbf{ROOT Integration}: Native ROOT types for I/O efficiency
+    \item \textbf{Testability}: Unit tests for all major components
+    \item \textbf{Maintainability}: Clear documentation, consistent style
+\end{itemize}
+
+\section{Project Structure}
+
+\subsection{Directory Layout}
+\begin{tcolorbox}[colback=gray!5,colframe=black!75,title=Directory Structure]
+\begin{verbatim}
+simc_cpp/
+├── CMakeLists.txt              # Main build configuration
+├── include/                    # Public headers
+│   └── simc/
+│       ├── SimcEvent.h         # Event data structures
+│       ├── SimcConstants.h     # Physical constants
+│       ├── ConfigManager.h     # Configuration system
+│       ├── RandomGenerator.h   # Random number generation
+│       ├── OutputManager.h     # ROOT I/O
+│       └── SimcTypes.h         # Common type definitions
+├── src/                        # Implementation files
+│   ├── core/
+│   │   ├── SimcEvent.cpp
+│   │   ├── ConfigManager.cpp
+│   │   └── RandomGenerator.cpp
+│   ├── io/
+│   │   └── OutputManager.cpp
+│   └── main.cpp                # Main program
+├── data/                       # Data files
+│   ├── config/
+│   │   └── default.json        # Default configuration
+│   └── tables/                 # Physics tables
+├── tests/                      # Unit tests
+│   ├── test_event.cpp
+│   ├── test_config.cpp
+│   └── test_random.cpp
+└── docs/                       # Documentation
+    └── phase2.tex              # This document
+\end{verbatim}
+\end{tcolorbox}
+
+\section{Core Data Structures}
+
+\subsection{Physical Constants}
+
+\subsubsection{Header: SimcConstants.h}
+\begin{lstlisting}[style=cpp,caption=Physical Constants Header]
+// include/simc/SimcConstants.h
+#ifndef SIMC_CONSTANTS_H
+#define SIMC_CONSTANTS_H
+
+namespace simc {
+namespace constants {
+
+// Particle masses (MeV/c^2)
+constexpr double Me  = 0.51099906;      // Electron mass
+constexpr double Mp  = 938.27231;       // Proton mass
+constexpr double Mn  = 939.56563;       // Neutron mass
+constexpr double Mpi = 139.57018;       // Charged pion mass
+constexpr double Mpi0 = 134.9766;       // Neutral pion mass
+constexpr double Mk  = 493.677;         // Kaon mass
+constexpr double Md  = 1875.613;        // Deuteron mass
+
+// Squared masses (for efficiency)
+constexpr double Me2  = Me * Me;
+constexpr double Mp2  = Mp * Mp;
+constexpr double Mn2  = Mn * Mn;
+constexpr double Mpi2 = Mpi * Mpi;
+
+// Physical constants
+constexpr double amu    = 931.49432;     // Atomic mass unit (MeV/c^2)
+constexpr double hbarc  = 197.327053;    // hbar*c (MeV*fm)
+constexpr double alpha  = 1.0 / 137.0359895;  // Fine structure constant
+constexpr double pi     = 3.141592653589793;
+constexpr double twopi  = 2.0 * pi;
+constexpr double degrad = 180.0 / pi;    // Degrees per radian
+
+// Unit conversions
+constexpr double GEV_TO_MEV = 1000.0;
+constexpr double RAD_TO_MR  = 1000.0;    // Radians to milliradians
+
+} // namespace constants
+} // namespace simc
+
+#endif // SIMC_CONSTANTS_H
+\end{lstlisting}
+
+\subsection{Common Types}
+
+\subsubsection{Header: SimcTypes.h}
+\begin{lstlisting}[style=cpp,caption=Common Type Definitions]
+// include/simc/SimcTypes.h
+#ifndef SIMC_TYPES_H
+#define SIMC_TYPES_H
+
+#include <cmath>
+
+namespace simc {
+
+// 3D vector for particle momenta and positions
+struct Vector3D {
+    double x{0.0};
+    double y{0.0};
+    double z{0.0};
+    
+    // Vector operations
+    double Magnitude() const { 
+        return std::sqrt(x*x + y*y + z*z); 
+    }
+    
+    Vector3D Normalized() const {
+        double mag = Magnitude();
+        return (mag > 0) ? Vector3D{x/mag, y/mag, z/mag} : Vector3D{};
+    }
+    
+    double Dot(const Vector3D& v) const {
+        return x*v.x + y*v.y + z*v.z;
+    }
+    
+    Vector3D Cross(const Vector3D& v) const {
+        return {y*v.z - z*v.y, z*v.x - x*v.z, x*v.y - y*v.x};
+    }
+};
+
+// Particle state in spectrometer coordinates
+struct ArmState {
+    double delta{0.0};   // Momentum deviation (%)
+    double xptar{0.0};   // Horizontal angle (rad)
+    double yptar{0.0};   // Vertical angle (rad)
+    double z{0.0};       // Position along beamline (cm)
+    
+    // Physics coordinates
+    double theta{0.0};   // Scattering angle (rad)
+    double phi{0.0};     // Azimuthal angle (rad)
+    double E{0.0};       // Energy (MeV)
+    double P{0.0};       // Momentum (MeV/c)
+};
+
+// Focal plane coordinates
+struct FocalPlaneState {
+    double x{0.0};       // Horizontal position (cm)
+    double y{0.0};       // Vertical position (cm)
+    double dx{0.0};      // Horizontal angle (rad)
+    double dy{0.0};      // Vertical angle (rad)
+    double path{0.0};    // Path length (cm)
+};
+
+// Target properties
+struct TargetInfo {
+    double x{0.0}, y{0.0}, z{0.0};        // Vertex position (cm)
+    double rasterx{0.0}, rastery{0.0};    // Raster position (cm)
+    double Eloss[3]{0.0, 0.0, 0.0};       // Energy loss (MeV)
+    double teff[3]{0.0, 0.0, 0.0};        // Effective thickness (rad len)
+    double Coulomb{0.0};                   // Coulomb correction (MeV)
+};
+
+// Reaction types
+enum class ReactionType {
+    ELASTIC,
+    QUASIELASTIC,
+    PION_PRODUCTION,
+    KAON_PRODUCTION,
+    DELTA_PRODUCTION,
+    RHO_PRODUCTION,
+    SEMI_INCLUSIVE
+};
+
+// Spectrometer types
+enum class SpectrometerType {
+    HMS,
+    SHMS,
+    SOS,
+    HRSL,
+    HRSR
+};
+
+} // namespace simc
+
+#endif // SIMC_TYPES_H
+\end{lstlisting}
+
+\subsection{Event Data Structure}
+
+\subsubsection{Header: SimcEvent.h}
+\begin{lstlisting}[style=cpp,caption=Event Class Header]
+// include/simc/SimcEvent.h
+#ifndef SIMC_EVENT_H
+#define SIMC_EVENT_H
+
+#include "SimcTypes.h"
+#include "SimcConstants.h"
+#include <Rtypes.h>  // ROOT types for I/O
+
+namespace simc {
+
+/**
+ * @brief Main event structure containing all kinematic information
+ * 
+ * This class stores both generated (vertex) and reconstructed quantities
+ * for a single simulated event. It is designed to be stored directly
+ * in a ROOT TTree for efficient I/O.
+ */
+class SimcEvent {
+public:
+    // Constructors
+    SimcEvent() = default;
+    ~SimcEvent() = default;
+    
+    // Beam and kinematic quantities
+    Double_t Ein{0.0};          ///< Incident beam energy (MeV)
+    Double_t nu{0.0};           ///< Energy transfer (MeV)
+    Double_t q{0.0};            ///< 3-momentum transfer (MeV/c)
+    Double_t Q2{0.0};           ///< 4-momentum transfer squared (MeV^2)
+    Double_t W{0.0};            ///< Invariant mass (MeV)
+    Double_t xbj{0.0};          ///< Bjorken x
+    Double_t epsilon{0.0};      ///< Virtual photon polarization
+    
+    // Missing quantities
+    Double_t Em{0.0};           ///< Missing energy (MeV)
+    Double_t Pm{0.0};           ///< Missing momentum (MeV/c)
+    Double_t Emiss{0.0};        ///< Calculated missing energy (MeV)
+    Double_t Pmiss{0.0};        ///< Calculated missing momentum (MeV/c)
+    Double_t Pmx{0.0}, Pmy{0.0}, Pmz{0.0};  ///< Missing momentum components
+    
+    // Recoil system
+    Double_t Mrec{0.0};         ///< Recoil mass (MeV)
+    Double_t Trec{0.0};         ///< Recoil kinetic energy (MeV)
+    
+    // Angles
+    Double_t theta_pq{0.0};     ///< Angle between p and q (rad)
+    Double_t phi_pq{0.0};       ///< Out-of-plane angle (rad)
+    
+    // Particle states
+    ArmState electron;          ///< Electron arm quantities
+    ArmState hadron;            ///< Hadron arm quantities
+    
+    // Unit vectors
+    Vector3D ue;                ///< Electron direction
+    Vector3D up;                ///< Hadron direction
+    Vector3D uq;                ///< Virtual photon direction
+    
+    // Methods
+    void Clear();               ///< Reset all values to zero
+    void Print() const;         ///< Print event information
+    
+    // ROOT dictionary generation
+    ClassDef(SimcEvent, 1)
+};
+
+/**
+ * @brief Main event information including weights and flags
+ */
+struct MainEvent {
+    TargetInfo target;          ///< Target vertex information
+    ArmState SP_electron;       ///< Spectrometer electron coordinates
+    ArmState SP_hadron;         ///< Spectrometer hadron coordinates
+    FocalPlaneState FP_electron; ///< Focal plane electron
+    FocalPlaneState FP_hadron;  ///< Focal plane hadron
+    
+    Double_t weight{1.0};       ///< Event weight
+    Double_t jacobian{1.0};     ///< Phase space jacobian
+    Double_t gen_weight{1.0};   ///< Generation weight
+    Double_t SF_weight{1.0};    ///< Spectral function weight
+    Double_t sigcc{1.0};        ///< Cross section (ub/MeV^n/sr^m)
+    
+    Double_t Ein_shift{0.0};    ///< Energy shift for cuts
+    Double_t Ee_shift{0.0};     ///< Electron energy shift
+    
+    Bool_t success{false};      ///< Event success flag
+};
+
+} // namespace simc
+
+#endif // SIMC_EVENT_H
+\end{lstlisting}
+
+\subsubsection{Source: SimcEvent.cpp}
+\begin{lstlisting}[style=cpp,caption=Event Class Implementation]
+// src/core/SimcEvent.cpp
+#include "simc/SimcEvent.h"
+#include <iostream>
+#include <iomanip>
+
+namespace simc {
+
+void SimcEvent::Clear() {
+    Ein = nu = q = Q2 = W = xbj = epsilon = 

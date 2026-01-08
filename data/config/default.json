@@ -1,0 +1,100 @@
+{
+  "_comment": "SIMC C++/ROOT Default Configuration",
+  
+  "beam": {
+    "energy": 10.6,
+    "energy_spread": 0.05,
+    "x_width": 0.2,
+    "y_width": 0.2,
+    "x_offset": 0.0,
+    "y_offset": 0.0
+  },
+  
+  "target": {
+    "type": "LH2",
+    "A": 1,
+    "Z": 1,
+    "thickness": 0.1,
+    "angle": 0.0,
+    "length": 4.0,
+    "z_offset": 0.0,
+    "x_offset": 0.0,
+    "y_offset": 0.0,
+    "raster": {
+      "pattern": 1,
+      "x_width": 0.2,
+      "y_width": 0.2
+    }
+  },
+  
+  "reaction": {
+    "type": "elastic",
+    "pion_type": "pi_plus",
+    "kaon_type": "K_plus",
+    "final_state": "nucleon"
+  },
+  
+  "spectrometers": {
+    "electron_arm": {
+      "type": "HMS",
+      "momentum": 8.0,
+      "angle": 12.5,
+      "phi": 0.0,
+      "offset": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0,
+        "xptar": 0.0,
+        "yptar": 0.0
+      }
+    },
+    "hadron_arm": {
+      "type": "SHMS",
+      "momentum": 5.5,
+      "angle": 8.3,
+      "phi": 0.0,
+      "offset": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0,
+        "xptar": 0.0,
+        "yptar": 0.0
+      }
+    }
+  },
+  
+  "monte_carlo": {
+    "nevents": 10000,
+    "random_seed": 12345,
+    "radiative_corrections": true,
+    "energy_loss": true,
+    "multiple_scattering": true,
+    "coulomb_corrections": true,
+    "particle_decay": false,
+    
+    "generation_limits": {
+      "electron": {
+        "delta_min": -10.0,
+        "delta_max": 10.0,
+        "xptar_min": -0.08,
+        "xptar_max": 0.08,
+        "yptar_min": -0.05,
+        "yptar_max": 0.05
+      },
+      "hadron": {
+        "delta_min": -15.0,
+        "delta_max": 15.0,
+        "xptar_min": -0.1,
+        "xptar_max": 0.1,
+        "yptar_min": -0.08,
+        "yptar_max": 0.08
+      }
+    }
+  },
+  
+  "output": {
+    "filename": "simc_output.root",
+    "save_generated": true,
+    "save_histograms": true
+  }
+}
