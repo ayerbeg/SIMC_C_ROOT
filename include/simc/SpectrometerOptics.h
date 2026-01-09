@@ -37,11 +37,17 @@ namespace simc {
  * - yp = dy/dz (vertical angle)
  * - delta = (p - p0)/p0 * 100 (momentum deviation in %)
  * 
- * Units:
- * - Positions: cm
- * - Angles: radians
- * - Momentum: MeV/c
- * - Delta: percent (%)
+ * CRITICAL UNITS (must match COSY matrix format):
+ * - Positions (x, y): cm
+ * - Angles (xp, yp): MILLIRADIANS (mrad) [NOT radians!]
+ * - Momentum (p): MeV/c
+ * - Delta (δ): PERCENT (%) [NOT fraction!]
+ * - Path lengths: cm
+ * 
+ * IMPORTANT: COSY matrices use milliradians for angles!
+ * When interfacing with other code that uses radians, you must convert:
+ *   angle_mrad = angle_rad * 1000.0
+ *   angle_rad = angle_mrad / 1000.0
  * 
  * Based on Fortran SIMC transp.f and spectrometer-specific files
  */
@@ -86,8 +92,12 @@ public:
     /**
      * @brief Transport particle from target to focal plane (forward)
      * 
+     * IMPORTANT: Input angles (state.xptar, state.yptar) should be in RADIANS
+     * They will be converted to milliradians internally for COSY matrix application
+     * 
      * @param state Initial state at target (spectrometer coordinates)
-     * @param momentum Central momentum (MeV/c)
+     *              Angles in RADIANS (will be converted to mrad internally)
+     * @param momentum Particle momentum (MeV/c)
      * @param mass Particle mass (MeV/c²)
      * @param charge Particle charge (units of e)
      * @param rng Random number generator (for multiple scattering)
@@ -106,9 +116,12 @@ public:
     /**
      * @brief Reconstruct target coordinates from focal plane
      * 
+     * IMPORTANT: Output angles will be in RADIANS (converted from mrad internally)
+     * 
      * @param focal_plane Measured focal plane coordinates
+     *                    Angles in RADIANS (will be converted to mrad internally)
      * @param momentum Central momentum (MeV/c)
-     * @return Reconstructed target coordinates
+     * @return Reconstructed target coordinates with angles in RADIANS
      */
     ArmState Reconstruct(const FocalPlaneState& focal_plane,
                         double momentum);
@@ -133,41 +146,41 @@ public:
     std::string GetName() const { return name_; }
     
     /**
-     * @brief Get central momentum
+     * @brief Get central momentum (MeV/c)
      */
     double GetCentralMomentum() const { return p_central_; }
     
     /**
-     * @brief Set central momentum
+     * @brief Set central momentum (MeV/c)
      */
     void SetCentralMomentum(double p) { p_central_ = p; }
     
     /**
-     * @brief Get spectrometer angle
+     * @brief Get spectrometer angle (radians)
      */
     double GetAngle() const { return theta_; }
     
     /**
-     * @brief Set spectrometer angle
+     * @brief Set spectrometer angle (radians)
      */
     void SetAngle(double theta) { theta_ = theta; }
 
 protected:
     std::string name_;                      ///< Spectrometer name
     double p_central_{5000.0};              ///< Central momentum (MeV/c)
-    double theta_{0.0};                     ///< Spectrometer angle (rad)
+    double theta_{0.0};                     ///< Spectrometer angle (radians)
     
     std::unique_ptr<CosyMatrix> forward_matrix_;   ///< Forward transport matrix
     std::unique_ptr<CosyMatrix> recon_matrix_;     ///< Reconstruction matrix
     
     /**
      * @brief Transport through a single drift section
-     * @param state Current state
+     * @param state Current state (angles in RADIANS)
      * @param length Drift length (cm)
      * @param material Material in drift (nullptr = vacuum)
      * @param momentum Particle momentum (MeV/c)
      * @param mass Particle mass (MeV/c²)
-     * @param charge Particle charge
+     * @param charge Particle charge (units of e)
      * @param rng Random number generator
      * @param do_energy_loss Apply energy loss
      * @param do_multiple_scattering Apply multiple scattering
@@ -186,16 +199,31 @@ protected:
      * @brief Apply COSY matrix to state vector
      * @param matrix COSY matrix to apply
      * @param state Input/output state
+     * 
+     * INTERNAL: Handles conversion between radians and milliradians
      */
     void ApplyCosyMatrix(const CosyMatrix& matrix, ArmState& state);
     
     /**
-     * @brief Convert ArmState to COSY vector [x, xp, y, yp, delta]
+     * @brief Convert ArmState to COSY vector
+     * 
+     * CRITICAL: Converts angles from radians to milliradians!
+     * Output: [x(cm), xp(mrad), y(cm), yp(mrad), delta(%)]
+     * 
+     * @param state Input state with angles in RADIANS
+     * @return COSY vector with angles in MILLIRADIANS
      */
     std::vector<double> StateToCosyVector(const ArmState& state) const;
     
     /**
      * @brief Convert COSY vector to ArmState
+     * 
+     * CRITICAL: Converts angles from milliradians to radians!
+     * Input: [x(cm), xp(mrad), y(cm), yp(mrad), delta(%)]
+     * 
+     * @param vec COSY vector with angles in MILLIRADIANS
+     * @param momentum Central momentum (MeV/c)
+     * @return ArmState with angles in RADIANS
      */
     ArmState CosyVectorToState(const std::vector<double>& vec, double momentum) const;
 };
@@ -209,16 +237,19 @@ protected:
  * @brief High Momentum Spectrometer (HMS) optics
  * 
  * HMS aperture geometry (from apertures_hms.inc and mc_hms.f):
- * - Octagon entrance aperture
- * - Dipole entrance/exit
- * - Quadrupole apertures (Q1, Q2, Q3)
- * - Collimator (optional)
- * - Detector hut apertures
+ * - Octagon entrance aperture: 17.145 cm radius
+ * - Dipole entrance/exit: ±30 cm horizontal, ±12.5 cm vertical
+ * - Quadrupole apertures:
+ *   * Q1: circular, r = 12.5 cm
+ *   * Q2: circular, r = 30 cm
+ *   * Q3: circular, r = 30 cm
+ * - Detector hut: ±100 cm (large, rarely limiting)
  * 
- * Central momentum range: 0.5 - 7.5 GeV/c
- * Solid angle: ~6 msr (without collimator)
- * Momentum acceptance: ±8-10%
- * Angular acceptance: ±30-40 mr (horizontal), ±65-80 mr (vertical)
+ * Specifications:
+ * - Central momentum range: 0.5 - 7.5 GeV/c
+ * - Solid angle: ~6 msr (without collimator)
+ * - Momentum acceptance: ±8-10%
+ * - Angular acceptance: ±30-40 mrad (horizontal), ±65-80 mrad (vertical)
  */
 class HMSOptics : public SpectrometerOptics {
 public:
@@ -230,19 +261,14 @@ public:
     
 private:
     /**
-     * @brief HMS aperture definitions
-     * From apertures_hms.inc:
-     * - Octagonal entrance
-     * - Dipole entrance/exit: ±30 cm horizontal, ±12.5 cm vertical
-     * - Q1 entrance/exit: circular, r = 12.5 cm
-     * - Q2 entrance/exit: circular, r = 30 cm
-     * - Q3 entrance/exit: circular, r = 30 cm
+     * @brief HMS aperture checking functions
+     * All dimensions in cm (from apertures_hms.inc)
      */
-    bool CheckOctagon(double x, double y) const;
-    bool CheckDipole(double x, double y) const;
-    bool CheckQuad1(double x, double y) const;
-    bool CheckQuad2(double x, double y) const;
-    bool CheckQuad3(double x, double y) const;
+    bool CheckOctagon(double x, double y) const;  ///< Octagon: r=17.145 cm
+    bool CheckDipole(double x, double y) const;   ///< Dipole: ±30 × ±12.5 cm
+    bool CheckQuad1(double x, double y) const;    ///< Q1: r=12.5 cm
+    bool CheckQuad2(double x, double y) const;    ///< Q2: r=30 cm
+    bool CheckQuad3(double x, double y) const;    ///< Q3: r=30 cm
 };
 
 // ============================================================================
@@ -254,16 +280,22 @@ private:
  * @brief Super High Momentum Spectrometer (SHMS) optics
  * 
  * SHMS aperture geometry (from apertures_shms.inc and mc_shms.f):
- * - Large entrance aperture (for large acceptance)
- * - HB (Horizontal Bend) dipole entrance/exit
- * - Quadrupole apertures (Q1, Q2, Q3)
- * - Collimators (LARGE or SMALL)
- * - Detector hut
+ * - Entrance aperture: ±60 cm horizontal, ±25 cm vertical
+ * - HB (Horizontal Bend) dipole: ±50 cm horizontal, ±25 cm vertical
+ * - Quadrupole apertures:
+ *   * Q1: circular, r = 14.92 cm
+ *   * Q2: circular, r = 30 cm
+ *   * Q3: circular, r = 30 cm
+ * - Collimators:
+ *   * LARGE: ±6 cm both directions
+ *   * SMALL: ±3 cm both directions
+ * - Detector hut: ±60 cm
  * 
- * Central momentum range: 2.0 - 11.0 GeV/c
- * Solid angle: ~4 msr (LARGE collimator)
- * Momentum acceptance: ±20-25%
- * Angular acceptance: ±50 mr (horizontal), ±75-100 mr (vertical)
+ * Specifications:
+ * - Central momentum range: 2.0 - 11.0 GeV/c
+ * - Solid angle: ~4 msr (LARGE collimator)
+ * - Momentum acceptance: ±20-25%
+ * - Angular acceptance: ±50 mrad (horizontal), ±75-100 mrad (vertical)
  */
 class SHMSOptics : public SpectrometerOptics {
 public:
@@ -275,16 +307,16 @@ public:
     
     /**
      * @brief Set collimator type
-     * @param type "LARGE" or "SMALL"
+     * @param type "LARGE" (±6 cm) or "SMALL" (±3 cm)
      */
     void SetCollimator(const std::string& type);
     
 private:
     std::string collimator_type_{"LARGE"};  ///< Collimator type
     
-    bool CheckEntrance(double x, double y) const;
-    bool CheckHBDipole(double x, double y) const;
-    bool CheckCollimator(double x, double y) const;
+    bool CheckEntrance(double x, double y) const;    ///< Entrance: ±60 × ±25 cm
+    bool CheckHBDipole(double x, double y) const;    ///< HB dipole: ±50 × ±25 cm
+    bool CheckCollimator(double x, double y) const;  ///< LARGE ±6cm or SMALL ±3cm
 };
 
 // ============================================================================
@@ -297,8 +329,13 @@ private:
  * 
  * SOS is a smaller spectrometer used in Hall C for lower momenta
  * 
- * Central momentum range: 0.3 - 1.7 GeV/c
- * Solid angle: ~7 msr
+ * Specifications:
+ * - Central momentum range: 0.3 - 1.7 GeV/c
+ * - Solid angle: ~7 msr
+ * - Momentum acceptance: ±20%
+ * 
+ * Aperture geometry (approximate, from mc_sos.f):
+ * - 6 aperture planes through dipoles and quadrupoles
  */
 class SOSOptics : public SpectrometerOptics {
 public:
@@ -319,6 +356,15 @@ public:
  * 
  * Both HRSL (Left) and HRSR (Right) use the same optics with
  * mirrored geometry
+ * 
+ * Specifications:
+ * - Central momentum range: 0.3 - 4.3 GeV/c
+ * - Momentum acceptance: ±4.5%
+ * - Angular acceptance: ±28 mrad (horizontal), ±60 mrad (vertical)
+ * - Solid angle: ~6 msr
+ * 
+ * Aperture geometry (from mc_hrsl.f / mc_hrsr.f):
+ * - 7 aperture planes through quadrupoles, dipoles, and detector hut
  */
 class HRSOptics : public SpectrometerOptics {
 public:

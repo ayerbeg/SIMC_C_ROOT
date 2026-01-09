@@ -20,20 +20,21 @@ namespace simc {
  * COSY (COSmic raY) is a differential algebra code used to calculate
  * particle optics. It outputs transfer maps as polynomials.
  * 
- * CRITICAL FORMAT (from transp.f line 1200):
+ * CRITICAL FORMAT (from actual COSY files):
  * Each line contains:
- * - 5 coefficients: [c_x, c_xp, c_y, c_yp, c_dL]
- * - 6 exponents: [ex_x, ex_xp, ex_y, ex_yp, ex_TOF, ex_delta]
+ * - 5 coefficients: [c_x, c_xp, c_y, c_yp, c_dL] (scientific notation)
+ * - 1 six-digit exponent string: "exponent_x exponent_xp exponent_y exponent_yp exponent_TOF exponent_delta"
+ *   concatenated as a 6-digit number (e.g., "100000" means [1,0,0,0,0,0])
  * 
- * Example line:
- *   0.7779354  -3.321846  0.0  0.0  0.0  1 0 0 0 0 0
+ * Example line from forward_cosy.dat:
+ *   1.000000     0.0000000E+00 0.0000000E+00 0.0000000E+00 0.0000000E+00 100000
  * 
- * This means:
- *   x_out   += 0.7779354  * x^1
- *   xp_out  += -3.321846  * x^1
- *   y_out   += 0.0        * x^1  (no contribution)
- *   yp_out  += 0.0        * x^1  (no contribution)
- *   dL_out  += 0.0        * x^1  (no contribution)
+ * This means (parsing "100000" as [1,0,0,0,0,0]):
+ *   x_out   += 1.000000  * x^1 * xp^0 * y^0 * yp^0 * delta^0
+ *   xp_out  += 0.0       * x^1 (no contribution)
+ *   y_out   += 0.0       * x^1 (no contribution)
+ *   yp_out  += 0.0       * x^1 (no contribution)
+ *   dL_out  += 0.0       * x^1 (no contribution)
  * 
  * Units (COSY-7):
  *   Input/Output positions: cm
@@ -46,6 +47,14 @@ namespace simc {
  *   2: y      - vertical position (cm)
  *   3: yp     - dy/dz vertical angle (mrad)
  *   4: delta  - momentum deviation (%)
+ * 
+ * Exponent order in 6-digit string:
+ *   Digit 0: x exponent
+ *   Digit 1: xp exponent
+ *   Digit 2: y exponent
+ *   Digit 3: yp exponent
+ *   Digit 4: TOF exponent (should always be 0, ignored)
+ *   Digit 5: delta exponent
  * 
  * Based on transp.f from Fortran SIMC
  */
@@ -96,12 +105,19 @@ public:
      * @param filename Path to COSY matrix file (.dat)
      * @return true if successful
      * 
-     * File format (from transp.f lines 50-150, format 1200):
+     * File format (from actual files in data/matrices/):
      * - Comment lines start with '!'
      * - Separator lines: ' ---...'
-     * - Data lines: c1 c2 c3 c4 c5  ex0 ex1 ex2 ex3 exTOF exDelta
-     *   where c1-c5 are 5 coefficients (g14.7 format)
-     *   and ex0-ex5 are 6 single-digit exponents
+     * - Data lines: c1 c2 c3 c4 c5  XXXXXX
+     *   where c1-c5 are 5 coefficients (scientific notation)
+     *   and XXXXXX is a 6-digit string of single-digit exponents
+     * 
+     * Example:
+     *   0.7779354  -3.321846  0.0  0.0  0.0  100000
+     *   ^^^^^^^^^  ^^^^^^^^^  ^^^  ^^^  ^^^  ^^^^^^
+     *   c_x        c_xp       c_y  c_yp c_dL exponents
+     * 
+     * Exponents "100000" = [1,0,0,0,0,0] means x^1 * xp^0 * y^0 * yp^0 * TOF^0 * delta^0
      */
     bool LoadFromFile(const std::string& filename);
     
@@ -161,6 +177,10 @@ private:
      * @param line Line from file
      * @param element Output matrix element
      * @return true if line parsed successfully
+     * 
+     * Format: c1 c2 c3 c4 c5 XXXXXX
+     * where XXXXXX is a 6-digit string (each digit 0-9)
+     * representing exponents for [x, xp, y, yp, TOF, delta]
      */
     bool ParseLine(const std::string& line, MatrixElement& element);
     
