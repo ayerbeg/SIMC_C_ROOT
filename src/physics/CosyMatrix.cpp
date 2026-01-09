@@ -1,6 +1,7 @@
 // src/physics/CosyMatrix.cpp
 // Implementation of COSY matrix operations
 // Ported from transp.f (Fortran SIMC)
+// CORRECTED VERSION - Proper Fortran format parsing
 
 #include "simc/CosyMatrix.h"
 #include <fstream>
@@ -8,6 +9,7 @@
 #include <iostream>
 #include <algorithm>
 #include <cstring>
+#include <cctype>
 
 namespace simc {
 
@@ -16,7 +18,7 @@ namespace simc {
 // ============================================================================
 
 bool CosyMatrix::LoadFromFile(const std::string& filename) {
-    // Port from transp.f lines 50-150
+    // Port from transp.f lines 340-530
     // Read COSY-generated matrix elements from file
     
     std::ifstream file(filename);
@@ -34,8 +36,19 @@ bool CosyMatrix::LoadFromFile(const std::string& filename) {
     while (std::getline(file, line)) {
         ++line_num;
         
-        // Skip empty lines and comments
-        if (line.empty() || line[0] == '!' || line[0] == '#') {
+        // Skip empty lines
+        if (line.empty()) {
+            continue;
+        }
+        
+        // Skip comment lines (starting with '!')
+        if (line[0] == '!') {
+            continue;
+        }
+        
+        // Skip separator lines (lines starting with space and dashes)
+        // Format: " --------------..."
+        if (line.size() > 1 && line[0] == ' ' && line[1] == '-') {
             continue;
         }
         
@@ -45,11 +58,12 @@ bool CosyMatrix::LoadFromFile(const std::string& filename) {
             elements_.push_back(element);
             max_order_ = std::max(max_order_, element.order);
         } else {
-            // Not an error - could be header line
-            // Only warn if line looks like data but failed to parse
-            if (line.find_first_of("0123456789") != std::string::npos) {
+            // Only warn if line contains digits (likely data line that failed)
+            if (line.find_first_of("0123456789") != std::string::npos &&
+                line[0] != '!') {
                 std::cerr << "Warning: Could not parse line " << line_num 
                          << " in " << filename << std::endl;
+                std::cerr << "Line: " << line << std::endl;
             }
         }
     }
@@ -61,61 +75,110 @@ bool CosyMatrix::LoadFromFile(const std::string& filename) {
     
     is_loaded_ = true;
     
+    // Check if this is a drift transformation
+    CheckIfDrift();
+    
     std::cout << "Loaded COSY matrix: " << filename << std::endl;
     std::cout << "  Elements: " << elements_.size() << std::endl;
     std::cout << "  Max order: " << max_order_ << std::endl;
+    if (is_drift_) {
+        std::cout << "  Type: Drift (length = " << drift_distance_ << " cm)" << std::endl;
+    }
     
     return true;
 }
 
 bool CosyMatrix::ParseLine(const std::string& line, MatrixElement& element) {
-    // Port from transp.f lines 100-130
-    // Parse format: output_index coefficient order ex0 ex1 ex2 ex3 ex4
+    // Port from transp.f lines 419-426
+    // 
+    // Fortran format: 1200 format(1x,5g14.7,1x,6i1)
+    // This means:
+    //   1x        = skip 1 character
+    //   5g14.7    = read 5 floating-point numbers (general format, 14 chars each)
+    //   1x        = skip 1 character
+    //   6i1       = read 6 ONE-DIGIT integers (NOT a 6-digit string!)
+    //
+    // Example line:
+    //    1.000000     0.0000000E+00 0.0000000E+00 0.0000000E+00 0.0000000E+00 100000
+    //    ^          ^                                                          ^
+    //    skip 1     5 coefficients                                             6 digits
+    //
+    // The key insight: Fortran's format "6i1" reads 6 consecutive single digits
+    // without whitespace, so "100000" is read as [1,0,0,0,0,0]
     
     std::istringstream iss(line);
     
-    int output_idx_fortran;  // 1-indexed from file
-    double coeff;
-    int order;
-    int ex[5];
+    // Read 5 coefficients (they're space-separated in the file)
+    for (int i = 0; i < 5; ++i) {
+        if (!(iss >> element.coefficients[i])) {
+            return false;
+        }
+    }
     
-    // Read values
-    if (!(iss >> output_idx_fortran >> coeff >> order >> 
-          ex[0] >> ex[1] >> ex[2] >> ex[3] >> ex[4])) {
+    // Read the 6-character exponent field
+    // In the actual files, this appears as a 6-digit number like "100000"
+    // But we need to parse it as 6 individual digits
+    std::string exp_str;
+    if (!(iss >> exp_str)) {
         return false;
     }
     
-    // Validate
-    if (output_idx_fortran < 1 || output_idx_fortran > 5) {
+    // Exponents should be exactly 6 characters
+    if (exp_str.length() != 6) {
         return false;
     }
     
-    // Convert to 0-indexed
-    element.output_index = output_idx_fortran - 1;
-    element.coefficient = coeff;
-    element.order = order;
-    
-    // Copy exponents
-    for (int i = 0; i < 5; ++i) {
-        element.exponents[i] = ex[i];
+    // Verify all characters are digits
+    for (int i = 0; i < 6; ++i) {
+        if (!std::isdigit(static_cast<unsigned char>(exp_str[i]))) {
+            std::cerr << "Error: Non-digit in exponent string: " << exp_str << std::endl;
+            return false;
+        }
     }
     
-    // Verify order matches sum of exponents
-    int sum = 0;
+    // Parse each digit as an exponent
+    // File format: [x_exp, xp_exp, y_exp, yp_exp, TOF_exp, delta_exp]
+    // Our storage: [x, xp, y, yp, delta]  (we ignore TOF at position 4)
+    
+    element.exponents[0] = exp_str[0] - '0';  // x
+    element.exponents[1] = exp_str[1] - '0';  // xp
+    element.exponents[2] = exp_str[2] - '0';  // y
+    element.exponents[3] = exp_str[3] - '0';  // yp
+    // Skip exp_str[4] - that's TOF, should always be 0
+    element.exponents[4] = exp_str[5] - '0';  // delta
+    
+    // Calculate total order (sum of exponents, excluding TOF)
+    element.order = 0;
     for (int i = 0; i < 5; ++i) {
-        sum += ex[i];
+        element.order += element.exponents[i];
     }
     
-    if (sum != order) {
-        std::cerr << "Warning: Order mismatch (stated=" << order 
-                  << ", computed=" << sum << ")" << std::endl;
+    // Verify TOF exponent is zero (as Fortran code requires)
+    int tof_exp = exp_str[4] - '0';
+    if (tof_exp != 0) {
+        // Check if any coefficient is non-zero
+        bool has_nonzero = false;
+        for (int i = 0; i < 4; ++i) {  // Check first 4 coefficients (x, xp, y, yp)
+            if (element.coefficients[i] != 0.0) {
+                has_nonzero = true;
+                break;
+            }
+        }
+        
+        if (has_nonzero) {
+            std::cerr << "Error: Non-zero TOF term with non-zero coefficients!" << std::endl;
+            return false;
+        }
+        
+        // Fortran code ignores this term - we'll return false to skip it
+        return false;
     }
     
     return true;
 }
 
 void CosyMatrix::Apply(const double input[5], double output[5]) const {
-    // Port from transp.f lines 200-250
+    // Port from transp.f lines 248-265
     // Apply transfer map: output = M(input)
     
     if (!is_loaded_) {
@@ -124,27 +187,118 @@ void CosyMatrix::Apply(const double input[5], double output[5]) const {
     }
     
     // Initialize output to zero
+    // From transp.f lines 248-250:
+    //   do i = 1,5
+    //      sum(i) = 0.
+    //   enddo
     for (int i = 0; i < 5; ++i) {
         output[i] = 0.0;
     }
     
     // Sum contributions from all matrix elements
+    // From transp.f lines 254-264:
+    //   do i = 1,n_terms(spectr,k)
+    //     term = 1.0e0
+    //     do j = 1,5
+    //       temp = 1.0e0
+    //       if (expon(spectr,j,i,k).ne.0.) temp = ray(j)**expon(spectr,j,i,k)
+    //       term = term*temp
+    //     enddo
+    //     sum(1) = sum(1) + term*coeff(spectr,1,i,k)
+    //     ...
+    //   enddo
+    
     for (const auto& element : elements_) {
-        int idx = element.output_index;
-        output[idx] += element.Evaluate(input);
+        // Calculate the product of input variables raised to their exponents
+        double term = 1.0;
+        for (int j = 0; j < 5; ++j) {
+            if (element.exponents[j] != 0) {
+                term *= std::pow(input[j], element.exponents[j]);
+            }
+        }
+        
+        // Add contribution to each output component
+        for (int i = 0; i < 5; ++i) {
+            output[i] += term * element.coefficients[i];
+        }
     }
 }
 
-std::vector<CosyMatrix::MatrixElement> CosyMatrix::GetElementsForOutput(int output_index) const {
-    std::vector<MatrixElement> result;
+void CosyMatrix::CheckIfDrift() {
+    // Port from transp.f lines 463-493
+    // Check if this matrix represents a field-free drift
+    //
+    // A pure drift transformation has only first-order terms with:
+    //   x_out  = x_in  + distance * xp_in    (coeff[x][x]=1, coeff[x][xp]=dist)
+    //   xp_out = xp_in                        (coeff[xp][xp]=1)
+    //   y_out  = y_in  + distance * yp_in    (coeff[y][y]=1, coeff[y][yp]=dist)
+    //   yp_out = yp_in                        (coeff[yp][yp]=1)
+    //   All other coefficients = 0
+    
+    const double coeff_min = 1.0e-14;
+    
+    is_drift_ = true;
+    drift_distance_ = 0.0;
     
     for (const auto& elem : elements_) {
-        if (elem.output_index == output_index) {
-            result.push_back(elem);
+        int order = elem.order;
+        
+        // From transp.f line 469: if (order.eq.1) then
+        if (order == 1) {
+            // Get exponents
+            int e_x  = elem.exponents[0];  // x
+            int e_xp = elem.exponents[1];  // xp (theta)
+            int e_y  = elem.exponents[2];  // y
+            int e_yp = elem.exponents[3];  // yp (phi)
+            int e_d  = elem.exponents[4];  // delta
+            
+            // Get coefficients
+            double c_x  = elem.coefficients[0];  // x output
+            double c_xp = elem.coefficients[1];  // xp output
+            double c_y  = elem.coefficients[2];  // y output
+            double c_yp = elem.coefficients[3];  // yp output
+            
+            // Check each first-order term
+            if (e_x == 1 && e_xp == 0 && e_y == 0 && e_yp == 0 && e_d == 0) {
+                // x term: x_out coeff should be 1
+                if (std::abs(c_x - 1.0) > coeff_min) is_drift_ = false;
+                if (std::abs(c_xp - 0.0) > coeff_min) is_drift_ = false;
+                if (std::abs(c_y - 0.0) > coeff_min) is_drift_ = false;
+                if (std::abs(c_yp - 0.0) > coeff_min) is_drift_ = false;
+            }
+            else if (e_x == 0 && e_xp == 1 && e_y == 0 && e_yp == 0 && e_d == 0) {
+                // xp term
+                drift_distance_ = c_x * 1000.0;  // Convert from m to cm
+                if (std::abs(c_xp - 1.0) > coeff_min) is_drift_ = false;
+                if (std::abs(c_y - 0.0) > coeff_min) is_drift_ = false;
+                if (std::abs(c_yp - 0.0) > coeff_min) is_drift_ = false;
+            }
+            else if (e_x == 0 && e_xp == 0 && e_y == 1 && e_yp == 0 && e_d == 0) {
+                // y term
+                if (std::abs(c_x - 0.0) > coeff_min) is_drift_ = false;
+                if (std::abs(c_xp - 0.0) > coeff_min) is_drift_ = false;
+                if (std::abs(c_y - 1.0) > coeff_min) is_drift_ = false;
+                if (std::abs(c_yp - 0.0) > coeff_min) is_drift_ = false;
+            }
+            else if (e_x == 0 && e_xp == 0 && e_y == 0 && e_yp == 1 && e_d == 0) {
+                // yp term
+                if (std::abs(c_x - 0.0) > coeff_min) is_drift_ = false;
+                if (std::abs(c_xp - 0.0) > coeff_min) is_drift_ = false;
+                // c_y should equal drift_distance (in meters/1000)
+                if (std::abs(drift_distance_ - c_y * 1000.0) > coeff_min) is_drift_ = false;
+                if (std::abs(c_yp - 1.0) > coeff_min) is_drift_ = false;
+            }
+        } else {
+            // Higher-order terms: all coefficients should be zero
+            double csum = std::abs(elem.coefficients[0]) + 
+                         std::abs(elem.coefficients[1]) +
+                         std::abs(elem.coefficients[2]) + 
+                         std::abs(elem.coefficients[3]);
+            if (csum > coeff_min) {
+                is_drift_ = false;
+            }
         }
     }
-    
-    return result;
 }
 
 void CosyMatrix::Print() const {
@@ -153,35 +307,55 @@ void CosyMatrix::Print() const {
     std::cout << "Elements: " << elements_.size() << std::endl;
     std::cout << "Max order: " << max_order_ << std::endl;
     
+    if (is_drift_) {
+        std::cout << "Type: Drift (distance = " << drift_distance_ << " cm)" << std::endl;
+    }
+    
     if (!is_loaded_ || elements_.empty()) {
         return;
     }
     
     // Print summary by output variable
-    const char* var_names[5] = {"x", "xp", "y", "yp", "delta"};
+    const char* var_names[5] = {"x", "xp", "y", "yp", "dL"};
+    
+    // Count non-zero coefficients for each output
+    int count[5] = {0, 0, 0, 0, 0};
+    for (const auto& elem : elements_) {
+        for (int i = 0; i < 5; ++i) {
+            if (elem.coefficients[i] != 0.0) {
+                count[i]++;
+            }
+        }
+    }
     
     for (int i = 0; i < 5; ++i) {
-        auto elems = GetElementsForOutput(i);
-        std::cout << "\n" << var_names[i] << "_out: " << elems.size() << " terms" << std::endl;
+        std::cout << "\n" << var_names[i] << "_out: " << count[i] << " terms" << std::endl;
         
-        // Print first few terms
-        int n_print = std::min(5, (int)elems.size());
-        for (int j = 0; j < n_print; ++j) {
-            const auto& e = elems[j];
-            std::cout << "  " << e.coefficient << " * ";
-            for (int k = 0; k < 5; ++k) {
-                if (e.exponents[k] > 0) {
-                    std::cout << var_names[k];
-                    if (e.exponents[k] > 1) {
-                        std::cout << "^" << e.exponents[k];
+        // Print first few non-zero terms
+        int n_printed = 0;
+        for (const auto& elem : elements_) {
+            if (elem.coefficients[i] != 0.0 && n_printed < 5) {
+                std::cout << "  " << elem.coefficients[i] << " * ";
+                bool first = true;
+                for (int k = 0; k < 5; ++k) {
+                    if (elem.exponents[k] > 0) {
+                        if (!first) std::cout << "*";
+                        std::cout << var_names[k];
+                        if (elem.exponents[k] > 1) {
+                            std::cout << "^" << elem.exponents[k];
+                        }
+                        first = false;
                     }
-                    std::cout << " ";
                 }
+                if (first) {
+                    std::cout << "1";  // Constant term
+                }
+                std::cout << std::endl;
+                n_printed++;
             }
-            std::cout << std::endl;
         }
-        if (elems.size() > 5) {
-            std::cout << "  ... (" << (elems.size() - 5) << " more terms)" << std::endl;
+        if (count[i] > 5) {
+            std::cout << "  ... (" << (count[i] - 5) << " more terms)" << std::endl;
         }
     }
     std::cout << "===================" << std::endl;
@@ -191,29 +365,63 @@ void CosyMatrix::Print() const {
 // CosyMatrixSequential Implementation
 // ============================================================================
 
-void CosyMatrixSequential::AddElement(const CosyMatrix& matrix,
-                                      const std::string& type,
+void CosyMatrixSequential::AddElement(CosyMatrix matrix,
+                                      const std::string& name,
                                       double length) {
     Element elem;
     elem.matrix = matrix;
-    elem.type = type;
+    elem.name = name;
     elem.length = length;
     elements_.push_back(elem);
 }
 
-void CosyMatrixSequential::Apply(const double input[5], double output[5]) const {
+void CosyMatrixSequential::Apply(const double input[5], double output[5], 
+                                 double& total_path_length) const {
     // Copy input to temporary
     double temp_in[5], temp_out[5];
     std::memcpy(temp_in, input, 5 * sizeof(double));
     
+    total_path_length = 0.0;
+    
     // Apply each element sequentially
     for (const auto& elem : elements_) {
         elem.matrix.Apply(temp_in, temp_out);
+        
+        // Accumulate path length from 5th component (dL)
+        // From transp.f line 279: delta_z = -sum(5)
+        // From transp.f line 331: pathlen = pathlen + (zd + delta_z)
+        total_path_length += temp_out[4];
+        
+        // Copy output to input for next element
         std::memcpy(temp_in, temp_out, 5 * sizeof(double));
     }
     
     // Copy final result to output
     std::memcpy(output, temp_out, 5 * sizeof(double));
+}
+
+std::string CosyMatrixSequential::GetElementName(size_t index) const {
+    if (index >= elements_.size()) {
+        return "";
+    }
+    return elements_[index].name;
+}
+
+void CosyMatrixSequential::Print() const {
+    std::cout << "\n=== COSY Sequential Matrix ===" << std::endl;
+    std::cout << "Number of elements: " << elements_.size() << std::endl;
+    
+    for (size_t i = 0; i < elements_.size(); ++i) {
+        const auto& elem = elements_[i];
+        std::cout << "\nElement " << (i+1) << ": " << elem.name << std::endl;
+        std::cout << "  Length: " << elem.length << " m" << std::endl;
+        std::cout << "  Matrix elements: " << elem.matrix.GetNumElements() << std::endl;
+        std::cout << "  Max order: " << elem.matrix.GetMaxOrder() << std::endl;
+        if (elem.matrix.IsDrift()) {
+            std::cout << "  Type: Drift (" << elem.matrix.GetDriftDistance() << " cm)" << std::endl;
+        }
+    }
+    std::cout << "===============================" << std::endl;
 }
 
 } // namespace simc
