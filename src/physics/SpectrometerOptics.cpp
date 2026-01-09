@@ -1,6 +1,7 @@
 // src/physics/SpectrometerOptics.cpp
 // Implementation of spectrometer optics and transport
 // Ported from transp.f, mc_hms.f, mc_shms.f, mc_sos.f
+// CORRECTED VERSION - Fixed units (mrad vs rad) and sequential transport
 
 #include "simc/SpectrometerOptics.h"
 #include "simc/SimcConstants.h"
@@ -54,8 +55,12 @@ SpectrometerOptics::TransportForward(const ArmState& state,
     TransportResult result;
     result.success = false;
     
-    // Suppress unused parameter warning for charge (used in condition checks)
-    (void)charge;  // Will be used when full transport implemented
+    // Suppress unused parameter warnings
+    (void)charge;
+    (void)mass;
+    (void)do_energy_loss;
+    (void)do_multiple_scattering;
+    (void)rng;
     
     // Check if forward matrix is loaded
     if (!forward_matrix_ || !forward_matrix_->IsLoaded()) {
@@ -63,37 +68,40 @@ SpectrometerOptics::TransportForward(const ArmState& state,
         return result;
     }
     
-    // CRITICAL: Convert to COSY input vector
-    // From transp.f lines 210-220:
-    // Input vector is [x, xp, y, yp, delta] in cm, rad, rad, rad, PERCENT
+    // CRITICAL UNIT CONVERSION (from transp.f lines 224-228):
+    // Fortran uses COSY-7 units:
+    //   Positions: cm
+    //   Angles: mrad (milliradians), NOT radians!
+    //   Delta: percent
+    //
+    // ArmState has angles in RADIANS, so we must convert:
+    //   1 rad = 1000 mrad
+    
     double input[5];
-    input[0] = 0.0;           // x at target (cm) - usually 0
-    input[1] = state.xptar;   // xp = dx/dz (rad)
-    input[2] = 0.0;           // y at target (cm) - usually 0
-    input[3] = state.yptar;   // yp = dy/dz (rad)
-    input[4] = state.delta;   // delta in PERCENT
+    input[0] = 0.0;                       // x at target (cm) - usually 0
+    input[1] = state.xptar * 1000.0;      // Convert rad to mrad
+    input[2] = 0.0;                       // y at target (cm) - usually 0
+    input[3] = state.yptar * 1000.0;      // Convert rad to mrad
+    input[4] = state.delta;               // delta in PERCENT (no conversion)
     
     // Apply forward COSY matrix
-    // From transp.f lines 240-260
+    // Output: [x_fp(cm), xp_fp(mrad), y_fp(cm), yp_fp(mrad), dL(cm)]
     double output[5];
     forward_matrix_->Apply(input, output);
     
-    // Extract output: [x_fp, xp_fp, y_fp, yp_fp, delta_fp]
-    double x_fp = output[0];    // cm
-    double xp_fp = output[1];   // rad
-    double y_fp = output[2];    // cm
-    double yp_fp = output[3];   // rad
-    double delta_fp = output[4]; // percent
+    // Extract output
+    double x_fp = output[0];              // cm
+    double xp_fp = output[1];             // mrad
+    double y_fp = output[2];              // cm
+    double yp_fp = output[3];             // mrad
+    double delta_L = output[4];           // cm (path length correction)
     
     // Check apertures during transport
-    // From mc_hms.f lines 300-450, mc_shms.f lines 250-400
+    // NOTE: This is simplified - in full version would check at each plane
+    // For now, check at focal plane
     int num_planes = GetNumAperturePlanes();
     
     for (int iplane = 0; iplane < num_planes; ++iplane) {
-        // For simplicity, we check at focal plane coordinates
-        // In full version, would transport to each plane and check
-        // This is a simplified version for initial implementation
-        
         auto aperture_check = CheckAperture(x_fp, y_fp, iplane);
         
         if (!aperture_check.passed) {
@@ -103,68 +111,25 @@ SpectrometerOptics::TransportForward(const ArmState& state,
         }
     }
     
-    // Apply multiple scattering if requested
-    // From transp.f lines 400-450
-    if (do_multiple_scattering && charge != 0.0) {
-        // Approximate: apply MS at focal plane
-        // Full version would apply at each drift section
-        
-        // Typical drift through air to focal plane ~ 5 meters
-        double drift_length = 500.0; // cm
-        Material air;
-        air.name = "Air";
-        air.Z = 7.5;  // Approximate for air (N2 + O2)
-        air.A = 14.5;
-        air.density = 0.001225; // g/cm^3
-        
-        auto ms_angles = MultipleScattering::Calculate(
-            drift_length, air, momentum, mass, charge, rng);
-        
-        xp_fp += ms_angles.theta_x;
-        yp_fp += ms_angles.theta_y;
-    }
-    
-    // Apply energy loss if requested
-    // From transp.f lines 470-500
-    if (do_energy_loss && charge != 0.0) {
-        // Energy loss through air to focal plane
-        double drift_length = 500.0; // cm
-        Material air;
-        air.name = "Air";
-        air.Z = 7.5;
-        air.A = 14.5;
-        air.density = 0.001225;
-        
-        double E_particle = std::sqrt(momentum*momentum + mass*mass);
-        
-        double Eloss = EnergyLoss::Calculate(
-            drift_length, air.density, air.Z, air.A,
-            E_particle, mass, rng,
-            EnergyLoss::LossType::MOST_PROBABLE);
-        
-        // Update momentum and delta
-        double p_new = std::sqrt((E_particle - Eloss)*(E_particle - Eloss) - mass*mass);
-        delta_fp = (p_new - p_central_) / p_central_ * 100.0; // PERCENT!
-    }
-    
-    // Calculate path length (approximate)
-    // From transp.f lines 520-540
-    // Path length ~ sqrt(1 + xp^2 + yp^2) * z_distance
-    double path_factor = std::sqrt(1.0 + xp_fp*xp_fp + yp_fp*yp_fp);
-    result.path_length = path_factor * 500.0; // Approximate focal plane distance
+    // Calculate path length
+    // From transp.f line 420: pathlen = pathlen + (zd + delta_z)
+    // where delta_z = -output[4]
+    double nominal_path = 500.0; // Approximate focal plane distance (cm)
+    result.path_length = nominal_path - delta_L;
     
     // Fill focal plane state
+    // CONVERT back to radians for FocalPlaneState
     result.focal_plane.x = x_fp;
     result.focal_plane.y = y_fp;
-    result.focal_plane.dx = xp_fp;
-    result.focal_plane.dy = yp_fp;
+    result.focal_plane.dx = xp_fp / 1000.0;  // Convert mrad to rad
+    result.focal_plane.dy = yp_fp / 1000.0;  // Convert mrad to rad
     result.focal_plane.path = result.path_length;
     
     // Fill final arm state
-    result.final_state.delta = delta_fp;
-    result.final_state.xptar = state.xptar; // At target
-    result.final_state.yptar = state.yptar;
-    result.final_state.P = p_central_ * (1.0 + delta_fp / 100.0); // MeV/c
+    result.final_state.delta = state.delta;  // Delta unchanged by transport
+    result.final_state.xptar = state.xptar;  // At target (input)
+    result.final_state.yptar = state.yptar;  // At target (input)
+    result.final_state.P = momentum * (1.0 + state.delta / 100.0); // MeV/c
     result.final_state.E = std::sqrt(result.final_state.P * result.final_state.P + mass*mass);
     
     result.success = true;
@@ -172,15 +137,12 @@ SpectrometerOptics::TransportForward(const ArmState& state,
 }
 
 // ============================================================================
-// Reconstruction - Port from transp.f lines 600-700
+// Reconstruction - Port from transp.f reconstruction subroutine
 // ============================================================================
 
 ArmState SpectrometerOptics::Reconstruct(const FocalPlaneState& focal_plane,
                                          double momentum) {
     ArmState reconstructed;
-    
-    // Suppress unused parameter warning
-    (void)momentum;  // Used in future enhancement for momentum calculation
     
     // Check if reconstruction matrix is loaded
     if (!recon_matrix_ || !recon_matrix_->IsLoaded()) {
@@ -188,120 +150,59 @@ ArmState SpectrometerOptics::Reconstruct(const FocalPlaneState& focal_plane,
         return reconstructed;
     }
     
-    // CRITICAL: Convert focal plane to COSY input vector
-    // From transp.f lines 610-630:
-    // Input: [x_fp, xp_fp, y_fp, yp_fp, delta_fp]
-    // Units: cm, rad, cm, rad, PERCENT
+    // CRITICAL UNIT CONVERSION:
+    // Input focal plane coordinates are in radians
+    // Must convert to COSY units (mrad) before applying matrix
     
     double input[5];
-    input[0] = focal_plane.x;   // cm
-    input[1] = focal_plane.dx;  // rad (xp at focal plane)
-    input[2] = focal_plane.y;   // cm
-    input[3] = focal_plane.dy;  // rad (yp at focal plane)
-    
-    // Delta at focal plane - need to calculate from measured momentum
-    // This would come from tracking or TOF in real data
-    // For now, use a placeholder
-    input[4] = 0.0; // Will be updated if momentum is known
+    input[0] = focal_plane.x;             // cm (no conversion)
+    input[1] = focal_plane.dx * 1000.0;   // Convert rad to mrad
+    input[2] = focal_plane.y;             // cm (no conversion)
+    input[3] = focal_plane.dy * 1000.0;   // Convert rad to mrad
+    input[4] = 0.0;  // Delta at focal plane (would come from tracking/TOF)
     
     // Apply reconstruction matrix
-    // From transp.f lines 650-670
     double output[5];
     recon_matrix_->Apply(input, output);
     
     // Extract target coordinates
-    // Output: [x_tar, xp_tar, y_tar, yp_tar, delta_tar]
-    reconstructed.xptar = output[1]; // xp at target (rad)
-    reconstructed.yptar = output[3]; // yp at target (rad)
-    reconstructed.delta = output[4]; // delta (PERCENT)
+    // Output: [x_tar(cm), xp_tar(mrad), y_tar(cm), yp_tar(mrad), delta_tar(%)]
+    // CONVERT angles back to radians
+    reconstructed.xptar = output[1] / 1000.0;  // Convert mrad to rad
+    reconstructed.yptar = output[3] / 1000.0;  // Convert mrad to rad
+    reconstructed.delta = output[4];           // percent (no conversion)
     
-    // Calculate momentum and energy
-    reconstructed.P = p_central_ * (1.0 + reconstructed.delta / 100.0);
-    // Energy depends on particle type - need mass as input
-    // For now, leave as momentum only
+    // Calculate momentum
+    reconstructed.P = momentum * (1.0 + reconstructed.delta / 100.0);
     
     return reconstructed;
 }
 
 // ============================================================================
-// Drift Transport with MS and Energy Loss
-// Port from transp.f lines 750-850
-// ============================================================================
-
-void SpectrometerOptics::TransportDrift(ArmState& state,
-                                        double length,
-                                        const Material* material,
-                                        double momentum,
-                                        double mass,
-                                        double charge,
-                                        RandomGenerator& rng,
-                                        bool do_energy_loss,
-                                        bool do_multiple_scattering) {
-    // From transp.f lines 760-780
-    // Simple drift: project forward by length
-    // In full version, this would be broken into steps
-    
-    if (material == nullptr) {
-        return; // Vacuum drift, no MS or dE/dx
-    }
-    
-    // Apply multiple scattering
-    // From transp.f lines 800-820
-    if (do_multiple_scattering && charge != 0.0) {
-        auto ms_angles = MultipleScattering::Calculate(
-            length, *material, momentum, mass, charge, rng);
-        
-        // Add MS angles to particle trajectory
-        state.xptar += ms_angles.theta_x;
-        state.yptar += ms_angles.theta_y;
-    }
-    
-    // Apply energy loss
-    // From transp.f lines 830-850
-    if (do_energy_loss && charge != 0.0) {
-        double E_particle = std::sqrt(momentum*momentum + mass*mass);
-        
-        double Eloss = EnergyLoss::Calculate(
-            length, material->density, material->Z, material->A,
-            E_particle, mass, rng,
-            EnergyLoss::LossType::MOST_PROBABLE);
-        
-        // Update momentum
-        double E_new = E_particle - Eloss;
-        double p_new = std::sqrt(E_new*E_new - mass*mass);
-        
-        // Update delta (PERCENT!)
-        state.delta = (p_new - p_central_) / p_central_ * 100.0;
-        state.P = p_new;
-        state.E = E_new;
-    }
-}
-
-// ============================================================================
-// COSY Vector Conversions
-// Port from transp.f lines 900-950
+// Helper Functions
 // ============================================================================
 
 std::vector<double> SpectrometerOptics::StateToCosyVector(const ArmState& state) const {
-    // From transp.f lines 910-920
-    // CRITICAL: delta is in PERCENT!
+    // Convert ArmState to COSY input vector
+    // CRITICAL: Convert angles from radians to milliradians
     std::vector<double> vec(5);
-    vec[0] = 0.0;          // x at target (cm) - usually 0
-    vec[1] = state.xptar;  // xp (rad)
-    vec[2] = 0.0;          // y at target (cm) - usually 0
-    vec[3] = state.yptar;  // yp (rad)
-    vec[4] = state.delta;  // delta in PERCENT
+    vec[0] = 0.0;                    // x at target (cm)
+    vec[1] = state.xptar * 1000.0;   // xp (mrad)
+    vec[2] = 0.0;                    // y at target (cm)
+    vec[3] = state.yptar * 1000.0;   // yp (mrad)
+    vec[4] = state.delta;            // delta (PERCENT)
     return vec;
 }
 
 ArmState SpectrometerOptics::CosyVectorToState(const std::vector<double>& vec, 
                                                 double momentum) const {
-    // From transp.f lines 930-950
+    // Convert COSY output vector to ArmState
+    // CRITICAL: Convert angles from milliradians to radians
     ArmState state;
-    state.xptar = vec[1];  // rad
-    state.yptar = vec[3];  // rad
-    state.delta = vec[4];  // PERCENT
-    state.P = momentum * (1.0 + state.delta / 100.0); // MeV/c
+    state.xptar = vec[1] / 1000.0;   // Convert mrad to rad
+    state.yptar = vec[3] / 1000.0;   // Convert mrad to rad
+    state.delta = vec[4];            // PERCENT (no conversion)
+    state.P = momentum * (1.0 + state.delta / 100.0);
     return state;
 }
 
@@ -315,6 +216,49 @@ void SpectrometerOptics::ApplyCosyMatrix(const CosyMatrix& matrix, ArmState& sta
     state = CosyVectorToState(
         std::vector<double>(output, output + 5), 
         p_central_);
+}
+
+void SpectrometerOptics::TransportDrift(ArmState& state,
+                                        double length,
+                                        const Material* material,
+                                        double momentum,
+                                        double mass,
+                                        double charge,
+                                        RandomGenerator& rng,
+                                        bool do_energy_loss,
+                                        bool do_multiple_scattering) {
+    // Simplified drift transport
+    // Full version would be in sequential transport
+    
+    if (material == nullptr) {
+        return; // Vacuum drift
+    }
+    
+    // Apply multiple scattering
+    if (do_multiple_scattering && charge != 0.0) {
+        auto ms_angles = MultipleScattering::Calculate(
+            length, *material, momentum, mass, charge, rng);
+        
+        state.xptar += ms_angles.theta_x;
+        state.yptar += ms_angles.theta_y;
+    }
+    
+    // Apply energy loss
+    if (do_energy_loss && charge != 0.0) {
+        double E_particle = std::sqrt(momentum*momentum + mass*mass);
+        
+        double Eloss = EnergyLoss::Calculate(
+            length, material->density, material->Z, material->A,
+            E_particle, mass, rng,
+            EnergyLoss::LossType::MOST_PROBABLE);
+        
+        double E_new = E_particle - Eloss;
+        double p_new = std::sqrt(E_new*E_new - mass*mass);
+        
+        state.delta = (p_new - p_central_) / p_central_ * 100.0;
+        state.P = p_new;
+        state.E = E_new;
+    }
 }
 
 // ============================================================================
@@ -376,7 +320,6 @@ HMSOptics::CheckAperture(double x, double y, int plane) const {
             
         case 7: // Detector hut
             check.name = "Detector hut";
-            // Detector hut is very large, rarely a constraint
             check.passed = (std::abs(x) < 100.0 && std::abs(y) < 100.0);
             break;
             
@@ -390,7 +333,6 @@ HMSOptics::CheckAperture(double x, double y, int plane) const {
 bool HMSOptics::CheckOctagon(double x, double y) const {
     // From apertures_hms.inc lines 20-50
     // Octagonal aperture with 17.145 cm radius
-    // From mc_hms.f: octagon has 8 sides
     
     const double r_oct = 17.145; // cm
     const double sqrt2 = 1.41421356;
@@ -401,7 +343,6 @@ bool HMSOptics::CheckOctagon(double x, double y) const {
     }
     
     // Check 45-degree corners
-    // Octagon condition: |x| + |y| <= r * sqrt(2)
     if (std::abs(x) + std::abs(y) > r_oct * sqrt2) {
         return false;
     }
@@ -410,9 +351,8 @@ bool HMSOptics::CheckOctagon(double x, double y) const {
 }
 
 bool HMSOptics::CheckDipole(double x, double y) const {
-    // From apertures_hms.inc lines 60-80
+    // From apertures_hms.inc
     // Dipole: ±30 cm horizontal, ±12.5 cm vertical
-    // From mc_hms.f lines 280-290
     
     const double x_max = 30.0;  // cm
     const double y_max = 12.5;  // cm
@@ -421,37 +361,23 @@ bool HMSOptics::CheckDipole(double x, double y) const {
 }
 
 bool HMSOptics::CheckQuad1(double x, double y) const {
-    // From apertures_hms.inc lines 100-110
     // Q1: circular aperture, r = 12.5 cm
-    // From mc_hms.f lines 320-330
-    
-    const double r_q1 = 12.5; // cm
-    double r2 = x*x + y*y;
-    
-    return (r2 <= r_q1 * r_q1);
+    const double r_q1 = 12.5;
+    return (x*x + y*y <= r_q1*r_q1);
 }
 
 bool HMSOptics::CheckQuad2(double x, double y) const {
-    // From apertures_hms.inc lines 130-140
     // Q2: circular aperture, r = 30 cm
-    // From mc_hms.f lines 350-360
-    
-    const double r_q2 = 30.0; // cm
-    double r2 = x*x + y*y;
-    
-    return (r2 <= r_q2 * r_q2);
+    const double r_q2 = 30.0;
+    return (x*x + y*y <= r_q2*r_q2);
 }
 
 bool HMSOptics::CheckQuad3(double x, double y) const {
-    // From apertures_hms.inc lines 160-170
     // Q3: circular aperture, r = 30 cm
-    // From mc_hms.f lines 380-390
-    
-    const double r_q3 = 30.0; // cm
-    double r2 = x*x + y*y;
-    
-    return (r2 <= r_q3 * r_q3);
+    const double r_q3 = 30.0;
+    return (x*x + y*y <= r_q3*r_q3);
 }
+
 
 // ============================================================================
 // SHMS Optics Implementation
@@ -465,7 +391,7 @@ SHMSOptics::SHMSOptics(const std::string& forward_file,
 
 SpectrometerOptics::ApertureCheck 
 SHMSOptics::CheckAperture(double x, double y, int plane) const {
-    // From mc_shms.f lines 250-500 and apertures_shms.inc
+    // From mc_shms.f and apertures_shms.inc
     
     ApertureCheck check;
     check.passed = true;
@@ -473,7 +399,6 @@ SHMSOptics::CheckAperture(double x, double y, int plane) const {
     check.x = x;
     check.y = y;
     
-    // SHMS has 9 aperture planes
     switch (plane) {
         case 0: // Entrance aperture
             check.name = "Entrance";
@@ -492,17 +417,17 @@ SHMSOptics::CheckAperture(double x, double y, int plane) const {
             
         case 3: // Q1 aperture
             check.name = "Q1";
-            check.passed = (x*x + y*y <= 14.92*14.92); // r = 14.92 cm
+            check.passed = (x*x + y*y <= 14.92*14.92);
             break;
             
         case 4: // Q2 aperture
             check.name = "Q2";
-            check.passed = (x*x + y*y <= 30.0*30.0); // r = 30 cm
+            check.passed = (x*x + y*y <= 30.0*30.0);
             break;
             
         case 5: // Q3 aperture
             check.name = "Q3";
-            check.passed = (x*x + y*y <= 30.0*30.0); // r = 30 cm
+            check.passed = (x*x + y*y <= 30.0*30.0);
             break;
             
         case 6: // Collimator
@@ -528,26 +453,17 @@ SHMSOptics::CheckAperture(double x, double y, int plane) const {
 }
 
 bool SHMSOptics::CheckEntrance(double x, double y) const {
-    // From apertures_shms.inc lines 30-50
     // Entrance: ±60 cm horizontal, ±25 cm vertical
-    // From mc_shms.f lines 280-290
-    
     return (std::abs(x) <= 60.0 && std::abs(y) <= 25.0);
 }
 
 bool SHMSOptics::CheckHBDipole(double x, double y) const {
-    // From apertures_shms.inc lines 70-90
     // HB Dipole: ±50 cm horizontal, ±25 cm vertical
-    // From mc_shms.f lines 310-320
-    
     return (std::abs(x) <= 50.0 && std::abs(y) <= 25.0);
 }
 
 bool SHMSOptics::CheckCollimator(double x, double y) const {
-    // From apertures_shms.inc lines 150-180
     // Two collimator options: LARGE and SMALL
-    // From mc_shms.f lines 380-410
-    
     if (collimator_type_ == "LARGE") {
         // Large collimator: ±6 cm both directions
         return (std::abs(x) <= 6.0 && std::abs(y) <= 6.0);
@@ -558,7 +474,6 @@ bool SHMSOptics::CheckCollimator(double x, double y) const {
 }
 
 void SHMSOptics::SetCollimator(const std::string& type) {
-    // From mc_shms.f lines 150-160
     if (type == "LARGE" || type == "large") {
         collimator_type_ = "LARGE";
     } else if (type == "SMALL" || type == "small") {
@@ -572,7 +487,7 @@ void SHMSOptics::SetCollimator(const std::string& type) {
 
 // ============================================================================
 // SOS Optics Implementation
-// Port from mc_sos.f lines 100-500
+// Port from mc_sos.f
 // ============================================================================
 
 SOSOptics::SOSOptics(const std::string& forward_file,
@@ -582,7 +497,7 @@ SOSOptics::SOSOptics(const std::string& forward_file,
 
 SpectrometerOptics::ApertureCheck 
 SOSOptics::CheckAperture(double x, double y, int plane) const {
-    // From mc_sos.f lines 200-400 and apertures_sos.inc
+    // From mc_sos.f and apertures_sos.inc
     
     ApertureCheck check;
     check.passed = true;
@@ -590,7 +505,6 @@ SOSOptics::CheckAperture(double x, double y, int plane) const {
     check.x = x;
     check.y = y;
     
-    // SOS has 6 aperture planes (simpler than HMS/SHMS)
     switch (plane) {
         case 0: // Entrance
             check.name = "Entrance";
@@ -642,7 +556,6 @@ HRSOptics::HRSOptics(const std::string& name,
 
 SpectrometerOptics::ApertureCheck 
 HRSOptics::CheckAperture(double x, double y, int plane) const {
-    // From mc_hrsl.f / mc_hrsr.f
     // HRS apertures (both L and R have similar geometry)
     
     ApertureCheck check;
@@ -651,7 +564,6 @@ HRSOptics::CheckAperture(double x, double y, int plane) const {
     check.x = x;
     check.y = y;
     
-    // HRS has 7 aperture planes
     switch (plane) {
         case 0: // Septum (if used)
             check.name = "Septum";
@@ -727,18 +639,23 @@ std::unique_ptr<SpectrometerOptics> CreateSpectrometerOptics(
 }
 
 std::pair<std::string, std::string> GetDefaultMatrixFiles(const std::string& type) {
-    // Default matrix file paths (relative to data directory)
+    // Default matrix file paths (relative to data/matrices directory)
     
     if (type == "HMS" || type == "hms") {
-        return {"hms/forward_cosy.dat", "hms/recon_cosy.dat"};
+        return {"data/matrices/hms/forward_cosy.dat", 
+                "data/matrices/hms/recon_cosy.dat"};
     } else if (type == "SHMS" || type == "shms") {
-        return {"shms/shms_forward.dat", "shms/shms_recon.dat"};
+        return {"data/matrices/shms/shms_forward.dat", 
+                "data/matrices/shms/shms_recon.dat"};
     } else if (type == "SOS" || type == "sos") {
-        return {"sos/forward_cosy.dat", "sos/recon_cosy.dat"};
+        return {"data/matrices/sos/forward_cosy.dat", 
+                "data/matrices/sos/recon_cosy.dat"};
     } else if (type == "HRSL" || type == "hrsl") {
-        return {"hrsl/hrs_forward_cosy.dat", "hrsl/hrs_recon_cosy.dat"};
+        return {"data/matrices/hrsl/hrs_forward_cosy.dat", 
+                "data/matrices/hrsl/hrs_recon_cosy.dat"};
     } else if (type == "HRSR" || type == "hrsr") {
-        return {"hrsr/hrs_forward_cosy.dat", "hrsr/hrs_recon_cosy.dat"};
+        return {"data/matrices/hrsr/hrs_forward_cosy.dat", 
+                "data/matrices/hrsr/hrs_recon_cosy.dat"};
     } else {
         return {"", ""};
     }

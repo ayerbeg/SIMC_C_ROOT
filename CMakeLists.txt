@@ -191,3 +191,4 @@ message(STATUS "")
 message(STATUS "Data files will be copied to: ${CMAKE_BINARY_DIR}/data/")
 message(STATUS "After 'make install', data will be in: ${SIMC_INSTALL_DATADIR}")
 message(STATUS "")
+
