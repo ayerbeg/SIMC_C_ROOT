@@ -1,14 +1,13 @@
 // include/simc/CosyMatrix.h
 // COSY matrix element representation and evaluation
 // Ported from transp.f (COSY matrix parsing and evaluation)
-// CORRECTED VERSION - Fixed format parsing and units
+// ROBUST VERSION - Handles all Fortran formatting variations
 
 #ifndef SIMC_COSY_MATRIX_H
 #define SIMC_COSY_MATRIX_H
 
 #include <vector>
 #include <string>
-#include <map>
 #include <cmath>
 
 namespace simc {
@@ -20,41 +19,39 @@ namespace simc {
  * COSY (COSmic raY) is a differential algebra code used to calculate
  * particle optics. It outputs transfer maps as polynomials.
  * 
- * CRITICAL FORMAT (from actual COSY files):
- * Each line contains:
- * - 5 coefficients: [c_x, c_xp, c_y, c_yp, c_dL] (scientific notation)
- * - 1 six-digit exponent string: "exponent_x exponent_xp exponent_y exponent_yp exponent_TOF exponent_delta"
- *   concatenated as a 6-digit number (e.g., "100000" means [1,0,0,0,0,0])
+ * FILE FORMAT (from actual COSY files in data/matrices/):
  * 
- * Example line from forward_cosy.dat:
- *   1.000000     0.0000000E+00 0.0000000E+00 0.0000000E+00 0.0000000E+00 100000
+ * Lines contain coefficients and exponents in various formats:
  * 
- * This means (parsing "100000" as [1,0,0,0,0,0]):
- *   x_out   += 1.000000  * x^1 * xp^0 * y^0 * yp^0 * delta^0
- *   xp_out  += 0.0       * x^1 (no contribution)
- *   y_out   += 0.0       * x^1 (no contribution)
- *   yp_out  += 0.0       * x^1 (no contribution)
- *   dL_out  += 0.0       * x^1 (no contribution)
+ * Format A (6-digit exponents):
+ *   coeff1 coeff2 coeff3 coeff4 coeff5 XXXXXX
+ *   where XXXXXX = [x_exp, xp_exp, y_exp, yp_exp, TOF_exp, delta_exp]
+ *   Example: 1.000000 0.0 0.0 0.0 0.0 100000
+ *            means x^1 * xp^0 * y^0 * yp^0 * TOF^0 * delta^0
+ * 
+ * Format B (5-digit exponents):
+ *   coeff1 coeff2 coeff3 coeff4 coeff5 XXXXX
+ *   where XXXXX = [x_exp, xp_exp, y_exp, yp_exp, delta_exp]
+ *   Example: 0.777935 -3.32185 0.0 0.0 0.0 10000
+ * 
+ * The parser handles:
+ * - Scientific notation (E, e, D, d)
+ * - Concatenated numbers without spaces (e.g., "E-01-0.67")
+ * - Variable whitespace
+ * - 4 or 5 coefficients per line
+ * - 5 or 6 digit exponent fields
  * 
  * Units (COSY-7):
- *   Input/Output positions: cm
- *   Input/Output angles: mrad (milliradians)
+ *   Positions: cm
+ *   Angles: mrad (milliradians)
  *   Delta: percent (%)
  * 
- * Vector indices (0-indexed in code):
+ * Vector indices:
  *   0: x      - horizontal position (cm)
  *   1: xp     - dx/dz horizontal angle (mrad)
  *   2: y      - vertical position (cm)
  *   3: yp     - dy/dz vertical angle (mrad)
  *   4: delta  - momentum deviation (%)
- * 
- * Exponent order in 6-digit string:
- *   Digit 0: x exponent
- *   Digit 1: xp exponent
- *   Digit 2: y exponent
- *   Digit 3: yp exponent
- *   Digit 4: TOF exponent (should always be 0, ignored)
- *   Digit 5: delta exponent
  * 
  * Based on transp.f from Fortran SIMC
  */
@@ -64,8 +61,8 @@ public:
      * @struct MatrixElement
      * @brief Single term in the transfer map polynomial
      * 
-     * CRITICAL: Unlike typical matrix elements, each COSY line
-     * contains coefficients for ALL 5 outputs with a single set of input exponents
+     * Each COSY line contains coefficients for ALL 5 outputs
+     * with a single set of input exponents
      */
     struct MatrixElement {
         double coefficients[5]{0,0,0,0,0}; ///< Coefficients for [x, xp, y, yp, dL] outputs
@@ -81,10 +78,8 @@ public:
         double Evaluate(int output_index, const double input[5]) const {
             double result = coefficients[output_index];
             
-            // If coefficient is zero, skip calculation
             if (result == 0.0) return 0.0;
             
-            // Compute product: coeff * x^ex[0] * xp^ex[1] * y^ex[2] * yp^ex[3] * delta^ex[4]
             for (int i = 0; i < 5; ++i) {
                 if (exponents[i] > 0) {
                     result *= std::pow(input[i], exponents[i]);
@@ -105,19 +100,12 @@ public:
      * @param filename Path to COSY matrix file (.dat)
      * @return true if successful
      * 
-     * File format (from actual files in data/matrices/):
-     * - Comment lines start with '!'
-     * - Separator lines: ' ---...'
-     * - Data lines: c1 c2 c3 c4 c5  XXXXXX
-     *   where c1-c5 are 5 coefficients (scientific notation)
-     *   and XXXXXX is a 6-digit string of single-digit exponents
-     * 
-     * Example:
-     *   0.7779354  -3.321846  0.0  0.0  0.0  100000
-     *   ^^^^^^^^^  ^^^^^^^^^  ^^^  ^^^  ^^^  ^^^^^^
-     *   c_x        c_xp       c_y  c_yp c_dL exponents
-     * 
-     * Exponents "100000" = [1,0,0,0,0,0] means x^1 * xp^0 * y^0 * yp^0 * TOF^0 * delta^0
+     * Handles multiple Fortran format variations:
+     * - Comment lines (starting with '!' or '#')
+     * - Separator lines (' ---...')
+     * - Data lines with 4-5 coefficients + 5-6 digit exponents
+     * - Scientific notation (E, e, D, d)
+     * - Numbers concatenated without spaces
      */
     bool LoadFromFile(const std::string& filename);
     
@@ -126,11 +114,8 @@ public:
      * @param input Input vector [x(cm), xp(mrad), y(cm), yp(mrad), delta(%)]
      * @param output Output vector [x(cm), xp(mrad), y(cm), yp(mrad), dL(cm)]
      * 
-     * From transp.f lines 230-250:
      * For each output variable, sum all matrix elements:
-     *   output[i] = sum_over_terms( coefficients[i] * product(input[j]^exponent[j]) )
-     * 
-     * Note: dL (path length correction) is the 5th output
+     *   output[i] = sum( coeff[i] * product(input[j]^exp[j]) )
      */
     void Apply(const double input[5], double output[5]) const;
     
@@ -140,7 +125,7 @@ public:
     int GetMaxOrder() const { return max_order_; }
     
     /**
-     * @brief Get number of matrix elements (lines)
+     * @brief Get number of matrix elements
      */
     size_t GetNumElements() const { return elements_.size(); }
     
@@ -161,32 +146,37 @@ public:
     bool IsDrift() const { return is_drift_; }
     
     /**
+     * @brief Get all matrix elements (for testing/inspection)
+     */
+    const std::vector<MatrixElement>& GetElements() const;
+    
+    /**
      * @brief Print matrix information
      */
     void Print() const;
+    
+    /**
+     * @brief Parse a single line from COSY matrix file
+     * @param line Line to parse
+     * @param coeffs Output: parsed coefficients
+     * @param exponents Output: parsed exponents
+     * @return true if line parsed successfully
+     * 
+     * Made public for testing purposes
+     */
+    bool ParseMatrixLine(const std::string& line,
+                        std::vector<double>& coeffs,
+                        std::vector<int>& exponents);
 
 private:
     std::vector<MatrixElement> elements_;   ///< All matrix elements
     int max_order_{0};                      ///< Maximum polynomial order
     bool is_loaded_{false};                 ///< Matrix loaded flag
     bool is_drift_{false};                  ///< Is this a field-free drift?
-    double drift_distance_{0.0};            ///< Drift distance if is_drift_==true (cm)
-    
-    /**
-     * @brief Parse a line from COSY file
-     * @param line Line from file
-     * @param element Output matrix element
-     * @return true if line parsed successfully
-     * 
-     * Format: c1 c2 c3 c4 c5 XXXXXX
-     * where XXXXXX is a 6-digit string (each digit 0-9)
-     * representing exponents for [x, xp, y, yp, TOF, delta]
-     */
-    bool ParseLine(const std::string& line, MatrixElement& element);
+    double drift_distance_{0.0};            ///< Drift distance if drift (cm)
     
     /**
      * @brief Check if element is consistent with drift transformation
-     * Based on transp.f lines 340-410
      */
     void CheckIfDrift();
 };
@@ -195,19 +185,17 @@ private:
  * @class CosyMatrixSequential
  * @brief Sequential COSY matrix (transport through multiple elements)
  * 
- * IMPORTANT: The COSY matrices in SIMC are SEQUENTIAL, meaning you apply
- * multiple transformations in order (one per spectrometer element) rather
+ * The COSY matrices in SIMC are SEQUENTIAL - you apply multiple
+ * transformations in order (one per spectrometer element) rather
  * than a single end-to-end transformation.
- * 
- * From transp.f: Each "class" represents transport from one z-plane to the next
  */
 class CosyMatrixSequential {
 public:
     /**
-     * @brief Add transport element (transformation class)
+     * @brief Add transport element
      * @param matrix COSY matrix for this element
      * @param name Element name (e.g., "Q1_ENTRANCE", "DIPOLE")
-     * @param length Element length in meters (from comments in .dat file)
+     * @param length Element length in meters
      */
     void AddElement(CosyMatrix matrix, 
                    const std::string& name,
@@ -222,7 +210,7 @@ public:
     void Apply(const double input[5], double output[5], double& total_path_length) const;
     
     /**
-     * @brief Get number of elements (transformation classes)
+     * @brief Get number of elements
      */
     size_t GetNumElements() const { return elements_.size(); }
     
@@ -240,7 +228,7 @@ private:
     struct Element {
         CosyMatrix matrix;
         std::string name;
-        double length{0.0};  // meters (from file comments)
+        double length{0.0};  // meters
     };
     
     std::vector<Element> elements_;

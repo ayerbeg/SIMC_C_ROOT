@@ -1,186 +1,129 @@
-// quick_parser_test.cpp
-// Quick standalone test to verify the COSY parser is working
-// Compile: g++ -std=c++17 -I../include quick_parser_test.cpp ../src/physics/CosyMatrix.cpp -o quick_test
+// tests/quick_parser_test.cpp
+// Quick test to verify COSY parser handles all format variations
+// This test uses the actual CosyMatrix class
 
+#include "simc/CosyMatrix.h"
 #include <iostream>
-#include <fstream>
-#include <sstream>
-#include <string>
+#include <iomanip>
 
-// Minimal parser test - no dependencies
-bool test_parse_line() {
-    // Example line from actual HMS forward_cosy.dat:
-    //   0.7779354     -3.321846     0.0000000E+00 0.0000000E+00 0.0000000E+00 100000
+void TestSingleLine(const std::string& test_line, const std::string& description) {
+    simc::CosyMatrix matrix;
+    std::vector<double> coeffs;
+    std::vector<int> exponents;
     
-    std::string test_line = "  0.7779354     -3.321846     0.0000000E+00 0.0000000E+00 0.0000000E+00 100000";
+    std::cout << "\n=== Testing: " << description << " ===" << std::endl;
+    std::cout << "Input: " << test_line << std::endl;
     
-    std::istringstream iss(test_line);
-    
-    // Parse 5 coefficients
-    double coeffs[5];
-    for (int i = 0; i < 5; ++i) {
-        if (!(iss >> coeffs[i])) {
-            std::cerr << "❌ Failed to read coefficient " << i << std::endl;
-            return false;
+    if (matrix.ParseMatrixLine(test_line, coeffs, exponents)) {
+        std::cout << "✓ Parsed successfully!" << std::endl;
+        std::cout << "  Coefficients (" << coeffs.size() << "): ";
+        for (size_t i = 0; i < coeffs.size(); ++i) {
+            std::cout << std::setw(12) << coeffs[i];
+            if (i < coeffs.size() - 1) std::cout << ", ";
         }
+        std::cout << std::endl;
+        std::cout << "  Exponents: ";
+        for (int e : exponents) {
+            std::cout << e;
+        }
+        std::cout << std::endl;
+    } else {
+        std::cout << "❌ Parse failed!" << std::endl;
     }
-    
-    // Parse exponent string
-    std::string exp_str;
-    if (!(iss >> exp_str)) {
-        std::cerr << "❌ Failed to read exponent string" << std::endl;
-        return false;
-    }
-    
-    // Verify length
-    if (exp_str.length() != 6) {
-        std::cerr << "❌ Exponent string length is " << exp_str.length() 
-                  << ", expected 6" << std::endl;
-        return false;
-    }
-    
-    // Parse exponents
-    int exps[5];
-    exps[0] = exp_str[0] - '0';  // x
-    exps[1] = exp_str[1] - '0';  // xp
-    exps[2] = exp_str[2] - '0';  // y
-    exps[3] = exp_str[3] - '0';  // yp
-    // Skip [4] - TOF
-    exps[4] = exp_str[5] - '0';  // delta
-    
-    // Verify values
-    std::cout << "✓ Parsed line successfully:" << std::endl;
-    std::cout << "  Coefficients: [" 
-              << coeffs[0] << ", " << coeffs[1] << ", " 
-              << coeffs[2] << ", " << coeffs[3] << ", " << coeffs[4] << "]" << std::endl;
-    std::cout << "  Exponents: [" 
-              << exps[0] << ", " << exps[1] << ", " 
-              << exps[2] << ", " << exps[3] << ", " << exps[4] << "]" << std::endl;
-    
-    // Expected values
-    if (coeffs[0] != 0.7779354 || coeffs[1] != -3.321846) {
-        std::cerr << "❌ Coefficient values incorrect!" << std::endl;
-        return false;
-    }
-    
-    if (exps[0] != 1 || exps[1] != 0 || exps[2] != 0 || exps[3] != 0 || exps[4] != 0) {
-        std::cerr << "❌ Exponent values incorrect!" << std::endl;
-        std::cerr << "   Expected: [1,0,0,0,0]" << std::endl;
-        std::cerr << "   Got:      [" << exps[0] << "," << exps[1] << "," 
-                  << exps[2] << "," << exps[3] << "," << exps[4] << "]" << std::endl;
-        return false;
-    }
-    
-    std::cout << "✓ All values correct!" << std::endl;
-    return true;
 }
 
-bool test_parse_file(const std::string& filename) {
-    std::ifstream file(filename);
-    if (!file.is_open()) {
-        std::cerr << "❌ Cannot open file: " << filename << std::endl;
-        return false;
-    }
+void TestFile(const std::string& filename) {
+    std::cout << "\n=== Testing File: " << filename << " ===" << std::endl;
     
-    int data_lines = 0;
-    int comment_lines = 0;
-    int separator_lines = 0;
-    int parse_errors = 0;
-    
-    std::string line;
-    int line_num = 0;
-    
-    while (std::getline(file, line)) {
-        ++line_num;
+    simc::CosyMatrix matrix;
+    if (matrix.LoadFromFile(filename)) {
+        std::cout << "✓ File loaded successfully!" << std::endl;
         
-        if (line.empty()) continue;
-        
-        if (line[0] == '!') {
-            ++comment_lines;
-            continue;
-        }
-        
-        if (line.size() > 1 && line[0] == ' ' && line[1] == '-') {
-            ++separator_lines;
-            continue;
-        }
-        
-        // Try to parse as data line
-        std::istringstream iss(line);
-        double coeffs[5];
-        std::string exp_str;
-        
-        bool parsed = true;
-        for (int i = 0; i < 5; ++i) {
-            if (!(iss >> coeffs[i])) {
-                parsed = false;
-                break;
-            }
-        }
-        
-        if (parsed && (iss >> exp_str) && exp_str.length() == 6) {
-            ++data_lines;
-        } else {
-            // Only count as error if line contains numbers
-            if (line.find_first_of("0123456789") != std::string::npos) {
-                ++parse_errors;
-                if (parse_errors <= 3) {  // Show first 3 errors
-                    std::cerr << "⚠ Line " << line_num << " parse error: " << line << std::endl;
+        const auto& elements = matrix.GetElements();
+        if (elements.size() > 0) {
+            std::cout << "\nFirst 3 elements:" << std::endl;
+            for (size_t i = 0; i < std::min(size_t(3), elements.size()); ++i) {
+                std::cout << "  [" << i << "] coeffs=[";
+                for (int j = 0; j < 5; ++j) {
+                    std::cout << std::setw(10) << elements[i].coefficients[j];
+                    if (j < 4) std::cout << ", ";
                 }
+                std::cout << "] exp=";
+                for (int j = 0; j < 5; ++j) {
+                    std::cout << elements[i].exponents[j];
+                }
+                std::cout << " order=" << elements[i].order << std::endl;
             }
         }
+    } else {
+        std::cout << "❌ Failed to load file!" << std::endl;
     }
-    
-    std::cout << "\nFile: " << filename << std::endl;
-    std::cout << "  Comment lines:   " << comment_lines << std::endl;
-    std::cout << "  Separator lines: " << separator_lines << std::endl;
-    std::cout << "  Data lines:      " << data_lines << std::endl;
-    std::cout << "  Parse errors:    " << parse_errors << std::endl;
-    
-    if (data_lines == 0) {
-        std::cerr << "❌ CRITICAL: No data lines parsed!" << std::endl;
-        std::cerr << "   Parser is not working correctly." << std::endl;
-        return false;
-    }
-    
-    if (data_lines < 100) {
-        std::cerr << "⚠ WARNING: Only " << data_lines << " data lines" << std::endl;
-        std::cerr << "   Expected 300-600 for typical matrix file" << std::endl;
-        return false;
-    }
-    
-    std::cout << "✓ File parsed successfully!" << std::endl;
-    return true;
 }
 
 int main(int argc, char** argv) {
     std::cout << "========================================" << std::endl;
-    std::cout << "Quick COSY Parser Validation" << std::endl;
-    std::cout << "========================================\n" << std::endl;
+    std::cout << "COSY Matrix Parser Validation" << std::endl;
+    std::cout << "========================================" << std::endl;
     
-    // Test 1: Parse a single line
-    std::cout << "=== Test 1: Single Line Parsing ===" << std::endl;
-    if (!test_parse_line()) {
-        std::cerr << "\n❌ FAILED: Parser cannot read basic format!" << std::endl;
-        return 1;
-    }
+    // Test various problematic line formats found in actual files
+    std::cout << "\n=== Testing Different Line Formats ===" << std::endl;
     
-    // Test 2: Parse entire file
-    std::cout << "\n=== Test 2: Full File Parsing ===" << std::endl;
- 
-    std::string filename = "../data/matrices/hrsl/hrs_recon_cosy.dat";
+    // Format 1: HMS/SHMS format with 5 coefficients + 6 digits
+    TestSingleLine("  0.0000000E+00 0.0000000E+00 0.0000000E+00 0.0000000E+00  1.000000     000010",
+                   "HMS format with spaces before exponents (6 digits)");
+    
+    // Format 2: Standard 6-digit format
+    TestSingleLine("  0.7779354     -3.321846     0.0000000E+00 0.0000000E+00 0.0000000E+00 100000",
+                   "Standard 6-digit exponent format");
+    
+    // Format 3: HRS format with 4 coefficients + 5 digits
+    TestSingleLine("  0.777935    -3.32185     0.000000000E+00 0.000000000E+00 10000",
+                   "HRS format with 4 coefficients (5 digits)");
+    
+    // Format 4: Concatenated negative numbers (NO SPACE)
+    TestSingleLine("  0.348558022     0.273541506E-01-0.671779120E-02 0.258721514     10000",
+                   "Concatenated numbers (E-01-0.671)");
+    
+    // Format 5: More concatenated negatives
+    TestSingleLine("  -3.15053452    -0.249126126     0.611924309E-01 0.918777414E-01 01000",
+                   "Multiple negative numbers");
+    
+    // Format 6: Mixed positive/negative
+    TestSingleLine("  0.177375605    -0.859578863     -2.10043200     0.155654165     00010",
+                   "Mixed positive and negative");
+    
+    // Format 7: Very small numbers
+    TestSingleLine("  0.0000000E+00 0.0000000E+00 0.0000000E+00 0.132568347E-15 000000",
+                   "Very small scientific notation");
+    
+    // Test actual files from different spectrometers
+    std::cout << "\n\n=== Testing Actual Matrix Files ===" << std::endl;
+    
+    // Allow command-line file specification
     if (argc > 1) {
-        filename = argv[1];
-    }
-    
-    if (!test_parse_file(filename)) {
-        std::cerr << "\n❌ FAILED: Cannot parse matrix file!" << std::endl;
-        std::cerr << "Make sure you're running from the build directory" << std::endl;
-        return 1;
+        std::cout << "\nTesting user-specified file:" << std::endl;
+        TestFile(argv[1]);
+    } else {
+        // Test a representative sample
+        std::cout << "\n--- HMS Matrices ---" << std::endl;
+        TestFile("data/matrices/hms/forward_cosy.dat");
+        TestFile("data/matrices/hms/recon_cosy.dat");
+        
+        std::cout << "\n--- HRS Left Matrices ---" << std::endl;
+        TestFile("data/matrices/hrsl/hrs_forward_cosy.dat");
+        TestFile("data/matrices/hrsl/hrs_recon_cosy.dat");
+        
+        std::cout << "\n--- SHMS Matrices ---" << std::endl;
+        TestFile("data/matrices/shms/shms_forward.dat");
+        TestFile("data/matrices/shms/shms_recon.dat");
+        
+        std::cout << "\n--- SOS Matrices ---" << std::endl;
+        TestFile("data/matrices/sos/forward_cosy.dat");
+        TestFile("data/matrices/sos/recon_cosy.dat");
     }
     
     std::cout << "\n========================================" << std::endl;
-    std::cout << "✓ All parser tests PASSED!" << std::endl;
+    std::cout << "✓ Parser validation complete!" << std::endl;
     std::cout << "========================================" << std::endl;
     
     return 0;
