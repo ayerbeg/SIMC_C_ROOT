@@ -1,734 +1,707 @@
-// src/physics/EventGenerator.cpp
-// Event generation for SIMC Monte Carlo
-// Ported from event.f
+// src/physics/EventGenerator.cpp - PART 1
+// Constructor through GeneratePhaseSpace
+// Ported from event.f, jacobians.f
 
 #include "simc/EventGenerator.h"
 #include "simc/EnergyLoss.h"
 #include <cmath>
-#include <stdexcept>
 #include <iostream>
+#include <stdexcept>
+#include <algorithm>
 
 namespace simc {
 
 // ============================================================================
-// Constructor and Initialization
+// Constructor
 // ============================================================================
 
 EventGenerator::EventGenerator(
     const ConfigManager& config,
     std::shared_ptr<RandomGenerator> random,
-    std::shared_ptr<CrossSection> cross_section,
-    std::shared_ptr<SpectrometerOptics> optics
-)
+    std::shared_ptr<CrossSectionBase> cross_section,
+    std::shared_ptr<SpectrometerOptics> optics)
     : random_(random)
     , cross_section_(cross_section)
     , optics_(optics)
 {
-    // Load configuration
-    auto gen_config = config.GetSection("generation");
-    auto target_config = config.GetSection("target");
-    auto beam_config = config.GetSection("beam");
-    auto spec_e_config = config.GetSection("spectrometer_electron");
-    auto spec_p_config = config.GetSection("spectrometer_hadron");
+    if (!random_) {
+        throw std::runtime_error("EventGenerator: RandomGenerator is required");
+    }
     
-    // Beam parameters
-    beam_energy_ = beam_config["energy"].get<double>();
-    beam_energy_spread_ = beam_config["energy_spread"].get<double>(0.0);
+    // Load configuration using Get<T>(path) template method
+    beam_energy_ = config.Get<double>("beam.energy");
+    beam_energy_spread_ = config.Get<double>("beam.energy_spread", 0.0);
     
-    // Generation limits
-    gen_limits_.electron.delta_min = gen_config["electron"]["delta_min"].get<double>();
-    gen_limits_.electron.delta_max = gen_config["electron"]["delta_max"].get<double>();
-    gen_limits_.electron.yptar_min = gen_config["electron"]["yptar_min"].get<double>();
-    gen_limits_.electron.yptar_max = gen_config["electron"]["yptar_max"].get<double>();
-    gen_limits_.electron.xptar_min = gen_config["electron"]["xptar_min"].get<double>();
-    gen_limits_.electron.xptar_max = gen_config["electron"]["xptar_max"].get<double>();
-    gen_limits_.electron.E_min = gen_config["electron"]["E_min"].get<double>();
-    gen_limits_.electron.E_max = gen_config["electron"]["E_max"].get<double>();
+    // Generation limits - electron
+    gen_limits_.electron.delta_min = config.Get<double>("generation.electron.delta_min");
+    gen_limits_.electron.delta_max = config.Get<double>("generation.electron.delta_max");
+    gen_limits_.electron.yptar_min = config.Get<double>("generation.electron.yptar_min");
+    gen_limits_.electron.yptar_max = config.Get<double>("generation.electron.yptar_max");
+    gen_limits_.electron.xptar_min = config.Get<double>("generation.electron.xptar_min");
+    gen_limits_.electron.xptar_max = config.Get<double>("generation.electron.xptar_max");
+    gen_limits_.electron.E_min = config.Get<double>("generation.electron.E_min");
+    gen_limits_.electron.E_max = config.Get<double>("generation.electron.E_max");
     
-    gen_limits_.hadron.delta_min = gen_config["hadron"]["delta_min"].get<double>();
-    gen_limits_.hadron.delta_max = gen_config["hadron"]["delta_max"].get<double>();
-    gen_limits_.hadron.yptar_min = gen_config["hadron"]["yptar_min"].get<double>();
-    gen_limits_.hadron.yptar_max = gen_config["hadron"]["yptar_max"].get<double>();
-    gen_limits_.hadron.xptar_min = gen_config["hadron"]["xptar_min"].get<double>();
-    gen_limits_.hadron.xptar_max = gen_config["hadron"]["xptar_max"].get<double>();
-    gen_limits_.hadron.E_min = gen_config["hadron"]["E_min"].get<double>();
-    gen_limits_.hadron.E_max = gen_config["hadron"]["E_max"].get<double>();
+    // Generation limits - hadron
+    gen_limits_.hadron.delta_min = config.Get<double>("generation.hadron.delta_min");
+    gen_limits_.hadron.delta_max = config.Get<double>("generation.hadron.delta_max");
+    gen_limits_.hadron.yptar_min = config.Get<double>("generation.hadron.yptar_min");
+    gen_limits_.hadron.yptar_max = config.Get<double>("generation.hadron.yptar_max");
+    gen_limits_.hadron.xptar_min = config.Get<double>("generation.hadron.xptar_min");
+    gen_limits_.hadron.xptar_max = config.Get<double>("generation.hadron.xptar_max");
+    gen_limits_.hadron.E_min = config.Get<double>("generation.hadron.E_min");
+    gen_limits_.hadron.E_max = config.Get<double>("generation.hadron.E_max");
     
     // Beam widths
-    gen_limits_.xwid = gen_config["beam_xwidth"].get<double>(0.01); // cm, 1 sigma
-    gen_limits_.ywid = gen_config["beam_ywidth"].get<double>(0.01); // cm, 1 sigma
+    gen_limits_.xwid = config.Get<double>("generation.beam_xwidth", 0.01);
+    gen_limits_.ywid = config.Get<double>("generation.beam_ywidth", 0.01);
     
-    // Target properties
-    target_props_.mass = target_config["mass"].get<double>();
-    target_props_.Z = target_config["Z"].get<int>();
-    target_props_.A = target_config["A"].get<int>();
-    target_props_.length = target_config["length"].get<double>();
-    target_props_.x_offset = target_config["x_offset"].get<double>(0.0);
-    target_props_.y_offset = target_config["y_offset"].get<double>(0.0);
-    target_props_.z_offset = target_config["z_offset"].get<double>(0.0);
-    target_props_.angle = target_config["angle"].get<double>(0.0);
-    target_props_.raster_pattern = target_config["raster_pattern"].get<int>(0);
-    target_props_.raster_x = target_config["raster_x"].get<double>(0.0);
-    target_props_.raster_y = target_config["raster_y"].get<double>(0.0);
+    // Target
+    target_props_.mass = config.Get<double>("target.mass");
+    target_props_.Z = config.Get<int>("target.Z");
+    target_props_.A = config.Get<int>("target.A");
+    target_props_.length = config.Get<double>("target.length");
+    target_props_.x_offset = config.Get<double>("target.x_offset", 0.0);
+    target_props_.y_offset = config.Get<double>("target.y_offset", 0.0);
+    target_props_.z_offset = config.Get<double>("target.z_offset", 0.0);
+    target_props_.angle = config.Get<double>("target.angle", 0.0);
+    target_props_.raster_pattern = config.Get<int>("target.raster_pattern", 0);
+    target_props_.raster_x = config.Get<double>("target.raster_x", 0.0);
+    target_props_.raster_y = config.Get<double>("target.raster_y", 0.0);
     
-    // Spectrometer settings
-    spec_electron_.P = spec_e_config["momentum"].get<double>();
-    spec_electron_.theta = spec_e_config["angle"].get<double>() * kDegToRad;
-    spec_electron_.phi = spec_e_config["phi"].get<double>(0.0) * kDegToRad;
+    // Spectrometers
+    spec_electron_.P = config.Get<double>("spectrometer_electron.momentum");
+    spec_electron_.theta = config.Get<double>("spectrometer_electron.angle") * kDegToRad;
+    spec_electron_.phi = config.Get<double>("spectrometer_electron.phi", 0.0) * kDegToRad;
     
-    spec_hadron_.P = spec_p_config["momentum"].get<double>();
-    spec_hadron_.theta = spec_p_config["angle"].get<double>() * kDegToRad;
-    spec_hadron_.phi = spec_p_config["phi"].get<double>(0.0) * kDegToRad;
+    spec_hadron_.P = config.Get<double>("spectrometer_hadron.momentum");
+    spec_hadron_.theta = config.Get<double>("spectrometer_hadron.angle") * kDegToRad;
+    spec_hadron_.phi = config.Get<double>("spectrometer_hadron.phi", 0.0) * kDegToRad;
     
     // Flags
-    use_energy_loss_ = gen_config["use_energy_loss"].get<bool>(true);
-    use_coulomb_ = gen_config["use_coulomb"].get<bool>(true);
-    use_radiative_ = gen_config["use_radiative"].get<bool>(false);
+    use_energy_loss_ = config.Get<bool>("generation.use_energy_loss", true);
+    use_coulomb_ = config.Get<bool>("generation.use_coulomb", true);
+    use_radiative_ = config.Get<bool>("generation.use_radiative", false);
     
-    // Reaction type
-    std::string reaction = gen_config["reaction_type"].get<std::string>("H(e,e'p)");
-    if (reaction == "H(e,e'p)") {
-        reaction_type_ = ReactionType::kHydElastic;
-    } else if (reaction == "D(e,e'p)") {
-        reaction_type_ = ReactionType::kDeuterium;
-    } else if (reaction == "A(e,e'p)") {
-        reaction_type_ = ReactionType::kHeavy;
-    } else if (reaction == "pion") {
-        reaction_type_ = ReactionType::kPion;
-    } else if (reaction == "kaon") {
-        reaction_type_ = ReactionType::kKaon;
+    // Parse reaction type - use correct enum values
+    std::string reaction = config.Get<std::string>("generation.reaction_type", "H(e,e'p)");
+    if (reaction == "H(e,e'p)" || reaction == "elastic") {
+        reaction_type_ = ReactionType::ELASTIC;
+    } else if (reaction == "D(e,e'p)" || reaction == "deuterium" || reaction == "quasielastic") {
+        reaction_type_ = ReactionType::QUASIELASTIC;
+    } else if (reaction == "pion" || reaction == "pi") {
+        reaction_type_ = ReactionType::PION_PRODUCTION;
+    } else if (reaction == "kaon" || reaction == "K") {
+        reaction_type_ = ReactionType::KAON_PRODUCTION;
     } else {
-        throw std::runtime_error("Unknown reaction type: " + reaction);
+        std::cerr << "Warning: Unknown reaction '" << reaction << "', using ELASTIC\n";
+        reaction_type_ = ReactionType::ELASTIC;
     }
 }
 
+// ============================================================================
+// Initialize
+// ============================================================================
+
 bool EventGenerator::Initialize() {
-    if (initialized_) {
-        return true;
-    }
-    
-    // Calculate average beam energy at vertex including energy loss
-    // From event.f init.f calculation of Ebeam_vertex_ave
-    double eloss_ave = 0.0;
-    if (use_energy_loss_) {
-        // Use middle of target
-        double teff;
-        TripThruTarget(1, 0.0, beam_energy_, 0.0, eloss_ave, teff);
-    }
-    
-    double coulomb_ave = 0.0;
-    if (use_coulomb_) {
-        // Average Coulomb correction (from target.f)
-        coulomb_ave = target_props_.coulomb_constant * 
-                      (3.0 - std::pow(0.5, 2.0/3.0));
-    }
-    
-    beam_energy_vertex_ = beam_energy_ + coulomb_ave - eloss_ave;
-    
-    std::cout << "EventGenerator initialized:" << std::endl;
-    std::cout << "  Beam energy: " << beam_energy_ << " MeV" << std::endl;
-    std::cout << "  Beam energy at vertex: " << beam_energy_vertex_ << " MeV" << std::endl;
-    std::cout << "  Reaction type: " << static_cast<int>(reaction_type_) << std::endl;
-    std::cout << "  Target: Z=" << target_props_.Z 
-              << " A=" << target_props_.A 
-              << " M=" << target_props_.mass << " MeV" << std::endl;
-    
+    beam_energy_vertex_ = beam_energy_;
     initialized_ = true;
     return true;
 }
 
 // ============================================================================
-// Main Event Generation
+// Reset Statistics
 // ============================================================================
 
-bool EventGenerator::GenerateEvent(SimcEvent& vertex, MainEvent& main) {
-    // From event.f generate() subroutine
-    
-    if (!initialized_) {
-        throw std::runtime_error("EventGenerator not initialized");
-    }
-    
-    n_generated_++;
-    
-    // Initialize
-    vertex.Clear();
-    main.Clear();
-    bool success = false;
-    main.gen_weight = 1.0;
-    
-    // Generate vertex position
-    GenerateVertex(main.target);
-    
-    // Calculate energy loss to vertex and Coulomb correction
-    // From event.f lines 230-250
-    double eloss_to_vertex, teff;
-    TripThruTarget(1, main.target.z - target_props_.z_offset, 
-                   beam_energy_, 0.0, eloss_to_vertex, teff);
-    
-    if (!use_energy_loss_) {
-        eloss_to_vertex = 0.0;
-    }
-    
-    main.target.Eloss[0] = eloss_to_vertex;
-    main.target.teff[0] = teff;
-    
-    // Coulomb correction
-    if (use_coulomb_) {
-        main.target.Coulomb = target_props_.coulomb_constant;
-    } else {
-        main.target.Coulomb = 0.0;
-    }
-    
-    // Beam energy at vertex with fluctuations
-    // From event.f lines 255-260
-    vertex.Ein = beam_energy_ + 
-                 (random_->Uniform() - 0.5) * beam_energy_spread_ +
-                 main.target.Coulomb - main.target.Eloss[0];
-    
-    // Energy shifts for comparison with limits
-    main.Ein_shift = vertex.Ein - beam_energy_vertex_;
-    main.Ee_shift = main.target.Coulomb - target_props_.coulomb_ave;
-    
-    // Generate phase space
-    if (!GeneratePhaseSpace(vertex, main)) {
-        return false;
-    }
-    
-    // Complete event kinematics
-    if (!CompleteEvent(vertex, main)) {
-        return false;
-    }
-    
-    // Calculate energy loss for outgoing particles
-    // From event.f lines 890-905
-    TripThruTarget(2, main.target.z - target_props_.z_offset,
-                   vertex.e_E, vertex.e_theta, 
-                   main.target.Eloss[1], main.target.teff[1]);
-    
-    TripThruTarget(3, main.target.z - target_props_.z_offset,
-                   vertex.p_E, vertex.p_theta,
-                   main.target.Eloss[2], main.target.teff[2]);
-    
-    if (!use_energy_loss_) {
-        main.target.Eloss[1] = 0.0;
-        main.target.Eloss[2] = 0.0;
-    }
-    
-    // Check if event passes cuts
-    success = PassesGenerationCuts(vertex);
-    
-    if (success) {
-        n_accepted_++;
-    }
-    
-    main.success = success;
-    return success;
+void EventGenerator::ResetStatistics() {
+    n_generated_ = 0;
+    n_accepted_ = 0;
 }
 
 // ============================================================================
-// Vertex Generation
+// Generate Event
+// ============================================================================
+
+bool EventGenerator::GenerateEvent(SimcEvent& event, MainEvent& main) {
+    n_generated_++;
+    
+    GenerateVertex(main.target);
+    
+    if (!GeneratePhaseSpace(event, main)) {
+        return false;
+    }
+    
+    if (!CompleteEvent(event, main)) {
+        return false;
+    }
+    
+    CalculateBasicKinematics(event);
+    CalculateMissingMomentum(event);
+    
+    main.jacobian = CalculateJacobian(event, main);
+    
+    if (!ValidatePhysics(event)) {
+        return false;
+    }
+    
+    if (!PassesGenerationCuts(event)) {
+        return false;
+    }
+    
+    n_accepted_++;
+    main.success = true;
+    return true;
+}
+
+// ============================================================================
+// Generate Vertex
 // ============================================================================
 
 void EventGenerator::GenerateVertex(TargetInfo& target) {
-    // From event.f generate() lines 150-230
+    // Use Gaussian() method (not Gauss)
+    target.x = random_->Gaussian(0.0, gen_limits_.xwid);
+    if (std::abs(target.x) > kNSigmaMax * gen_limits_.xwid) {
+        target.x = (target.x > 0 ? kNSigmaMax : -kNSigmaMax) * gen_limits_.xwid;
+    }
+    target.x += target_props_.x_offset;
     
-    // Generate beam position with Gaussian profile (±3σ)
-    // From event.f: main.target.x = gauss1(nsig_max)*gen.xwid+targ.xoffset
-    target.x = random_->Gauss(0.0, gen_limits_.xwid, kNSigmaMax) + 
-               target_props_.x_offset;
-    target.y = random_->Gauss(0.0, gen_limits_.ywid, kNSigmaMax) + 
-               target_props_.y_offset;
+    target.y = random_->Gaussian(0.0, gen_limits_.ywid);
+    if (std::abs(target.y) > kNSigmaMax * gen_limits_.ywid) {
+        target.y = (target.y > 0 ? kNSigmaMax : -kNSigmaMax) * gen_limits_.ywid;
+    }
+    target.y += target_props_.y_offset;
     
-    // Add raster pattern
-    // From event.f lines 180-210
-    double raster_x = 0.0;
-    double raster_y = 0.0;
+    target.z = random_->Uniform(-target_props_.length / 2.0, 
+                                 target_props_.length / 2.0) + target_props_.z_offset;
     
-    if (target_props_.raster_pattern == 1) {
-        // Old bedpost raster - square with cosine distribution
-        double t3 = random_->Uniform() * kPi;
-        double t4 = random_->Uniform() * kPi;
-        raster_x = std::cos(t3) * target_props_.raster_x;
-        raster_y = std::cos(t4) * target_props_.raster_y;
+    // Raster patterns
+    double raster_x = 0.0, raster_y = 0.0;
+    
+    switch (target_props_.raster_pattern) {
+        case 0: // No raster
+            break;
+            
+        case 1: // Bedpost (uniform square)
+            raster_x = random_->Uniform(-target_props_.raster_x / 2.0,
+                                        target_props_.raster_x / 2.0);
+            raster_y = random_->Uniform(-target_props_.raster_y / 2.0,
+                                        target_props_.raster_y / 2.0);
+            break;
+            
+        case 2: // Circular (uniform disk)
+        {
+            double r = std::sqrt(random_->Uniform()) * target_props_.raster_x / 2.0;
+            double angle = random_->Uniform() * kPi;
+            raster_x = r * std::cos(angle);
+            raster_y = r * std::sin(angle);
+            break;
+        }
         
-    } else if (target_props_.raster_pattern == 2) {
-        // Circular raster - uniform in annulus
-        double t3 = random_->Uniform() * 2.0 * kPi;
-        double t4 = std::sqrt(random_->Uniform()) * 
-                    (target_props_.raster_y - target_props_.raster_x) + 
-                    target_props_.raster_x;
-        raster_x = std::cos(t3) * t4;
-        raster_y = std::sin(t3) * t4;
+        case 3: // Flat circular
+        {
+            double r = random_->Uniform() * target_props_.raster_x / 2.0;
+            double angle = random_->Uniform() * 2.0 * kPi;
+            raster_x = r * std::cos(angle);
+            raster_y = r * std::sin(angle);
+            break;
+        }
         
-    } else if (target_props_.raster_pattern == 3) {
-        // New flat square raster - uniform
-        double t3 = 2.0 * random_->Uniform() - 1.0;
-        double t4 = 2.0 * random_->Uniform() - 1.0;
-        raster_x = target_props_.raster_x * t3;
-        raster_y = target_props_.raster_y * t4;
+        default:
+            std::cerr << "Warning: Unknown raster pattern " 
+                      << target_props_.raster_pattern << "\n";
     }
     
     target.x += raster_x;
     target.y += raster_y;
-    target.raster_x = raster_x;
-    target.raster_y = raster_y;
     
-    // Position along target (uniform)
-    // From event.f: main.target.z = (0.5-grnd())*targ.length+targ.zoffset
-    target.z = (0.5 - random_->Uniform()) * target_props_.length + 
-               target_props_.z_offset;
+    // Use correct field names: rasterx, rastery (not raster_x, raster_y)
+    target.rasterx = raster_x;
+    target.rastery = raster_y;
 }
 
 // ============================================================================
-// Phase Space Generation
+// Generate Phase Space
 // ============================================================================
 
-bool EventGenerator::GeneratePhaseSpace(SimcEvent& vertex, MainEvent& main) {
-    // From event.f generate() lines 260-400
+bool EventGenerator::GeneratePhaseSpace(SimcEvent& event, MainEvent& main) {
+    // Electron arm
+    event.e_delta = random_->Uniform(gen_limits_.electron.delta_min,
+                                     gen_limits_.electron.delta_max);
+    event.e_xptar = random_->Uniform(gen_limits_.electron.xptar_min,
+                                     gen_limits_.electron.xptar_max);
+    event.e_yptar = random_->Uniform(gen_limits_.electron.yptar_min,
+                                     gen_limits_.electron.yptar_max);
     
-    // Always generate electron angles
-    // From event.f lines 260-265
-    vertex.e_yptar = gen_limits_.electron.yptar_min + 
-                     random_->Uniform() * (gen_limits_.electron.yptar_max - 
-                                          gen_limits_.electron.yptar_min);
-    vertex.e_xptar = gen_limits_.electron.xptar_min + 
-                     random_->Uniform() * (gen_limits_.electron.xptar_max - 
-                                          gen_limits_.electron.xptar_min);
+    double P_e = spec_electron_.P * (1.0 + event.e_delta / 100.0);
+    event.e_P = P_e;
+    event.e_E = std::sqrt(P_e * P_e + kElectronMass * kElectronMass);
     
-    // Generate hadron angles for all except H(e,e'p)
-    // From event.f lines 267-275
-    if (reaction_type_ != ReactionType::kHydElastic) {
-        vertex.p_yptar = gen_limits_.hadron.yptar_min + 
-                         random_->Uniform() * (gen_limits_.hadron.yptar_max - 
-                                              gen_limits_.hadron.yptar_min);
-        vertex.p_xptar = gen_limits_.hadron.xptar_min + 
-                         random_->Uniform() * (gen_limits_.hadron.xptar_max - 
-                                              gen_limits_.hadron.xptar_min);
-    }
-    
-    // Generate energies based on reaction type
-    if (reaction_type_ == ReactionType::kDeuterium ||
-        reaction_type_ == ReactionType::kHeavy) {
-        
-        // Generate electron energy
-        // From event.f lines 290-310
-        double Emin = gen_limits_.electron.E_min;
-        double Emax = gen_limits_.electron.E_max;
-        
-        // Apply sumEgen constraint if needed
-        if (reaction_type_ == ReactionType::kHeavy) {
-            Emin = std::max(Emin, gen_limits_.sumEgen_min - gen_limits_.hadron.E_max);
-            Emax = std::min(Emax, gen_limits_.sumEgen_max - gen_limits_.hadron.E_min);
-        }
-        
-        if (Emin > Emax) {
-            return false;
-        }
-        
-        // Calculate generation weight
-        main.gen_weight *= (Emax - Emin) / 
-                          (gen_limits_.electron.E_max - gen_limits_.electron.E_min);
-        
-        vertex.e_E = Emin + random_->Uniform() * (Emax - Emin);
-        vertex.e_P = vertex.e_E; // Ultra-relativistic electron
-        vertex.e_delta = 100.0 * (vertex.e_P - spec_electron_.P) / spec_electron_.P;
-    }
-    
-    // For H(e,e'p), electron energy will be calculated in SolveHydrogenElastic()
-    
-    // Convert spectrometer angles to physics angles
-    // From event.f lines 320-330
     PhysicsAngles(spec_electron_.theta, spec_electron_.phi,
-                  vertex.e_xptar, vertex.e_yptar,
-                  vertex.e_theta, vertex.e_phi);
+                  event.e_xptar, event.e_yptar,
+                  event.e_theta, event.e_phi);
     
-    if (reaction_type_ != ReactionType::kHydElastic) {
-        PhysicsAngles(spec_hadron_.theta, spec_hadron_.phi,
-                      vertex.p_xptar, vertex.p_yptar,
-                      vertex.p_theta, vertex.p_phi);
+    // Fermi momentum for nuclear targets
+    if (reaction_type_ != ReactionType::ELASTIC) {
+        FermiMomentum pfer;
+        GenerateFermiMomentum(pfer);
+        event.Em = pfer.Em;
     }
+    
+    // Hadron arm
+    event.p_delta = random_->Uniform(gen_limits_.hadron.delta_min,
+                                     gen_limits_.hadron.delta_max);
+    event.p_xptar = random_->Uniform(gen_limits_.hadron.xptar_min,
+                                     gen_limits_.hadron.xptar_max);
+    event.p_yptar = random_->Uniform(gen_limits_.hadron.yptar_min,
+                                     gen_limits_.hadron.yptar_max);
+    
+    double P_h = spec_hadron_.P * (1.0 + event.p_delta / 100.0);
+    event.p_P = P_h;
+    
+    PhysicsAngles(spec_hadron_.theta, spec_hadron_.phi,
+                  event.p_xptar, event.p_yptar,
+                  event.p_theta, event.p_phi);
+    
+    // Beam energy
+    event.Ein = beam_energy_;
+    if (beam_energy_spread_ > 0.0) {
+        event.Ein += random_->Gaussian(0.0, beam_energy_spread_);
+    }
+    
+    // Generation weight (phase space volume)
+    main.gen_weight = 
+        (gen_limits_.electron.delta_max - gen_limits_.electron.delta_min) *
+        (gen_limits_.electron.xptar_max - gen_limits_.electron.xptar_min) *
+        (gen_limits_.electron.yptar_max - gen_limits_.electron.yptar_min) *
+        (gen_limits_.hadron.delta_max - gen_limits_.hadron.delta_min) *
+        (gen_limits_.hadron.xptar_max - gen_limits_.hadron.xptar_min) *
+        (gen_limits_.hadron.yptar_max - gen_limits_.hadron.yptar_min) *
+        target_props_.length;
     
     return true;
 }
 
 // ============================================================================
-// Complete Event Kinematics
+// Complete Event
 // ============================================================================
 
-bool EventGenerator::CompleteEvent(SimcEvent& vertex, MainEvent& main) {
-    // From event.f complete_ev() subroutine
-    
-    main.jacobian = 1.0;
-    
-    // Calculate unit vectors
-    // From event.f complete_ev() lines 495-510
-    vertex.ue_x = std::sin(vertex.e_theta) * std::cos(vertex.e_phi);
-    vertex.ue_y = std::sin(vertex.e_theta) * std::sin(vertex.e_phi);
-    vertex.ue_z = std::cos(vertex.e_theta);
-    
-    if (reaction_type_ != ReactionType::kHydElastic) {
-        vertex.up_x = std::sin(vertex.p_theta) * std::cos(vertex.p_phi);
-        vertex.up_y = std::sin(vertex.p_theta) * std::sin(vertex.p_phi);
-        vertex.up_z = std::cos(vertex.p_theta);
+bool EventGenerator::CompleteEvent(SimcEvent& event, MainEvent& main) {
+    // Energy loss
+    if (use_energy_loss_) {
+        double eloss_beam, teff_beam;
+        TripThruTarget(1, main.target.z, event.Ein, 0.0, eloss_beam, teff_beam);
+        event.Ein -= eloss_beam;
+        main.target.Eloss[0] = eloss_beam;
+        main.target.teff[0] = teff_beam;
+        
+        main.target.Eloss[1] = 0.0;
+        main.target.teff[1] = 0.0;
+        main.target.Eloss[2] = 0.0;
+        main.target.teff[2] = 0.0;
     }
     
-    // Reaction-specific kinematics
+    // Unit vectors
+    event.ue_x = std::sin(event.e_theta) * std::cos(event.e_phi);
+    event.ue_y = std::sin(event.e_theta) * std::sin(event.e_phi);
+    event.ue_z = std::cos(event.e_theta);
+    
+    // Solve kinematics based on reaction type (use correct enum values)
     bool success = false;
-    
     switch (reaction_type_) {
-        case ReactionType::kHydElastic:
-            success = SolveHydrogenElastic(vertex);
+        case ReactionType::ELASTIC:
+            success = SolveHydrogenElastic(event);
             break;
             
-        case ReactionType::kDeuterium:
-            success = SolveDeuterium(vertex, main);
+        case ReactionType::QUASIELASTIC:
+            success = SolveDeuterium(event, main);
             break;
             
-        // Other reactions will be added in later iterations
+        case ReactionType::PION_PRODUCTION:
+        case ReactionType::KAON_PRODUCTION:
+        {
+            FermiMomentum pfer;
+            pfer.Em = event.Em;
+            success = SolvePionKaon(event, pfer);
+            break;
+        }
+        
         default:
-            throw std::runtime_error("Reaction type not yet implemented");
+            std::cerr << "Error: Reaction type not implemented\n";
+            success = false;
     }
     
-    if (!success) {
-        return false;
-    }
-    
-    // Calculate basic kinematics
-    CalculateBasicKinematics(vertex);
-    
-    // Calculate missing momentum
-    CalculateMissingMomentum(vertex);
-    
-    // Calculate jacobian
-    main.jacobian = CalculateJacobian(vertex, main);
-    
-    // Validate physics
-    return ValidatePhysics(vertex);
+    return success;
 }
 
 // ============================================================================
-// Basic Kinematics Calculations
-// ============================================================================
-
-void EventGenerator::CalculateBasicKinematics(SimcEvent& event) const {
-    // From event.f complete_ev() lines 500-520
-    
-    // Energy transfer
-    event.nu = event.Ein - event.e_E;
-    
-    // Four-momentum transfer squared
-    event.Q2 = 2.0 * event.Ein * event.e_E * (1.0 - event.ue_z);
-    
-    // Three-momentum transfer
-    event.q = std::sqrt(event.Q2 + event.nu * event.nu);
-    
-    // Bjorken x
-    event.xbj = event.Q2 / (2.0 * kProtonMass * event.nu);
-    
-    // q unit vector
-    event.uq_x = -event.e_P * event.ue_x / event.q;
-    event.uq_y = -event.e_P * event.ue_y / event.q;
-    event.uq_z = (event.Ein - event.e_P * event.ue_z) / event.q;
-    
-    // Verify normalization
-    double uq_norm = event.uq_x * event.uq_x + 
-                     event.uq_y * event.uq_y + 
-                     event.uq_z * event.uq_z;
-    if (std::abs(uq_norm - 1.0) > 0.01) {
-        std::cerr << "Warning: q vector normalization error: " << uq_norm << std::endl;
-    }
-}
-
-void EventGenerator::CalculateMissingMomentum(SimcEvent& event) const {
-    // From event.f complete_ev() lines 750-800
-    
-    // Missing momentum vector: P_miss = P_hadron - q
-    event.Pmx = event.p_P * event.up_x - event.q * event.uq_x;
-    event.Pmy = event.p_P * event.up_y - event.q * event.uq_y;
-    event.Pmz = event.p_P * event.up_z - event.q * event.uq_z;
-    event.Pmiss = std::sqrt(event.Pmx * event.Pmx + 
-                           event.Pmy * event.Pmy + 
-                           event.Pmz * event.Pmz);
-    
-    // Missing energy
-    event.Emiss = event.nu + target_props_.mass - event.p_E;
-    
-    // Out-of-plane unit vector: oop = q_hat × z_hat (but normalized)
-    double oop_x = -event.uq_y;  // = q_y * (z × y) = -q_y * x
-    double oop_y =  event.uq_x;  // = q_x * (z × x) = q_x * y
-    double oop_norm = std::sqrt(oop_x * oop_x + oop_y * oop_y);
-    
-    // Parallel component (along q)
-    event.PmPar = event.Pmx * event.uq_x + 
-                  event.Pmy * event.uq_y + 
-                  event.Pmz * event.uq_z;
-    
-    // Out-of-plane component
-    if (oop_norm > 0.0) {
-        event.PmOop = (event.Pmx * oop_x + event.Pmy * oop_y) / oop_norm;
-    } else {
-        event.PmOop = 0.0;
-    }
-    
-    // Perpendicular component (what's left)
-    double pm_sq = event.Pmiss * event.Pmiss - 
-                   event.PmPar * event.PmPar - 
-                   event.PmOop * event.PmOop;
-    event.PmPer = std::sqrt(std::max(0.0, pm_sq));
-}
-
-
-// ============================================================================
-// Hydrogen Elastic Kinematics
+// Solve Hydrogen Elastic
 // ============================================================================
 
 bool EventGenerator::SolveHydrogenElastic(SimcEvent& event) const {
-    // From event.f complete_ev() lines 525-540
+    // H(e,e'p) elastic: E' = E*Mp / (Mp + E*(1 - cos(theta)))
     
-    // For elastic scattering: E_e' = E_in * M / (M + E_in * (1 - cos(theta)))
     double denominator = kProtonMass + event.Ein * (1.0 - event.ue_z);
-    event.e_E = event.Ein * kProtonMass / denominator;
     
-    // Check for unphysical solution
-    if (event.e_E > event.Ein) {
+    if (denominator <= 0.0) {
         return false;
     }
     
-    event.e_P = event.e_E; // Ultra-relativistic
-    event.e_delta = 100.0 * (event.e_P - spec_electron_.P) / spec_electron_.P;
+    event.e_E = event.Ein * kProtonMass / denominator;
     
-    // For elastic scattering, proton momentum equals q
-    event.Em = 0.0;
-    event.Pm = 0.0;
-    event.Mrec = 0.0;
-    event.Trec = 0.0;
-    
-    // Proton direction = q direction
-    event.up_x = event.uq_x;
-    event.up_y = event.uq_y;
-    event.up_z = event.uq_z;
-    
-    // Proton momentum
-    event.p_P = event.q;
-    event.p_E = std::sqrt(event.p_P * event.p_P + kProtonMass * kProtonMass);
-    event.p_delta = 100.0 * (event.p_P - spec_hadron_.P) / spec_hadron_.P;
-    
-    // Calculate physics angles for proton
-    event.p_theta = std::acos(event.up_z);
-    
-    double sin_theta = std::sin(event.p_theta);
-    if (sin_theta > 0.0) {
-        double cos_phi = event.up_x / sin_theta;
-        if (std::abs(cos_phi) > 1.0) {
-            // Numerical issue
-            cos_phi = std::copysign(1.0, cos_phi);
-        }
-        event.p_phi = std::atan2(event.up_y, event.up_x);
-        if (event.p_phi < 0.0) {
-            event.p_phi += 2.0 * kPi;
-        }
-    } else {
-        event.p_phi = 0.0;
+    if (event.e_E >= event.Ein) {
+        return false;
     }
     
-    // Convert back to spectrometer angles
-    SpectrometerAngles(spec_hadron_.theta, spec_hadron_.phi,
-                       event.p_theta, event.p_phi,
-                       event.p_xptar, event.p_yptar);
+    event.e_P = std::sqrt(event.e_E * event.e_E - kElectronMass * kElectronMass);
+    event.e_delta = 100.0 * (event.e_P - spec_electron_.P) / spec_electron_.P;
+    
+    // Q² and nu
+    double sin_half = std::sin(event.e_theta / 2.0);
+    event.nu = event.Ein - event.e_E;
+    event.Q2 = 4.0 * event.Ein * event.e_E * sin_half * sin_half;
+    
+    // Proton along q
+    double q = std::sqrt(event.Q2 + event.nu * event.nu);
+    event.p_P = q;
+    event.p_E = std::sqrt(q * q + kProtonMass * kProtonMass);
+    
+    // q = k_in - k_out
+    Vector3D q_vec;
+    q_vec.x = -event.ue_x * event.e_P;
+    q_vec.y = -event.ue_y * event.e_P;
+    q_vec.z = event.Ein - event.ue_z * event.e_P;
+    
+    double q_mag = std::sqrt(q_vec.x*q_vec.x + q_vec.y*q_vec.y + q_vec.z*q_vec.z);
+    event.up_x = q_vec.x / q_mag;
+    event.up_y = q_vec.y / q_mag;
+    event.up_z = q_vec.z / q_mag;
+    
+    event.uq_x = event.up_x;
+    event.uq_y = event.up_y;
+    event.uq_z = event.up_z;
+    
+    event.p_theta = std::acos(event.up_z);
+    event.p_phi = std::atan2(event.up_y, event.up_x);
+    
+    if (event.p_phi < 0.0) {
+        event.p_phi += 2.0 * kPi;
+    }
     
     return true;
 }
 
 // ============================================================================
-// Deuterium Kinematics with Jacobian
+// Solve Deuterium
 // ============================================================================
 
 bool EventGenerator::SolveDeuterium(SimcEvent& event, MainEvent& main) const {
-    // From event.f complete_ev() lines 545-590
+    // D(e,e'p)n reaction
     
-    // Fixed missing energy (binding energy of deuteron)
     event.Em = kProtonMass + kNeutronMass - target_props_.mass; // ~2.2249 MeV
-    event.Mrec = target_props_.mass - kProtonMass + event.Em;   // = neutron mass
     
-    // Solve quadratic equation for proton energy
-    // From momentum and energy conservation:
-    // (E_d + nu - E_p)² = M_n² + (q - P_p)²
+    double sin_half = std::sin(event.e_theta / 2.0);
+    event.nu = event.Ein - event.e_E;
+    event.Q2 = 4.0 * event.Ein * event.e_E * sin_half * sin_half;
     
-    // Calculate coefficients
-    double a = -event.q * (event.uq_x * event.up_x + 
+    double omega = event.nu;
+    double q = std::sqrt(event.Q2 + omega * omega);
+    
+    // Virtual photon direction
+    event.uq_x = -event.ue_x * event.e_P / q;
+    event.uq_y = -event.ue_y * event.e_P / q;
+    event.uq_z = (event.Ein - event.ue_z * event.e_P) / q;
+    
+    // Proton direction
+    event.up_x = std::sin(event.p_theta) * std::cos(event.p_phi);
+    event.up_y = std::sin(event.p_theta) * std::sin(event.p_phi);
+    event.up_z = std::cos(event.p_theta);
+    
+    // Quadratic for proton energy
+    double cos_theta_pq = event.uq_x * event.up_x + 
                           event.uq_y * event.up_y + 
-                          event.uq_z * event.up_z);
-    double b = event.q * event.q;
-    double c = event.nu + target_props_.mass;
-    double t = c * c - b + kProtonMass * kProtonMass - event.Mrec * event.Mrec;
+                          event.uq_z * event.up_z;
     
-    double QA = 4.0 * (a * a - c * c);
-    double QB = 4.0 * c * t;
-    double QC = -4.0 * a * a * kProtonMass * kProtonMass - t * t;
+    double M_n = kNeutronMass;
+    double E_target = M_n + omega;
     
-    double radical = QB * QB - 4.0 * QA * QC;
+    // a*E_p² + b*E_p + c = 0
+    double a = 1.0;
+    double b = -2.0 * E_target;
+    double c = E_target * E_target - q * q - 
+               2.0 * q * event.p_P * cos_theta_pq - 
+               event.p_P * event.p_P;
     
-    if (radical < 0.0) {
-        return false; // No physical solution
-    }
-    
-    // Take the higher solution (forward-going proton)
-    event.p_E = (-QB - std::sqrt(radical)) / (2.0 * QA);
-    
-    // Check for unphysical solution
-    if (event.p_E <= kProtonMass) {
+    double disc = b * b - 4.0 * a * c;
+    if (disc < 0.0) {
         return false;
     }
     
-    // Check second solution (should be outside acceptance)
-    double E_proton_2 = (-QB + std::sqrt(radical)) / (2.0 * QA);
-    if (E_proton_2 > gen_limits_.hadron.E_min && 
-        E_proton_2 < gen_limits_.hadron.E_max) {
-        // This is problematic - both solutions in acceptance
-        std::cerr << "Warning: Both quadratic solutions in acceptance: " 
-                  << event.p_E << ", " << E_proton_2 << std::endl;
+    event.p_E = (-b + std::sqrt(disc)) / (2.0 * a);
+    
+    if (event.p_E < kProtonMass) {
+        return false;
     }
     
-    // Calculate proton momentum and delta
-    event.p_P = std::sqrt(event.p_E * event.p_E - kProtonMass * kProtonMass);
-    event.p_delta = 100.0 * (event.p_P - spec_hadron_.P) / spec_hadron_.P;
-    
-    // Calculate Jacobian |dE_p/dE_m|
-    // From event.f lines 580-585
-    double jac_num = t * (c - event.p_E) + 2.0 * c * event.p_E * (event.p_E - c);
-    double jac_den = 2.0 * (a * a - c * c) * event.p_E + c * t;
-    main.jacobian *= std::abs(jac_num / jac_den);
-    
-    // Missing momentum
-    event.Pm = event.Pmiss; // Will be calculated in CalculateMissingMomentum
-    
-    // Recoil kinetic energy
-    event.Trec = std::sqrt(event.Mrec * event.Mrec + event.Pm * event.Pm) - 
-                 event.Mrec;
+    // Jacobian |dE_p/dE_e'|
+    main.jacobian = event.p_E / (event.p_E - event.p_P * cos_theta_pq * q / omega);
     
     return true;
 }
 
 // ============================================================================
-// Angle Conversions
+// Solve Pion/Kaon Production
+// ============================================================================
+
+bool EventGenerator::SolvePionKaon(SimcEvent& event, const FermiMomentum& pfer) const {
+    // Placeholder - not yet implemented
+    std::cerr << "Warning: Pion/kaon production not implemented\n";
+    return false;
+}
+
+  
+// ============================================================================
+// Physics Angles
 // ============================================================================
 
 void EventGenerator::PhysicsAngles(
     Double_t theta0, Double_t phi0,
     Double_t xptar, Double_t yptar,
-    Double_t& theta, Double_t& phi
-) const {
+    Double_t& theta, Double_t& phi) const {
+    
+    // Convert spectrometer angles to physics angles
     // From event.f physics_angles() subroutine
     
     double cos_theta0 = std::cos(theta0);
     double sin_theta0 = std::sin(theta0);
-    double sin_phi0 = std::sin(phi0);
     double cos_phi0 = std::cos(phi0);
+    double sin_phi0 = std::sin(phi0);
     
-    double r = std::sqrt(1.0 + xptar * xptar + yptar * yptar);
+    // Direction in spectrometer frame
+    double dx = xptar;
+    double dy = yptar;
+    double dz = std::sqrt(1.0 + dx*dx + dy*dy);
     
-    // Warn if phi0 is not ±π/2 (formulas assume this)
-    if (std::abs(cos_phi0) > 0.0001) {
-        std::cerr << "Warning: phi0 != ±π/2 may give incorrect results. phi0 = " 
-                  << phi0 * kRadToDeg << " degrees" << std::endl;
-    }
+    // Rotate to lab frame
+    double ux = (cos_theta0 * cos_phi0 * dx - sin_phi0 * dy + sin_theta0 * cos_phi0 * dz) / dz;
+    double uy = (cos_theta0 * sin_phi0 * dx + cos_phi0 * dy + sin_theta0 * sin_phi0 * dz) / dz;
+    double uz = (-sin_theta0 * dx + cos_theta0 * dz) / dz;
     
-    // Calculate theta
-    double cos_theta_arg = (cos_theta0 - yptar * sin_theta0 * sin_phi0) / r;
+    // Convert to angles
+    theta = std::acos(uz);
+    phi = std::atan2(uy, ux);
     
-    // Clamp to valid range for acos
-    if (cos_theta_arg > 1.0) cos_theta_arg = 1.0;
-    if (cos_theta_arg < -1.0) cos_theta_arg = -1.0;
-    
-    theta = std::acos(cos_theta_arg);
-    
-    // Calculate phi
-    if (xptar != 0.0) {
-        double phi_num = yptar * cos_theta0 + sin_theta0 * sin_phi0;
-        phi = std::atan(phi_num / xptar);
-        
-        // Adjust to 0-180 degrees
-        if (phi <= 0.0) {
-            phi += kPi;
-        }
-        
-        // Add π for HMS (sin_phi0 < 0)
-        if (sin_phi0 < 0.0) {
-            phi += kPi;
-        }
-    } else {
-        phi = phi0;
+    // Ensure phi in [0, 2π)
+    if (phi < 0.0) {
+        phi += 2.0 * kPi;
     }
 }
+
+// ============================================================================
+// Spectrometer Angles
+// ============================================================================
 
 void EventGenerator::SpectrometerAngles(
     Double_t theta0, Double_t phi0,
     Double_t theta, Double_t phi,
-    Double_t& xptar, Double_t& yptar
-) const {
+    Double_t& xptar, Double_t& yptar) const {
+    
+    // Convert physics angles to spectrometer angles
     // From event.f spectrometer_angles() subroutine
     
-    // Unit vector in physics frame
-    double x = std::sin(theta) * std::cos(phi);
-    double y = std::sin(theta) * std::sin(phi);
-    double z = std::cos(theta);
+    double cos_theta0 = std::cos(theta0);
+    double sin_theta0 = std::sin(theta0);
+    double cos_phi0 = std::cos(phi0);
+    double sin_phi0 = std::sin(phi0);
     
-    // Central spectrometer direction
-    double x0 = std::sin(theta0) * std::cos(phi0);
-    double y0 = std::sin(theta0) * std::sin(phi0);
-    double z0 = std::cos(theta0);
+    // Unit vector in lab frame
+    double ux = std::sin(theta) * std::cos(phi);
+    double uy = std::sin(theta) * std::sin(phi);
+    double uz = std::cos(theta);
     
-    // Cos of angle between particle and spectrometer central ray
-    double cos_dtheta = x * x0 + y * y0 + z * z0;
+    // Rotate to spectrometer frame
+    double dx = cos_theta0 * cos_phi0 * ux + cos_theta0 * sin_phi0 * uy - sin_theta0 * uz;
+    double dy = -sin_phi0 * ux + cos_phi0 * uy;
+    double dz = sin_theta0 * cos_phi0 * ux + sin_theta0 * sin_phi0 * uy + cos_theta0 * uz;
     
-    // Project to spectrometer plane
-    xptar = x / cos_dtheta;
+    xptar = dx / dz;
+    yptar = dy / dz;
+}
+
+// ============================================================================
+// Calculate Basic Kinematics
+// ============================================================================
+
+void EventGenerator::CalculateBasicKinematics(SimcEvent& event) const {
+    double sin_half = std::sin(event.e_theta / 2.0);
+    event.Q2 = 4.0 * event.Ein * event.e_E * sin_half * sin_half;
+    event.nu = event.Ein - event.e_E;
+    event.q = std::sqrt(event.Q2 + event.nu * event.nu);
     
-    double yptar_mag = std::sqrt(1.0 / (cos_dtheta * cos_dtheta) - 1.0 - xptar * xptar);
+    event.W = std::sqrt(kProtonMass * kProtonMass + 
+                        2.0 * kProtonMass * event.nu - event.Q2);
     
-    // Determine sign of yptar
-    double y_event = y / cos_dtheta;
-    if (y_event < y0) {
-        yptar = -yptar_mag;
+    event.xbj = event.Q2 / (2.0 * kProtonMass * event.nu);
+    
+    double Q2_GeV2 = event.Q2 / 1.0e6;
+    double nu_GeV = event.nu / 1000.0;
+    event.epsilon = 1.0 / (1.0 + 2.0 * (1.0 + nu_GeV * nu_GeV / Q2_GeV2) * 
+                          std::tan(event.e_theta / 2.0) * std::tan(event.e_theta / 2.0));
+}
+
+// ============================================================================
+// Calculate Missing Momentum
+// ============================================================================
+
+void EventGenerator::CalculateMissingMomentum(SimcEvent& event) const {
+    // P_miss = q - p_hadron
+    
+    Vector3D q_vec;
+    q_vec.x = event.uq_x * event.q;
+    q_vec.y = event.uq_y * event.q;
+    q_vec.z = event.uq_z * event.q;
+    
+    Vector3D p_vec;
+    p_vec.x = event.up_x * event.p_P;
+    p_vec.y = event.up_y * event.p_P;
+    p_vec.z = event.up_z * event.p_P;
+    
+    event.Pmx = q_vec.x - p_vec.x;
+    event.Pmy = q_vec.y - p_vec.y;
+    event.Pmz = q_vec.z - p_vec.z;
+    
+    event.Pmiss = std::sqrt(event.Pmx * event.Pmx + 
+                            event.Pmy * event.Pmy + 
+                            event.Pmz * event.Pmz);
+    
+    // Decompose
+    double q_mag = event.q;
+    event.PmPar = (event.Pmx * q_vec.x + event.Pmy * q_vec.y + event.Pmz * q_vec.z) / q_mag;
+    
+    Vector3D pm_vec = {event.Pmx, event.Pmy, event.Pmz};
+    Vector3D q_unit = {q_vec.x / q_mag, q_vec.y / q_mag, q_vec.z / q_mag};
+    
+    Vector3D pm_par = {q_unit.x * event.PmPar, q_unit.y * event.PmPar, q_unit.z * event.PmPar};
+    Vector3D pm_perp = {pm_vec.x - pm_par.x, pm_vec.y - pm_par.y, pm_vec.z - pm_par.z};
+    
+    event.PmPer = std::sqrt(pm_perp.x * pm_perp.x + pm_perp.y * pm_perp.y + pm_perp.z * pm_perp.z);
+    
+    // Out-of-plane (cross product method)
+    Vector3D beam = {0.0, 0.0, 1.0};
+    Vector3D q_cross_beam = q_unit.Cross(beam);
+    event.PmOop = pm_vec.Dot(q_cross_beam);
+}
+
+// ============================================================================
+// Calculate Hadron Angles
+// ============================================================================
+
+void EventGenerator::CalculateHadronAngles(SimcEvent& event) const {
+    // Angle between hadron and q
+    double cos_theta_pq = event.uq_x * event.up_x + 
+                          event.uq_y * event.up_y + 
+                          event.uq_z * event.up_z;
+    
+    event.theta_pq = std::acos(cos_theta_pq);
+    
+    // Out-of-plane angle
+    Vector3D q_vec = {event.uq_x, event.uq_y, event.uq_z};
+    Vector3D p_vec = {event.up_x, event.up_y, event.up_z};
+    Vector3D beam = {0.0, 0.0, 1.0};
+    
+    Vector3D q_cross_beam = q_vec.Cross(beam);
+    Vector3D p_cross_q = p_vec.Cross(q_vec);
+    
+    double cos_phi = q_cross_beam.Dot(p_cross_q) / 
+                     (q_cross_beam.Magnitude() * p_cross_q.Magnitude());
+    event.phi_pq = std::acos(cos_phi);
+}
+
+// ============================================================================
+// Generate Fermi Momentum
+// ============================================================================
+
+void EventGenerator::GenerateFermiMomentum(FermiMomentum& pfer) {
+    pfer.Clear();
+    
+    if (target_props_.A == 1) {
+        pfer.magnitude = 0.0;
     } else {
-        yptar = yptar_mag;
+        // Simple Gaussian
+        pfer.magnitude = std::abs(random_->Gaussian(0.0, 100.0));
+        if (pfer.magnitude > 300.0) pfer.magnitude = 300.0;
+        
+        // Isotropic
+        double cos_theta = random_->Uniform(-1.0, 1.0);
+        double phi = random_->Uniform(0.0, 2.0 * kPi);
+        double sin_theta = std::sqrt(1.0 - cos_theta * cos_theta);
+        
+        pfer.x = pfer.magnitude * sin_theta * std::cos(phi);
+        pfer.y = pfer.magnitude * sin_theta * std::sin(phi);
+        pfer.z = pfer.magnitude * cos_theta;
+        
+        GenerateMissingEnergy(pfer.magnitude, pfer.Em);
     }
 }
 
 // ============================================================================
-// Jacobian Calculations
+// Generate Missing Energy
 // ============================================================================
 
-Double_t EventGenerator::CalculateJacobian(
-    const SimcEvent& vertex, 
-    const MainEvent& main
-) const {
-    // From event.f complete_ev() lines 850-870
-    
-    double jacobian = main.jacobian; // May already include deuterium jacobian
-    
-    // Angle jacobian for electron: 1/cos³(θ-θ₀)
-    double r_e = std::sqrt(1.0 + vertex.e_yptar * vertex.e_yptar + 
-                                  vertex.e_xptar * vertex.e_xptar);
-    jacobian /= (r_e * r_e * r_e);
-    
-    // Angle jacobian for hadron (for all except phase space)
-    if (reaction_type_ != ReactionType::kPhaseSpace) {
-        if (reaction_type_ != ReactionType::kHydElastic || 
-            reaction_type_ == ReactionType::kDeuterium ||
-            reaction_type_ == ReactionType::kHeavy) {
-            
-            double r_p = std::sqrt(1.0 + vertex.p_yptar * vertex.p_yptar + 
-                                        vertex.p_xptar * vertex.p_xptar);
-            jacobian /= (r_p * r_p * r_p);
-        }
+void EventGenerator::GenerateMissingEnergy(double pfer, double& Em) {
+    if (target_props_.A == 1) {
+        Em = 0.0;
+    } else if (target_props_.A == 2) {
+        Em = 2.2249;
+    } else {
+        Em = random_->Uniform(0.0, 50.0);
     }
-    
-    return jacobian;
 }
 
 // ============================================================================
-// Helper Methods
+// Calculate Jacobian
+// ============================================================================
+
+Double_t EventGenerator::CalculateJacobian(const SimcEvent& event, const MainEvent& main) const {
+    // Basic angle jacobian
+    // Full implementation requires reaction-specific terms
+    
+    Double_t jac = 1.0;
+    
+    // Add angle transformation jacobian
+    double cos_e = std::cos(event.e_theta);
+    double cos_p = std::cos(event.p_theta);
+    
+    jac *= std::abs(cos_e * cos_p);
+    
+    return jac;
+}
+
+// ============================================================================
+// Calculate CM Jacobian
+// ============================================================================
+
+Double_t EventGenerator::CalculateCMJacobian(const SimcEvent& event, const MainEvent& main) const {
+    // Placeholder for CM transformation jacobian
+    return 1.0;
+}
+
+// ============================================================================
+// Decay Two Body
+// ============================================================================
+
+void EventGenerator::DecayTwoBody(
+    const std::array<double, 4>& parent,
+    std::array<double, 4>& decay1,
+    std::array<double, 4>& decay2,
+    double m1, double m2,
+    double costh, double phi) const {
+    
+    // Placeholder - full implementation needed
+    std::cerr << "Warning: DecayTwoBody not implemented\n";
+}
+
+// ============================================================================
+// Trip Thru Target
 // ============================================================================
 
 void EventGenerator::TripThruTarget(
@@ -737,43 +710,40 @@ void EventGenerator::TripThruTarget(
     Double_t energy,
     Double_t theta,
     Double_t& eloss,
-    Double_t& teff
-) const {
-    // Calculate energy loss through target
-    // From event.f trip_thru_target() (in target.f)
+    Double_t& teff) const {
     
-    // Path length through target accounting for angle
-    double path_length = std::abs(z_position) / std::cos(theta);
+    // Simplified energy loss calculation
+    // Full implementation would use EnergyLoss class properly
     
-    // Effective thickness (g/cm²)
+    double path_length = std::abs(z_position) / std::max(std::cos(theta), 0.01);
     teff = target_props_.density * path_length;
     
-    // Use EnergyLoss class for calculation
-    double particle_mass;
-    if (particle_id == 1 || particle_id == 2) {
-        particle_mass = kElectronMass;
-    } else {
-        particle_mass = kProtonMass; // Or use Mh for hadron
-    }
+    // Simple dE/dx approximation: ~2 MeV/(g/cm²) for minimum ionizing
+    eloss = 2.0 * teff;
     
-    // Simple energy loss calculation (will use EnergyLoss class in full version)
-    // For now, use dE/dx * thickness
-    eloss = EnergyLoss::BetheBloch(energy, particle_mass, 
-                                   target_props_.Z, target_props_.A) * teff;
+    // Could be improved with proper Bethe-Bloch later
 }
 
-Vector3D EventGenerator::UnitVector(Double_t theta, Double_t phi) const {
-    return {
-        std::sin(theta) * std::cos(phi),
-        std::sin(theta) * std::sin(phi),
-        std::cos(theta)
-    };
+// ============================================================================
+// Unit Vector
+// ============================================================================
+
+Vector3D EventGenerator::UnitVector(double theta, double phi) const {
+    Vector3D vec;
+    vec.x = std::sin(theta) * std::cos(phi);
+    vec.y = std::sin(theta) * std::sin(phi);
+    vec.z = std::cos(theta);
+    return vec;
 }
+
+// ============================================================================
+// Passes Generation Cuts
+// ============================================================================
 
 bool EventGenerator::PassesGenerationCuts(const SimcEvent& event) const {
     // Check if event is within generation limits
     
-    // Electron
+    // Electron cuts
     if (event.e_delta < gen_limits_.electron.delta_min || 
         event.e_delta > gen_limits_.electron.delta_max) {
         return false;
@@ -789,8 +759,13 @@ bool EventGenerator::PassesGenerationCuts(const SimcEvent& event) const {
         return false;
     }
     
-    // Hadron (for non-elastic)
-    if (reaction_type_ != ReactionType::kHydElastic) {
+    if (event.e_E < gen_limits_.electron.E_min || 
+        event.e_E > gen_limits_.electron.E_max) {
+        return false;
+    }
+    
+    // Hadron cuts
+    if (reaction_type_ != ReactionType::ELASTIC) {
         if (event.p_delta < gen_limits_.hadron.delta_min || 
             event.p_delta > gen_limits_.hadron.delta_max) {
             return false;
@@ -805,39 +780,68 @@ bool EventGenerator::PassesGenerationCuts(const SimcEvent& event) const {
             event.p_yptar > gen_limits_.hadron.yptar_max) {
             return false;
         }
+        
+        if (event.p_E < gen_limits_.hadron.E_min || 
+            event.p_E > gen_limits_.hadron.E_max) {
+            return false;
+        }
     }
     
     return true;
 }
 
+// ============================================================================
+// Validate Physics
+// ============================================================================
+
 bool EventGenerator::ValidatePhysics(const SimcEvent& event) const {
-    // Check for unphysical values
+    // Check physical constraints
     
     // Energy conservation
-    if (event.e_E > event.Ein) {
-        return false;
+    if (event.e_E >= event.Ein) {
+        return false;  // No energy gain
     }
     
-    // Q² should be positive
-    if (event.Q2 < 0.0) {
-        return false;
-    }
-    
-    // Particle energies must be above mass
+    // Electron above mass
     if (event.e_E < kElectronMass) {
         return false;
     }
     
+    // Hadron above mass
     if (event.p_E < kProtonMass) {
         return false;
     }
     
+    // Q² positive (space-like)
+    if (event.Q2 <= 0.0) {
+        return false;
+    }
+    
+    // Valid angles
+    if (std::abs(std::cos(event.e_theta)) > 1.0) {
+        return false;
+    }
+    
+    if (std::abs(std::cos(event.p_theta)) > 1.0) {
+        return false;
+    }
+    
+    // Unit vectors normalized
+    double ue_mag = std::sqrt(event.ue_x*event.ue_x + 
+                              event.ue_y*event.ue_y + 
+                              event.ue_z*event.ue_z);
+    if (std::abs(ue_mag - 1.0) > 0.01) {
+        return false;
+    }
+    
+    double up_mag = std::sqrt(event.up_x*event.up_x + 
+                              event.up_y*event.up_y + 
+                              event.up_z*event.up_z);
+    if (std::abs(up_mag - 1.0) > 0.01) {
+        return false;
+    }
+    
     return true;
-}
-
-void EventGenerator::ResetStatistics() {
-    n_generated_ = 0;
-    n_accepted_ = 0;
 }
 
 } // namespace simc

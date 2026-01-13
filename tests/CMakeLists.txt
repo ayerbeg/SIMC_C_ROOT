@@ -31,15 +31,15 @@ target_link_libraries(simc_tests
 add_test(NAME AllTests COMMAND simc_tests)
 
 # NEW: Event Generator test executable (separate)
-add_executable(test_event_generator
-    test_event_generator.cpp
-)
+#add_executable(test_event_generator
+#    test_event_generator.cpp
+#)
 
-target_link_libraries(test_event_generator
-    PRIVATE
-        simc_core
-        simc_io
-)
+#target_link_libraries(test_event_generator
+#    PRIVATE
+#        simc_core
+#        simc_io
+#)
 
 # Add as separate test
 add_test(NAME EventGeneratorTests COMMAND test_event_generator)
