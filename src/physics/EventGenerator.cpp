@@ -291,6 +291,20 @@ bool EventGenerator::GeneratePhaseSpace(SimcEvent& event, MainEvent& main) {
         event.e_delta = 100.0 * (event.e_P - spec_electron_.P) / spec_electron_.P;
     }
     // NOTE: For ELASTIC, e_E, e_P, e_delta are calculated later in SolveHydrogenElastic
+
+ // Initialize electron energy variables for elastic (will be calculated later)
+    if (reaction_type_ == ReactionType::ELASTIC) {
+        event.e_E = 0.0;      // Will be calculated in SolveHydrogenElastic
+        event.e_P = 0.0;      // Will be calculated in SolveHydrogenElastic  
+        event.e_delta = 0.0;  // Will be calculated in SolveHydrogenElastic
+        
+        // Also initialize hadron angles for elastic (will be calculated)
+        event.p_xptar = 0.0;
+        event.p_yptar = 0.0;
+        event.p_theta = 0.0;
+        event.p_phi = 0.0;
+    }
+
     
     // Generate Fermi Momentum for nuclear targets
     if (reaction_type_ != ReactionType::ELASTIC) {
@@ -635,65 +649,44 @@ VERIFICATION CHECKLIST:
 // ============================================================================
 // Spectrometer Angles
 // ============================================================================
-
 void EventGenerator::SpectrometerAngles(
     Double_t theta0, Double_t phi0,
     Double_t theta, Double_t phi,
     Double_t& xptar, Double_t& yptar) const {
     
-    // Convert physics angles to spectrometer angles
-    // EXACT port from event.f spectrometer_angles() subroutine
+    // This is the MATHEMATICAL INVERSE of PhysicsAngles
+    // We need to solve: given (theta, phi) in lab, find (xptar, yptar) in spec frame
     
-    // Precompute trig functions
     double cos_theta0 = std::cos(theta0);
     double sin_theta0 = std::sin(theta0);
     double cos_phi0 = std::cos(phi0);
     double sin_phi0 = std::sin(phi0);
     
-    // Unit vector in lab frame (event direction)
-    double ux = std::sin(theta) * std::cos(phi);  // x
-    double uy = std::sin(theta) * std::sin(phi);  // y
-    double uz = std::cos(theta);                   // z
+    // Unit vector in lab frame
+    double ux = std::sin(theta) * std::cos(phi);
+    double uy = std::sin(theta) * std::sin(phi);
+    double uz = std::cos(theta);
     
-    // Unit vector of spectrometer central ray (x0, y0, z0)
-    double x0 = sin_theta0 * cos_phi0;
-    double y0 = sin_theta0 * sin_phi0;
-    double z0 = cos_theta0;
+    // Rotate lab frame vector BACK to spectrometer frame
+    // This is the INVERSE rotation of what PhysicsAngles does
+    // 
+    // PhysicsAngles does: u_lab = R * u_spec / |u_spec|
+    // We need: u_spec = R^T * u_lab
+    // where R^T is the transpose (inverse) rotation
     
-    // cos(angle between event and central ray) = dot product
-    // This is the KEY quantity - angle between particle direction and spec central ray
-    double cos_dtheta = ux * x0 + uy * y0 + uz * z0;
-    
-    // xptar = x_component_in_spec_frame / cos(dtheta)
-    // From Fortran: dx = x / cos_dtheta
-    // where x is already rotated to spec frame
-    
-    // Rotate event vector to spectrometer frame
-    // (This is the inverse of what physics_angles does)
+    // Inverse rotation (transpose of the forward rotation matrix):
     double dx = cos_theta0 * cos_phi0 * ux + cos_theta0 * sin_phi0 * uy - sin_theta0 * uz;
     double dy = -sin_phi0 * ux + cos_phi0 * uy;
     double dz = sin_theta0 * cos_phi0 * ux + sin_theta0 * sin_phi0 * uy + cos_theta0 * uz;
     
-    // Now apply Fortran formulas EXACTLY:
-    // dx = x / cos_dtheta  =>  xptar = dx / cos_dtheta
-    xptar = dx / cos_dtheta;
+    // Now we have the direction in spec frame (dx, dy, dz)
+    // But in spec frame, the "natural" coordinates are (dx/dz, dy/dz, 1)
+    // because we parametrize directions as (xptar, yptar, 1) + higher order
     
-    // dy = sqrt(1/cos_dtheta^2 - 1 - dx^2)
-    // But we need to determine the sign!
-    double yptar_abs = std::sqrt(1.0 / (cos_dtheta * cos_dtheta) - 1.0 - xptar * xptar);
-    
-    // Determine sign: From Fortran lines 1745-1747:
-    // y_event = y/cos_dtheta  (project y to plane perp to spec)
-    // if (y_event .lt. y0) dy = -dy
-    double y_event = uy / cos_dtheta;
-    
-    if (y_event < y0) {
-        yptar = -yptar_abs;
-    } else {
-        yptar = yptar_abs;
-    }
+    // So simply:
+    xptar = dx / dz;
+    yptar = dy / dz;
 }
-
 
 // ============================================================================
 // Calculate Basic Kinematics
@@ -907,12 +900,20 @@ Vector3D EventGenerator::UnitVector(double theta, double phi) const {
 // ============================================================================
 // Passes Generation Cuts
 // ============================================================================
+// ============================================================================
+// COMPLETE FIX: Replace PassesGenerationCuts in EventGenerator.cpp
+// This version ONLY checks quantities that were actually GENERATED
+// ============================================================================
 
 bool EventGenerator::PassesGenerationCuts(const SimcEvent& event) const {
-    // Check if event is within generation limits
-    // IMPORTANT: Only check the quantities that were GENERATED, not calculated!
+    // CRITICAL: Only check quantities that were GENERATED!
+    // For ELASTIC: Only electron angles are generated
+    // For non-ELASTIC: Electron + hadron angles, and energies
     
-    // Electron angle cuts (ALWAYS generated)
+    // ========================================================================
+    // ELECTRON ARM - Angles (ALWAYS generated for all reactions)
+    // ========================================================================
+    
     if (event.e_xptar < gen_limits_.electron.xptar_min || 
         event.e_xptar > gen_limits_.electron.xptar_max) {
         return false;
@@ -923,23 +924,32 @@ bool EventGenerator::PassesGenerationCuts(const SimcEvent& event) const {
         return false;
     }
     
-    // Electron energy cuts (NOT generated for elastic, so DON'T check for elastic!)
+    // ========================================================================
+    // ELECTRON ARM - Energy/Delta (ONLY for non-elastic)
+    // ========================================================================
+    
     if (reaction_type_ != ReactionType::ELASTIC) {
+        // For non-elastic, electron energy WAS generated, so check it
         if (event.e_E < gen_limits_.electron.E_min || 
             event.e_E > gen_limits_.electron.E_max) {
             return false;
         }
         
-        // Also check delta is reasonable (even though it's calculated from E)
-        if (event.e_delta < gen_limits_.electron.delta_min - 5.0 ||  // Allow 5% slop
+        // Delta check with slop (it's calculated from E, allow some tolerance)
+        if (event.e_delta < gen_limits_.electron.delta_min - 5.0 ||
             event.e_delta > gen_limits_.electron.delta_max + 5.0) {
             return false;
         }
     }
+    // NOTE: For ELASTIC, e_E and e_delta were CALCULATED (not generated)
+    // so we DON'T check them against generation limits!
     
-    // Hadron cuts (only for non-elastic)
+    // ========================================================================
+    // HADRON ARM (ONLY for non-elastic reactions)
+    // ========================================================================
+    
     if (reaction_type_ != ReactionType::ELASTIC) {
-        // Hadron angles (generated for non-elastic)
+        // Hadron angles
         if (event.p_xptar < gen_limits_.hadron.xptar_min || 
             event.p_xptar > gen_limits_.hadron.xptar_max) {
             return false;
@@ -950,7 +960,7 @@ bool EventGenerator::PassesGenerationCuts(const SimcEvent& event) const {
             return false;
         }
         
-        // Hadron energy (generated for some reactions)
+        // Hadron energy (only for certain reactions where it was generated)
         if (reaction_type_ == ReactionType::QUASIELASTIC ||
             reaction_type_ == ReactionType::SEMI_INCLUSIVE) {
             if (event.p_E < gen_limits_.hadron.E_min || 
@@ -959,7 +969,7 @@ bool EventGenerator::PassesGenerationCuts(const SimcEvent& event) const {
             }
         }
         
-        // Hadron delta check (with slop)
+        // Hadron delta check with slop
         if (event.p_delta < gen_limits_.hadron.delta_min - 5.0 ||
             event.p_delta > gen_limits_.hadron.delta_max + 5.0) {
             return false;
