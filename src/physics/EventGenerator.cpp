@@ -518,228 +518,80 @@ namespace simc {
   // ============================================================================
   // Physics Angles
   // ============================================================================
-  /*
-    void EventGenerator::PhysicsAngles(
+
+
+void EventGenerator::PhysicsAngles(
     Double_t theta0, Double_t phi0,
     Double_t xptar, Double_t yptar,
     Double_t& theta, Double_t& phi) const {
     
-    // Convert spectrometer angles to physics angles
-    // From event.f physics_angles() subroutine
+    double cos_th0 = std::cos(theta0);
+    double sin_th0 = std::sin(theta0);
+    double cos_ph0 = std::cos(phi0);
+    double sin_ph0 = std::sin(phi0);
     
-    double cos_theta0 = std::cos(theta0);
-    double sin_theta0 = std::sin(theta0);
-    double cos_phi0 = std::cos(phi0);
-    double sin_phi0 = std::sin(phi0);
-    
-    // Direction in spectrometer frame
+    // Direction in spectrometer frame (NOT normalized)
     double dx = xptar;
     double dy = yptar;
-    double dz = std::sqrt(1.0 + dx*dx + dy*dy);
+    double dz = 1.0;  // DON'T use sqrt(1+dx²+dy²), just use 1.0
     
     // Rotate to lab frame
-    double ux = (cos_theta0 * cos_phi0 * dx - sin_phi0 * dy + sin_theta0 * cos_phi0 * dz) / dz;
-    double uy = (cos_theta0 * sin_phi0 * dx + cos_phi0 * dy + sin_theta0 * sin_phi0 * dz) / dz;
-    double uz = (-sin_theta0 * dx + cos_theta0 * dz) / dz;
+    double ux = cos_th0 * cos_ph0 * dx - sin_ph0 * dy + sin_th0 * cos_ph0 * dz;
+    double uy = cos_th0 * sin_ph0 * dx + cos_ph0 * dy + sin_th0 * sin_ph0 * dz;
+    double uz = -sin_th0 * dx + cos_th0 * dz;
+    
+    // Normalize
+    double norm = std::sqrt(ux*ux + uy*uy + uz*uz);
+    ux /= norm;
+    uy /= norm;
+    uz /= norm;
     
     // Convert to angles
     theta = std::acos(uz);
     phi = std::atan2(uy, ux);
-    
-    // Ensure phi in [0, 2π)
-    if (phi < 0.0) {
-    phi += 2.0 * kPi;
-    }
-    }
+    if (phi < 0.0) phi += 2.0 * kPi;
+}
 
-  */
-  // ============================================================================
-  // CORRECTED Physics Angles - Replace lines 450-490 in EventGenerator.cpp
-  // This is the EXACT port from FORTRAN event.f lines 1669-1709
-  // ============================================================================
-
-  void EventGenerator::PhysicsAngles(
-				     Double_t theta0, Double_t phi0,
-				     Double_t xptar, Double_t yptar,
-				     Double_t& theta, Double_t& phi) const {
-    
-    // EXACT port from FORTRAN physics_angles subroutine (event.f lines 1669-1709)
-    
-    double costh = std::cos(theta0);
-    double sinth = std::sin(theta0);
-    double sinph = std::sin(phi0);
-    double cosph = std::cos(phi0);
-    double r = std::sqrt(1.0 + xptar*xptar + yptar*yptar);
-    
-    // Check that phi0 is at ±π/2 (HMS at 3π/2, SOS at π/2)
-    // FORTRAN lines 1681-1684
-    if (std::abs(cosph) > 0.0001) {
-      std::cerr << "WARNING: theta,phi will be incorrect if phi0 <> pi/2 or 3*pi/2\n";
-      std::cerr << "         phi0 = " << phi0 << " rad = " << phi0*180.0/kPi << " degrees\n";
-    }
-    
-    // Calculate theta (FORTRAN lines 1686-1688)
-    double tmp = (costh - yptar*sinth*sinph) / r;
-    if (std::abs(tmp) > 1.0) {
-      std::cerr << "WARNING: acos argument out of range: tmp = " << tmp << "\n";
-      tmp = std::copysign(1.0, tmp);  // Clamp to ±1
-    }
-    theta = std::acos(tmp);
-    
-    // Calculate phi (FORTRAN lines 1689-1695)
-    if (xptar != 0.0) {
-      phi = std::atan((yptar*costh + sinth*sinph) / xptar);  // gives -90 to 90 deg
-      if (phi <= 0.0) phi = phi + kPi;                       // make 0 to 180 deg
-      if (sinph < 0.0) phi = phi + kPi;                      // add pi for HMS
-    } else {
-      phi = phi0;
-    }
-  }
-
-  // ============================================================================
-  // COMPATIBILITY VERIFICATION
-  // ============================================================================
-
-  /*
-    VERIFICATION CHECKLIST:
-
-    1. UNITS ACROSS ALL MODULES:
-    ✓ EventGenerator: xptar, yptar in RADIANS
-    ✓ SpectrometerOptics: Converts rad ↔ mrad when using COSY
-    ✓ Fortran: xptar, yptar in RADIANS
-    → ALL CONSISTENT
-
-    2. ANGLE CONVERSION FORMULAS:
-    ✓ PhysicsAngles matches Fortran event.f lines 1669-1709
-    ✓ SpectrometerAngles matches Fortran event.f lines 1720-1750
-    → EXACT MATCH
-
-    3. COORDINATE SYSTEMS:
-    Fortran comments (lines 1650-1665):
-    "z is DOWNSTREAM, x is DOWN and y is LEFT looking downstream"
-    EventGenerator uses SAME convention
-    SpectrometerOptics uses SAME convention
-    → ALL CONSISTENT
-
-    4. POTENTIAL ISSUES:
-    ⚠ Warning in Fortran lines 1694-1696:
-    "if (abs(cosph).gt.0.0001) then
-    write(6,*) 'theta,phi will be incorrect if phi0 <> pi/2 or 3*pi/2'"
-   
-    This means PhysicsAngles assumes phi0 = ±90° (SOS or HMS positions)
-   
-    For phi0 ≠ ±90°, need to use full rotation matrix!
-
-    5. CONCLUSION:
-    ✓ For phi0 = 0° (HMS): CORRECT
-    ✓ For phi0 = 90° (SOS): CORRECT
-    ✗ For phi0 ≠ 0°, 90°, 180°, 270°: MAY HAVE ISSUES
-   
-    The test uses phi0 = 90° for SOS, so should work correctly.
-
-  */
-
-
-// MATHEMATICALLY CORRECT SpectrometerAngles
-// Proper inverse of PhysicsAngles accounting for normalization
+// ============================================================================
+//  SpectrometerAngles Angles
+// ============================================================================
 
 void EventGenerator::SpectrometerAngles(
     Double_t theta0, Double_t phi0,
     Double_t theta, Double_t phi,
     Double_t& xptar, Double_t& yptar) const {
     
-    double cos_theta0 = std::cos(theta0);
-    double sin_theta0 = std::sin(theta0);
-    double cos_phi0 = std::cos(phi0);
-    double sin_phi0 = std::sin(phi0);
+    double cos_th0 = std::cos(theta0);
+    double sin_th0 = std::sin(theta0);
+    double cos_ph0 = std::cos(phi0);
+    double sin_ph0 = std::sin(phi0);
     
     // Unit vector in lab frame
     double ux = std::sin(theta) * std::cos(phi);
     double uy = std::sin(theta) * std::sin(phi);
     double uz = std::cos(theta);
     
-    // KEY: PhysicsAngles does this:
-    //   1. Start with (dx, dy, dz) where dz = sqrt(1 + dx² + dy²)
-    //   2. Rotate: (ux', uy', uz') = R * (dx, dy, dz)
-    //   3. Normalize: (ux, uy, uz) = (ux', uy', uz') / dz
-    //
-    // So: dz * (ux, uy, uz) = R * (dx, dy, dz)
-    //
-    // To invert:
-    //   R^(-1) * [dz * (ux, uy, uz)] = (dx, dy, dz)
-    //
-    // We know: dz² = 1 + dx² + dy²
-    //
-    // After inverse rotation:
-    double dx_unnorm = cos_theta0 * cos_phi0 * ux + cos_theta0 * sin_phi0 * uy - sin_theta0 * uz;
-    double dy_unnorm = -sin_phi0 * ux + cos_phi0 * uy;
-    double dz_unnorm = sin_theta0 * cos_phi0 * ux + sin_theta0 * sin_phi0 * uy + cos_theta0 * uz;
+    // Inverse rotation: lab -> spectrometer
+    double dx = cos_th0 * cos_ph0 * ux + cos_th0 * sin_ph0 * uy - sin_th0 * uz;
+    double dy = -sin_ph0 * ux + cos_ph0 * uy;
+    double dz = sin_th0 * cos_ph0 * ux + sin_th0 * sin_ph0 * uy + cos_th0 * uz;
     
-    // These are the components of R^(-1) * (ux, uy, uz)
-    // But we need R^(-1) * [dz * (ux, uy, uz)] = (dx, dy, dz)
-    //
-    // So we need to find dz such that:
-    //   dx = dz * dx_unnorm
-    //   dy = dz * dy_unnorm
-    //   dz = dz * dz_unnorm
-    //
-    // From the third equation: dz_unnorm = 1 (which should be true since we rotated a unit vector!)
-    // But due to numerical precision, let's use:
-    //
-    // We have: dz² = 1 + dx² + dy²
-    //          dz² = 1 + (dz * dx_unnorm)² + (dz * dy_unnorm)²
-    //          dz² = 1 + dz² * (dx_unnorm² + dy_unnorm²)
-    //          dz² * [1 - (dx_unnorm² + dy_unnorm²)] = 1
-    //          dz² * dz_unnorm² = 1
-    //          dz = 1 / dz_unnorm
+    // Check that dz is positive (particle going forward through spectrometer)
+    if (dz <= 0.0) {
+        std::cerr << "ERROR in SpectrometerAngles: dz <= 0 (particle going backwards!)" << std::endl;
+        std::cerr << "  theta0=" << theta0 << ", phi0=" << phi0 << std::endl;
+        std::cerr << "  theta=" << theta << ", phi=" << phi << std::endl;
+        std::cerr << "  dz=" << dz << std::endl;
+        xptar = 0.0;
+        yptar = 0.0;
+        return;
+    }
     
-    double dz_scale = 1.0 / dz_unnorm;
-    
-    double dx = dx_unnorm * dz_scale;
-    double dy = dy_unnorm * dz_scale;
-    double dz = dz_unnorm * dz_scale;  // Should be = 1.0
-    
-    // Now: dz = sqrt(1 + dx² + dy²) should be satisfied
-    // And: xptar = dx, yptar = dy
-    
-    xptar = dx;
-    yptar = dy;
+    xptar = dx / dz;
+    yptar = dy / dz;
 }
-  
-  // // ============================================================================
-  // // Spectrometer Angles
-  // // ============================================================================
-  // void EventGenerator::SpectrometerAngles(
-  // 					  Double_t theta0, Double_t phi0,
-  // 					  Double_t theta, Double_t phi,
-  // 					  Double_t& xptar, Double_t& yptar) const {
-    
-  //   // EXACT port from FORTRAN spectrometer_angles subroutine (event.f lines 1720-1750)
-    
-  //   // Convert angles to Cartesian unit vectors (FORTRAN lines 1744-1749)
-  //   double x = std::sin(theta) * std::cos(phi);
-  //   double y = std::sin(theta) * std::sin(phi);
-  //   double z = std::cos(theta);
-    
-  //   double x0 = std::sin(theta0) * std::cos(phi0);
-  //   double y0 = std::sin(theta0) * std::sin(phi0);
-  //   double z0 = std::cos(theta0);
-    
-  //   // Calculate angle between event direction and central spectrometer direction
-  //   // This is the cosine of the angle between the two vectors
-  //   // FORTRAN line 1751
-  //   double cos_dtheta = x*x0 + y*y0 + z*z0;
-    
-  //   // Project onto spectrometer coordinates (FORTRAN lines 1752-1753)
-  //   xptar = x / cos_dtheta;
-  //   yptar = std::sqrt(1.0/(cos_dtheta*cos_dtheta) - 1.0 - xptar*xptar);
-    
-  //   // Determine sign of yptar (FORTRAN lines 1755-1756)
-  //   double y_event = y / cos_dtheta;  // projected to plane perp. to spectrometer
-  //   if (y_event < y0) {
-  //     yptar = -yptar;
-  //   }
-  // }
+
+ 
 
   // ============================================================================
   // Calculate Basic Kinematics
