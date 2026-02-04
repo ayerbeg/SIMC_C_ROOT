@@ -1,5 +1,6 @@
 // include/simc/CrossSection.h
 // Cross section calculations for electron scattering
+// COMPLETE PORT from physics_proton.f, physics_pion.f, physics_kaon.f
 
 #ifndef SIMC_CROSS_SECTION_H
 #define SIMC_CROSS_SECTION_H
@@ -9,6 +10,9 @@
 #include <memory>
 
 namespace simc {
+
+// Forward declaration
+class MainEvent;
 
 /**
  * @class CrossSectionBase
@@ -42,77 +46,96 @@ public:
  * @class ElasticCrossSection
  * @brief Elastic electron-proton scattering
  * 
- * Uses Rosenbluth formula with form factors
+ * EXACT PORT from physics_proton.f: sigep(), sigMott(), fofa_best_fit()
+ * Uses Rosenbluth formula with Peter Bosted form factors
  */
 class ElasticCrossSection : public CrossSectionBase {
 public:
     ElasticCrossSection() = default;
     
+    /**
+     * @brief Calculate elastic e-p cross section
+     * @param evt Event with kinematics
+     * @return Cross section in microbarn/sr
+     * 
+     * PORT FROM: sigep() in physics_proton.f
+     */
     double Calculate(const SimcEvent& evt) const override;
+    
     ReactionType GetReactionType() const override { return ReactionType::ELASTIC; }
     bool IsPhysical(const SimcEvent& evt) const override;
     
     /**
      * @brief Calculate Mott cross section
-     * @param Ein Incident energy (MeV)
+     * @param e0 Incident energy (MeV)
      * @param theta Scattering angle (rad)
-     * @return d\sigma/d\Omega in ub/sr
+     * @param Q2 Four-momentum transfer squared (MeV^2)
+     * @return Mott cross section in microbarn/sr
+     * 
+     * PORT FROM: sigMott() in physics_proton.f
      */
-    static double MottCrossSection(double Ein, double theta);
+    static double SigMott(double e0, double theta, double Q2);
     
     /**
-     * @brief Calculate recoil factor
-     * @param Ein Incident energy (MeV)
-     * @param theta Scattering angle (rad)
-     * @param M_target Target mass (MeV)
-     * @return Recoil factor
+     * @brief Get proton form factors using Peter Bosted's fit
+     * @param qsquar -Q^2/(hbarc^2) (fm^-2)
+     * @param GE Electric form factor (output)
+     * @param GM Magnetic form factor (output)
+     * 
+     * PORT FROM: fofa_best_fit() in physics_proton.f
+     * Reference: Phys. Rev. C 51, 409, Eqs. 4 and 5
      */
-    static double RecoilFactor(double Ein, double theta, double M_target);
-    
-    /**
-     * @brief Get electric form factor GE
-     * @param Q2 Four-momentum transfer squared (GeV^2)
-     * @return GE (dimensionless)
-     */
-    static double GetGE(double Q2);
-    
-    /**
-     * @brief Get magnetic form factor GM
-     * @param Q2 Four-momentum transfer squared (GeV^2)
-     * @return GM (dimensionless)
-     */
-    static double GetGM(double Q2);
-    
-    /**
-     * @brief Dipole form factor
-     * @param Q2 in GeV^2
-     * @param Lambda in GeV
-     * @return Form factor value
-     */
-    static double DipoleFF(double Q2, double Lambda = 0.71);
+    static void FofaBestFit(double qsquar, double& GE, double& GM);
 };
 
 /**
  * @class QuasiElasticCrossSection
  * @brief Quasi-elastic (e,e'p) scattering from nuclei
  * 
- * Includes Fermi motion, binding energy, and spectral function
+ * EXACT PORT from physics_proton.f: deForest()
+ * Includes Fermi motion, binding energy, and off-shell corrections
  */
 class QuasiElasticCrossSection : public CrossSectionBase {
 public:
-    QuasiElasticCrossSection() = default;
+    /**
+     * @brief Constructor
+     * @param deforest_flag Controls which deForest prescription to use:
+     *   0 = use sigcc1 (default)
+     *   1 = use sigcc2
+     *  -1 = use sigcc1 ONSHELL (Ebar = E' - nu, qbar = q)
+     */
+    explicit QuasiElasticCrossSection(int deforest_flag = 0);
     
+    /**
+     * @brief Calculate quasi-elastic cross section
+     * @param evt Event with kinematics
+     * @return Cross section in microbarn*MeV^2/sr^2
+     * 
+     * PORT FROM: deForest() in physics_proton.f
+     * 
+     * IMPORTANT NOTES FROM FORTRAN:
+     * - Units are microbarn*MeV^2/sr^2 (need to multiply by spectral function S(E,p) in MeV^-4)
+     * - Implements de Forest off-shell prescription
+     * - Can be called with vertex or recon event records
+     * - Formula includes E'/Ebar combined with K=E'*p' to give p'/Ebar
+     */
     double Calculate(const SimcEvent& evt) const override;
+    
     ReactionType GetReactionType() const override { return ReactionType::QUASIELASTIC; }
     bool IsPhysical(const SimcEvent& evt) const override;
     
     /**
-     * @brief Get off-shell correction factor
-     * @param Pm Missing momentum (MeV/c)
-     * @param Em Missing energy (MeV)
-     * @return Correction factor
+     * @brief Set deForest flag
      */
-    static double OffShellCorrection(double Pm, double Em);
+    void SetDeForestFlag(int flag) { deforest_flag_ = flag; }
+    
+    /**
+     * @brief Get deForest flag
+     */
+    int GetDeForestFlag() const { return deforest_flag_; }
+    
+private:
+    int deforest_flag_;  ///< Controls deForest prescription (0, 1, or -1)
 };
 
 /**
