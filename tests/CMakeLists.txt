@@ -22,6 +22,16 @@ target_link_libraries(simc_tests
         simc_io
 )
 
+add_executable(test_integrated_generation 
+    test_integrated_generation.cpp
+)
+
+target_link_libraries(test_integrated_generation
+    simc_core
+    simc_io
+    ${ROOT_LIBRARIES}
+)
+
 # Add tests to CTest (will run all tests in one executable)
 add_test(NAME AllTests COMMAND simc_tests)
 

@@ -1,100 +1,64 @@
 {
-  "_comment": "SIMC C++/ROOT Default Configuration",
-  
-  "beam": {
-    "energy": 10.6,
-    "energy_spread": 0.05,
-    "x_width": 0.2,
-    "y_width": 0.2,
-    "x_offset": 0.0,
-    "y_offset": 0.0
-  },
-  
-  "target": {
-    "type": "LH2",
-    "A": 1,
-    "Z": 1,
-    "thickness": 0.1,
-    "angle": 0.0,
-    "length": 4.0,
-    "z_offset": 0.0,
-    "x_offset": 0.0,
-    "y_offset": 0.0,
-    "raster": {
-      "pattern": 1,
-      "x_width": 0.2,
-      "y_width": 0.2
-    }
-  },
-  
-  "reaction": {
-    "type": "elastic",
-    "pion_type": "pi_plus",
-    "kaon_type": "K_plus",
-    "final_state": "nucleon"
-  },
-  
-  "spectrometers": {
-    "electron_arm": {
-      "type": "HMS",
-      "momentum": 8.0,
-      "angle": 12.5,
-      "phi": 0.0,
-      "offset": {
-        "x": 0.0,
-        "y": 0.0,
-        "z": 0.0,
-        "xptar": 0.0,
-        "yptar": 0.0
-      }
+    "simulation": {
+        "nevents": 10000,
+        "random_seed": 12345,
+        "output_file": "simc_output.root"
     },
-    "hadron_arm": {
-      "type": "SHMS",
-      "momentum": 5.5,
-      "angle": 8.3,
-      "phi": 0.0,
-      "offset": {
-        "x": 0.0,
-        "y": 0.0,
-        "z": 0.0,
-        "xptar": 0.0,
-        "yptar": 0.0
-      }
+    "beam": {
+        "energy": 10600.0,
+        "energy_spread": 0.0,
+        "current": 50.0
+    },
+    "target": {
+        "mass": 938.272,
+        "Z": 1,
+        "A": 1,
+        "length": 10.0,
+        "density": 0.071,
+        "x_offset": 0.0,
+        "y_offset": 0.0,
+        "z_offset": 0.0,
+        "angle": 0.0,
+        "raster_pattern": 0,
+        "raster_x": 0.0,
+        "raster_y": 0.0
+    },
+    "spectrometer_electron": {
+        "name": "HMS",
+        "momentum": 8000.0,
+        "angle": 12.5,
+        "phi": 0.0
+    },
+    "spectrometer_hadron": {
+        "name": "SHMS",
+        "momentum": 5000.0,
+        "angle": 35.0,
+        "phi": 0.0
+    },
+    "generation": {
+        "reaction_type": "H(e,e'p)",
+        "use_energy_loss": false,
+        "use_coulomb": false,
+        "use_radiative": false,
+        "electron": {
+            "delta_min": -10.0,
+            "delta_max": 22.0,
+            "yptar_min": -0.03,
+            "yptar_max": 0.03,
+            "xptar_min": -0.06,
+            "xptar_max": 0.06,
+            "E_min": 500.0,
+            "E_max": 10000.0
+        },
+        "hadron": {
+            "delta_min": -10.0,
+            "delta_max": 22.0,
+            "yptar_min": -0.03,
+            "yptar_max": 0.03,
+            "xptar_min": -0.06,
+            "xptar_max": 0.06,
+            "E_min": 500.0,
+            "E_max": 10000.0
+        }
     }
-  },
-  
-  "monte_carlo": {
-    "nevents": 10000,
-    "random_seed": 12345,
-    "radiative_corrections": true,
-    "energy_loss": true,
-    "multiple_scattering": true,
-    "coulomb_corrections": true,
-    "particle_decay": false,
-    
-    "generation_limits": {
-      "electron": {
-        "delta_min": -10.0,
-        "delta_max": 10.0,
-        "xptar_min": -0.08,
-        "xptar_max": 0.08,
-        "yptar_min": -0.05,
-        "yptar_max": 0.05
-      },
-      "hadron": {
-        "delta_min": -15.0,
-        "delta_max": 15.0,
-        "xptar_min": -0.1,
-        "xptar_max": 0.1,
-        "yptar_min": -0.08,
-        "yptar_max": 0.08
-      }
-    }
-  },
-  
-  "output": {
-    "filename": "simc_output.root",
-    "save_generated": true,
-    "save_histograms": true
-  }
 }

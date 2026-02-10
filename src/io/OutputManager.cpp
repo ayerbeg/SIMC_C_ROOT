@@ -1,11 +1,15 @@
 // src/io/OutputManager.cpp
 // Implementation of ROOT output management
+// UPDATED: Added intelligent histogram binning for xbj, W, Q2, and physics quantities
 
 #include "simc/OutputManager.h"
+#include "simc/SimcConstants.h"
 #include <iostream>
 #include <stdexcept>
+#include <cmath>
 #include <TTree.h>
 #include <TDirectory.h>
+#include <TGaxis.h>
 
 namespace simc {
 
@@ -42,6 +46,9 @@ bool OutputManager::Initialize() {
     }
     
     file_->cd();
+    
+    // Set global axis formatting to avoid excessive precision
+    TGaxis::SetMaxDigits(4);
     
     // Create trees
     SetupEventTree();
@@ -185,7 +192,7 @@ bool OutputManager::FillReconstructed(const SimcEvent& evt, const MainEvent& mai
 }
 
 // ============================================================================
-// Histogram Creation
+// Histogram Creation - WITH INTELLIGENT BINNING
 // ============================================================================
 void OutputManager::CreateHistograms() {
     file_->cd();
@@ -194,43 +201,187 @@ void OutputManager::CreateHistograms() {
     TDirectory* hdir = file_->mkdir("histograms");
     hdir->cd();
     
+    // ========================================================================
+    // Physics Kinematics - WITH INTELLIGENT BINNING
+    // ========================================================================
+    
+    // xbj: For elastic H(e,e'p), should be ~1.0
+    // Use COARSE bins (0.005 width) to avoid floating-point noise artifacts
+    hist_gen_1d_["xbj"] = CreateHist1D("h_gen_xbj", 
+        "Bjorken x;x_{Bj};Counts", 
+        100, 0.0, 2.0);  // Full range
+    
+    hist_gen_1d_["xbj_zoom"] = CreateHist1D("h_gen_xbj_zoom", 
+        "Bjorken x (elastic region);x_{Bj};Counts", 
+        20, 0.95, 1.05);  // 0.005 bin width - prevents multiple peaks at "1"
+    
+    // W: For elastic, should be ~938.272 MeV
+    // Use 0.1 MeV bins to show peak structure without over-precision
+    hist_gen_1d_["W"] = CreateHist1D("h_gen_W", 
+        "Invariant Mass;W (MeV);Counts", 
+        200, 800, 2000);  // Full range
+    
+    hist_gen_1d_["W_elastic"] = CreateHist1D("h_gen_W_elastic", 
+        "Invariant Mass (elastic peak);W (MeV);Counts", 
+        40, 936, 940);  // 0.1 MeV bins - shows peak without ridiculous precision
+    
+    // Q²: Wide dynamic range
+    hist_gen_1d_["Q2"] = CreateHist1D("h_gen_Q2", 
+        "Four-Momentum Transfer;Q^{2} (MeV^{2});Counts", 
+        100, 0, 1e7);  // 0 to 10 GeV² in MeV²
+    
+    hist_gen_1d_["Q2_GeV2"] = CreateHist1D("h_gen_Q2_GeV2", 
+        "Four-Momentum Transfer;Q^{2} (GeV^{2});Counts", 
+        100, 0, 10);  // In GeV² units
+    
+    // nu (energy transfer)
+    hist_gen_1d_["nu"] = CreateHist1D("h_gen_nu", 
+        "Energy Transfer;#nu (MeV);Counts", 
+        100, 0, 5000);
+    
+    // epsilon (virtual photon polarization)
+    hist_gen_1d_["epsilon"] = CreateHist1D("h_gen_epsilon", 
+        "Virtual Photon Polarization;#epsilon;Counts", 
+        100, 0, 1);
+    
+    // ========================================================================
+    // Energy Conservation Check
+    // ========================================================================
+    
+    // E_in - E_e' - E_p + M_p should be ~0 for elastic
+    hist_gen_1d_["Econs"] = CreateHist1D("h_gen_Econs", 
+        "Energy Conservation;E_{in} - E_{e'} - E_{p} + M_{p} (MeV);Counts", 
+        100, -10, 10);
+    
+    // ========================================================================
     // Generated - Electron arm
-    hist_gen_1d_["e_delta"] = CreateHist1D("h_gen_e_delta", "Generated Electron #delta;#delta (%)", 
-                                           100, -15, 15);
-    hist_gen_1d_["e_xptar"] = CreateHist1D("h_gen_e_xptar", "Generated Electron x'_{tar};x'_{tar} (rad)", 
-                                           100, -0.1, 0.1);
-    hist_gen_1d_["e_yptar"] = CreateHist1D("h_gen_e_yptar", "Generated Electron y'_{tar};y'_{tar} (rad)", 
-                                           100, -0.1, 0.1);
+    // ========================================================================
     
+    hist_gen_1d_["e_delta"] = CreateHist1D("h_gen_e_delta", 
+        "Generated Electron #delta;#delta (%);Counts", 
+        100, -15, 15);
+    hist_gen_1d_["e_xptar"] = CreateHist1D("h_gen_e_xptar", 
+        "Generated Electron x'_{tar};x'_{tar} (rad);Counts", 
+        100, -0.1, 0.1);
+    hist_gen_1d_["e_yptar"] = CreateHist1D("h_gen_e_yptar", 
+        "Generated Electron y'_{tar};y'_{tar} (rad);Counts", 
+        100, -0.1, 0.1);
+    hist_gen_1d_["e_theta"] = CreateHist1D("h_gen_e_theta", 
+        "Generated Electron Angle;#theta_{e} (rad);Counts", 
+        100, 0, 0.5);
+    hist_gen_1d_["e_E"] = CreateHist1D("h_gen_e_E", 
+        "Generated Electron Energy;E_{e'} (MeV);Counts", 
+        100, 0, 12000);
+    
+    // ========================================================================
     // Generated - Hadron arm
-    hist_gen_1d_["p_delta"] = CreateHist1D("h_gen_p_delta", "Generated Hadron #delta;#delta (%)", 
-                                           100, -20, 20);
-    hist_gen_1d_["p_xptar"] = CreateHist1D("h_gen_p_xptar", "Generated Hadron x'_{tar};x'_{tar} (rad)", 
-                                           100, -0.1, 0.1);
-    hist_gen_1d_["p_yptar"] = CreateHist1D("h_gen_p_yptar", "Generated Hadron y'_{tar};y'_{tar} (rad)", 
-                                           100, -0.1, 0.1);
+    // ========================================================================
     
+    hist_gen_1d_["p_delta"] = CreateHist1D("h_gen_p_delta", 
+        "Generated Hadron #delta;#delta (%);Counts", 
+        100, -20, 20);
+    hist_gen_1d_["p_xptar"] = CreateHist1D("h_gen_p_xptar", 
+        "Generated Hadron x'_{tar};x'_{tar} (rad);Counts", 
+        100, -0.1, 0.1);
+    hist_gen_1d_["p_yptar"] = CreateHist1D("h_gen_p_yptar", 
+        "Generated Hadron y'_{tar};y'_{tar} (rad);Counts", 
+        100, -0.1, 0.1);
+    hist_gen_1d_["p_theta"] = CreateHist1D("h_gen_p_theta", 
+        "Generated Proton Angle;#theta_{p} (rad);Counts", 
+        100, 0, 1.5);
+    hist_gen_1d_["p_E"] = CreateHist1D("h_gen_p_E", 
+        "Generated Proton Energy;E_{p} (MeV);Counts", 
+        100, 0, 8000);
+    
+    // ========================================================================
+    // Missing Momentum
+    // ========================================================================
+    
+    hist_gen_1d_["Pmiss"] = CreateHist1D("h_gen_Pmiss", 
+        "Missing Momentum;P_{miss} (MeV/c);Counts", 
+        100, 0, 500);
+    hist_gen_1d_["Em"] = CreateHist1D("h_gen_Em", 
+        "Missing Energy;E_{miss} (MeV);Counts", 
+        100, -100, 200);
+    
+    // ========================================================================
     // Reconstructed - Electron arm
-    hist_rec_1d_["e_delta"] = CreateHist1D("h_rec_e_delta", "Reconstructed Electron #delta;#delta (%)", 
-                                           100, -15, 15);
-    hist_rec_1d_["e_xptar"] = CreateHist1D("h_rec_e_xptar", "Reconstructed Electron x'_{tar};x'_{tar} (rad)", 
-                                           100, -0.1, 0.1);
-    hist_rec_1d_["e_yptar"] = CreateHist1D("h_rec_e_yptar", "Reconstructed Electron y'_{tar};y'_{tar} (rad)", 
-                                           100, -0.1, 0.1);
+    // ========================================================================
     
+    hist_rec_1d_["e_delta"] = CreateHist1D("h_rec_e_delta", 
+        "Reconstructed Electron #delta;#delta (%);Counts", 
+        100, -15, 15);
+    hist_rec_1d_["e_xptar"] = CreateHist1D("h_rec_e_xptar", 
+        "Reconstructed Electron x'_{tar};x'_{tar} (rad);Counts", 
+        100, -0.1, 0.1);
+    hist_rec_1d_["e_yptar"] = CreateHist1D("h_rec_e_yptar", 
+        "Reconstructed Electron y'_{tar};y'_{tar} (rad);Counts", 
+        100, -0.1, 0.1);
+    hist_rec_1d_["e_theta"] = CreateHist1D("h_rec_e_theta", 
+        "Reconstructed Electron Angle;#theta_{e} (rad);Counts", 
+        100, 0, 0.5);
+    hist_rec_1d_["e_E"] = CreateHist1D("h_rec_e_E", 
+        "Reconstructed Electron Energy;E_{e'} (MeV);Counts", 
+        100, 0, 12000);
+    
+    // ========================================================================
     // Reconstructed - Hadron arm
-    hist_rec_1d_["p_delta"] = CreateHist1D("h_rec_p_delta", "Reconstructed Hadron #delta;#delta (%)", 
-                                           100, -20, 20);
-    hist_rec_1d_["p_xptar"] = CreateHist1D("h_rec_p_xptar", "Reconstructed Hadron x'_{tar};x'_{tar} (rad)", 
-                                           100, -0.1, 0.1);
-    hist_rec_1d_["p_yptar"] = CreateHist1D("h_rec_p_yptar", "Reconstructed Hadron y'_{tar};y'_{tar} (rad)", 
-                                           100, -0.1, 0.1);
+    // ========================================================================
     
-    // 2D histograms
-    hist_gen_2d_["Em_vs_Pm"] = CreateHist2D("h_gen_Em_vs_Pm", "E_{miss} vs P_{miss};P_{miss} (MeV/c);E_{miss} (MeV)",
-                                            100, 0, 500, 100, -100, 200);
-    hist_gen_2d_["Q2_vs_W"] = CreateHist2D("h_gen_Q2_vs_W", "Q^{2} vs W;W (MeV);Q^{2} (GeV^{2})",
-                                           100, 800, 2000, 100, 0, 5);
+    hist_rec_1d_["p_delta"] = CreateHist1D("h_rec_p_delta", 
+        "Reconstructed Hadron #delta;#delta (%);Counts", 
+        100, -20, 20);
+    hist_rec_1d_["p_xptar"] = CreateHist1D("h_rec_p_xptar", 
+        "Reconstructed Hadron x'_{tar};x'_{tar} (rad);Counts", 
+        100, -0.1, 0.1);
+    hist_rec_1d_["p_yptar"] = CreateHist1D("h_rec_p_yptar", 
+        "Reconstructed Hadron y'_{tar};y'_{tar} (rad);Counts", 
+        100, -0.1, 0.1);
+    hist_rec_1d_["p_theta"] = CreateHist1D("h_rec_p_theta", 
+        "Reconstructed Proton Angle;#theta_{p} (rad);Counts", 
+        100, 0, 1.5);
+    hist_rec_1d_["p_E"] = CreateHist1D("h_rec_p_E", 
+        "Reconstructed Proton Energy;E_{p} (MeV);Counts", 
+        100, 0, 8000);
+    
+    // ========================================================================
+    // Reconstructed - Missing momentum
+    // ========================================================================
+    
+    hist_rec_1d_["Pmiss"] = CreateHist1D("h_rec_Pmiss", 
+        "Reconstructed Missing Momentum;P_{miss} (MeV/c);Counts", 
+        100, 0, 500);
+    hist_rec_1d_["Em"] = CreateHist1D("h_rec_Em", 
+        "Reconstructed Missing Energy;E_{miss} (MeV);Counts", 
+        100, -100, 200);
+    
+    // ========================================================================
+    // 2D histograms - Generated
+    // ========================================================================
+    
+    hist_gen_2d_["Em_vs_Pm"] = CreateHist2D("h_gen_Em_vs_Pm", 
+        "E_{miss} vs P_{miss};P_{miss} (MeV/c);E_{miss} (MeV)",
+        100, 0, 500, 100, -100, 200);
+    
+    hist_gen_2d_["Q2_vs_W"] = CreateHist2D("h_gen_Q2_vs_W", 
+        "Q^{2} vs W;W (MeV);Q^{2} (GeV^{2})",
+        100, 800, 2000, 100, 0, 5);
+    
+    hist_gen_2d_["xbj_vs_Q2"] = CreateHist2D("h_gen_xbj_vs_Q2", 
+        "x_{Bj} vs Q^{2};Q^{2} (GeV^{2});x_{Bj}",
+        100, 0, 10, 100, 0, 2);
+    
+    // ========================================================================
+    // 2D histograms - Reconstructed
+    // ========================================================================
+    
+    hist_rec_2d_["Em_vs_Pm"] = CreateHist2D("h_rec_Em_vs_Pm", 
+        "E_{miss} vs P_{miss} (Reconstructed);P_{miss} (MeV/c);E_{miss} (MeV)",
+        100, 0, 500, 100, -100, 200);
+    
+    hist_rec_2d_["Q2_vs_W"] = CreateHist2D("h_rec_Q2_vs_W", 
+        "Q^{2} vs W (Reconstructed);W (MeV);Q^{2} (GeV^{2})",
+        100, 800, 2000, 100, 0, 5);
     
     file_->cd();
 }
@@ -249,13 +400,44 @@ TH2D* OutputManager::CreateHist2D(const std::string& name, const std::string& ti
 }
 
 // ============================================================================
-// Histogram Filling
+// Histogram Filling - UPDATED TO INCLUDE NEW HISTOGRAMS
 // ============================================================================
 void OutputManager::FillHistograms(const SimcEvent& evt, double weight, bool generated) {
     auto& hist_map = generated ? hist_gen_1d_ : hist_rec_1d_;
     auto& hist_map_2d = generated ? hist_gen_2d_ : hist_rec_2d_;
     
-    // Fill 1D histograms
+    // Fill physics kinematics (generated only)
+    if (generated) {
+        if (hist_map.count("xbj")) hist_map["xbj"]->Fill(evt.xbj, weight);
+        if (hist_map.count("xbj_zoom")) hist_map["xbj_zoom"]->Fill(evt.xbj, weight);
+        if (hist_map.count("W")) hist_map["W"]->Fill(evt.W, weight);
+        if (hist_map.count("W_elastic")) hist_map["W_elastic"]->Fill(evt.W, weight);
+        if (hist_map.count("Q2")) hist_map["Q2"]->Fill(evt.Q2, weight);
+        if (hist_map.count("Q2_GeV2")) hist_map["Q2_GeV2"]->Fill(evt.Q2/1e6, weight);
+        if (hist_map.count("nu")) hist_map["nu"]->Fill(evt.nu, weight);
+        if (hist_map.count("epsilon")) hist_map["epsilon"]->Fill(evt.epsilon, weight);
+        
+        // Energy conservation: E_in - E_e' - E_p + M_p
+        double Econs = evt.Ein - evt.e_E - evt.p_E + constants::Mp;  // Mp from SimcConstants
+        if (hist_map.count("Econs")) hist_map["Econs"]->Fill(Econs, weight);
+        
+        // Angles and energies
+        if (hist_map.count("e_theta")) hist_map["e_theta"]->Fill(evt.e_theta, weight);
+        if (hist_map.count("e_E")) hist_map["e_E"]->Fill(evt.e_E, weight);
+        if (hist_map.count("p_theta")) hist_map["p_theta"]->Fill(evt.p_theta, weight);
+        if (hist_map.count("p_E")) hist_map["p_E"]->Fill(evt.p_E, weight);
+        
+        // Missing momentum
+        if (hist_map.count("Pmiss")) hist_map["Pmiss"]->Fill(evt.Pmiss, weight);
+        if (hist_map.count("Em")) hist_map["Em"]->Fill(evt.Em, weight);
+        
+        // 2D histograms (generated only)
+        if (hist_map_2d.count("xbj_vs_Q2")) {
+            hist_map_2d["xbj_vs_Q2"]->Fill(evt.Q2/1e6, evt.xbj, weight);
+        }
+    }
+    
+    // Fill spectrometer quantities (both generated and reconstructed)
     if (hist_map.count("e_delta")) hist_map["e_delta"]->Fill(evt.e_delta, weight);
     if (hist_map.count("e_xptar")) hist_map["e_xptar"]->Fill(evt.e_xptar, weight);
     if (hist_map.count("e_yptar")) hist_map["e_yptar"]->Fill(evt.e_yptar, weight);
@@ -263,7 +445,17 @@ void OutputManager::FillHistograms(const SimcEvent& evt, double weight, bool gen
     if (hist_map.count("p_xptar")) hist_map["p_xptar"]->Fill(evt.p_xptar, weight);
     if (hist_map.count("p_yptar")) hist_map["p_yptar"]->Fill(evt.p_yptar, weight);
     
-    // Fill 2D histograms
+    // Fill angles and energies (both generated and reconstructed)
+    if (hist_map.count("e_theta")) hist_map["e_theta"]->Fill(evt.e_theta, weight);
+    if (hist_map.count("e_E")) hist_map["e_E"]->Fill(evt.e_E, weight);
+    if (hist_map.count("p_theta")) hist_map["p_theta"]->Fill(evt.p_theta, weight);
+    if (hist_map.count("p_E")) hist_map["p_E"]->Fill(evt.p_E, weight);
+    
+    // Fill missing momentum (both generated and reconstructed)
+    if (hist_map.count("Pmiss")) hist_map["Pmiss"]->Fill(evt.Pmiss, weight);
+    if (hist_map.count("Em")) hist_map["Em"]->Fill(evt.Em, weight);
+    
+    // Fill 2D histograms (both generated and reconstructed)
     if (hist_map_2d.count("Em_vs_Pm")) {
         hist_map_2d["Em_vs_Pm"]->Fill(evt.Pm, evt.Em, weight);
     }

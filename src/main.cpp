@@ -1,155 +1,206 @@
-// src/main.cpp
-// Main program for SIMC Monte Carlo
+// src/main.cpp - Phase 5c.1 COMPLETE
+// Integrates MC transport: multiple scattering, energy loss, acceptance
 
 #include "simc/SimcEvent.h"
 #include "simc/ConfigManager.h"
 #include "simc/RandomGenerator.h"
 #include "simc/OutputManager.h"
+#include "simc/EventGenerator.h"
+#include "simc/MonteCarloTransport.h"
+#include "simc/CrossSection.h"
 #include "simc/SimcConstants.h"
 
 #include <iostream>
+#include <memory>
 #include <cmath>
 
 using namespace simc;
 using namespace simc::constants;
 
-/**
- * @brief Simple test event generator
- * 
- * This is a placeholder that generates dummy events for testing.
- * In Phase 3, this will be replaced with the full physics event generator.
- */
-void GenerateTestEvent(SimcEvent& evt, MainEvent& main, RandomGenerator& rng) {
-    // Generate random kinematic quantities
-    evt.Ein = 10600.0;  // 10.6 GeV
-    
-    // Electron arm
-    evt.e_delta = rng.Gaussian(0.0, 2.0);  // ~2% resolution
-    evt.e_xptar = rng.Gaussian(0.0, 0.002); // ~2 mrad
-    evt.e_yptar = rng.Gaussian(0.0, 0.002);
-    evt.e_theta = 12.5 * DEG_TO_RAD + evt.e_yptar;
-    evt.e_phi = 0.0 + evt.e_xptar;
-    evt.e_P = 8000.0 * (1.0 + evt.e_delta/100.0);
-    evt.e_E = evt.e_P;  // Electron is essentially massless
-    
-    // Hadron arm
-    evt.p_delta = rng.Gaussian(0.0, 2.0);
-    evt.p_xptar = rng.Gaussian(0.0, 0.003);
-    evt.p_yptar = rng.Gaussian(0.0, 0.003);
-    evt.p_theta = 35.0 * DEG_TO_RAD + evt.p_yptar;
-    evt.p_phi = 0.0 + evt.p_xptar;
-    evt.p_P = 5000.0 * (1.0 + evt.p_delta/100.0);
-    evt.p_E = std::sqrt(evt.p_P*evt.p_P + Mp2);
-    
-    // Calculate kinematic quantities
-    evt.nu = evt.Ein - evt.e_E;
-    evt.Q2 = 2.0 * evt.Ein * evt.e_E * (1.0 - std::cos(evt.e_theta));
-    evt.q = std::sqrt(evt.Q2 + evt.nu*evt.nu);
-    evt.W = std::sqrt(Mp2 + 2.0*Mp*evt.nu - evt.Q2);
-    evt.xbj = evt.Q2 / (2.0 * Mp * evt.nu);
-    evt.epsilon = 1.0 / (1.0 + 2.0*(1.0 + evt.nu*evt.nu/evt.Q2)*
-                         std::tan(evt.e_theta/2.0)*std::tan(evt.e_theta/2.0));
-    
-    // Missing quantities (simple calculation)
-    evt.Em = evt.nu - evt.p_E + Mp;
-    evt.Pm = std::abs(rng.Gaussian(100.0, 50.0));  // Dummy value
-    
-    // Set weights (dummy values for testing)
-    main.weight = 1.0;
-    main.jacobian = 1.0;
-    main.sigcc = 1.0e-3;  // 1 nb
-    main.success = (std::abs(evt.e_delta) < 10.0 && 
-                    std::abs(evt.p_delta) < 15.0);
-}
-
 int main(int argc, char** argv) {
     std::cout << "\n";
     std::cout << "==========================================\n";
-    std::cout << "   SIMC C++/ROOT Monte Carlo - Phase 2   \n";
+    std::cout << "   SIMC C++/ROOT Monte Carlo - Phase 5c.1\n";
+    std::cout << "   MC Transport (Core) Complete           \n";
     std::cout << "==========================================\n";
     std::cout << "\n";
     
-    // Default configuration file
     std::string config_file = "data/config/default.json";
     if (argc > 1) {
         config_file = argv[1];
     }
     
     try {
-        // Load configuration
-        std::cout << "Loading configuration from: " << config_file << std::endl;
-        ConfigManager config(config_file);
-        config.Print();
+        // ====================================================================
+        // INITIALIZATION
+        // ====================================================================
         
-        // Get parameters
+        std::cout << "Loading configuration: " << config_file << std::endl;
+        ConfigManager config(config_file);
+        
         int nevents = config.GetNEvents();
         unsigned int seed = config.GetRandomSeed();
-        std::string output_file = config.GetOutputFile();
+        std::string output_filename = config.GetOutputFile();
         
-        std::cout << "\nSimulation parameters:" << std::endl;
-        std::cout << "  Number of events: " << nevents << std::endl;
-        std::cout << "  Random seed:      " << seed << std::endl;
-        std::cout << "  Output file:      " << output_file << std::endl;
+        std::cout << "  Events: " << nevents << std::endl;
+        std::cout << "  Seed:   " << seed << std::endl;
+        std::cout << "  Output: " << output_filename << std::endl;
         std::cout << "\n";
         
         // Initialize random generator
-        RandomGenerator rng(seed);
+        auto rng = std::make_shared<RandomGenerator>(seed);
+        
+        // Initialize cross section - use ElasticCrossSection (concrete class)
+        auto cross_section = std::make_shared<ElasticCrossSection>();
+        
+        // Spectrometer optics not needed until Phase 5c
+        std::shared_ptr<SpectrometerOptics> optics = nullptr;
+        
+        // Initialize event generator
+        std::cout << "Initializing event generator..." << std::endl;
+        EventGenerator generator(config, rng, cross_section, optics);
+        if (!generator.Initialize()) {
+            throw std::runtime_error("Failed to initialize event generator");
+        }
+        std::cout << "Event generator initialized." << std::endl;
         
         // Initialize output
-        OutputManager output(output_file);
+        OutputManager output(output_filename);
         output.Initialize();
         
-        // Event generation loop
-        std::cout << "Generating events..." << std::endl;
+        // ====================================================================
+        // EVENT GENERATION LOOP
+        // ====================================================================
         
+        std::cout << "\nGenerating events..." << std::endl;
+        std::cout << "--------------------------------------------" << std::endl;
+        
+        int ntried = 0;
         int ngenerated = 0;
         int ncontribute = 0;
         
-        for (int i = 0; i < nevents; ++i) {
+        // Initialize MC transport (Phase 5c.1)
+        MonteCarloTransport transport(config, rng);
+        
+        generator.ResetStatistics();
+        
+        while (ngenerated < nevents) {
+            ++ntried;
+            
             // Progress indicator
-            if ((i+1) % 1000 == 0) {
-                std::cout << "  Generated " << (i+1) << " events..." << std::endl;
+            if (ntried % 1000 == 1) {
+                std::cout << "  Event " << ntried 
+                          << " (" << ngenerated << " generated)" << std::endl;
             }
             
             // Generate event
-            SimcEvent evt;
+            SimcEvent event;
             MainEvent main;
-            GenerateTestEvent(evt, main, rng);
             
+            main.gen_weight = 1.0;
+            main.jacobian = 1.0;
+            main.weight = 1.0;
+            main.sigcc = 1.0;
+            main.success = false;
+            
+            // ================================================================
+            // PHASE 5b: Generate physics event
+            // ================================================================
+            bool success = generator.GenerateEvent(event, main);
+            if (!success) {
+                continue;
+            }
+            
+            // Calculate cross section
+            main.sigcc = cross_section->Calculate(event);
+            
+            // Total weight
+            main.weight = main.gen_weight * main.jacobian * main.sigcc;
+            
+            // Count as generated
             ++ngenerated;
+            main.success = true;
             
-            // Fill generated tree
-            output.FillGenerated(evt);
+            // Fill GENERATED quantities
+            output.FillGenerated(event);
+            output.FillHistograms(event, main.weight, true);  // generated=true
             
-            // Check if event passes cuts
-            if (main.success) {
+            // ================================================================
+            // PHASE 5c.1: Monte Carlo Transport
+            // - Apply multiple scattering (beam, electron, hadron)
+            // - Apply energy loss corrections
+            // - Check acceptance (simple delta/angle cuts)
+            // ================================================================
+            bool passes_acceptance = transport.Transport(event, main);
+            
+            if (passes_acceptance) {
+                // ============================================================
+                // PHASE 5c.1: Calculate Reconstructed Quantities
+                // For H(e,e'p) elastic, calculate p_xptar, p_yptar
+                // that were set to 0.0 in EventGenerator
+                // ============================================================
+                transport.CalculateReconstructed(event);
+                
+                // ============================================================
+                // Copy spectrometer quantities back to event for storage
+                // These include energy loss corrections and multiple scattering
+                // ============================================================
+                event.e_delta = main.SP_electron.delta;
+                event.e_xptar = main.SP_electron.xptar;
+                event.e_yptar = main.SP_electron.yptar;
+                event.p_delta = main.SP_hadron.delta;
+                // p_xptar and p_yptar already set by CalculateReconstructed()
+                
+                // Fill event tree and reconstructed histograms
                 ++ncontribute;
-                output.FillEvent(evt, main);
-                output.FillHistograms(evt, main.weight, false);
+                output.FillEvent(event, main);
+                output.FillHistograms(event, main.weight, false);  // reconstructed
             }
             
             output.IncrementTried();
         }
         
-        // Set final statistics
-        output.SetStatistics(nevents, ngenerated, ncontribute);
+        // ====================================================================
+        // FINALIZATION
+        // ====================================================================
         
-        // Finalize and write output
+        output.SetStatistics(ntried, ngenerated, ncontribute);
+        
         std::cout << "\nFinalizing output..." << std::endl;
         output.Finalize();
         
         // Print summary
-        double efficiency = 100.0 * ncontribute / static_cast<double>(nevents);
+        double efficiency = 100.0 * ncontribute / static_cast<double>(ntried);
+        double acceptance = 100.0 * ngenerated / static_cast<double>(ntried);
+        
         std::cout << "\n==========================================\n";
-        std::cout << "Simulation complete!" << std::endl;
-        std::cout << "  Events generated:   " << ngenerated << std::endl;
-        std::cout << "  Events passed cuts: " << ncontribute << std::endl;
-        std::cout << "  Efficiency:         " << efficiency << " %" << std::endl;
+        std::cout << "Phase 5c.1 Complete!\n";
+        std::cout << "--------------------------------------------\n";
+        std::cout << "  Events tried:       " << ntried << "\n";
+        std::cout << "  Events generated:   " << ngenerated << "\n";
+        std::cout << "  Events passed cuts: " << ncontribute << "\n";
+        std::cout << "--------------------------------------------\n";
+        std::cout << "  Generation eff:     " << acceptance << " %\n";
+        std::cout << "  Acceptance eff:     " << efficiency << " %\n";
         std::cout << "==========================================\n";
+        std::cout << "\n";
+        
+        std::cout << "Output written to: " << output_filename << "\n";
+        std::cout << "\nPhase 5c.1 Features Implemented:\n";
+        std::cout << "  ✓ Multiple scattering (beam, e, p)\n";
+        std::cout << "  ✓ Energy loss corrections\n";
+        std::cout << "  ✓ Hadron spectrometer angles (elastic)\n";
+        std::cout << "  ✓ Simple acceptance (delta/angle cuts)\n";
+        std::cout << "  ✓ Reconstructed histograms filled\n";
+        std::cout << "\nNext: Phase 5c.2 - Full Spectrometer MCs\n";
+        std::cout << "  - mc_hms, mc_sos, mc_shms transport\n";
+        std::cout << "  - Focal plane calculations\n";
+        std::cout << "  - Detailed aperture checking\n";
         std::cout << "\n";
         
     } catch (const std::exception& e) {
         std::cerr << "\nError: " << e.what() << std::endl;
+        std::cerr << "Simulation terminated.\n" << std::endl;
         return 1;
     }
     
