@@ -1,7 +1,7 @@
 // tests/test_config.cpp
 // Unit tests for SimcEvent (standalone version)
 
-#include "simc/ConfigManager.h"
+#include "simc/core/ConfigManager.h"
 #include <iostream>
 
 // Forward declarations from test_main.cpp

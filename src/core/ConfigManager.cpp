@@ -1,8 +1,8 @@
 // src/core/ConfigManager.cpp
 // Implementation of configuration management
 
-#include "simc/ConfigManager.h"
-#include "simc/SimcConstants.h"
+#include "simc/core/ConfigManager.h"
+#include "simc/core/SimcConstants.h"
 #include <fstream>
 #include <sstream>
 #include <iostream>

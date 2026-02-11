@@ -1,7 +1,7 @@
 // src/physics/MathUtils.cpp
 // Implementation of mathematical special functions
 
-#include "simc/MathUtils.h"
+#include "simc/physics/MathUtils.h"
 #include <cmath>
 #include <stdexcept>
 

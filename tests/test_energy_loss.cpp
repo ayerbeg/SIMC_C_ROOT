@@ -1,8 +1,8 @@
 // tests/test_energy_loss.cpp
 // Unit tests for energy loss calculations
 
-#include "simc/EnergyLoss.h"
-#include "simc/SimcConstants.h"
+#include "simc/physics/EnergyLoss.h"
+#include "simc/core/SimcConstants.h"
 #include <iostream>
 #include <cmath>
 

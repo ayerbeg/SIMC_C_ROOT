@@ -6,9 +6,9 @@
 // - physics_pion.f: pion electroproduction (TODO)
 // - physics_kaon.f: kaon electroproduction (TODO)
 
-#include "simc/CrossSection.h"
-#include "simc/ConfigManager.h"
-#include "simc/SimcConstants.h"
+#include "simc/physics/CrossSection.h"
+#include "simc/core/ConfigManager.h"
+#include "simc/core/SimcConstants.h"
 #include <cmath>
 #include <stdexcept>
 #include <iostream>

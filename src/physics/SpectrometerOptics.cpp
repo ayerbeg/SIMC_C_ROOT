@@ -3,8 +3,8 @@
 // Ported from transp.f, mc_hms.f, mc_shms.f, mc_sos.f
 // CORRECTED VERSION - Fixed units (mrad vs rad) and sequential transport
 
-#include "simc/SpectrometerOptics.h"
-#include "simc/SimcConstants.h"
+#include "simc/physics/SpectrometerOptics.h"
+#include "simc/core/SimcConstants.h"
 #include <cmath>
 #include <iostream>
 #include <algorithm>

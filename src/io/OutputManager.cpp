@@ -2,8 +2,8 @@
 // Implementation of ROOT output management
 // UPDATED: Added intelligent histogram binning for xbj, W, Q2, and physics quantities
 
-#include "simc/OutputManager.h"
-#include "simc/SimcConstants.h"
+#include "simc/io/OutputManager.h"
+#include "simc/core/SimcConstants.h"
 #include <iostream>
 #include <stdexcept>
 #include <cmath>

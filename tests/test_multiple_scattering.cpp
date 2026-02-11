@@ -1,8 +1,8 @@
 // tests/test_multiple_scattering.cpp
 // Unit tests for multiple scattering calculations
 
-#include "simc/MultipleScattering.h"
-#include "simc/SimcConstants.h"
+#include "simc/physics/MultipleScattering.h"
+#include "simc/core/SimcConstants.h"
 #include <iostream>
 #include <cmath>
 

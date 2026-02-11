@@ -1,7 +1,7 @@
 // src/core/RandomGenerator.cpp
 // Implementation of random number generation
 
-#include "simc/RandomGenerator.h"
+#include "simc/core/RandomGenerator.h"
 #include <iostream>
 #include <stdexcept>
 

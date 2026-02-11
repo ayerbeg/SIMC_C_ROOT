@@ -2,8 +2,8 @@
 // Constructor through GeneratePhaseSpace
 // Ported from event.f, jacobians.f
 
-#include "simc/EventGenerator.h"
-#include "simc/EnergyLoss.h"
+#include "simc/physics/EventGenerator.h"
+#include "simc/physics/EnergyLoss.h"
 #include <cmath>
 #include <iostream>
 #include <stdexcept>

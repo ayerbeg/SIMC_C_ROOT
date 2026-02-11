@@ -4,8 +4,8 @@
 #ifndef SIMC_BREMSSTRAHLUNG_H
 #define SIMC_BREMSSTRAHLUNG_H
 
-#include "simc/SimcConstants.h"
-#include "simc/MathUtils.h"
+#include "simc/physics/SimcConstants.h"
+#include "simc/physics/MathUtils.h"
 #include <array>
 
 namespace simc {

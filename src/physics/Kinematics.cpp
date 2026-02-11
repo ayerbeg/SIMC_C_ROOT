@@ -1,7 +1,7 @@
 // src/physics/Kinematics.cpp
 // Implementation of kinematic calculations
 
-#include "simc/Kinematics.h"
+#include "simc/physics/Kinematics.h"
 #include <cmath>
 
 namespace simc {

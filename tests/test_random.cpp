@@ -1,7 +1,7 @@
 // tests/test_random.cpp
 // Unit tests for RandomGenerator (standalone version)
 
-#include "simc/RandomGenerator.h"
+#include "simc/core/RandomGenerator.h"
 #include <iostream>
 #include <cmath>
 

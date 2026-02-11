@@ -2,9 +2,9 @@
 // Unit tests for cross section calculations
 // UPDATED: Now tests the complete Fortran port with CMake integration
 
-#include "simc/CrossSection.h"
-#include "simc/Kinematics.h"
-#include "simc/SimcConstants.h"
+#include "simc/physics/CrossSection.h"
+#include "simc/physics/Kinematics.h"
+#include "simc/core/SimcConstants.h"
 #include <iostream>
 #include <iomanip>
 #include <cmath>

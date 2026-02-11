@@ -5,8 +5,8 @@
 #ifndef SIMC_ENERGY_LOSS_H
 #define SIMC_ENERGY_LOSS_H
 
-#include "SimcTypes.h"
-#include "RandomGenerator.h"
+#include "/simc/core/SimcTypes.h"
+#include "/simc/core/RandomGenerator.h"
 
 namespace simc {
 

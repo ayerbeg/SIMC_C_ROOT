@@ -1,10 +1,10 @@
 // tests/test_event_generator_diagnostic.cpp
 // DIAGNOSTIC version to trace exactly where event generation fails
 
-#include "simc/EventGenerator.h"
-#include "simc/ConfigManager.h"
-#include "simc/CrossSection.h"
-#include "simc/RandomGenerator.h"
+#include "simc/physics/EventGenerator.h"
+#include "simc/core/ConfigManager.h"
+#include "simc/physics/CrossSection.h"
+#include "simc/core/RandomGenerator.h"
 #include <iostream>
 #include <iomanip>
 #include <sstream>

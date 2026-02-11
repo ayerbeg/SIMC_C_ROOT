@@ -2,11 +2,11 @@
 // Unit tests for EventGenerator
 // CORRECTED VERSION - Fixed enum names and config structure
 
-#include "simc/EventGenerator.h"
-#include "simc/ConfigManager.h"
-#include "simc/CrossSection.h"
-#include "simc/SpectrometerOptics.h"
-#include "simc/RandomGenerator.h"
+#include "simc/physics/EventGenerator.h"
+#include "simc/core/ConfigManager.h"
+#include "simc/physics/CrossSection.h"
+#include "simc/physics/SpectrometerOptics.h"
+#include "simc/core/RandomGenerator.h"
 #include <iostream>
 #include <iomanip>
 #include <cassert>

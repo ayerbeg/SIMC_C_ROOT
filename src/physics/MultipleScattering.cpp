@@ -2,8 +2,8 @@
 // Implementation of multiple scattering calculations
 // Ported from musc.f and musc_ext.f
 
-#include "simc/MultipleScattering.h"
-#include "simc/SimcConstants.h"
+#include "simc/physics/MultipleScattering.h"
+#include "simc/core/SimcConstants.h"
 #include <cmath>
 #include <array>
 #include <algorithm>

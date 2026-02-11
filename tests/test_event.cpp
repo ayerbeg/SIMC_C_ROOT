@@ -1,8 +1,8 @@
 // tests/test_event.cpp
 // Unit tests for SimcEvent (standalone version)
 
-#include "simc/SimcEvent.h"
-#include "simc/SimcConstants.h"
+#include "simc/core/SimcEvent.h"
+#include "simc/core/SimcConstants.h"
 #include <iostream>
 #include <cmath>
 

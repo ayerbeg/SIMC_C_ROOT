@@ -1,7 +1,7 @@
 // src/physics/Bremsstrahlung.cpp
 // Implementation of exact QED bremsstrahlung calculations
 
-#include "simc/Bremsstrahlung.h"
+#include "simc/physics/Bremsstrahlung.h"
 #include <cmath>
 #include <algorithm>
 #include <stdexcept>

@@ -1,10 +1,10 @@
 // src/physics/RadiativeCorrections.cpp
 // Main radiative corrections implementation - Part 1: Constructor and helpers
 
-#include "simc/RadiativeCorrections.h"
-#include "simc/Bremsstrahlung.h"
-#include "simc/ExternalRadiation.h"
-#include "simc/MathUtils.h"
+#include "simc/physics/RadiativeCorrections.h"
+#include "simc/physics/Bremsstrahlung.h"
+#include "simc/physics/ExternalRadiation.h"
+#include "simc/physics/MathUtils.h"
 #include <cmath>
 #include <stdexcept>
 

@@ -3,7 +3,7 @@
 // Ported from transp.f (Fortran SIMC)
 // ROBUST VERSION - Handles all Fortran formatting variations
 
-#include "simc/CosyMatrix.h"
+#include "simc/physics/CosyMatrix.h"
 #include <fstream>
 #include <sstream>
 #include <iostream>

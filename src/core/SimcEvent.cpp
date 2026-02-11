@@ -1,7 +1,7 @@
 // src/core/SimcEvent.cpp
 // Implementation of SIMC event structure
 
-#include "simc/SimcEvent.h"
+#include "simc/core/SimcEvent.h"
 #include <iostream>
 #include <iomanip>
 

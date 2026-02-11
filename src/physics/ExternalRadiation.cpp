@@ -1,7 +1,7 @@
 // src/physics/ExternalRadiation.cpp
 // Implementation of external bremsstrahlung corrections
 
-#include "simc/ExternalRadiation.h"
+#include "simc/physics/ExternalRadiation.h"
 #include <cmath>
 #include <stdexcept>
 

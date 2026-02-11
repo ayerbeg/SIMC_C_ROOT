@@ -2,8 +2,8 @@
 // Implementation of energy loss calculations
 // Ported from enerloss_new.f
 
-#include "simc/EnergyLoss.h"
-#include "simc/SimcConstants.h"
+#include "simc/physics/EnergyLoss.h"
+#include "simc/core/SimcConstants.h"
 #include <cmath>
 #include <stdexcept>
 #include <algorithm>

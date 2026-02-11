@@ -2,9 +2,9 @@
 // Unit tests for spectrometer optics and COSY matrices
 // UPDATED for new CosyMatrix interface
 
-#include "simc/SpectrometerOptics.h"
-#include "simc/CosyMatrix.h"
-#include "simc/SimcConstants.h"
+#include "simc/physics/SpectrometerOptics.h"
+#include "simc/physics/CosyMatrix.h"
+#include "simc/core/SimcConstants.h"
 #include <iostream>
 #include <cmath>
 #include <cstdlib>
