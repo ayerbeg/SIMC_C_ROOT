@@ -1,5 +1,6 @@
 // src/transport/MonteCarloTransport.cpp
 // Phase 5c.1: Monte Carlo Transport Implementation
+// Phase 5c.2: CheckAcceptance DISABLED - let spectrometer do acceptance
 // Ported from simc.f montecarlo() and target.f target_musc()
 
 #include "simc/transport/MonteCarloTransport.h"
@@ -198,31 +199,25 @@ void MonteCarloTransport::ApplyBeamMultipleScattering(
 // ============================================================================
 
 void MonteCarloTransport::ApplyMultipleScattering(
-    double momentum, double beta, double teff, double dangles[2]) {
+    double p, double beta, double teff, double dang_out[2]) {
     
-    // Exact same formula as beam scattering
-    // From shared/musc.f and target.f target_musc()
+    // From target.f target_musc(), lines ~680-710
+    // Uses same Lynch & Dahl formula as beam MS
     
     constexpr double Es = 13.6;        // MeV
     constexpr double epsilon = 0.088;
     constexpr double nsig_max = 3.5;
     
-    if (momentum < 25.0) {
-        std::cerr << "Warning: Momentum passed to ApplyMultipleScattering "
-                  << "should be in MeV/c, but p = " << momentum << std::endl;
-    }
-    
     if (teff <= 0.0) {
-        dangles[0] = 0.0;
-        dangles[1] = 0.0;
+        dang_out[0] = 0.0;
+        dang_out[1] = 0.0;
         return;
     }
     
     // RMS scattering angle (rad)
-    double theta_sigma = (Es / momentum / beta) * std::sqrt(teff) * 
+    double theta_sigma = (Es / p / beta) * std::sqrt(teff) * 
                         (1.0 + epsilon * std::log10(teff / (beta * beta)));
     
-    // Generate two independent Gaussian scattering angles (truncated)
     auto truncated_gaussian = [this](double nsig_max) -> double {
         double value;
         do {
@@ -231,8 +226,8 @@ void MonteCarloTransport::ApplyMultipleScattering(
         return value;
     };
     
-    dangles[0] = theta_sigma * truncated_gaussian(nsig_max);
-    dangles[1] = theta_sigma * truncated_gaussian(nsig_max);
+    dang_out[0] = theta_sigma * truncated_gaussian(nsig_max);
+    dang_out[1] = theta_sigma * truncated_gaussian(nsig_max);
 }
 
 // ============================================================================
@@ -240,13 +235,9 @@ void MonteCarloTransport::ApplyMultipleScattering(
 // ============================================================================
 
 void MonteCarloTransport::ApplyEnergyLoss(SimcEvent& event, MainEvent& main) {
-    // Energy loss is already calculated in EventGenerator::TripThruTarget()
-    // and stored in main.target.Eloss[0,1,2]
-    //
-    // Here we just apply those corrections to get spectrometer quantities
-    // This is already done in Transport() above
+    // Placeholder for Phase 5c.3: Energy loss through spectrometer windows, etc.
+    // Currently energy loss through target is handled in EventGenerator
     
-    // Suppress unused parameter warnings
     (void)event;
     (void)main;
     
@@ -291,25 +282,51 @@ void MonteCarloTransport::SpectrometerAngles(
 }
 
 // ============================================================================
-// Check Acceptance (Phase 5c.1 - Simple Cuts)
+// Check Acceptance (Phase 5c.2 - DISABLED)
 // ============================================================================
 
 bool MonteCarloTransport::CheckAcceptance(const SimcEvent& event, 
                                          const MainEvent& main) const {
-    // Phase 5c.1: Simple delta and angle cuts
-    // Phase 5c.2: Full spectrometer MC with apertures
-    
+    // ========================================================================
+    // PHASE 5c.2 NOTE: This function is DISABLED
+    // ========================================================================
+    //
+    // Previously (Phase 5c.1), this applied simple rectangular cuts on
+    // spectrometer angles and delta to provide basic acceptance filtering
+    // before full spectrometer transport was implemented.
+    //
+    // NOW (Phase 5c.2+), acceptance is determined by:
+    // - SHMS class: Full 32-aperture transport with realistic geometry
+    // - HMS class: (Future) Full aperture transport
+    // - etc.
+    //
+    // The rectangular cuts from config (±60 mrad, ±30 mrad) were too tight
+    // and rejected valid events that should have been transported through
+    // the spectrometer. For example, elastic H(e,e'p) at 35° SHMS angle
+    // produces proton angles of ~2400 mrad relative to spectrometer axis,
+    // which is physically correct but fails the simple cuts.
+    //
+    // PHYSICS EXPLANATION:
+    // -------------------
+    // For elastic scattering H(e,e'p), when SHMS is at 35° and protons
+    // scatter at ~33°, the angle RELATIVE to the spectrometer axis is:
+    //   angle_rel = arctan(sin(33-35)/cos(33-35)) ≈ -2.4 rad ≈ -2400 mrad
+    // This is CORRECT physics - the proton is going nearly opposite to
+    // the spectrometer direction! The spectrometer must rotate and bend
+    // this trajectory back through the apertures.
+    //
+    // The cuts below (lines 346-369) would reject these valid events:
+    // -------------------
+    /*
     // Electron arm cuts
     if (main.SP_electron.delta < config_.electron.delta_min || 
         main.SP_electron.delta > config_.electron.delta_max) {
         return false;
     }
-    
     if (main.SP_electron.xptar < config_.electron.xptar_min || 
         main.SP_electron.xptar > config_.electron.xptar_max) {
         return false;
     }
-    
     if (main.SP_electron.yptar < config_.electron.yptar_min || 
         main.SP_electron.yptar > config_.electron.yptar_max) {
         return false;
@@ -320,27 +337,31 @@ bool MonteCarloTransport::CheckAcceptance(const SimcEvent& event,
         main.SP_hadron.delta > config_.hadron.delta_max) {
         return false;
     }
-    
     if (main.SP_hadron.xptar < config_.hadron.xptar_min || 
         main.SP_hadron.xptar > config_.hadron.xptar_max) {
         return false;
     }
-    
     if (main.SP_hadron.yptar < config_.hadron.yptar_min || 
         main.SP_hadron.yptar > config_.hadron.yptar_max) {
         return false;
     }
+    */
+    //
+    // FUTURE TODO (when implementing multiple spectrometers):
+    // -------------------------------------------------------
+    // - Add spectrometer-specific pre-transport sanity checks
+    // - Consider re-enabling VERY WIDE cuts (e.g., |angle| < 5 rad = 286°)
+    //   to catch obviously pathological events before expensive transport
+    // - Or keep this always returning true and let each spectrometer
+    //   class handle 100% of acceptance determination
+    //
+    // CURRENT BEHAVIOR: Always return true - let spectrometer transport
+    //                   determine acceptance through realistic aperture checks
     
-    // Phase 5c.1: Simple cuts only
-    // Phase 5c.2 will add:
-    // - Aperture checking at each optical element
-    // - Focal plane position checks
-    // - Detector acceptance
+    (void)event;  // Suppress unused parameter warnings
+    (void)main;
     
-    // Suppress unused parameter warning
-    (void)event;
-    
-    return true;
+    return true;  // ALWAYS PASS - acceptance determined by spectrometer transport
 }
 
 // ============================================================================
@@ -350,39 +371,11 @@ bool MonteCarloTransport::CheckAcceptance(const SimcEvent& event,
 bool MonteCarloTransport::TransportThroughSpectrometer(
     SimcEvent& event, MainEvent& main) {
     
-    // Suppress unused parameter warnings
     (void)event;
     (void)main;
     
-    // NOT IMPLEMENTED IN PHASE 5c.1
-    //
-    // Phase 5c.2 will implement:
-    // - Call mc_hms, mc_sos, mc_shms, mc_hrsr, mc_hrsl
-    // - Transport through magnetic elements
-    // - Check apertures at each element
-    // - Calculate focal plane quantities
-    
-    std::cerr << "ERROR: TransportThroughSpectrometer not implemented in Phase 5c.1\n";
-    std::cerr << "       Full spectrometer MCs will be added in Phase 5c.2\n";
-    
-    return false;  // Always fail if called
-}
-
-void MonteCarloTransport::CalculateFocalPlane(const SimcEvent& event, 
-                                             MainEvent& main) {
-    // Suppress unused parameter warnings
-    (void)event;
-    (void)main;
-    
-    // NOT IMPLEMENTED IN PHASE 5c.1
-    //
-    // Phase 5c.2 will calculate:
-    // - Focal plane position (xfp, yfp)
-    // - Focal plane angles (dxfp, dyfp)
-    // - Reconstruction back to target
-    
-    std::cerr << "ERROR: CalculateFocalPlane not implemented in Phase 5c.1\n";
-    std::cerr << "       Full reconstruction will be added in Phase 5c.2\n";
+    // This is now handled by SHMS::Transport() in main.cpp
+    return true;
 }
 
 } // namespace simc

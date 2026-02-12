@@ -15,7 +15,7 @@ void test_basic_load() {
     CosyMatrix matrix;
     
     // Try to load HMS forward matrix
-    bool success = matrix.LoadFromFile("data/matrices/hms/forward_cosy.dat");
+    bool success = matrix.LoadFromFile("../data/matrices/hms/forward_cosy.dat");
     
     if (success) {
         std::cout << "✓ Matrix loaded successfully" << std::endl;
@@ -43,7 +43,7 @@ void test_simple_transport() {
     std::cout << "\n=== Test 2: Simple Transport ===" << std::endl;
     
     CosyMatrix matrix;
-    if (!matrix.LoadFromFile("data/matrices/hms/forward_cosy.dat")) {
+    if (!matrix.LoadFromFile("../data/matrices/hms/forward_cosy.dat")) {
         std::cout << "✗ Cannot load matrix - skipping test" << std::endl;
         return;
     }
@@ -106,7 +106,7 @@ void test_reconstruction() {
     std::cout << "\n=== Test 3: Reconstruction ===" << std::endl;
     
     CosyMatrix recon_matrix;
-    if (!recon_matrix.LoadFromFile("data/matrices/hms/recon_cosy.dat")) {
+    if (!recon_matrix.LoadFromFile("../data/matrices/hms/recon_cosy.dat")) {
         std::cout << "✗ Cannot load reconstruction matrix - skipping test" << std::endl;
         return;
     }
@@ -154,11 +154,11 @@ void test_round_trip() {
     std::cout << "\n=== Test 4: Round-Trip (Forward + Reconstruction) ===" << std::endl;
     
     CosyMatrix forward, recon;
-    if (!forward.LoadFromFile("data/matrices/hms/forward_cosy.dat")) {
+    if (!forward.LoadFromFile("../data/matrices/hms/forward_cosy.dat")) {
         std::cout << "✗ Cannot load forward matrix - skipping test" << std::endl;
         return;
     }
-    if (!recon.LoadFromFile("data/matrices/hms/recon_cosy.dat")) {
+    if (!recon.LoadFromFile("../data/matrices/hms/recon_cosy.dat")) {
         std::cout << "✗ Cannot load recon matrix - skipping test" << std::endl;
         return;
     }
@@ -229,7 +229,7 @@ void test_zero_angle() {
     std::cout << "\n=== Test 5: Zero Angle Particle (Central Ray) ===" << std::endl;
     
     CosyMatrix matrix;
-    if (!matrix.LoadFromFile("data/matrices/hms/forward_cosy.dat")) {
+    if (!matrix.LoadFromFile("../data/matrices/hms/forward_cosy.dat")) {
         std::cout << "✗ Cannot load matrix - skipping test" << std::endl;
         return;
     }
@@ -260,7 +260,7 @@ void test_print_matrix() {
     std::cout << "\n=== Test 6: Matrix Details ===" << std::endl;
     
     CosyMatrix matrix;
-    if (!matrix.LoadFromFile("data/matrices/hms/forward_cosy.dat")) {
+    if (!matrix.LoadFromFile("../data/matrices/hms/forward_cosy.dat")) {
         std::cout << "✗ Cannot load matrix - skipping test" << std::endl;
         return;
     }

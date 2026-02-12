@@ -106,20 +106,20 @@ int main(int argc, char** argv) {
     } else {
         // Test a representative sample
         std::cout << "\n--- HMS Matrices ---" << std::endl;
-        TestFile("data/matrices/hms/forward_cosy.dat");
-        TestFile("data/matrices/hms/recon_cosy.dat");
+        TestFile("../data/matrices/hms/forward_cosy.dat");
+        TestFile("../data/matrices/hms/recon_cosy.dat");
         
         std::cout << "\n--- HRS Left Matrices ---" << std::endl;
-        TestFile("data/matrices/hrsl/hrs_forward_cosy.dat");
-        TestFile("data/matrices/hrsl/hrs_recon_cosy.dat");
+        TestFile("../data/matrices/hrsl/hrs_forward_cosy.dat");
+        TestFile("../data/matrices/hrsl/hrs_recon_cosy.dat");
         
         std::cout << "\n--- SHMS Matrices ---" << std::endl;
-        TestFile("data/matrices/shms/shms_forward.dat");
-        TestFile("data/matrices/shms/shms_recon.dat");
+        TestFile("../data/matrices/shms/shms_forward.dat");
+        TestFile("../data/matrices/shms/shms_recon.dat");
         
         std::cout << "\n--- SOS Matrices ---" << std::endl;
-        TestFile("data/matrices/sos/forward_cosy.dat");
-        TestFile("data/matrices/sos/recon_cosy.dat");
+        TestFile("../data/matrices/sos/forward_cosy.dat");
+        TestFile("../data/matrices/sos/recon_cosy.dat");
     }
     
     std::cout << "\n========================================" << std::endl;

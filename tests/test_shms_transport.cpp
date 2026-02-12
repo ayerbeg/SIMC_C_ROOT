@@ -14,8 +14,8 @@ int main() {
     // Load matrix files
     std::cout << "Loading matrix files..." << std::endl;
     bool loaded = shms.LoadMatrices(
-        "shms-2017-26cm-monte_q1_1018_q2_1027_q3_1018_forward.dat",
-        "shms-2017-26cm-monte_q1_1018_q2_1027_q3_1018_recon_fit.dat"
+        "../data/matrices/shms/shms-2017-26cm-monte_q1_1018_q2_1027_q3_1018_forward.dat",
+        "../data/matrices/shms/shms-2017-26cm-monte_q1_1018_q2_1027_q3_1018_recon_fit.dat"
     );
     
     if (!loaded) {

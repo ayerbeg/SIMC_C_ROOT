@@ -368,7 +368,7 @@ void TestSpectrometerOptics() {
         
         // Try to load a real matrix file
         CosyMatrix matrix;
-        bool loaded = matrix.LoadFromFile("data/matrices/hms/forward_cosy.dat");
+        bool loaded = matrix.LoadFromFile("../data/matrices/hms/forward_cosy.dat");
         
         if (loaded) {
             std::cout << "(File loaded) ";

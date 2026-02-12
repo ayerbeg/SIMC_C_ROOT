@@ -1,5 +1,5 @@
-// src/main.cpp - Phase 5c.2 IN PROGRESS
-// Integrating SHMS spectrometer transport
+// src/main.cpp - Phase 5c.2 DEBUG VERSION
+// Shows exactly what's failing
 
 #include "simc/core/SimcEvent.h"
 #include "simc/core/ConfigManager.h"
@@ -12,6 +12,7 @@
 #include "simc/core/SimcConstants.h"
 
 #include <iostream>
+#include <iomanip>
 #include <memory>
 #include <cmath>
 
@@ -22,7 +23,7 @@ int main(int argc, char** argv) {
     std::cout << "\n";
     std::cout << "==========================================\n";
     std::cout << "   SIMC C++/ROOT Monte Carlo - Phase 5c.2\n";
-    std::cout << "   SHMS Spectrometer Transport            \n";
+    std::cout << "   SHMS Transport - DEBUG VERSION    \n";
     std::cout << "==========================================\n";
     std::cout << "\n";
     
@@ -51,7 +52,7 @@ int main(int argc, char** argv) {
         // Initialize random generator
         auto rng = std::make_shared<RandomGenerator>(seed);
         
-        // Initialize cross section - use ElasticCrossSection (concrete class)
+        // Initialize cross section
         auto cross_section = std::make_shared<ElasticCrossSection>();
         
         // ====================================================================
@@ -61,20 +62,16 @@ int main(int argc, char** argv) {
         
         SHMS shms;
         
-        // Load matrix files (using Fortran-style symlink names)
         std::cout << "  Loading matrix files..." << std::endl;
-	if (!shms.LoadMatrices("../data/matrices/shms/shms_forward.dat", "../data/matrices/shms/shms_recon.dat")) {
-            throw std::runtime_error("Failed to load SHMS matrix files. "
-                                   "Run: cd data/shms && ls -l shms_*.dat");
+        if (!shms.LoadMatrices("data/matrices/shms/shms_forward.dat", 
+                                "data/matrices/shms/shms_recon.dat")) {
+            throw std::runtime_error("Failed to load SHMS matrix files.");
         }
         std::cout << "  Matrix files loaded successfully" << std::endl;
-        
-        // Get initial statistics (all zeros)
-        auto initial_stats = shms.GetStats();
         std::cout << "SHMS initialized." << std::endl;
         std::cout << "\n";
         
-        // Spectrometer optics (Phase 5c.1 style) - kept for compatibility
+        // Spectrometer optics
         std::shared_ptr<SpectrometerOptics> optics = nullptr;
         
         // Initialize event generator
@@ -100,22 +97,18 @@ int main(int argc, char** argv) {
         int ngenerated = 0;
         int ncontribute = 0;
         
-        // Initialize MC transport (Phase 5c.1 - core transport)
         MonteCarloTransport transport(config, rng);
-        
         generator.ResetStatistics();
         
         while (ngenerated < nevents) {
             ++ntried;
             
-            // Progress indicator
             if (ntried % 1000 == 1) {
                 std::cout << "  Event " << ntried 
                           << " (" << ngenerated << " generated, "
                           << ncontribute << " accepted)" << std::endl;
             }
             
-            // Generate event
             SimcEvent event;
             MainEvent main;
             
@@ -126,88 +119,116 @@ int main(int argc, char** argv) {
             main.success = false;
             
             // ================================================================
-            // PHASE 5b: Generate physics event
+            // Generate physics event
             // ================================================================
             bool success = generator.GenerateEvent(event, main);
             if (!success) {
                 continue;
             }
             
-            // Calculate cross section
             main.sigcc = cross_section->Calculate(event);
-            
-            // Total weight
             main.weight = main.gen_weight * main.jacobian * main.sigcc;
             
-            // Count as generated
             ++ngenerated;
             main.success = true;
             
-            // Fill GENERATED quantities
             output.FillGenerated(event);
-            output.FillHistograms(event, main.weight, true);  // generated=true
+            output.FillHistograms(event, main.weight, true);
             
             // ================================================================
-            // PHASE 5c.1: Core Monte Carlo Transport
-            // - Apply multiple scattering (beam, electron, hadron)
-            // - Apply energy loss corrections
-            // - Calculate spectrometer angles
+            // KEY FIX: Calculate hadron angles from physics BEFORE transport
+            // ================================================================
+            transport.CalculateReconstructed(event);
+            
+            // ================================================================
+            // Core Monte Carlo Transport
             // ================================================================
             bool passes_core_transport = transport.Transport(event, main);
             
+            // ================================================================
+            // DEBUG: Print details for first 10 events BEFORE checking pass/fail
+            // ================================================================
+            if (ngenerated <= 10) {
+                std::cout << "\nEvent " << ngenerated << " details:" << std::endl;
+                std::cout << "  Physics angles:" << std::endl;
+                std::cout << "    p_theta = " << (event.p_theta * 180.0 / M_PI) << " deg" << std::endl;
+                std::cout << "    p_phi   = " << (event.p_phi * 180.0 / M_PI) << " deg" << std::endl;
+                std::cout << "  Event xptar/yptar (from physics):" << std::endl;
+                std::cout << "    p_xptar = " << (event.p_xptar * 1000.0) << " mrad" << std::endl;
+                std::cout << "    p_yptar = " << (event.p_yptar * 1000.0) << " mrad" << std::endl;
+                std::cout << "  After transport (with MS):" << std::endl;
+                std::cout << "    SP_hadron.xptar = " << (main.SP_hadron.xptar * 1000.0) << " mrad" << std::endl;
+                std::cout << "    SP_hadron.yptar = " << (main.SP_hadron.yptar * 1000.0) << " mrad" << std::endl;
+                std::cout << "    SP_hadron.delta = " << main.SP_hadron.delta << " %" << std::endl;
+                std::cout << "    SP_electron.xptar = " << (main.SP_electron.xptar * 1000.0) << " mrad" << std::endl;
+                std::cout << "    SP_electron.yptar = " << (main.SP_electron.yptar * 1000.0) << " mrad" << std::endl;
+                std::cout << "    SP_electron.delta = " << main.SP_electron.delta << " %" << std::endl;
+                std::cout << "  Core transport: " << (passes_core_transport ? "PASS" : "FAIL") << std::endl;
+                
+                if (!passes_core_transport) {
+                    std::cout << "  REJECTION REASONS:" << std::endl;
+                    if (main.SP_hadron.delta < -10.0 || main.SP_hadron.delta > 22.0) {
+                        std::cout << "    - Hadron delta out of [-10, 22]%" << std::endl;
+                    }
+                    if (main.SP_hadron.xptar < -0.06 || main.SP_hadron.xptar > 0.06) {
+                        std::cout << "    - Hadron xptar out of ±60 mrad" << std::endl;
+                    }
+                    if (main.SP_hadron.yptar < -0.03 || main.SP_hadron.yptar > 0.03) {
+                        std::cout << "    - Hadron yptar out of ±30 mrad" << std::endl;
+                    }
+                    if (main.SP_electron.delta < -10.0 || main.SP_electron.delta > 22.0) {
+                        std::cout << "    - Electron delta out of [-10, 22]%" << std::endl;
+                    }
+                    if (main.SP_electron.xptar < -0.06 || main.SP_electron.xptar > 0.06) {
+                        std::cout << "    - Electron xptar out of ±60 mrad" << std::endl;
+                    }
+                    if (main.SP_electron.yptar < -0.03 || main.SP_electron.yptar > 0.03) {
+                        std::cout << "    - Electron yptar out of ±30 mrad" << std::endl;
+                    }
+                }
+            }
+            
             if (!passes_core_transport) {
-                // Event failed core transport (beam/target effects)
                 continue;
             }
             
             // ================================================================
-            // PHASE 5c.2: SHMS Spectrometer Transport
-            // - Full aperture checking (32 apertures)
-            // - Matrix element transport
-            // - Focal plane calculations
+            // SHMS Spectrometer Transport
             // ================================================================
             
-            // Create track state from spectrometer coordinates
             SHMS::TrackState track;
-            track.x = 0.0;  // Start at target center
+            track.x = 0.0;
             track.y = 0.0;
-            track.dx = main.SP_hadron.xptar;  // Spectrometer angles (rad)
+            track.dx = main.SP_hadron.xptar;
             track.dy = main.SP_hadron.yptar;
-            track.delta = main.SP_hadron.delta;  // Momentum percent
+            track.delta = main.SP_hadron.delta;
             track.z = 0.0;
             track.pathlen = 0.0;
+            track.p = event.p_P / 1000.0;  // MeV/c → GeV/c
+            track.m2 = 0.938272 * 0.938272;  // Proton mass^2
             
-            // Transport through SHMS
+            if (ngenerated <= 10) {
+                std::cout << "  SHMS input: dx=" << (track.dx*1000.0) << " mrad, "
+                          << "dy=" << (track.dy*1000.0) << " mrad, "
+                          << "delta=" << track.delta << "%, "
+                          << "p=" << track.p << " GeV" << std::endl;
+            }
+            
             bool accepted_by_shms = shms.Transport(track);
             
+            if (ngenerated <= 10) {
+                std::cout << "  SHMS result: " << (accepted_by_shms ? "ACCEPT" : "REJECT") << std::endl;
+            }
+            
             if (accepted_by_shms) {
-                // ============================================================
-                // PHASE 5c.2: Store focal plane coordinates
-                // ============================================================
-                // TODO: Add focal plane variables to SimcEvent
-                // For now, just count as accepted
-                
-                // ============================================================
-                // PHASE 5c.1: Calculate Reconstructed Quantities
-                // For H(e,e'p) elastic, calculate p_xptar, p_yptar
-                // that were set to 0.0 in EventGenerator
-                // ============================================================
-                transport.CalculateReconstructed(event);
-                
-                // ============================================================
-                // Copy spectrometer quantities back to event for storage
-                // These include energy loss corrections and multiple scattering
-                // ============================================================
                 event.e_delta = main.SP_electron.delta;
                 event.e_xptar = main.SP_electron.xptar;
                 event.e_yptar = main.SP_electron.yptar;
                 event.p_delta = main.SP_hadron.delta;
-                // p_xptar and p_yptar already set by CalculateReconstructed()
                 
-                // Fill event tree and reconstructed histograms
                 ++ncontribute;
                 output.FillEvent(event, main);
-                output.FillHistograms(event, main.weight, false);  // reconstructed
+                output.FillHistograms(event, main.weight, false);
             }
             
             output.IncrementTried();
@@ -222,20 +243,18 @@ int main(int argc, char** argv) {
         std::cout << "\nFinalizing output..." << std::endl;
         output.Finalize();
         
-        // Get final SHMS statistics
         auto final_stats = shms.GetStats();
         
-        // Print summary
         double generation_eff = 100.0 * ngenerated / static_cast<double>(ntried);
         double acceptance = 100.0 * ncontribute / static_cast<double>(ngenerated);
         
         std::cout << "\n==========================================\n";
-        std::cout << "Phase 5c.2 Session 1 Complete!\n";
+        std::cout << "Phase 5c.2 Debug Complete!\n";
         std::cout << "--------------------------------------------\n";
         std::cout << "Event Statistics:\n";
         std::cout << "  Events tried:       " << ntried << "\n";
         std::cout << "  Events generated:   " << ngenerated 
-                  << " (" << generation_eff << "%)\n";
+                  << " (" << std::fixed << std::setprecision(1) << generation_eff << "%)\n";
         std::cout << "  Events accepted:    " << ncontribute 
                   << " (" << acceptance << "%)\n";
         std::cout << "--------------------------------------------\n";
@@ -243,7 +262,6 @@ int main(int argc, char** argv) {
         std::cout << "  Total transported:  " << final_stats.total_events << "\n";
         std::cout << "  Accepted:           " << final_stats.accepted << "\n";
         
-        // Show rejection breakdown
         int total_rejected = final_stats.total_events - final_stats.accepted;
         if (total_rejected > 0) {
             std::cout << "  Rejected:           " << total_rejected << "\n";
@@ -266,25 +284,6 @@ int main(int argc, char** argv) {
         }
         
         std::cout << "==========================================\n";
-        std::cout << "\n";
-        
-        std::cout << "Output written to: " << output_filename << "\n";
-        std::cout << "\nPhase 5c.2 Session 1 Implemented:\n";
-        std::cout << "  ✓ SHMS class with 32 aperture checks\n";
-        std::cout << "  ✓ Matrix element transport (forward)\n";
-        std::cout << "  ✓ Holding Box (4 tilted apertures)\n";
-        std::cout << "  ✓ Quadrupoles Q1, Q2, Q3 (15 apertures)\n";
-        std::cout << "  ✓ Dipole D1 (12 tilted apertures)\n";
-        std::cout << "  ✓ Hut transport to focal plane\n";
-        std::cout << "  ✓ Detailed rejection statistics\n";
-        std::cout << "\nPhase 5c.1 Features (Still Active):\n";
-        std::cout << "  ✓ Multiple scattering (beam, e, p)\n";
-        std::cout << "  ✓ Energy loss corrections\n";
-        std::cout << "  ✓ Hadron spectrometer angles (elastic)\n";
-        std::cout << "\nNext Steps:\n";
-        std::cout << "  - Session 2: Implement Reconstruct() (inverse transport)\n";
-        std::cout << "  - Session 3: Add focal plane variables to SimcEvent\n";
-        std::cout << "  - Session 4: Validate against Fortran SIMC output\n";
         std::cout << "\n";
         
     } catch (const std::exception& e) {

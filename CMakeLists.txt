@@ -41,29 +41,37 @@ add_custom_target(copy_data_files ALL
     COMMENT "Copying data files to build directory"
 )
 
-# Copy COSY matrices
+# Copy all data files
 add_custom_command(TARGET copy_data_files POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_SOURCE_DIR}/data/matrices
-        ${CMAKE_BINARY_DIR}/data/matrices
-    COMMENT "Copying COSY matrix files"
+        ${CMAKE_SOURCE_DIR}/data
+        ${CMAKE_BINARY_DIR}/data
+    COMMENT "Copying data files to build directory"
 )
+
+# Copy COSY matrices
+#add_custom_command(TARGET copy_data_files POST_BUILD
+#    COMMAND ${CMAKE_COMMAND} -E copy_directory
+#        ${CMAKE_SOURCE_DIR}/data/matrices
+#        ${CMAKE_BINARY_DIR}/data/matrices
+#    COMMENT "Copying COSY matrix files"
+#)
 
 # Copy configuration files
-add_custom_command(TARGET copy_data_files POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_SOURCE_DIR}/data/config
-        ${CMAKE_BINARY_DIR}/data/config
-    COMMENT "Copying configuration files"
-)
+#add_custom_command(TARGET copy_data_files POST_BUILD
+#    COMMAND ${CMAKE_COMMAND} -E copy_directory
+#        ${CMAKE_SOURCE_DIR}/data/config
+#        ${CMAKE_BINARY_DIR}/data/config
+#    COMMENT "Copying configuration files"
+#)
 
 # Copy physics tables
-add_custom_command(TARGET copy_data_files POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_SOURCE_DIR}/data/tables
-        ${CMAKE_BINARY_DIR}/data/tables
-    COMMENT "Copying physics tables"
-)
+#add_custom_command(TARGET copy_data_files POST_BUILD
+#    COMMAND ${CMAKE_COMMAND} -E copy_directory
+#        ${CMAKE_SOURCE_DIR}/data/tables
+#        ${CMAKE_BINARY_DIR}/data/tables
+#    COMMENT "Copying physics tables"
+#)
 
 # ============================================================================
 # Find ROOT
@@ -102,6 +110,10 @@ include_directories(${ROOT_INCLUDE_DIRS})
 # ============================================================================
 
 add_subdirectory(src)
+
+set_target_properties(simc PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+)
 
 # ============================================================================
 # Tests (optional)
