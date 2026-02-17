@@ -1,8 +1,8 @@
 // include/simc/spectrometers/HRSl.h
 // Hall A Left HRS Spectrometer - Phase 5c.6
 
-#ifndef SIMC_HRSR_H
-#define SIMC_HRSR_H
+#ifndef SIMC_HRSL_H
+#define SIMC_HRSL_H
 
 #include <array>
 #include <vector>
@@ -172,4 +172,4 @@ private:
 
 } // namespace simc
 
-#endif // SIMC_HRSR_H
+#endif // SIMC_HRSL_H
