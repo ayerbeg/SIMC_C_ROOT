@@ -51,6 +51,27 @@ target_link_libraries(test_event_generator
 add_executable(test_event_generator_diagnostic test_event_generator_diagnostic.cpp)
 target_link_libraries(test_event_generator_diagnostic simc_core)
 
+add_executable(test_sos_transport test_sos_transport.cpp)
+target_link_libraries(test_sos_transport
+    simc_core
+    ${ROOT_LIBRARIES}
+)
+
+add_executable(test_hrsr_transport test_hrsr_transport.cpp)
+target_link_libraries(test_hrsr_transport
+    simc_core
+    ${ROOT_LIBRARIES}
+)
+
+add_executable(test_hrsl_transport test_hrsl_transport.cpp)
+target_link_libraries(test_hrsl_transport
+    simc_core
+    ${ROOT_LIBRARIES}
+)
+
+
+
+
 # Add as separate test
 add_test(NAME EventGeneratorTests COMMAND test_event_generator)
 
