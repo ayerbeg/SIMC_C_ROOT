@@ -156,7 +156,9 @@ void MonteCarloTransport::CalculateReconstructed(SimcEvent& event) {
 
 void MonteCarloTransport::ApplyBeamMultipleScattering(
     double energy, double beta, double teff, double dang_out[2]) {
-    
+
+    double energy_MeV = energy * 1000.0;  // GeV → MeV
+  
     // From target.f target_musc(), lines ~650-680
     // Uses Lynch & Dahl formula, NIM B58 (1991) 6-10
     
@@ -164,10 +166,10 @@ void MonteCarloTransport::ApplyBeamMultipleScattering(
     constexpr double epsilon = 0.088;  // Lynch & Dahl correction
     constexpr double nsig_max = 3.5;   // Maximum number of sigmas
     
-    if (energy < 25.0) {
-        std::cerr << "Warning: Energy passed to ApplyBeamMultipleScattering "
-                  << "should be in MeV, but E = " << energy << std::endl;
-    }
+    // if (energy < 25.0) {
+    //     std::cerr << "Warning: Energy passed to ApplyBeamMultipleScattering "
+    //               << "should be in MeV, but E = " << energy << std::endl;
+    // }
     
     if (teff <= 0.0) {
         dang_out[0] = 0.0;
@@ -177,7 +179,7 @@ void MonteCarloTransport::ApplyBeamMultipleScattering(
     
     // RMS scattering angle (rad)
     // Lynch & Dahl form (better for beta != 1)
-    double theta_sigma = (Es / energy / beta) * std::sqrt(teff) * 
+    double theta_sigma = (Es / energy_MeV / beta) * std::sqrt(teff) * 
                         (1.0 + epsilon * std::log10(teff / (beta * beta)));
     
     // Generate two Gaussian random numbers (limited to nsig_max)
@@ -200,7 +202,9 @@ void MonteCarloTransport::ApplyBeamMultipleScattering(
 
 void MonteCarloTransport::ApplyMultipleScattering(
     double p, double beta, double teff, double dang_out[2]) {
-    
+
+  double p_MeV = p * 1000.0;  // GeV → MeV
+  
     // From target.f target_musc(), lines ~680-710
     // Uses same Lynch & Dahl formula as beam MS
     
@@ -215,7 +219,7 @@ void MonteCarloTransport::ApplyMultipleScattering(
     }
     
     // RMS scattering angle (rad)
-    double theta_sigma = (Es / p / beta) * std::sqrt(teff) * 
+    double theta_sigma = (Es / p_MeV / beta) * std::sqrt(teff) * 
                         (1.0 + epsilon * std::log10(teff / (beta * beta)));
     
     auto truncated_gaussian = [this](double nsig_max) -> double {

@@ -111,6 +111,21 @@ include_directories(${ROOT_INCLUDE_DIRS})
 
 add_subdirectory(src)
 
+# ============================================================================
+# Phase 5d: Link all spectrometer sources
+# ============================================================================
+
+message(STATUS "Linking Phase 5d spectrometer sources...")
+
+target_sources(simc PRIVATE
+    # Phase 5d: All 5 spectrometers
+    src/spectrometers/SHMS.cpp
+    src/spectrometers/HMS.cpp
+    src/spectrometers/SOS.cpp
+    src/spectrometers/HRSr.cpp
+    src/spectrometers/HRSl.cpp
+)
+
 set_target_properties(simc PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
