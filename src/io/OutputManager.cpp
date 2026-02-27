@@ -122,6 +122,23 @@ void OutputManager::SetupEventTree() {
     
     // Flags
     tree_event_->Branch("success", &main_.success);
+    
+    // ========================================================================
+    // PHASE 5e: Focal Plane Coordinates
+    // ========================================================================
+    // Electron focal plane
+    tree_event_->Branch("FP_e_x", &main_.FP_electron.x);
+    tree_event_->Branch("FP_e_y", &main_.FP_electron.y);
+    tree_event_->Branch("FP_e_dx", &main_.FP_electron.dx);
+    tree_event_->Branch("FP_e_dy", &main_.FP_electron.dy);
+    tree_event_->Branch("FP_e_path", &main_.FP_electron.path);
+    
+    // Hadron focal plane
+    tree_event_->Branch("FP_p_x", &main_.FP_hadron.x);
+    tree_event_->Branch("FP_p_y", &main_.FP_hadron.y);
+    tree_event_->Branch("FP_p_dx", &main_.FP_hadron.dx);
+    tree_event_->Branch("FP_p_dy", &main_.FP_hadron.dy);
+    tree_event_->Branch("FP_p_path", &main_.FP_hadron.path);
 }
 
 void OutputManager::SetupGeneratedTree() {

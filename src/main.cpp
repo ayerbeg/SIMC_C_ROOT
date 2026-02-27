@@ -1,6 +1,6 @@
-// src/main.cpp - Phase 5d: Full Spectrometer Integration
-// Integrates all 5 spectrometers (HMS, SOS, SHMS, HRSr, HRSl)
-// Based on Fortran simc.f montecarlo() subroutine
+// src/main.cpp - Phase 5e: Focal Plane Integration
+// COMPLETE MODIFIED VERSION - Week 1, Days 2-5
+// Adds focal plane coordinate extraction after spectrometer transport
 
 #include "simc/core/SimcEvent.h"
 #include "simc/core/ConfigManager.h"
@@ -30,7 +30,7 @@ using namespace simc::constants;
 
 
 // ============================================================================
-// Spectrometer Transport Wrapper
+// Spectrometer Transport Wrapper - PHASE 5e MODIFIED
 // ============================================================================
 struct SpectrometerTransport {
     int electron_arm_id{5};  // Default: SHMS (id=5)
@@ -93,6 +93,151 @@ struct SpectrometerTransport {
         return TransportParticle(event, main, hadron_arm_id, false);
     }
     
+    // ========================================================================
+    // PHASE 5e: Focal Plane Extraction Methods
+    // ========================================================================
+    
+    /**
+     * @brief Extract electron focal plane coordinates after successful transport
+     * @param main MainEvent structure to fill with focal plane data
+     * 
+     * Converts spectrometer-specific focal plane states to global FocalPlaneState:
+     * - HMS/SHMS: xp,yp in mrad → convert to dx,dy slopes (*1/1000)
+     * - SOS/HRS: dx,dy already slopes → copy directly
+     */
+    void ExtractElectronFocalPlane(MainEvent& main) {
+        switch (electron_arm_id) {
+            case 1:  // HMS
+                if (hms) {
+                    HMS::FocalPlaneState fp;
+                    hms->GetFocalPlane(last_hms_track_, fp);
+                    main.FP_electron.x = fp.x;
+                    main.FP_electron.y = fp.y;
+                    main.FP_electron.dx = fp.xp / 1000.0;  // mrad → slope
+                    main.FP_electron.dy = fp.yp / 1000.0;  // mrad → slope
+                    main.FP_electron.path = last_hms_track_.pathlen;
+                }
+                break;
+            
+            case 2:  // SOS
+                if (sos) {
+                    SOS::FocalPlaneState fp;
+                    sos->GetFocalPlane(last_sos_track_, fp);
+                    main.FP_electron.x = fp.x;
+                    main.FP_electron.y = fp.y;
+                    main.FP_electron.dx = fp.dx;  // already slope
+                    main.FP_electron.dy = fp.dy;  // already slope
+                    main.FP_electron.path = last_sos_track_.pathlen;
+                }
+                break;
+            
+            case 5:  // SHMS
+            case 6:  // SHMS_P5
+                if (shms) {
+                    SHMS::FocalPlaneState fp;
+                    shms->GetFocalPlane(last_shms_track_, fp);
+                    main.FP_electron.x = fp.x;
+                    main.FP_electron.y = fp.y;
+                    main.FP_electron.dx = fp.xp / 1000.0;  // mrad → slope
+                    main.FP_electron.dy = fp.yp / 1000.0;  // mrad → slope
+                    main.FP_electron.path = last_shms_track_.pathlen;
+                }
+                break;
+            
+            case 3:  // HRSr
+                if (hrsr) {
+                    HRSr::FocalPlaneState fp;
+                    hrsr->GetFocalPlane(last_hrsr_track_, fp);
+                    main.FP_electron.x = fp.x;
+                    main.FP_electron.y = fp.y;
+                    main.FP_electron.dx = fp.dx;
+                    main.FP_electron.dy = fp.dy;
+                    main.FP_electron.path = last_hrsr_track_.pathlen;
+                }
+                break;
+            
+            case 4:  // HRSl
+                if (hrsl) {
+                    HRSl::FocalPlaneState fp;
+                    hrsl->GetFocalPlane(last_hrsl_track_, fp);
+                    main.FP_electron.x = fp.x;
+                    main.FP_electron.y = fp.y;
+                    main.FP_electron.dx = fp.dx;
+                    main.FP_electron.dy = fp.dy;
+                    main.FP_electron.path = last_hrsl_track_.pathlen;
+                }
+                break;
+        }
+    }
+    
+    /**
+     * @brief Extract hadron focal plane coordinates after successful transport
+     */
+    void ExtractHadronFocalPlane(MainEvent& main) {
+        switch (hadron_arm_id) {
+            case 1:  // HMS
+                if (hms) {
+                    HMS::FocalPlaneState fp;
+                    hms->GetFocalPlane(last_hms_track_, fp);
+                    main.FP_hadron.x = fp.x;
+                    main.FP_hadron.y = fp.y;
+                    main.FP_hadron.dx = fp.xp / 1000.0;
+                    main.FP_hadron.dy = fp.yp / 1000.0;
+                    main.FP_hadron.path = last_hms_track_.pathlen;
+                }
+                break;
+            
+            case 2:  // SOS
+                if (sos) {
+                    SOS::FocalPlaneState fp;
+                    sos->GetFocalPlane(last_sos_track_, fp);
+                    main.FP_hadron.x = fp.x;
+                    main.FP_hadron.y = fp.y;
+                    main.FP_hadron.dx = fp.dx;
+                    main.FP_hadron.dy = fp.dy;
+                    main.FP_hadron.path = last_sos_track_.pathlen;
+                }
+                break;
+            
+            case 5:  // SHMS
+            case 6:  // SHMS_P5
+                if (shms) {
+                    SHMS::FocalPlaneState fp;
+                    shms->GetFocalPlane(last_shms_track_, fp);
+                    main.FP_hadron.x = fp.x;
+                    main.FP_hadron.y = fp.y;
+                    main.FP_hadron.dx = fp.xp / 1000.0;
+                    main.FP_hadron.dy = fp.yp / 1000.0;
+                    main.FP_hadron.path = last_shms_track_.pathlen;
+                }
+                break;
+            
+            case 3:  // HRSr
+                if (hrsr) {
+                    HRSr::FocalPlaneState fp;
+                    hrsr->GetFocalPlane(last_hrsr_track_, fp);
+                    main.FP_hadron.x = fp.x;
+                    main.FP_hadron.y = fp.y;
+                    main.FP_hadron.dx = fp.dx;
+                    main.FP_hadron.dy = fp.dy;
+                    main.FP_hadron.path = last_hrsr_track_.pathlen;
+                }
+                break;
+            
+            case 4:  // HRSl
+                if (hrsl) {
+                    HRSl::FocalPlaneState fp;
+                    hrsl->GetFocalPlane(last_hrsl_track_, fp);
+                    main.FP_hadron.x = fp.x;
+                    main.FP_hadron.y = fp.y;
+                    main.FP_hadron.dx = fp.dx;
+                    main.FP_hadron.dy = fp.dy;
+                    main.FP_hadron.path = last_hrsl_track_.pathlen;
+                }
+                break;
+        }
+    }
+    
     // Print statistics for all active spectrometers
     void PrintStatistics(std::ostream& os) const {
         os << "\n==========================================\n";
@@ -107,6 +252,15 @@ struct SpectrometerTransport {
     }
     
 private:
+    // ========================================================================
+    // PHASE 5e: Track storage for focal plane extraction
+    // ========================================================================
+    HMS::TrackState last_hms_track_;
+    SOS::TrackState last_sos_track_;
+    SHMS::TrackState last_shms_track_;
+    HRSr::TrackState last_hrsr_track_;
+    HRSl::TrackState last_hrsl_track_;
+    
     bool NeedsSpec(int spec_id) const {
         return electron_arm_id == spec_id || hadron_arm_id == spec_id;
     }
@@ -177,6 +331,10 @@ private:
         }
     }
     
+    // ========================================================================
+    // PHASE 5e MODIFIED: Save track after successful transport
+    // ========================================================================
+    
     bool TransportHMS(const SimcEvent& event, const ArmState& SP) {
         HMS::TrackState track;
         track.x = 0.0;      // At target
@@ -188,7 +346,11 @@ private:
         track.p = event.p_P / 1000.0;  // MeV/c → GeV/c
         track.m2 = 0.938272 * 0.938272;  // Proton mass² (GeV²)
         
-        return hms->Transport(track);
+        bool success = hms->Transport(track);
+        if (success) {
+            last_hms_track_ = track;  // Phase 5e: Save for focal plane extraction
+        }
+        return success;
     }
     
     bool TransportSOS(const SimcEvent& event, const ArmState& SP) {
@@ -202,7 +364,11 @@ private:
         track.p = event.p_P / 1000.0;  // MeV/c → GeV/c
         track.m2 = 0.938272 * 0.938272;
         
-        return sos->Transport(track);
+        bool success = sos->Transport(track);
+        if (success) {
+            last_sos_track_ = track;  // Phase 5e
+        }
+        return success;
     }
     
     bool TransportSHMS(const SimcEvent& event, const ArmState& SP) {
@@ -216,7 +382,11 @@ private:
         track.p = event.p_P / 1000.0;  // MeV/c → GeV/c
         track.m2 = 0.938272 * 0.938272;
         
-        return shms->Transport(track);
+        bool success = shms->Transport(track);
+        if (success) {
+            last_shms_track_ = track;  // Phase 5e
+        }
+        return success;
     }
     
     bool TransportHRSr(const SimcEvent& event, const ArmState& SP) {
@@ -230,7 +400,11 @@ private:
         track.p = event.p_P / 1000.0;  // MeV/c → GeV/c
         track.m2 = 0.938272 * 0.938272;
         
-        return hrsr->Transport(track);
+        bool success = hrsr->Transport(track);
+        if (success) {
+            last_hrsr_track_ = track;  // Phase 5e
+        }
+        return success;
     }
     
     bool TransportHRSl(const SimcEvent& event, const ArmState& SP) {
@@ -244,7 +418,11 @@ private:
         track.p = event.p_P / 1000.0;  // MeV/c → GeV/c
         track.m2 = 0.938272 * 0.938272;
         
-        return hrsl->Transport(track);
+        bool success = hrsl->Transport(track);
+        if (success) {
+            last_hrsl_track_ = track;  // Phase 5e
+        }
+        return success;
     }
     
     void PrintHMSStats(std::ostream& os) const {
@@ -313,14 +491,15 @@ private:
     }
 };
 
+
 // ============================================================================
 // Main Program
 // ============================================================================
 int main(int argc, char** argv) {
     std::cout << "\n";
     std::cout << "==========================================\n";
-    std::cout << "   SIMC C++/ROOT Monte Carlo - Phase 5d\n";
-    std::cout << "   Full Spectrometer Integration        \n";
+    std::cout << "   SIMC C++/ROOT Monte Carlo - Phase 5e\n";
+    std::cout << "   Focal Plane Integration              \n";
     std::cout << "==========================================\n";
     std::cout << "\n";
     
@@ -426,21 +605,8 @@ int main(int argc, char** argv) {
             // ================================================================
             // 2. Calculate hadron spectrometer angles from physics
             // ================================================================
-
-if (ngenerated <= 3) {
-    std::cout << "\nBEFORE CalculateReconstructed:" << std::endl;
-    std::cout << "  event.e_P = " << event.e_P << " MeV" << std::endl;
-    std::cout << "  event.e_delta = " << event.e_delta << " %" << std::endl;
-}
-
-	    transport.CalculateReconstructed(event);
-
-if (ngenerated <= 3) {
-    std::cout << "AFTER CalculateReconstructed:" << std::endl;
-    std::cout << "  event.e_P = " << event.e_P << " MeV" << std::endl;
-    std::cout << "  event.e_delta = " << event.e_delta << " %" << std::endl;
-}
-	    
+            transport.CalculateReconstructed(event);
+            
             // ================================================================
             // 3. Core Monte Carlo Transport (energy loss, multiple scattering)
             // ================================================================
@@ -455,9 +621,19 @@ if (ngenerated <= 3) {
             bool electron_ok = spectrometers.TransportElectron(event, main);
             if (!electron_ok) continue;
             
+            // ================================================================
+            // PHASE 5e: Extract electron focal plane coordinates
+            // ================================================================
+            spectrometers.ExtractElectronFocalPlane(main);
+            
             // Transport hadron
             bool hadron_ok = spectrometers.TransportHadron(event, main);
             if (!hadron_ok) continue;
+            
+            // ================================================================
+            // PHASE 5e: Extract hadron focal plane coordinates
+            // ================================================================
+            spectrometers.ExtractHadronFocalPlane(main);
             
             // ================================================================
             // 5. Event passed all cuts - fill accepted distributions
@@ -494,7 +670,7 @@ if (ngenerated <= 3) {
         double acceptance = 100.0 * ncontribute / static_cast<double>(ngenerated);
         
         std::cout << "\n==========================================\n";
-        std::cout << "Phase 5d Integration Complete!\n";
+        std::cout << "Phase 5e Integration Complete!\n";
         std::cout << "--------------------------------------------\n";
         std::cout << "Event Statistics:\n";
         std::cout << "  Events tried:       " << ntried << "\n";
@@ -509,6 +685,7 @@ if (ngenerated <= 3) {
         
         std::cout << "==========================================\n";
         std::cout << "Output written to: " << output_filename << "\n";
+        std::cout << "Focal plane data saved in FP_e_* and FP_p_* branches\n";
         std::cout << "==========================================\n";
         std::cout << "\n";
         
