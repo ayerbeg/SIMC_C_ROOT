@@ -1,4 +1,5 @@
-// src/transport/MonteCarloTransport.cpp
+// src/transport/MonteCarloTransport.cpp - Phase 5e
+// MODIFIED: 2026-02-22 - Fixed GeV→MeV unit conversion bug
 // Phase 5c.1: Monte Carlo Transport Implementation
 // Phase 5c.2: CheckAcceptance DISABLED - let spectrometer do acceptance
 // Ported from simc.f montecarlo() and target.f target_musc()
@@ -13,7 +14,7 @@ namespace simc {
 using namespace constants;
 
 // ============================================================================
-// Constructor
+// Constructor - PHASE 5e: Added GeV→MeV conversions
 // ============================================================================
 
 MonteCarloTransport::MonteCarloTransport(
@@ -25,8 +26,12 @@ MonteCarloTransport::MonteCarloTransport(
     config_.use_energy_loss = config.Get<bool>("generation.use_energy_loss", true);
     config_.use_multiple_scattering = config.Get<bool>("transport.use_multiple_scattering", true);
     
-    // Electron spectrometer
-    config_.electron.P = config.Get<double>("spectrometer_electron.momentum");
+    // ========================================================================
+    // PHASE 5e FIX: Convert config values (GeV) to internal units (MeV)
+    // ========================================================================
+    
+    // Electron spectrometer - Convert GeV → MeV
+    config_.electron.P = config.Get<double>("spectrometer_electron.momentum") * constants::GEV_TO_MEV;
     config_.electron.theta = config.Get<double>("spectrometer_electron.angle") * constants::DEG_TO_RAD;
     config_.electron.phi = config.Get<double>("spectrometer_electron.phi", 0.0) * constants::DEG_TO_RAD;
     config_.electron.cos_th = std::cos(config_.electron.theta);
@@ -39,8 +44,8 @@ MonteCarloTransport::MonteCarloTransport(
     config_.electron.yptar_min = config.Get<double>("generation.electron.yptar_min");
     config_.electron.yptar_max = config.Get<double>("generation.electron.yptar_max");
     
-    // Hadron spectrometer
-    config_.hadron.P = config.Get<double>("spectrometer_hadron.momentum");
+    // Hadron spectrometer - Convert GeV → MeV
+    config_.hadron.P = config.Get<double>("spectrometer_hadron.momentum") * constants::GEV_TO_MEV;
     config_.hadron.theta = config.Get<double>("spectrometer_hadron.angle") * constants::DEG_TO_RAD;
     config_.hadron.phi = config.Get<double>("spectrometer_hadron.phi", 0.0) * constants::DEG_TO_RAD;
     config_.hadron.cos_th = std::cos(config_.hadron.theta);
@@ -59,6 +64,16 @@ MonteCarloTransport::MonteCarloTransport(
     
     // Raster
     config_.correct_raster = config.Get<bool>("generation.correct_raster", false);
+
+    // ========================================================================
+    // PHASE 5e: Print configuration for verification
+    // ========================================================================
+    std::cout << "\n=== MonteCarloTransport Config (Phase 5e) ===" << std::endl;
+    std::cout << "Electron momentum: " << config_.electron.P << " MeV/c" 
+              << " (" << config_.electron.P * constants::MEV_TO_GEV << " GeV/c)" << std::endl;
+    std::cout << "Hadron momentum:   " << config_.hadron.P << " MeV/c" 
+              << " (" << config_.hadron.P * constants::MEV_TO_GEV << " GeV/c)" << std::endl;
+    std::cout << "============================================\n" << std::endl;
 }
 
 // ============================================================================

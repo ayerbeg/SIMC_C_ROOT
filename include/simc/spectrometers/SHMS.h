@@ -23,6 +23,9 @@ struct TargetState;
  * - Focal plane reconstruction
  * 
  * Based on simc_gfortran mc_shms.f (2017 ME version)
+ * 
+ * **PHASE 5e MODIFICATIONS:**
+ * - Added GetFocalPlane() method to extract focal plane coordinates after transport
  */
 class SHMS {
 public:
@@ -264,6 +267,27 @@ public:
      * @return true if reconstruction successful
      */
     bool Reconstruct(const FocalPlaneState& fp, TargetState& target);
+
+    // ========================================================================
+    // PHASE 5e: FOCAL PLANE EXTRACTION
+    // ========================================================================
+    /**
+     * @brief Extract focal plane coordinates after transport
+     * @param track Track state at focal plane (after successful Transport() call)
+     * @param fp Focal plane state to fill (output)
+     * @return true if extraction successful
+     * 
+     * This method should be called AFTER Transport() succeeds.
+     * It extracts the focal plane coordinates from the transported track state.
+     * 
+     * UNITS:
+     * - x, y: cm
+     * - xp, yp: mrad (converted from slopes)
+     * - delta: %
+     * 
+     * Phase 5e - Week 1, Day 1
+     */
+    bool GetFocalPlane(const TrackState& track, FocalPlaneState& fp) const;
 
     // Configuration
     /**

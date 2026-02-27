@@ -1,4 +1,5 @@
-// src/physics/EventGenerator.cpp - PART 1
+// src/physics/EventGenerator.cpp - Phase 5e
+// MODIFIED: 2026-02-22 - Fixed GeV→MeV unit conversion bug
 // Constructor through GeneratePhaseSpace
 // Ported from event.f, jacobians.f
 
@@ -12,7 +13,7 @@
 namespace simc {
 
   // ============================================================================
-  // Constructor
+  // Constructor - PHASE 5e: Added GeV→MeV conversions
   // ============================================================================
 
   EventGenerator::EventGenerator(
@@ -28,9 +29,15 @@ namespace simc {
       throw std::runtime_error("EventGenerator: RandomGenerator is required");
     }
     
-    // Load configuration using Get<T>(path) template method
-    beam_energy_ = config.Get<double>("beam.energy");
-    beam_energy_spread_ = config.Get<double>("beam.energy_spread", 0.0);
+    // ========================================================================
+    // PHASE 5e FIX: Convert config values (GeV) to internal units (MeV)
+    // Per SimcConstants.h line 3: "All energies in MeV"
+    // Config files use GeV (physics standard), internal code uses MeV
+    // ========================================================================
+    
+    // Load beam energy and convert GeV → MeV
+    beam_energy_ = config.Get<double>("beam.energy") * constants::GEV_TO_MEV;
+    beam_energy_spread_ = config.Get<double>("beam.energy_spread", 0.0) * constants::GEV_TO_MEV;
     
     // Generation limits - electron
     gen_limits_.electron.delta_min = config.Get<double>("generation.electron.delta_min");
@@ -39,8 +46,8 @@ namespace simc {
     gen_limits_.electron.yptar_max = config.Get<double>("generation.electron.yptar_max");
     gen_limits_.electron.xptar_min = config.Get<double>("generation.electron.xptar_min");
     gen_limits_.electron.xptar_max = config.Get<double>("generation.electron.xptar_max");
-    gen_limits_.electron.E_min = config.Get<double>("generation.electron.E_min");
-    gen_limits_.electron.E_max = config.Get<double>("generation.electron.E_max");
+    gen_limits_.electron.E_min = config.Get<double>("generation.electron.E_min") * constants::GEV_TO_MEV;
+    gen_limits_.electron.E_max = config.Get<double>("generation.electron.E_max") * constants::GEV_TO_MEV;
     
     // Generation limits - hadron
     gen_limits_.hadron.delta_min = config.Get<double>("generation.hadron.delta_min");
@@ -49,14 +56,14 @@ namespace simc {
     gen_limits_.hadron.yptar_max = config.Get<double>("generation.hadron.yptar_max");
     gen_limits_.hadron.xptar_min = config.Get<double>("generation.hadron.xptar_min");
     gen_limits_.hadron.xptar_max = config.Get<double>("generation.hadron.xptar_max");
-    gen_limits_.hadron.E_min = config.Get<double>("generation.hadron.E_min");
-    gen_limits_.hadron.E_max = config.Get<double>("generation.hadron.E_max");
+    gen_limits_.hadron.E_min = config.Get<double>("generation.hadron.E_min") * constants::GEV_TO_MEV;
+    gen_limits_.hadron.E_max = config.Get<double>("generation.hadron.E_max") * constants::GEV_TO_MEV;
     
-    // Beam widths
+    // Beam widths (no conversion - already in cm)
     gen_limits_.xwid = config.Get<double>("generation.beam_xwidth", 0.01);
     gen_limits_.ywid = config.Get<double>("generation.beam_ywidth", 0.01);
     
-    // Target
+    // Target (mass already in MeV per config)
     target_props_.mass = config.Get<double>("target.mass");
     target_props_.Z = config.Get<int>("target.Z");
     target_props_.A = config.Get<int>("target.A");
@@ -69,12 +76,12 @@ namespace simc {
     target_props_.raster_x = config.Get<double>("target.raster_x", 0.0);
     target_props_.raster_y = config.Get<double>("target.raster_y", 0.0);
     
-    // Spectrometers
-    spec_electron_.P = config.Get<double>("spectrometer_electron.momentum");
+    // Spectrometers - Convert GeV → MeV
+    spec_electron_.P = config.Get<double>("spectrometer_electron.momentum") * constants::GEV_TO_MEV;
     spec_electron_.theta = config.Get<double>("spectrometer_electron.angle") * kDegToRad;
     spec_electron_.phi = config.Get<double>("spectrometer_electron.phi", 0.0) * kDegToRad;
     
-    spec_hadron_.P = config.Get<double>("spectrometer_hadron.momentum");
+    spec_hadron_.P = config.Get<double>("spectrometer_hadron.momentum") * constants::GEV_TO_MEV;
     spec_hadron_.theta = config.Get<double>("spectrometer_hadron.angle") * kDegToRad;
     spec_hadron_.phi = config.Get<double>("spectrometer_hadron.phi", 0.0) * kDegToRad;
     
@@ -97,6 +104,18 @@ namespace simc {
       std::cerr << "Warning: Unknown reaction '" << reaction << "', using ELASTIC\n";
       reaction_type_ = ReactionType::ELASTIC;
     }
+    
+    // ========================================================================
+    // PHASE 5e: Print configuration for verification
+    // ========================================================================
+    std::cout << "\n=== EventGenerator Configuration (Phase 5e) ===" << std::endl;
+    std::cout << "Beam energy:       " << beam_energy_ << " MeV" 
+              << " (" << beam_energy_ * constants::MEV_TO_GEV << " GeV)" << std::endl;
+    std::cout << "Electron momentum: " << spec_electron_.P << " MeV/c" 
+              << " (" << spec_electron_.P * constants::MEV_TO_GEV << " GeV/c)" << std::endl;
+    std::cout << "Hadron momentum:   " << spec_hadron_.P << " MeV/c" 
+              << " (" << spec_hadron_.P * constants::MEV_TO_GEV << " GeV/c)" << std::endl;
+    std::cout << "===============================================\n" << std::endl;
   }
 
   // ============================================================================
@@ -410,7 +429,14 @@ namespace simc {
     // We apply a kinematic constraint: reject if generated proton direction
     // doesn't match the q-vector direction (within tolerance)
     // ========================================================================
-    
+     static int debug_count = 0;
+    if (debug_count < 3) {
+        std::cout << "\n=== SolveHydrogenElastic DEBUG ===" << std::endl;
+        std::cout << "event.e_theta = " << event.e_theta << " rad = " << (event.e_theta * 180.0 / kPi) << " deg" << std::endl;
+        std::cout << "event.ue_z = " << event.ue_z << std::endl;
+        std::cout << "cos(e_theta) should be: " << std::cos(event.e_theta) << std::endl;
+        debug_count++;
+    }
     // Calculate electron energy from elastic formula
     double denominator = kProtonMass + event.Ein * (1.0 - event.ue_z);
     
@@ -419,6 +445,18 @@ namespace simc {
     }
     
     event.e_E = event.Ein * kProtonMass / denominator;
+
+// ADD DEBUG HERE:
+static int debug_count_2 = 0;
+if (debug_count_2 < 3) {
+    std::cout << "\nInside SolveHydrogenElastic AFTER calculation:" << std::endl;
+    std::cout << "  event.Ein = " << event.Ein << " MeV" << std::endl;
+    std::cout << "  denominator = " << denominator << " MeV" << std::endl;
+    std::cout << "  event.e_E = " << event.e_E << " MeV" << std::endl;
+    std::cout << "  event.e_P = " << event.e_P << " MeV" << std::endl;
+    debug_count_2++;
+}
+    
     
     if (event.e_E >= event.Ein || event.e_E < kElectronMass) {
       return false;
@@ -426,7 +464,13 @@ namespace simc {
     
     event.e_P = std::sqrt(event.e_E * event.e_E - kElectronMass * kElectronMass);
     event.e_delta = 100.0 * (event.e_P - spec_electron_.P) / spec_electron_.P;
-    
+    // ADD DEBUG HERE:
+if (debug_count_2 < 3) {
+    std::cout << "  After e_P calculation:" << std::endl;
+    std::cout << "  event.e_P = " << event.e_P << " MeV" << std::endl;
+    std::cout << "  spec_electron_.P = " << spec_electron_.P << " MeV" << std::endl;
+    std::cout << "  event.e_delta = " << event.e_delta << " %" << std::endl;
+}
     // Calculate Q² and nu
     double sin_half = std::sin(event.e_theta / 2.0);
     event.nu = event.Ein - event.e_E;

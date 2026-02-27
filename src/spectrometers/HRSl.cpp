@@ -389,6 +389,19 @@ bool HRSl::Reconstruct(const FocalPlaneState& fp, TargetState& target) {
     return true;
 }
 
+bool HRSl::GetFocalPlane(const TrackState& track, FocalPlaneState& fp) const {
+    // Extract focal plane coordinates
+    // NOTE: HRSl uses dx/dy (slopes), NOT xp/yp (mrad)
+    
+    fp.x = track.x;
+    fp.y = track.y;
+    fp.dx = track.dx;  // NO conversion
+    fp.dy = track.dy;  // NO conversion
+    
+    return true;
+}
+
+  
 bool HRSl::LoadMatrices(const std::string& forward_file, const std::string& recon_file) {
     if (!ParseMatrixFile(forward_file, forward_matrix_)) {
         return false;

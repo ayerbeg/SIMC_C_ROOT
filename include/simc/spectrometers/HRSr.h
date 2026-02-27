@@ -138,6 +138,12 @@ public:
     bool Transport(TrackState& track);
     bool Reconstruct(const FocalPlaneState& fp, TargetState& tgt);
 
+  /**
+     * @brief Extract focal plane coordinates after transport
+     * Phase 5e - Week 1, Day 1
+     */
+    bool GetFocalPlane(const TrackState& track, FocalPlaneState& fp) const;
+  
     // Matrix file loading
     bool LoadMatrices(const std::string& forward_file, const std::string& recon_file);
 

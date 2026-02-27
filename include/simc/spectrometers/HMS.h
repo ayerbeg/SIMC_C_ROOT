@@ -24,6 +24,8 @@ struct TargetState;
  * - Focal plane reconstruction
  * 
  * Based on simc_gfortran hms/mc_hms.f (HMS-100 tune)
+ * 
+ * PHASE 5e: Added GetFocalPlane() method - Week 1, Day 1
  */
 class HMS {
 public:
@@ -254,6 +256,17 @@ public:
      * @return true if reconstruction successful
      */
     bool Reconstruct(const FocalPlaneState& fp, TargetState& target);
+
+    // ========================================================================
+    // PHASE 5e: FOCAL PLANE EXTRACTION - Week 1, Day 1
+    // ========================================================================
+    /**
+     * @brief Extract focal plane coordinates after transport
+     * @param track Track state at focal plane (after successful Transport())
+     * @param fp Focal plane state to fill (output)
+     * @return true if extraction successful
+     */
+    bool GetFocalPlane(const TrackState& track, FocalPlaneState& fp) const;
 
     // Configuration
     /**

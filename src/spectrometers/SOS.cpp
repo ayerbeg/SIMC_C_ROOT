@@ -343,6 +343,20 @@ void SOS::Reconstruct(const FocalPlaneState& fp, TargetState& target) {
     target.ytar *= 100.0;
 }
 
+
+bool SOS::GetFocalPlane(const TrackState& track, FocalPlaneState& fp) const {
+    // Extract focal plane coordinates
+    // NOTE: SOS uses dx/dy (slopes), NOT xp/yp (mrad)
+    // NO unit conversion needed
+    
+    fp.x = track.x;
+    fp.y = track.y;
+    fp.dx = track.dx;  // NO conversion - stays as slope
+    fp.dy = track.dy;  // NO conversion - stays as slope
+    
+    return true;
+}
+  
 bool SOS::LoadMatrices(const std::string& forward_file, 
                        const std::string& recon_file) {
     /**

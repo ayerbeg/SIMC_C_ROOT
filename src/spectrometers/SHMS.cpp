@@ -41,7 +41,53 @@ bool SHMS::Reconstruct(const FocalPlaneState& fp, TargetState& target) {
     target.delta = fp.delta;
     return true;
 }
+// ============================================================================
+// PHASE 5e: Add this implementation to src/spectrometers/SHMS.cpp
+// Insert after the Reconstruct() method (around line 44)
+// ============================================================================
 
+bool SHMS::GetFocalPlane(const TrackState& track, FocalPlaneState& fp) const {
+    /**
+     * Extract focal plane coordinates from transported track state.
+     * 
+     * After Transport() completes successfully, the TrackState contains
+     * the particle coordinates at the focal plane detector. This method
+     * extracts those values into a FocalPlaneState structure.
+     * 
+     * IMPORTANT: This should ONLY be called AFTER Transport() has succeeded!
+     * 
+     * UNIT CONVERSIONS:
+     * - track.x, track.y are in cm → fp.x, fp.y in cm (no conversion)
+     * - track.dx, track.dy are slopes (dimensionless) → fp.xp, fp.yp in mrad
+     * - track.delta is in % → fp.delta in % (no conversion)
+     * 
+     * COSY Convention:
+     * - Slopes are defined as dx/dz and dy/dz
+     * - For small angles: angle (mrad) ≈ 1000 * slope
+     * 
+     * Phase 5e - Week 1, Day 1
+     */
+    
+    // Copy position coordinates (already in cm)
+    fp.x = track.x;
+    fp.y = track.y;
+    
+    // Convert slopes to mrad
+    // track.dx and track.dy are dimensionless slopes (dx/dz, dy/dz)
+    // fp.xp and fp.yp are in mrad
+    fp.xp = track.dx * 1000.0;  // slope → mrad
+    fp.yp = track.dy * 1000.0;  // slope → mrad
+    
+    // Copy momentum deviation (already in %)
+    fp.delta = track.delta;
+    
+    return true;
+}
+
+
+
+
+  
 bool SHMS::LoadMatrices(const std::string& forward_file, const std::string& recon_file) {
     if (!ParseMatrixFile(forward_file, forward_matrix_)) {
         std::cerr << "Failed to load forward matrix: " << forward_file << std::endl;

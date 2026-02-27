@@ -43,6 +43,20 @@ bool HMS::Reconstruct(const FocalPlaneState& fp, TargetState& target) {
     return true;
 }
 
+bool HMS::GetFocalPlane(const TrackState& track, FocalPlaneState& fp) const {
+    // Extract focal plane coordinates
+    // Units: x,y in cm; xp,yp in mrad; delta in %
+    
+    fp.x = track.x;
+    fp.y = track.y;
+    fp.xp = track.dx * 1000.0;  // slope → mrad
+    fp.yp = track.dy * 1000.0;  // slope → mrad
+    fp.delta = track.delta;
+    
+    return true;
+}
+
+  
 bool HMS::LoadMatrices(const std::string& forward_file, const std::string& recon_file) {
     if (!ParseMatrixFile(forward_file, forward_matrix_)) {
         std::cerr << "Failed to load forward matrix: " << forward_file << std::endl;

@@ -426,8 +426,21 @@ int main(int argc, char** argv) {
             // ================================================================
             // 2. Calculate hadron spectrometer angles from physics
             // ================================================================
-            transport.CalculateReconstructed(event);
-            
+
+if (ngenerated <= 3) {
+    std::cout << "\nBEFORE CalculateReconstructed:" << std::endl;
+    std::cout << "  event.e_P = " << event.e_P << " MeV" << std::endl;
+    std::cout << "  event.e_delta = " << event.e_delta << " %" << std::endl;
+}
+
+	    transport.CalculateReconstructed(event);
+
+if (ngenerated <= 3) {
+    std::cout << "AFTER CalculateReconstructed:" << std::endl;
+    std::cout << "  event.e_P = " << event.e_P << " MeV" << std::endl;
+    std::cout << "  event.e_delta = " << event.e_delta << " %" << std::endl;
+}
+	    
             // ================================================================
             // 3. Core Monte Carlo Transport (energy loss, multiple scattering)
             // ================================================================
