@@ -404,16 +404,18 @@ bool HRSr::GetFocalPlane(const TrackState& track, FocalPlaneState& fp) const {
 
   
 bool HRSr::LoadMatrices(const std::string& forward_file, const std::string& recon_file) {
-    if (!ParseMatrixFile(forward_file, forward_matrix_)) {
+    // Load forward matrix (false = has separators between transformation classes)
+    if (!ParseMatrixFile(forward_file, forward_matrix_, false)) {
         return false;
     }
-    if (!ParseMatrixFile(recon_file, recon_matrix_)) {
+    // Load reconstruction matrix (true = no separators, all terms in class 0)
+    if (!ParseMatrixFile(recon_file, recon_matrix_, true)) {
         return false;
     }
     return true;
 }
 
-bool HRSr::ParseMatrixFile(const std::string& filepath, MatrixElements& matrices) {
+bool HRSr::ParseMatrixFile(const std::string& filepath, MatrixElements& matrices, bool is_reconstruction) {
     std::ifstream file(filepath);
     if (!file.is_open()) {
         std::cerr << "Failed to open matrix file: " << filepath << std::endl;
@@ -421,7 +423,9 @@ bool HRSr::ParseMatrixFile(const std::string& filepath, MatrixElements& matrices
     }
     
     matrices.n_classes = 0;
-    int current_class = -1;
+    // Reconstruction matrices have no separator before first data, start at class 0
+    // Forward matrices have separators, start at -1 and increment on first separator
+    int current_class = is_reconstruction ? 0 : -1;
     double current_length = 0.0;
     bool is_drift = false;
     

@@ -1,5 +1,6 @@
 {
-    "_CONFIG_VERSION": "DEBUG_2026_02_20_v1",
+    "_CONFIG_VERSION": "CORRECTED_PHASE5e_v1",
+    "_COMMENT": "Fixed configuration: SHMS detects electron, HMS detects hadron",
     "_ELECTRON_MOMENTUM": 8.534,
     "_HADRON_MOMENTUM": 2.21,
 
@@ -48,6 +49,7 @@
     },
     
     "spectrometer_electron": {
+        "_comment": "SHMS for electron: small angle (12.5°), high momentum (8.534 GeV/c)",
         "name": "SHMS",
         "momentum": 8.534,
         "angle": 12.5,
@@ -55,15 +57,18 @@
     },
     
     "spectrometer_hadron": {
-        "name": "SHMS",
+        "_comment": "HMS for hadron: larger angle (35°), lower momentum (2.21 GeV/c)",
+        "name": "HMS",
         "momentum": 2.21,
         "angle": 35.0,
         "phi": 0.0
     },
     
     "spectrometers": {
+        "_comment": "Spectrometer IDs: 1=HMS, 2=SOS, 3=HRSr, 4=HRSl, 5=SHMS",
+        "_FIX": "Changed hadron_arm from 5 (SHMS) to 1 (HMS)",
         "electron_arm": 5,
-        "hadron_arm": 5
+        "hadron_arm": 1
     },
     
     "generation": {
@@ -74,6 +79,7 @@
         "correct_raster": false,
         
         "electron": {
+            "_comment": "SHMS acceptance: -10% to +22% delta, ±24 mrad horizontal, ±55 mrad vertical",
             "delta_min": -10.0,
             "delta_max": 22.0,
             "yptar_min": -0.060,
@@ -85,8 +91,9 @@
         },
         
         "hadron": {
+            "_comment": "HMS acceptance: typically ±10% delta, solid angle >6 msr",
             "delta_min": -10.0,
-            "delta_max": 22.0,
+            "delta_max": 10.0,
             "yptar_min": -0.060,
             "yptar_max": 0.060,
             "xptar_min": -0.080,

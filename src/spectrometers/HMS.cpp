@@ -7,16 +7,16 @@
 
 namespace simc {
 
-namespace {
+  namespace {
     constexpr double DEG_TO_RAD = M_PI / 180.0;
     constexpr double RAD_TO_DEG = 180.0 / M_PI;
-}
+  }
 
-HMS::HMS() {
+  HMS::HMS() {
     // Initialize with default values (already done via member initializers)
-}
+  }
 
-bool HMS::Transport(TrackState& track) {
+  bool HMS::Transport(TrackState& track) {
     stats_.hSTOP_trials++;
     
     // Transport through each element in sequence
@@ -30,22 +30,91 @@ bool HMS::Transport(TrackState& track) {
     
     stats_.hSTOP_successes++;
     return true;
-}
+  }
 
-bool HMS::Reconstruct(const FocalPlaneState& fp, TargetState& target) {
-    // TODO: Implement reconstruction
-    // For now, just copy values
-    target.x = fp.x;
-    target.xp = fp.xp;
-    target.y = fp.y;
-    target.yp = fp.yp;
-    target.delta = fp.delta;
+ 
+  bool HMS::Reconstruct(const FocalPlaneState& fp, TargetState& target) {
+    /**
+     * Reconstruct target coordinates from focal plane using COSY matrices.
+     * Based on simc_gfortran hms/mc_hms_recon.f
+     */
+    
+    // Pack focal plane coordinates into COSY ray vector
+    std::array<double, 5> ray;
+    ray[0] = fp.x / 100.0;      // cm → m
+    ray[1] = fp.xp / 1000.0;    // mrad → rad
+    ray[2] = fp.y / 100.0;      // cm → m
+    ray[3] = fp.yp / 1000.0;    // mrad → rad
+    ray[4] = 0.0;               // fry
+    if (std::abs(ray[4]) <= 1.e-30) ray[4] = 1.e-30;
+    
+    // Initialize reconstruction sums
+    std::array<double, 4> sum{0.0};
+    
+    // Apply reconstruction matrix (class 0)
+    const auto& recon_class = recon_matrix_.classes[0];
+    
+    // DEBUG: Print diagnostics
+    static bool first_call = true;
+    static bool second_call = true;
+
+    if (first_call) {
+      std::cout << "=== HMS Reconstruct DEBUG ===" << std::endl;
+      std::cout << "  Input: fp.x=" << fp.x << " fp.xp=" << fp.xp 
+		<< " fp.y=" << fp.y << " fp.yp=" << fp.yp << std::endl;
+      std::cout << "  Matrix class 0 has " << recon_class.terms.size() << " terms" << std::endl;
+      first_call = false;
+    }
+
+
+
+
+    
+    for (const auto& term : recon_class.terms) {
+      double product = 1.0;
+      for (int j = 0; j < 5; ++j) {
+	if (term.expon[j] != 0) {
+	  product *= std::pow(ray[j], term.expon[j]);
+	}
+      }
+      for (int j = 0; j < 4; ++j) {
+	sum[j] += product * term.coeff[j];
+      }
+    }
+    
+    // Unpack results
+    target.x = 0.0;
+    target.xp = sum[0];   // mrad
+    target.y = sum[1] * 100.0;     // m → cm
+    target.yp = sum[2];   // mrad
+    target.delta = sum[3]; // fraction → %
+    
+    // DEBUG: Print output
+    if (second_call) {
+      std::cout << "=== HMS Reconstruct OUTPUT ===" << std::endl;
+      std::cout << "  sum[0]=" << sum[0] << " sum[1]=" << sum[1] 
+		<< " sum[2]=" << sum[2] << " sum[3]=" << sum[3] << std::endl;
+      std::cout << "  target.xp=" << target.xp << " target.yp=" << target.yp 
+		<< " target.delta=" << target.delta << std::endl;
+      second_call = false;
+    }   
     return true;
-}
-
-bool HMS::GetFocalPlane(const TrackState& track, FocalPlaneState& fp) const {
+  }
+  
+  bool HMS::GetFocalPlane(const TrackState& track, FocalPlaneState& fp) const {
     // Extract focal plane coordinates
     // Units: x,y in cm; xp,yp in mrad; delta in %
+
+   // ADD THIS DEBUG OUTPUT HERE:
+    static bool first_debug = true;
+    if (first_debug) {
+        std::cout << "=== HMS GetFocalPlane DEBUG ===" << std::endl;
+        std::cout << "  track.dx=" << track.dx << " track.dy=" << track.dy << std::endl;
+        std::cout << "  Converting to fp: track.dx * 1000 = " << (track.dx * 1000.0) << std::endl;
+        first_debug = false;
+    }
+    
+
     
     fp.x = track.x;
     fp.y = track.y;
@@ -54,54 +123,56 @@ bool HMS::GetFocalPlane(const TrackState& track, FocalPlaneState& fp) const {
     fp.delta = track.delta;
     
     return true;
-}
+  }
 
   
-bool HMS::LoadMatrices(const std::string& forward_file, const std::string& recon_file) {
-    if (!ParseMatrixFile(forward_file, forward_matrix_)) {
-        std::cerr << "Failed to load forward matrix: " << forward_file << std::endl;
-        return false;
+  bool HMS::LoadMatrices(const std::string& forward_file, const std::string& recon_file) {
+    // Load forward matrix (false = has separators between transformation classes)
+    if (!ParseMatrixFile(forward_file, forward_matrix_, false)) {
+      std::cerr << "Failed to load forward matrix: " << forward_file << std::endl;
+      return false;
     }
     
-    if (!ParseMatrixFile(recon_file, recon_matrix_)) {
-        std::cerr << "Failed to load reconstruction matrix: " << recon_file << std::endl;
-        return false;
+    // Load reconstruction matrix (true = no separators, all terms in class 0)
+    if (!ParseMatrixFile(recon_file, recon_matrix_, true)) {
+      std::cerr << "Failed to load reconstruction matrix: " << recon_file << std::endl;
+      return false;
     }
     
     // Extract drift lengths from transformation classes
     // HMS has 12 classes: 1,4,7,10,12 are drifts; 2-3,5-6,8-9,11 are matrix
     for (int i = 0; i < MatrixElements::MAX_CLASSES; ++i) {
-        if (forward_matrix_.classes[i].is_drift || 
-            forward_matrix_.classes[i].length > 0.0) {
+      if (forward_matrix_.classes[i].is_drift || 
+	  forward_matrix_.classes[i].length > 0.0) {
             
-            switch(i) {
-                case 1:
-                    drifts_.target_to_q1 = forward_matrix_.classes[i].length;
-                    break;
-                case 4:
-                    drifts_.q1_to_q2 = forward_matrix_.classes[i].length;
-                    break;
-                case 7:
-                    drifts_.q2_to_q3 = forward_matrix_.classes[i].length;
-                    break;
-                case 10:
-                    drifts_.q3_to_d1 = forward_matrix_.classes[i].length;
-                    break;
-                case 12:
-                    drifts_.d1_to_fp = forward_matrix_.classes[i].length;
-                    break;
-            }
-        }
+	switch(i) {
+	case 1:
+	  drifts_.target_to_q1 = forward_matrix_.classes[i].length;
+	  break;
+	case 4:
+	  drifts_.q1_to_q2 = forward_matrix_.classes[i].length;
+	  break;
+	case 7:
+	  drifts_.q2_to_q3 = forward_matrix_.classes[i].length;
+	  break;
+	case 10:
+	  drifts_.q3_to_d1 = forward_matrix_.classes[i].length;
+	  break;
+	case 12:
+	  drifts_.d1_to_fp = forward_matrix_.classes[i].length;
+	  break;
+	}
+      }
     }
     
     return true;
-}
+  }
 
-// ============================================================================
-// Helper Functions
-// ============================================================================
+  // ============================================================================
+  // Helper Functions
+  // ============================================================================
 
-void HMS::Project(TrackState& track, double zdrift) {
+  void HMS::Project(TrackState& track, double zdrift) {
     /**
      * Calculate new track transverse coordinates after drifting in a field-free
      * region for distance zdrift from current track location.
@@ -119,9 +190,9 @@ void HMS::Project(TrackState& track, double zdrift) {
     track.z += zdrift;
     
     // Note: Decay handling would go here if needed (not implemented yet)
-}
+  }
 
-void HMS::TranspMatrix(TrackState& track, int class_id, double zdrift) {
+  void HMS::TranspMatrix(TrackState& track, int class_id, double zdrift) {
     /**
      * Transport particle through spectrometer element using matrix elements.
      * 
@@ -129,15 +200,15 @@ void HMS::TranspMatrix(TrackState& track, int class_id, double zdrift) {
      */
     
     if (class_id < 0 || class_id >= MatrixElements::MAX_CLASSES) {
-        std::cerr << "Invalid matrix class ID: " << class_id << std::endl;
-        return;
+      std::cerr << "Invalid matrix class ID: " << class_id << std::endl;
+      return;
     }
     
     const auto& transformation = forward_matrix_.classes[class_id];
     
     if (transformation.n_terms == 0) {
-        std::cerr << "Matrix class " << class_id << " has no terms!" << std::endl;
-        return;
+      std::cerr << "Matrix class " << class_id << " has no terms!" << std::endl;
+      return;
     }
     
     // Pack input coordinates (convert to COSY units)
@@ -152,19 +223,19 @@ void HMS::TranspMatrix(TrackState& track, int class_id, double zdrift) {
     std::array<double, 5> sum{0.0};
     
     for (const auto& term : transformation.terms) {
-        double product = 1.0;
+      double product = 1.0;
         
-        // Calculate term = x^ex * xp^exp * y^ey * yp^eyp * delta^ed
-        for (int j = 0; j < 5; ++j) {
-            if (term.expon[j] != 0) {
-                product *= std::pow(ray[j], term.expon[j]);
-            }
-        }
+      // Calculate term = x^ex * xp^exp * y^ey * yp^eyp * delta^ed
+      for (int j = 0; j < 5; ++j) {
+	if (term.expon[j] != 0) {
+	  product *= std::pow(ray[j], term.expon[j]);
+	}
+      }
         
-        // Add contribution to each output variable
-        for (int j = 0; j < 5; ++j) {
-            sum[j] += product * term.coeff[j];
-        }
+      // Add contribution to each output variable
+      for (int j = 0; j < 5; ++j) {
+	sum[j] += product * term.coeff[j];
+      }
     }
     
     // Unpack output coordinates
@@ -179,9 +250,9 @@ void HMS::TranspMatrix(TrackState& track, int class_id, double zdrift) {
     track.z += (zdrift + delta_z);
     
     // Note: Decay handling would go here if needed
-}
+  }
 
-void HMS::RotateHAxis(double angle_deg, double& x, double& y) {
+  void HMS::RotateHAxis(double angle_deg, double& x, double& y) {
     /**
      * Calculate new trajectory coordinates in reference frame rotated about
      * horizontal axis by angle_deg relative to central ray.
@@ -201,13 +272,13 @@ void HMS::RotateHAxis(double angle_deg, double& x, double& y) {
     
     x = x_new;
     y = y_new;
-}
+  }
 
-// ============================================================================
-// Aperture Checking
-// ============================================================================
+  // ============================================================================
+  // Aperture Checking
+  // ============================================================================
 
-bool HMS::CheckCollimatorEntrance(double x, double y) {
+  bool HMS::CheckCollimatorEntrance(double x, double y) {
     /**
      * Check collimator entrance (octagonal).
      * 
@@ -220,27 +291,27 @@ bool HMS::CheckCollimatorEntrance(double x, double y) {
     
     // Horizontal slit check
     if (std::abs(y_check) > collimator_.h_entr) {
-        return false;
+      return false;
     }
     
     // Vertical slit check
     if (std::abs(x_check) > collimator_.v_entr) {
-        return false;
+      return false;
     }
     
     // Octagonal corner cuts
     // if (abs(x - x_off) > (-v_entr/h_entr * abs(y - y_off) + 3*v_entr/2))
     double threshold = -collimator_.v_entr / collimator_.h_entr * 
-                       std::abs(y_check) + 3.0 * collimator_.v_entr / 2.0;
+      std::abs(y_check) + 3.0 * collimator_.v_entr / 2.0;
     
     if (std::abs(x_check) > threshold) {
-        return false;
+      return false;
     }
     
     return true;
-}
+  }
 
-bool HMS::CheckCollimatorExit(double x, double y) {
+  bool HMS::CheckCollimatorExit(double x, double y) {
     /**
      * Check collimator exit (octagonal, slightly larger).
      */
@@ -251,33 +322,33 @@ bool HMS::CheckCollimatorExit(double x, double y) {
     
     // Horizontal slit check
     if (std::abs(y_check) > collimator_.h_exit) {
-        return false;
+      return false;
     }
     
     // Vertical slit check
     if (std::abs(x_check) > collimator_.v_exit) {
-        return false;
+      return false;
     }
     
     // Octagonal corner cuts
     double threshold = -collimator_.v_exit / collimator_.h_exit * 
-                       std::abs(y_check) + 3.0 * collimator_.v_exit / 2.0;
+      std::abs(y_check) + 3.0 * collimator_.v_exit / 2.0;
     
     if (std::abs(x_check) > threshold) {
-        return false;
+      return false;
     }
     
     return true;
-}
+  }
 
-bool HMS::CheckQuadAperture(double x, double y, double radius) {
+  bool HMS::CheckQuadAperture(double x, double y, double radius) {
     /**
      * Check if particle passes through circular quadrupole aperture.
      */
     return (x*x + y*y) <= (radius * radius);
-}
+  }
 
-bool HMS::HitDipole(double x, double y) {
+  bool HMS::HitDipole(double x, double y) {
     /**
      * Check if particle hits dipole aperture (complex 6-region shape).
      * 
@@ -314,9 +385,9 @@ bool HMS::HitDipole(double x, double y) {
     
     // Fortran returns "hit_dipole" (outside), we return same convention
     return !inside_aperture;
-}
+  }
 
-bool HMS::CheckPipeAperture(double x, double y, double x_offset, double y_offset, double r_sq) {
+  bool HMS::CheckPipeAperture(double x, double y, double x_offset, double y_offset, double r_sq) {
     /**
      * Check if particle passes through circular pipe.
      * Uses precomputed radius squared for efficiency.
@@ -326,13 +397,13 @@ bool HMS::CheckPipeAperture(double x, double y, double x_offset, double y_offset
     double dy = y - y_offset;
     
     return (dx*dx + dy*dy) <= r_sq;
-}
+  }
 
-// ============================================================================
-// Element Transport Functions
-// ============================================================================
+  // ============================================================================
+  // Element Transport Functions
+  // ============================================================================
 
-bool HMS::TransportCollimator(TrackState& track) {
+  bool HMS::TransportCollimator(TrackState& track) {
     /**
      * Transport through HMS-100 collimator (octagonal).
      * 
@@ -343,17 +414,17 @@ bool HMS::TransportCollimator(TrackState& track) {
      */
     
     if (!collimator_.use_collimator) {
-        // Wide open - skip collimator entirely
-        return true;
+      // Wide open - skip collimator entirely
+      return true;
     }
     
     // If using HMS collimator simulation (for pions/muons)
     if (use_hms_coll_sim_ && track.m2 > 100.0*100.0 && track.m2 < 200.0*200.0) {
-        // TODO: Implement detailed pion absorption (mc_hms_coll.f)
-        // For now, just use aperture checks
-        std::cerr << "HMS collimator simulation not implemented yet!" << std::endl;
-        stats_.hSTOP_coll++;
-        return false;
+      // TODO: Implement detailed pion absorption (mc_hms_coll.f)
+      // For now, just use aperture checks
+      std::cerr << "HMS collimator simulation not implemented yet!" << std::endl;
+      stats_.hSTOP_coll++;
+      return false;
     }
     
     // Standard aperture checks (entrance and exit)
@@ -363,18 +434,18 @@ bool HMS::TransportCollimator(TrackState& track) {
     
     // Check entrance aperture
     if (!CheckCollimatorEntrance(track.x, track.y)) {
-        // Determine which part of aperture was hit
-        double x_check = track.x - collimator_.x_off;
-        double y_check = track.y - collimator_.y_off;
+      // Determine which part of aperture was hit
+      double x_check = track.x - collimator_.x_off;
+      double y_check = track.y - collimator_.y_off;
         
-        if (std::abs(y_check) > collimator_.h_entr) {
-            stats_.hSTOP_slit_hor++;
-        } else if (std::abs(x_check) > collimator_.v_entr) {
-            stats_.hSTOP_slit_vert++;
-        } else {
-            stats_.hSTOP_slit_oct++;
-        }
-        return false;
+      if (std::abs(y_check) > collimator_.h_entr) {
+	stats_.hSTOP_slit_hor++;
+      } else if (std::abs(x_check) > collimator_.v_entr) {
+	stats_.hSTOP_slit_vert++;
+      } else {
+	stats_.hSTOP_slit_oct++;
+      }
+      return false;
     }
     
     // Drift to collimator exit
@@ -382,23 +453,23 @@ bool HMS::TransportCollimator(TrackState& track) {
     
     // Check exit aperture
     if (!CheckCollimatorExit(track.x, track.y)) {
-        double x_check = track.x - collimator_.x_off;
-        double y_check = track.y - collimator_.y_off;
+      double x_check = track.x - collimator_.x_off;
+      double y_check = track.y - collimator_.y_off;
         
-        if (std::abs(y_check) > collimator_.h_exit) {
-            stats_.hSTOP_slit_hor++;
-        } else if (std::abs(x_check) > collimator_.v_exit) {
-            stats_.hSTOP_slit_vert++;
-        } else {
-            stats_.hSTOP_slit_oct++;
-        }
-        return false;
+      if (std::abs(y_check) > collimator_.h_exit) {
+	stats_.hSTOP_slit_hor++;
+      } else if (std::abs(x_check) > collimator_.v_exit) {
+	stats_.hSTOP_slit_vert++;
+      } else {
+	stats_.hSTOP_slit_oct++;
+      }
+      return false;
     }
     
     return true;
-}
+  }
 
-bool HMS::TransportQ1(TrackState& track) {
+  bool HMS::TransportQ1(TrackState& track) {
     /**
      * Transport through Q1 (Quadrupole 1) with 3 aperture checks.
      * 
@@ -421,8 +492,8 @@ bool HMS::TransportQ1(TrackState& track) {
     
     // Check Q1 entrance
     if (!CheckQuadAperture(track.x, track.y, apertures_.r_Q1)) {
-        stats_.hSTOP_Q1_in++;
-        return false;
+      stats_.hSTOP_Q1_in++;
+      return false;
     }
     
     // Transport to Q1 2/3 point (matrix transformation class 2)
@@ -430,8 +501,8 @@ bool HMS::TransportQ1(TrackState& track) {
     
     // Check Q1 mid aperture
     if (!CheckQuadAperture(track.x, track.y, apertures_.r_Q1)) {
-        stats_.hSTOP_Q1_mid++;
-        return false;
+      stats_.hSTOP_Q1_mid++;
+      return false;
     }
     
     // Transport to Q1 exit (matrix transformation class 3)
@@ -439,14 +510,14 @@ bool HMS::TransportQ1(TrackState& track) {
     
     // Check Q1 exit aperture
     if (!CheckQuadAperture(track.x, track.y, apertures_.r_Q1)) {
-        stats_.hSTOP_Q1_out++;
-        return false;
+      stats_.hSTOP_Q1_out++;
+      return false;
     }
     
     return true;
-}
+  }
 
-bool HMS::TransportQ2(TrackState& track) {
+  bool HMS::TransportQ2(TrackState& track) {
     /**
      * Transport through Q2 (Quadrupole 2) with 3 aperture checks.
      * 
@@ -457,30 +528,30 @@ bool HMS::TransportQ2(TrackState& track) {
     Project(track, drifts_.q1_to_q2);
     
     if (!CheckQuadAperture(track.x, track.y, apertures_.r_Q2)) {
-        stats_.hSTOP_Q2_in++;
-        return false;
+      stats_.hSTOP_Q2_in++;
+      return false;
     }
     
     // Transport to Q2 2/3 point (matrix transformation class 5)
     TranspMatrix(track, 5, drifts_.q2_mid);
     
     if (!CheckQuadAperture(track.x, track.y, apertures_.r_Q2)) {
-        stats_.hSTOP_Q2_mid++;
-        return false;
+      stats_.hSTOP_Q2_mid++;
+      return false;
     }
     
     // Transport to Q2 exit (matrix transformation class 6)
     TranspMatrix(track, 6, drifts_.q2_exit);
     
     if (!CheckQuadAperture(track.x, track.y, apertures_.r_Q2)) {
-        stats_.hSTOP_Q2_out++;
-        return false;
+      stats_.hSTOP_Q2_out++;
+      return false;
     }
     
     return true;
-}
+  }
 
-bool HMS::TransportQ3(TrackState& track) {
+  bool HMS::TransportQ3(TrackState& track) {
     /**
      * Transport through Q3 (Quadrupole 3) with 3 aperture checks.
      * 
@@ -491,30 +562,30 @@ bool HMS::TransportQ3(TrackState& track) {
     Project(track, drifts_.q2_to_q3);
     
     if (!CheckQuadAperture(track.x, track.y, apertures_.r_Q3)) {
-        stats_.hSTOP_Q3_in++;
-        return false;
+      stats_.hSTOP_Q3_in++;
+      return false;
     }
     
     // Transport to Q3 2/3 point (matrix transformation class 8)
     TranspMatrix(track, 8, drifts_.q3_mid);
     
     if (!CheckQuadAperture(track.x, track.y, apertures_.r_Q3)) {
-        stats_.hSTOP_Q3_mid++;
-        return false;
+      stats_.hSTOP_Q3_mid++;
+      return false;
     }
     
     // Transport to Q3 exit (matrix transformation class 9)
     TranspMatrix(track, 9, drifts_.q3_exit);
     
     if (!CheckQuadAperture(track.x, track.y, apertures_.r_Q3)) {
-        stats_.hSTOP_Q3_out++;
-        return false;
+      stats_.hSTOP_Q3_out++;
+      return false;
     }
     
     return true;
-}
+  }
 
-bool HMS::TransportDipole(TrackState& track) {
+  bool HMS::TransportDipole(TrackState& track) {
     /**
      * Transport through Dipole (D1) with complex aperture shape.
      * 
@@ -533,8 +604,8 @@ bool HMS::TransportDipole(TrackState& track) {
     RotateHAxis(-6.0, xt, yt);
     
     if (HitDipole(xt, yt)) {
-        stats_.hSTOP_D1_in++;
-        return false;
+      stats_.hSTOP_D1_in++;
+      return false;
     }
     
     // Transport through dipole (matrix transformation class 11)
@@ -546,8 +617,8 @@ bool HMS::TransportDipole(TrackState& track) {
     RotateHAxis(+6.0, xt, yt);
     
     if (HitDipole(xt, yt)) {
-        stats_.hSTOP_D1_out++;
-        return false;
+      stats_.hSTOP_D1_out++;
+      return false;
     }
     
     // Check odd-shaped interface piece (30.48 cm radius pipe with rectangular cut)
@@ -555,14 +626,14 @@ bool HMS::TransportDipole(TrackState& track) {
     if ((std::pow(xt - apertures_.pipe_x_offset, 2) + 
          std::pow(yt - apertures_.pipe_y_offset, 2) > 30.48*30.48) ||
         (std::abs(yt - apertures_.pipe_y_offset) > 20.5232)) {
-        stats_.hSTOP_D1_out++;
-        return false;
+      stats_.hSTOP_D1_out++;
+      return false;
     }
     
     return true;
-}
+  }
 
-bool HMS::TransportPipes(TrackState& track) {
+  bool HMS::TransportPipes(TrackState& track) {
     /**
      * Transport through post-dipole vacuum pipes (3 pipes).
      * 
@@ -578,39 +649,39 @@ bool HMS::TransportPipes(TrackState& track) {
     Project(track, apertures_.z_pipe1);
     
     if (!CheckPipeAperture(track.x, track.y, 
-                          apertures_.pipe_x_offset, 
-                          apertures_.pipe_y_offset,
-                          apertures_.r_pipe1_sq)) {
-        stats_.hSTOP_D1_out++;  // Note: Fortran uses D1_out counter for pipes
-        return false;
+			   apertures_.pipe_x_offset, 
+			   apertures_.pipe_y_offset,
+			   apertures_.r_pipe1_sq)) {
+      stats_.hSTOP_D1_out++;  // Note: Fortran uses D1_out counter for pipes
+      return false;
     }
     
     // Pipe 2: Drift and check exit of 117" pipe
     Project(track, apertures_.z_pipe2 - apertures_.z_pipe1);
     
     if (!CheckPipeAperture(track.x, track.y,
-                          apertures_.pipe_x_offset,
-                          apertures_.pipe_y_offset,
-                          apertures_.r_pipe2_sq)) {
-        stats_.hSTOP_D1_out++;
-        return false;
+			   apertures_.pipe_x_offset,
+			   apertures_.pipe_y_offset,
+			   apertures_.r_pipe2_sq)) {
+      stats_.hSTOP_D1_out++;
+      return false;
     }
     
     // Pipe 3: Drift and check exit of 45.5" pipe
     Project(track, apertures_.z_pipe3 - apertures_.z_pipe2);
     
     if (!CheckPipeAperture(track.x, track.y,
-                          apertures_.pipe_x_offset,
-                          apertures_.pipe_y_offset,
-                          apertures_.r_pipe3_sq)) {
-        stats_.hSTOP_D1_out++;
-        return false;
+			   apertures_.pipe_x_offset,
+			   apertures_.pipe_y_offset,
+			   apertures_.r_pipe3_sq)) {
+      stats_.hSTOP_D1_out++;
+      return false;
     }
     
     return true;
-}
+  }
 
-bool HMS::TransportHut(TrackState& track) {
+  bool HMS::TransportHut(TrackState& track) {
     /**
      * Transport through detector hut to focal plane.
      * 
@@ -641,128 +712,136 @@ bool HMS::TransportHut(TrackState& track) {
     stats_.hSTOP_hut++;
     
     return true;
-}
+  }
 
-// ============================================================================
-// Matrix File Parsing
-// ============================================================================
+  // ============================================================================
+  // Matrix File Parsing
+  // ============================================================================
 
-bool HMS::ParseMatrixFile(const std::string& filepath, MatrixElements& matrices) {
+  bool HMS::ParseMatrixFile(const std::string& filepath, MatrixElements& matrices, bool is_reconstruction) {
     /**
      * Parse COSY matrix file format.
      * 
-     * Same format as SHMS matrices.
+     * @param filepath Path to matrix file
+     * @param matrices Matrix structure to fill
+     * @param is_reconstruction True for reconstruction matrices (no initial separator),
+     *                          False for forward matrices (have separators)
      */
     
     std::ifstream file(filepath);
     if (!file.is_open()) {
-        std::cerr << "Cannot open matrix file: " << filepath << std::endl;
-        return false;
+      std::cerr << "Cannot open matrix file: " << filepath << std::endl;
+      return false;
     }
     
     std::string line;
-    int current_class = -1;
+    // Reconstruction matrices have no separator before first data, start at class 0
+    // Forward matrices have separators, start at -1 and increment on first separator
+    int current_class = is_reconstruction ? 0 : -1;
     double current_length = 0.0;
     bool is_drift = false;
     
     while (std::getline(file, line)) {
-        // Skip empty lines
-        if (line.empty()) continue;
+      // Skip empty lines
+      if (line.empty()) continue;
         
-        // Check for separator (new transformation class)
-        if (line.find("----") != std::string::npos) {
-            // Finalize previous class
-            if (current_class >= 0) {
-                matrices.classes[current_class].length = current_length;
-                matrices.classes[current_class].is_drift = is_drift;
-            }
+      // Check for separator (new transformation class)
+      if (line.find("----") != std::string::npos) {
+	// Finalize previous class
+	if (current_class >= 0) {
+	  matrices.classes[current_class].length = current_length;
+	  matrices.classes[current_class].is_drift = is_drift;
+	}
             
-            // Start new class
-            current_class++;
-            if (current_class >= MatrixElements::MAX_CLASSES) {
-                std::cerr << "Too many transformation classes in matrix file!" << std::endl;
-                return false;
-            }
+	// For reconstruction matrices, separator marks END of data, not new class
+	// For forward matrices, separator marks beginning of new class
+	if (!is_reconstruction) {
+	  current_class++;
+	  if (current_class >= MatrixElements::MAX_CLASSES) {
+	    std::cerr << "Too many transformation classes in matrix file!" << std::endl;
+	    return false;
+	  }
+                
+	  current_length = 0.0;
+	  is_drift = false;
+	}
+	continue;
+      }
+        
+      // Parse length comment
+      if (line.find("!LENGTH:") != std::string::npos) {
+	size_t pos = line.find("!LENGTH:");
+	std::string length_str = line.substr(pos + 8);
+	current_length = std::stod(length_str) * 100.0;  // Convert m to cm
+	continue;
+      }
+        
+      // Check for drift indicator
+      if (line.find("!DRIFT") != std::string::npos || 
+	  line.find("drift") != std::string::npos) {
+	is_drift = true;
+	continue;
+      }
+        
+      // Skip other comments
+      if (line[0] == '!') {
+	continue;
+      }
+        
+      // Parse matrix element line
+      if (current_class >= 0) {
+	std::istringstream iss(line);
+	MatrixTerm term;
             
-            current_length = 0.0;
-            is_drift = false;
-            continue;
-        }
-        
-        // Parse length comment
-        if (line.find("!LENGTH:") != std::string::npos) {
-            size_t pos = line.find("!LENGTH:");
-            std::string length_str = line.substr(pos + 8);
-            current_length = std::stod(length_str) * 100.0;  // Convert m to cm
-            continue;
-        }
-        
-        // Check for drift indicator
-        if (line.find("!DRIFT") != std::string::npos || 
-            line.find("drift") != std::string::npos) {
-            is_drift = true;
-            continue;
-        }
-        
-        // Skip other comments
-        if (line[0] == '!') {
-            continue;
-        }
-        
-        // Parse matrix element line
-        if (current_class >= 0) {
-            std::istringstream iss(line);
-            MatrixTerm term;
-            
-            // Try to read coefficients - be flexible about how many
-            std::vector<double> coeffs;
-            double val;
-            while (iss >> val) {
-                coeffs.push_back(val);
-            }
+	// Try to read coefficients - be flexible about how many
+	std::vector<double> coeffs;
+	double val;
+	while (iss >> val) {
+	  coeffs.push_back(val);
+	}
             
                       
-            // Check if we have at least 6 values (5 coeffs + exponents OR 4 coeffs + exponents)
-            if (coeffs.size() < 5) {
-                std::cerr << "Error: Expected at least 5 values in line: " << line << std::endl;
-                std::cerr << "  Got " << coeffs.size() << " values" << std::endl;
-                return false;
-            }
+	// Check if we have at least 6 values (5 coeffs + exponents OR 4 coeffs + exponents)
+	if (coeffs.size() < 5) {
+	  std::cerr << "Error: Expected at least 5 values in line: " << line << std::endl;
+	  std::cerr << "  Got " << coeffs.size() << " values" << std::endl;
+	  return false;
+	}
             
-            // Last value should be exponents (integer)
-            int expon_int = static_cast<int>(coeffs.back());
-            coeffs.pop_back();  // Remove exponents from coeffs
+	// Last value should be exponents (integer)
+	int expon_int = static_cast<int>(coeffs.back());
+	coeffs.pop_back();  // Remove exponents from coeffs
             
-            // Now coeffs contains only the matrix coefficients (should be 4 or 5)
-            // Fill in the term structure
-            for (size_t i = 0; i < coeffs.size() && i < 5; ++i) {
-                term.coeff[i] = coeffs[i];
-            }
-            // Fill remaining with zeros if needed
-            for (size_t i = coeffs.size(); i < 5; ++i) {
-                term.coeff[i] = 0.0;
-            }
+	// Now coeffs contains only the matrix coefficients (should be 4 or 5)
+	// Fill in the term structure
+	for (size_t i = 0; i < coeffs.size() && i < 5; ++i) {
+	  term.coeff[i] = coeffs[i];
+	}
+	// Fill remaining with zeros if needed
+	for (size_t i = coeffs.size(); i < 5; ++i) {
+	  term.coeff[i] = 0.0;
+	}
             
-            // Parse exponents from integer
-            // Format: ABCDEF where each digit is an exponent
-            std::string expon_str = std::to_string(expon_int);
-            while (expon_str.length() < 6) {
-                expon_str = "0" + expon_str;  // Pad with leading zeros
-            }
+	// Parse exponents from integer
+	// Format: ABCDEF where each digit is an exponent
+	std::string expon_str = std::to_string(expon_int);
+	while (expon_str.length() < 6) {
+	  expon_str = "0" + expon_str;  // Pad with leading zeros
+	}
             
-            for (int i = 0; i < 5; ++i) {
-                term.expon[i] = expon_str[i] - '0';
-            }
+	for (int i = 0; i < 5; ++i) {
+	  term.expon[i] = expon_str[i] - '0';
+	}
             
-            matrices.classes[current_class].terms.push_back(term);
-            matrices.classes[current_class].n_terms++;
-        }
+	matrices.classes[current_class].terms.push_back(term);
+	matrices.classes[current_class].n_terms++;
+      }
     }
     
     // Finalize last class
     if (current_class >= 0) {
-        matrices.classes[current_class].length = current_length;
-        matrices.classes[current_class].is_drift = is_drift;
+      matrices.classes[current_class].length = current_length;
+      matrices.classes[current_class].is_drift = is_drift;
     }
     
     file.close();
@@ -771,6 +850,6 @@ bool HMS::ParseMatrixFile(const std::string& filepath, MatrixElements& matrices)
     std::cout << "  Found " << (current_class + 1) << " transformation classes" << std::endl;
     
     return true;
-}
+  }
 
 } // namespace simc

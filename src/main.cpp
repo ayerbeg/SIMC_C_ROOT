@@ -238,6 +238,195 @@ struct SpectrometerTransport {
         }
     }
     
+    // ========================================================================
+    // PHASE 5e WEEK 2: Reconstruction Methods
+    // ========================================================================
+    
+    /**
+     * @brief Extract electron reconstruction after focal plane
+     * @param main MainEvent structure with FP_electron already filled
+     * 
+     * Calls Reconstruct() and handles unit conversions:
+     * - HMS/SHMS: TargetState has x, xp(mrad), y, yp(mrad), delta
+     *             → RECON_electron gets xptar = xp/1000 (mrad→rad)
+     * - SOS/HRS:  TargetState has xptar(rad), yptar(rad), ytar, delta
+     *             → RECON_electron gets xptar = xptar (already rad)
+     */
+    void ReconstructElectron(MainEvent& main) {
+        switch (electron_arm_id) {
+            case 1:  // HMS
+                if (hms) {
+                    // Get focal plane state
+                    HMS::FocalPlaneState fp;
+                    hms->GetFocalPlane(last_hms_track_, fp);
+                    
+                    // Reconstruct
+                    HMS::TargetState target;
+                    hms->Reconstruct(fp, target);
+                    
+                    // Fill RECON_electron with unit conversion
+                    main.RECON_electron.xptar = target.xp / 1000.0;  // mrad → rad
+                    main.RECON_electron.yptar = target.yp / 1000.0;  // mrad → rad
+                    main.RECON_electron.delta = target.delta;        // %
+                    // Note: ArmState has no x, y fields - only xptar, yptar, delta, z
+                }
+                break;
+            
+            case 2:  // SOS
+                if (sos) {
+                    SOS::FocalPlaneState fp;
+                    sos->GetFocalPlane(last_sos_track_, fp);
+                    
+                    SOS::TargetState target;
+                    sos->Reconstruct(fp, target);
+                    
+                    // SOS: already in radians, no conversion
+                    main.RECON_electron.xptar = target.xptar;  // rad
+                    main.RECON_electron.yptar = target.yptar;  // rad
+                    main.RECON_electron.delta = target.delta;  // %
+                    // Note: ArmState has no ytar field - only xptar, yptar, delta, z
+                }
+                break;
+            
+            case 5:  // SHMS
+            case 6:  // SHMS_P5
+                if (shms) {
+                    SHMS::FocalPlaneState fp;
+                    shms->GetFocalPlane(last_shms_track_, fp);
+                    
+                    SHMS::TargetState target;
+                    shms->Reconstruct(fp, target);
+                    
+                    // SHMS: mrad → rad conversion
+                    main.RECON_electron.xptar = target.xp / 1000.0;  // mrad → rad
+                    main.RECON_electron.yptar = target.yp / 1000.0;  // mrad → rad
+                    main.RECON_electron.delta = target.delta;        // %
+                    // Note: ArmState has no x, y fields
+                }
+                break;
+            
+            case 3:  // HRSr
+                if (hrsr) {
+                    HRSr::FocalPlaneState fp;
+                    hrsr->GetFocalPlane(last_hrsr_track_, fp);
+                    
+                    HRSr::TargetState target;
+                    hrsr->Reconstruct(fp, target);
+                    
+                    // HRSr: already in radians
+                    main.RECON_electron.xptar = target.xptar;  // rad
+                    main.RECON_electron.yptar = target.yptar;  // rad
+                    main.RECON_electron.delta = target.delta;  // %
+                    // Note: ArmState has no ytar field
+                }
+                break;
+            
+            case 4:  // HRSl
+                if (hrsl) {
+                    HRSl::FocalPlaneState fp;
+                    hrsl->GetFocalPlane(last_hrsl_track_, fp);
+                    
+                    HRSl::TargetState target;
+                    hrsl->Reconstruct(fp, target);
+                    
+                    // HRSl: already in radians
+                    main.RECON_electron.xptar = target.xptar;  // rad
+                    main.RECON_electron.yptar = target.yptar;  // rad
+                    main.RECON_electron.delta = target.delta;  // %
+                    // Note: ArmState has no ytar field
+                }
+                break;
+        }
+    }
+    
+    /**
+     * @brief Extract hadron reconstruction after focal plane
+     */
+    void ReconstructHadron(MainEvent& main) {
+        switch (hadron_arm_id) {
+            case 1:  // HMS
+                if (hms) {
+                    HMS::FocalPlaneState fp;
+                    hms->GetFocalPlane(last_hms_track_, fp);
+                    
+                    HMS::TargetState target;
+                    hms->Reconstruct(fp, target);
+                    
+                    // HMS: mrad → rad conversion
+                    main.RECON_hadron.xptar = target.xp / 1000.0;  // mrad → rad
+                    main.RECON_hadron.yptar = target.yp / 1000.0;  // mrad → rad
+                    main.RECON_hadron.delta = target.delta;        // %
+                    // Note: ArmState has no x, y fields
+                }
+                break;
+            
+            case 2:  // SOS
+                if (sos) {
+                    SOS::FocalPlaneState fp;
+                    sos->GetFocalPlane(last_sos_track_, fp);
+                    
+                    SOS::TargetState target;
+                    sos->Reconstruct(fp, target);
+                    
+                    // SOS: already in radians
+                    main.RECON_hadron.xptar = target.xptar;  // rad
+                    main.RECON_hadron.yptar = target.yptar;  // rad
+                    main.RECON_hadron.delta = target.delta;  // %
+                    // Note: ArmState has no ytar field
+                }
+                break;
+            
+            case 5:  // SHMS
+            case 6:  // SHMS_P5
+                if (shms) {
+                    SHMS::FocalPlaneState fp;
+                    shms->GetFocalPlane(last_shms_track_, fp);
+                    
+                    SHMS::TargetState target;
+                    shms->Reconstruct(fp, target);
+                    
+                    // SHMS: mrad → rad conversion
+                    main.RECON_hadron.xptar = target.xp / 1000.0;  // mrad → rad
+                    main.RECON_hadron.yptar = target.yp / 1000.0;  // mrad → rad
+                    main.RECON_hadron.delta = target.delta;        // %
+                    // Note: ArmState has no x, y fields
+                }
+                break;
+            
+            case 3:  // HRSr
+                if (hrsr) {
+                    HRSr::FocalPlaneState fp;
+                    hrsr->GetFocalPlane(last_hrsr_track_, fp);
+                    
+                    HRSr::TargetState target;
+                    hrsr->Reconstruct(fp, target);
+                    
+                    // HRSr: already in radians
+                    main.RECON_hadron.xptar = target.xptar;  // rad
+                    main.RECON_hadron.yptar = target.yptar;  // rad
+                    main.RECON_hadron.delta = target.delta;  // %
+                    // Note: ArmState has no ytar field
+                }
+                break;
+            
+            case 4:  // HRSl
+                if (hrsl) {
+                    HRSl::FocalPlaneState fp;
+                    hrsl->GetFocalPlane(last_hrsl_track_, fp);
+                    
+                    HRSl::TargetState target;
+                    hrsl->Reconstruct(fp, target);
+                    
+                    // HRSl: already in radians
+                    main.RECON_hadron.xptar = target.xptar;  // rad
+                    main.RECON_hadron.yptar = target.yptar;  // rad
+                    main.RECON_hadron.delta = target.delta;  // %
+                    // Note: ArmState has no ytar field
+                }
+                break;
+        }
+    }
+    
     // Print statistics for all active spectrometers
     void PrintStatistics(std::ostream& os) const {
         os << "\n==========================================\n";
@@ -626,6 +815,11 @@ int main(int argc, char** argv) {
             // ================================================================
             spectrometers.ExtractElectronFocalPlane(main);
             
+            // ================================================================
+            // PHASE 5e WEEK 2: Reconstruct electron target coordinates
+            // ================================================================
+            spectrometers.ReconstructElectron(main);
+            
             // Transport hadron
             bool hadron_ok = spectrometers.TransportHadron(event, main);
             if (!hadron_ok) continue;
@@ -634,6 +828,11 @@ int main(int argc, char** argv) {
             // PHASE 5e: Extract hadron focal plane coordinates
             // ================================================================
             spectrometers.ExtractHadronFocalPlane(main);
+            
+            // ================================================================
+            // PHASE 5e WEEK 2: Reconstruct hadron target coordinates
+            // ================================================================
+            spectrometers.ReconstructHadron(main);
             
             // ================================================================
             // 5. Event passed all cuts - fill accepted distributions

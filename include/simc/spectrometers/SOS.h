@@ -185,8 +185,21 @@ private:
     void Project(TrackState& track, double drift_length);
     void TranspMatrix(TrackState& track, int class_index, double drift_length);
 
+/**
+     * @brief Apply COSY matrix transformation to input coordinates
+     * @param input Input coordinate array [x, xp, y, yp, delta]
+     * @param matrices Matrix elements to apply
+     * @param class_id Transformation class index
+     * @return Output coordinate array [x, xp, y, yp, delta]
+     */
+    std::array<double, 5> ApplyMatrixClass(
+        const std::array<double, 5>& input,
+        const MatrixElements& matrices,
+        int class_id) const;
+
+  
     // Matrix file parsing
-    bool ParseMatrixFile(const std::string& filepath, MatrixElements& matrices);
+    bool ParseMatrixFile(const std::string& filepath, MatrixElements& matrices, bool is_reconstruction);
 
     // Configuration
     QuadAperture quad_;

@@ -31,6 +31,7 @@ bool SHMS::Transport(TrackState& track) {
     return true;
 }
 
+  /*
 bool SHMS::Reconstruct(const FocalPlaneState& fp, TargetState& target) {
     // TODO: Implement reconstruction in Session 4
     // For now, just copy values
@@ -41,6 +42,84 @@ bool SHMS::Reconstruct(const FocalPlaneState& fp, TargetState& target) {
     target.delta = fp.delta;
     return true;
 }
+*/
+
+bool SHMS::Reconstruct(const FocalPlaneState& fp, TargetState& target) {
+    /**
+     * Reconstruct target coordinates from focal plane using COSY matrices.
+     * Based on simc_gfortran shms/mc_shms_recon.f
+     */
+    
+    // Pack focal plane coordinates into COSY ray vector
+    std::array<double, 5> ray;
+    ray[0] = fp.x / 100.0;      // cm → m
+    ray[1] = fp.xp / 1000.0;    // mrad → rad
+    ray[2] = fp.y / 100.0;      // cm → m
+    ray[3] = fp.yp / 1000.0;    // mrad → rad
+    ray[4] = 0.0;               // fry
+    if (std::abs(ray[4]) <= 1.e-30) ray[4] = 1.e-30;
+
+
+// DEBUG: First call
+    static bool first_call = true;
+    if (first_call) {
+        std::cout << "=== SHMS Reconstruct DEBUG ===" << std::endl;
+        std::cout << "  Input: fp.x=" << fp.x << " fp.xp=" << fp.xp 
+                  << " fp.y=" << fp.y << " fp.yp=" << fp.yp << std::endl;
+        std::cout << "  Ray: x=" << ray[0] << " xp=" << ray[1] 
+                  << " y=" << ray[2] << " yp=" << ray[3] << std::endl;
+        first_call = false;
+    }
+
+    
+    // Initialize reconstruction sums
+    std::array<double, 4> sum{0.0};
+    
+    // Apply reconstruction matrix (class 0)
+    const auto& recon_class = recon_matrix_.classes[0];
+
+
+ // DEBUG: Matrix info
+    static bool show_matrix = true;
+    if (show_matrix) {
+        std::cout << "  Matrix class 0 has " << recon_class.terms.size() << " terms" << std::endl;
+        show_matrix = false;
+    }
+
+    
+    for (const auto& term : recon_class.terms) {
+        double product = 1.0;
+        for (int j = 0; j < 5; ++j) {
+            if (term.expon[j] != 0) {
+                product *= std::pow(ray[j], term.expon[j]);
+            }
+        }
+        for (int j = 0; j < 4; ++j) {
+            sum[j] += product * term.coeff[j];
+        }
+    }
+
+ // DEBUG: Second call output
+    static bool second_call = true;
+    if (second_call) {
+        std::cout << "=== SHMS Reconstruct OUTPUT ===" << std::endl;
+        std::cout << "  sum[0]=" << sum[0] << " sum[1]=" << sum[1] 
+                  << " sum[2]=" << sum[2] << " sum[3]=" << sum[3] << std::endl;
+        second_call = false;
+    }
+
+    
+    // Unpack results
+    target.x = 0.0;
+    target.xp = sum[0] * 1000.0;   // rad → mrad
+    target.y = sum[1] * 100.0;     // m → cm
+    target.yp = sum[2] * 1000.0;   // rad → mrad
+    target.delta = sum[3] * 100.0; // fraction → %
+    
+    return true;
+}
+
+  
 // ============================================================================
 // PHASE 5e: Add this implementation to src/spectrometers/SHMS.cpp
 // Insert after the Reconstruct() method (around line 44)
@@ -89,12 +168,14 @@ bool SHMS::GetFocalPlane(const TrackState& track, FocalPlaneState& fp) const {
 
   
 bool SHMS::LoadMatrices(const std::string& forward_file, const std::string& recon_file) {
-    if (!ParseMatrixFile(forward_file, forward_matrix_)) {
+    // Load forward matrix (false = has separators between transformation classes)
+    if (!ParseMatrixFile(forward_file, forward_matrix_, false)) {
         std::cerr << "Failed to load forward matrix: " << forward_file << std::endl;
         return false;
     }
     
-    if (!ParseMatrixFile(recon_file, recon_matrix_)) {
+    // Load reconstruction matrix (true = no separators, all terms in class 0)
+    if (!ParseMatrixFile(recon_file, recon_matrix_, true)) {
         std::cerr << "Failed to load reconstruction matrix: " << recon_file << std::endl;
         return false;
     }
@@ -676,7 +757,7 @@ bool SHMS::TransportHut(TrackState& track) {
 // Matrix File Parsing
 // ============================================================================
 
-bool SHMS::ParseMatrixFile(const std::string& filepath, MatrixElements& matrices) {
+bool SHMS::ParseMatrixFile(const std::string& filepath, MatrixElements& matrices, bool is_reconstruction) {
     /**
      * Parse COSY matrix file format.
      * 
@@ -689,15 +770,17 @@ bool SHMS::ParseMatrixFile(const std::string& filepath, MatrixElements& matrices
      * ...
      * ------------------------------------------------------------------------------
      */
-    
-    std::ifstream file(filepath);
+
+  std::ifstream file(filepath);
     if (!file.is_open()) {
         std::cerr << "Cannot open matrix file: " << filepath << std::endl;
         return false;
     }
     
     std::string line;
-    int current_class = -1;
+    // Reconstruction matrices have no separator before first data, start at class 0
+    // Forward matrices have separators, start at -1 and increment on first separator
+    int current_class = is_reconstruction ? 0 : -1;
     double current_length = 0.0;
     
     while (std::getline(file, line)) {
@@ -706,13 +789,19 @@ bool SHMS::ParseMatrixFile(const std::string& filepath, MatrixElements& matrices
         
         // Check for separator (new transformation class)
         if (line.find("----") != std::string::npos) {
-            current_class++;
-            if (current_class >= MatrixElements::MAX_CLASSES) {
-                std::cerr << "Too many transformation classes in matrix file!" << std::endl;
-                return false;
+            // For reconstruction matrices, separator marks END of data
+            // For forward matrices, separator marks beginning of new class
+            if (!is_reconstruction) {
+                current_class++;
+                if (current_class >= MatrixElements::MAX_CLASSES) {
+                    std::cerr << "Too many transformation classes in matrix file!" << std::endl;
+                    return false;
+                }
             }
             
-            matrices.classes[current_class].length = current_length;
+            if (current_class >= 0) {
+                matrices.classes[current_class].length = current_length;
+            }
             current_length = 0.0;
             continue;
         }
@@ -730,37 +819,55 @@ bool SHMS::ParseMatrixFile(const std::string& filepath, MatrixElements& matrices
             continue;
         }
         
-        // Parse matrix element line
-        if (current_class >= 0) {
-            std::istringstream iss(line);
-            MatrixTerm term;
-            
-            // Read 5 coefficients
-            for (int i = 0; i < 5; ++i) {
-                if (!(iss >> term.coeff[i])) {
-                    std::cerr << "Error parsing coefficient " << i << " in line: " << line << std::endl;
-                    return false;
-                }
-            }
-            
-            // Read 6 exponent digits (as a single integer, then split)
-            std::string expon_str;
-            if (!(iss >> expon_str)) {
-                std::cerr << "Error parsing exponents in line: " << line << std::endl;
-                return false;
-            }
-            
-            // Convert 6-digit string to individual exponents
-            if (expon_str.length() >= 6) {
-                for (int i = 0; i < 5; ++i) {
-                    term.expon[i] = expon_str[i] - '0';
-                }
-                // Note: 6th digit is time-of-flight (ignored)
-            }
-            
-            matrices.classes[current_class].terms.push_back(term);
-            matrices.classes[current_class].n_terms++;
-        }
+
+
+// Parse matrix element line
+if (current_class >= 0) {
+    std::istringstream iss(line);
+    MatrixTerm term;
+    
+    // Try to read all values - be flexible about how many
+    std::vector<double> coeffs;
+    double val;
+    while (iss >> val) {
+        coeffs.push_back(val);
+    }
+    
+    // Check if we have at least 5 values (4 or 5 coeffs + exponents)
+    if (coeffs.size() < 5) {
+        std::cerr << "Error: Expected at least 5 values in line: " << line << std::endl;
+        std::cerr << "  Got " << coeffs.size() << " values" << std::endl;
+        return false;
+    }
+    
+    // Last value should be exponents (integer)
+    int expon_int = static_cast<int>(coeffs.back());
+    coeffs.pop_back();  // Remove exponents from coeffs
+    
+    // Now coeffs contains only the matrix coefficients (should be 4 or 5)
+    for (size_t i = 0; i < coeffs.size() && i < 5; ++i) {
+        term.coeff[i] = coeffs[i];
+    }
+    // Fill remaining with zeros if needed
+    for (size_t i = coeffs.size(); i < 5; ++i) {
+        term.coeff[i] = 0.0;
+    }
+    
+    // Parse exponents from integer
+    // Format: ABCDE where each digit is an exponent (5 digits for recon)
+    std::string expon_str = std::to_string(expon_int);
+    while (expon_str.length() < 5) {
+        expon_str = "0" + expon_str;  // Pad with leading zeros
+    }
+    
+    for (int i = 0; i < 5; ++i) {
+        term.expon[i] = expon_str[i] - '0';
+    }
+    
+    matrices.classes[current_class].terms.push_back(term);
+    matrices.classes[current_class].n_terms++;
+}
+	
     }
     
     file.close();

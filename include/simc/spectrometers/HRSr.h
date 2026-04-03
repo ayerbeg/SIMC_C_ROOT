@@ -173,7 +173,7 @@ private:
     bool CheckRectangularAperture(double x, double y, const RectangularAperture& ap);
     
     // Matrix parsing
-    bool ParseMatrixFile(const std::string& filename, MatrixElements& matrix);
+    bool ParseMatrixFile(const std::string& filepath, MatrixElements& matrices, bool is_reconstruction);
 };
 
 } // namespace simc

@@ -139,6 +139,23 @@ void OutputManager::SetupEventTree() {
     tree_event_->Branch("FP_p_dx", &main_.FP_hadron.dx);
     tree_event_->Branch("FP_p_dy", &main_.FP_hadron.dy);
     tree_event_->Branch("FP_p_path", &main_.FP_hadron.path);
+    
+    // ========================================================================
+    // PHASE 5e WEEK 2: Reconstructed Target Coordinates  
+    // ========================================================================
+    // NOTE: RECON_electron/hadron are ArmState structures with fields:
+    //       xptar, yptar, delta, z (similar to event_.e_xptar pattern)
+    // Electron reconstructed (all angles in radians, matching generated)
+    tree_event_->Branch("RECON_e_xptar", &main_.RECON_electron.xptar);
+    tree_event_->Branch("RECON_e_yptar", &main_.RECON_electron.yptar);
+    tree_event_->Branch("RECON_e_delta", &main_.RECON_electron.delta);
+    tree_event_->Branch("RECON_e_z", &main_.RECON_electron.z);
+    
+    // Hadron reconstructed (all angles in radians, matching generated)
+    tree_event_->Branch("RECON_p_xptar", &main_.RECON_hadron.xptar);
+    tree_event_->Branch("RECON_p_yptar", &main_.RECON_hadron.yptar);
+    tree_event_->Branch("RECON_p_delta", &main_.RECON_hadron.delta);
+    tree_event_->Branch("RECON_p_z", &main_.RECON_hadron.z);
 }
 
 void OutputManager::SetupGeneratedTree() {

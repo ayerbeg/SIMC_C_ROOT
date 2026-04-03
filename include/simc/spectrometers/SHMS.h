@@ -330,7 +330,7 @@ private:
     void RotateHAxis(double angle_deg, double& x, double& y, double dx, double dy);
 
     // Matrix file parsing
-    bool ParseMatrixFile(const std::string& filepath, MatrixElements& matrices);
+    bool ParseMatrixFile(const std::string& filepath, MatrixElements& matrices, bool is_reconstruction);
 
     // Data members
     DriftLengths drifts_;

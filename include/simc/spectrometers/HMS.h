@@ -325,7 +325,7 @@ private:
     bool HitDipole(double x, double y);
 
     // Matrix file parsing
-    bool ParseMatrixFile(const std::string& filepath, MatrixElements& matrices);
+    bool ParseMatrixFile(const std::string& filepath, MatrixElements& matrices, bool is_reconstruction);
 
     // Data members
     CollimatorDimensions collimator_;
