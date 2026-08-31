@@ -121,6 +121,14 @@ namespace simc {
     fp.xp = track.dx * 1000.0;  // slope → mrad
     fp.yp = track.dy * 1000.0;  // slope → mrad
     fp.delta = track.delta;
+
+    // DEBUG: Print loaded drift lengths
+    std::cout << "=== HMS DRIFT LENGTHS (cm) ===" << std::endl;
+    std::cout << "  target_to_q1: " << drifts_.target_to_q1 << std::endl;
+    std::cout << "  q1_to_q2: " << drifts_.q1_to_q2 << std::endl;
+    std::cout << "  q2_to_q3: " << drifts_.q2_to_q3 << std::endl;
+    std::cout << "  q3_to_d1: " << drifts_.q3_to_d1 << std::endl;
+    std::cout << "  d1_to_fp: " << drifts_.d1_to_fp << std::endl;
     
     return true;
   }
@@ -128,6 +136,8 @@ namespace simc {
   
   bool HMS::LoadMatrices(const std::string& forward_file, const std::string& recon_file) {
     // Load forward matrix (false = has separators between transformation classes)
+
+    
     if (!ParseMatrixFile(forward_file, forward_matrix_, false)) {
       std::cerr << "Failed to load forward matrix: " << forward_file << std::endl;
       return false;
@@ -485,10 +495,32 @@ namespace simc {
     // Current z position depends on whether collimator was used
     double z_start = collimator_.use_collimator ? collimator_.z_exit : track.z;
     double zdrift = drifts_.target_to_q1 - z_start;
+
+  
+    // DEBUG- Print BEFORE drift
+ 
+        static int call_count = 0;
+    if (call_count < 3) {
+        std::cout << "=== TransportQ1 DEBUG (call #" << call_count << ") ===" << std::endl;
+        std::cout << "  BEFORE drift: track.z=" << track.z << " track.x=" << track.x << " track.y=" << track.y << std::endl;
+        std::cout << "  Slopes: track.dx=" << track.dx << " track.dy=" << track.dy << std::endl;
+        std::cout << "  z_start=" << z_start << " zdrift=" << zdrift << std::endl;
+    }
+
     
     // NOTE: Fortran checks if transformation 1 is a drift
     // We assume it is and use Project()
+     // Drift to Q1 entrance
     Project(track, zdrift);
+
+    
+    // DEBUG - Print AFTER drift
+    if (call_count < 3) {
+        std::cout << "  AFTER drift: track.z=" << track.z << " track.x=" << track.x << " track.y=" << track.y << std::endl;
+        std::cout << "  r²=" << (track.x*track.x + track.y*track.y) << " vs r_Q1²=" << (apertures_.r_Q1 * apertures_.r_Q1) << std::endl;
+        call_count++;  // Increment ONLY ONCE at the end
+    }
+
     
     // Check Q1 entrance
     if (!CheckQuadAperture(track.x, track.y, apertures_.r_Q1)) {

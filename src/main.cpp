@@ -525,6 +525,16 @@ private:
     // ========================================================================
     
     bool TransportHMS(const SimcEvent& event, const ArmState& SP) {
+
+  static int count = 0;
+    if (count < 3) {
+        std::cout << "=== TransportHMS Input (event #" << count << ") ===" << std::endl;
+        std::cout << "  SP.xptar=" << SP.xptar << " rad = " << (SP.xptar * 180.0/M_PI * 1000.0) << " mrad" << std::endl;
+        std::cout << "  SP.yptar=" << SP.yptar << " rad = " << (SP.yptar * 180.0/M_PI * 1000.0) << " mrad" << std::endl;
+        std::cout << "  SP.delta=" << SP.delta << " %" << std::endl;
+        count++;
+    }
+      
         HMS::TrackState track;
         track.x = 0.0;      // At target
         track.y = 0.0;

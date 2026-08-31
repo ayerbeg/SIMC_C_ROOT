@@ -53,7 +53,7 @@
         "name": "SHMS",
         "momentum": 8.534,
         "angle": 12.5,
-        "phi": 0.0
+        "phi": 90.0
     },
     
     "spectrometer_hadron": {
@@ -61,7 +61,7 @@
         "name": "HMS",
         "momentum": 2.21,
         "angle": 35.0,
-        "phi": 0.0
+        "phi": 270.0
     },
     
     "spectrometers": {

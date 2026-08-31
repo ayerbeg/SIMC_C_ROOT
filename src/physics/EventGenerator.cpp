@@ -242,7 +242,128 @@ namespace simc {
   // Generate Phase Space
   // ============================================================================
   
-  bool EventGenerator::GeneratePhaseSpace(SimcEvent& event, MainEvent& main) {
+  // bool EventGenerator::GeneratePhaseSpace(SimcEvent& event, MainEvent& main) {
+  //   // Generate Electron Angles (ALL cases):
+  //   event.e_yptar = random_->Uniform(gen_limits_.electron.yptar_min,
+  //                                    gen_limits_.electron.yptar_max);
+  //   event.e_xptar = random_->Uniform(gen_limits_.electron.xptar_min,
+  //                                    gen_limits_.electron.xptar_max);
+    
+  //   // Calculate electron physics angles from spectrometer angles
+  //   PhysicsAngles(spec_electron_.theta, spec_electron_.phi,
+  //                 event.e_xptar, event.e_yptar,
+  //                 event.e_theta, event.e_phi);
+    
+  //   // Generate Hadron Angles (all but H(e,e'p)):
+  //   if (reaction_type_ != ReactionType::ELASTIC) {
+  //     event.p_yptar = random_->Uniform(gen_limits_.hadron.yptar_min,
+  // 				       gen_limits_.hadron.yptar_max);
+  //     event.p_xptar = random_->Uniform(gen_limits_.hadron.xptar_min,
+  // 				       gen_limits_.hadron.xptar_max);
+        
+  //     PhysicsAngles(spec_hadron_.theta, spec_hadron_.phi,
+  // 		    event.p_xptar, event.p_yptar,
+  // 		    event.p_theta, event.p_phi);
+  //   }
+    
+  //   // Generate Hadron Momentum (A(e,e'p) or semi-inclusive)
+  //   if (reaction_type_ == ReactionType::QUASIELASTIC || 
+  //       reaction_type_ == ReactionType::SEMI_INCLUSIVE) {
+  //     double Emin = std::max(gen_limits_.hadron.E_min, 
+  // 			     gen_limits_.sumEgen_min - gen_limits_.electron.E_max);
+  //     double Emax = std::min(gen_limits_.hadron.E_max, 
+  // 			     gen_limits_.sumEgen_max - gen_limits_.electron.E_min);
+        
+  //     if (Emin > Emax) return false;
+        
+  //     main.gen_weight *= (Emax - Emin) / 
+  // 	(gen_limits_.hadron.E_max - gen_limits_.hadron.E_min);
+        
+  //     event.p_E = random_->Uniform(Emin, Emax);
+  //     event.p_P = std::sqrt(event.p_E * event.p_E - kProtonMass * kProtonMass);
+  //     event.p_delta = 100.0 * (event.p_P - spec_hadron_.P) / spec_hadron_.P;
+  //   }
+    
+  //   // Generate Electron Energy (all but hydrogen elastic)
+  //   if (reaction_type_ != ReactionType::ELASTIC) {
+  //     double Emin = gen_limits_.electron.E_min;
+  //     double Emax = gen_limits_.electron.E_max;
+        
+  //     if (reaction_type_ == ReactionType::QUASIELASTIC ||
+  // 	  reaction_type_ == ReactionType::PION_PRODUCTION ||
+  // 	  reaction_type_ == ReactionType::KAON_PRODUCTION ||
+  // 	  reaction_type_ == ReactionType::DELTA_PRODUCTION) {
+  // 	Emin = std::max(Emin, gen_limits_.sumEgen_min);
+  // 	Emax = std::min(Emax, gen_limits_.sumEgen_max);
+  //     } else if (reaction_type_ == ReactionType::QUASIELASTIC) {
+  // 	Emin = std::max(Emin, gen_limits_.sumEgen_min - event.p_E);
+  // 	Emax = std::min(Emax, gen_limits_.sumEgen_max - event.p_E);
+  //     }
+        
+  //     if (Emin > Emax) return false;
+        
+  //     main.gen_weight *= (Emax - Emin) / 
+  // 	(gen_limits_.electron.E_max - gen_limits_.electron.E_min);
+        
+  //     event.e_E = random_->Uniform(Emin, Emax);
+  //     event.e_P = event.e_E;  // Ultra-relativistic approximation for electron
+  //     event.e_delta = 100.0 * (event.e_P - spec_electron_.P) / spec_electron_.P;
+  //   }
+  //   // NOTE: For ELASTIC, e_E, e_P, e_delta are calculated later in SolveHydrogenElastic
+
+  //   // ========================================================================
+  //   // PHASE 5c.3: For elastic, GENERATE hadron angles within acceptance
+  //   // ========================================================================
+  //   if (reaction_type_ == ReactionType::ELASTIC) {
+  //     // Generate hadron spectrometer angles (WITHIN acceptance limits)
+  //     event.p_yptar = random_->Uniform(gen_limits_.hadron.yptar_min,
+  //                                      gen_limits_.hadron.yptar_max);
+  //     event.p_xptar = random_->Uniform(gen_limits_.hadron.xptar_min,
+  //                                      gen_limits_.hadron.xptar_max);
+      
+  //     // Calculate hadron physics angles from generated spectrometer angles
+  //     PhysicsAngles(spec_hadron_.theta, spec_hadron_.phi,
+  //                   event.p_xptar, event.p_yptar,
+  //                   event.p_theta, event.p_phi);
+      
+  //     // Electron energy will be calculated in SolveHydrogenElastic
+  //     event.e_E = 0.0;
+  //     event.e_P = 0.0;
+  //     event.e_delta = 0.0;
+  //   }
+
+    
+  //   // Generate Fermi Momentum for nuclear targets
+  //   if (reaction_type_ != ReactionType::ELASTIC) {
+  //     FermiMomentum pfer;
+  //     GenerateFermiMomentum(pfer);
+  //     event.Em = pfer.Em;
+  //     // Store pfer for later use in SolvePionKaon, etc.
+  //   }
+    
+  //   // Beam energy
+  //   event.Ein = beam_energy_;
+  //   if (beam_energy_spread_ > 0.0) {
+  //     event.Ein += random_->Gaussian(0.0, beam_energy_spread_);
+  //   }
+    
+  //   // Generation weight (phase space volume)
+  //   // Base weight: product of all angular ranges and target length
+  //   main.gen_weight *= 
+  //     (gen_limits_.electron.xptar_max - gen_limits_.electron.xptar_min) *
+  //     (gen_limits_.electron.yptar_max - gen_limits_.electron.yptar_min) *
+  //     target_props_.length;
+    
+  //   // Add hadron angular ranges (Phase 5c.3: for all reactions including elastic)
+  //   main.gen_weight *= 
+  //     (gen_limits_.hadron.xptar_max - gen_limits_.hadron.xptar_min) *
+  //     (gen_limits_.hadron.yptar_max - gen_limits_.hadron.yptar_min);
+    
+  //   return true;
+  // }
+
+
+bool EventGenerator::GeneratePhaseSpace(SimcEvent& event, MainEvent& main) {
     // Generate Electron Angles (ALL cases):
     event.e_yptar = random_->Uniform(gen_limits_.electron.yptar_min,
                                      gen_limits_.electron.yptar_max);
@@ -309,30 +430,9 @@ namespace simc {
       event.e_P = event.e_E;  // Ultra-relativistic approximation for electron
       event.e_delta = 100.0 * (event.e_P - spec_electron_.P) / spec_electron_.P;
     }
-    // NOTE: For ELASTIC, e_E, e_P, e_delta are calculated later in SolveHydrogenElastic
+    // NOTE: For ELASTIC, e_E, e_P, e_delta calculated in SolveHydrogenElastic
+    // NOTE: For ELASTIC, p_xptar, p_yptar, p_theta, p_phi calculated in SolveHydrogenElastic
 
-    // ========================================================================
-    // PHASE 5c.3: For elastic, GENERATE hadron angles within acceptance
-    // ========================================================================
-    if (reaction_type_ == ReactionType::ELASTIC) {
-      // Generate hadron spectrometer angles (WITHIN acceptance limits)
-      event.p_yptar = random_->Uniform(gen_limits_.hadron.yptar_min,
-                                       gen_limits_.hadron.yptar_max);
-      event.p_xptar = random_->Uniform(gen_limits_.hadron.xptar_min,
-                                       gen_limits_.hadron.xptar_max);
-      
-      // Calculate hadron physics angles from generated spectrometer angles
-      PhysicsAngles(spec_hadron_.theta, spec_hadron_.phi,
-                    event.p_xptar, event.p_yptar,
-                    event.p_theta, event.p_phi);
-      
-      // Electron energy will be calculated in SolveHydrogenElastic
-      event.e_E = 0.0;
-      event.e_P = 0.0;
-      event.e_delta = 0.0;
-    }
-
-    
     // Generate Fermi Momentum for nuclear targets
     if (reaction_type_ != ReactionType::ELASTIC) {
       FermiMomentum pfer;
@@ -347,21 +447,36 @@ namespace simc {
       event.Ein += random_->Gaussian(0.0, beam_energy_spread_);
     }
     
+    // ========================================================================
     // Generation weight (phase space volume)
-    // Base weight: product of all angular ranges and target length
-    main.gen_weight *= 
+    // Per Fortran simc.f lines 383-394:
+    // - Elastic (H(e,e'p)): genvol = domega_e (electron angles only)
+    // - Other reactions: genvol = domega_e * domega_p * ... (includes hadron)
+    // ========================================================================
+    
+    // Base weight: electron angular ranges and target length
+    main.gen_weight = 
       (gen_limits_.electron.xptar_max - gen_limits_.electron.xptar_min) *
       (gen_limits_.electron.yptar_max - gen_limits_.electron.yptar_min) *
       target_props_.length;
     
-    // Add hadron angular ranges (Phase 5c.3: for all reactions including elastic)
-    main.gen_weight *= 
-      (gen_limits_.hadron.xptar_max - gen_limits_.hadron.xptar_min) *
-      (gen_limits_.hadron.yptar_max - gen_limits_.hadron.yptar_min);
+    // Add hadron angular ranges (all reactions EXCEPT elastic)
+    if (reaction_type_ != ReactionType::ELASTIC) {
+      main.gen_weight *= 
+        (gen_limits_.hadron.xptar_max - gen_limits_.hadron.xptar_min) *
+        (gen_limits_.hadron.yptar_max - gen_limits_.hadron.yptar_min);
+    }
     
     return true;
-  }
+}
 
+
+
+
+
+
+
+  
   // ============================================================================
   // Complete Event
   // ============================================================================
@@ -418,25 +533,15 @@ namespace simc {
   // Solve Hydrogen Elastic
   // ============================================================================
 
-  bool EventGenerator::SolveHydrogenElastic(SimcEvent& event) const {
+bool EventGenerator::SolveHydrogenElastic(SimcEvent& event) const {
     // ========================================================================
-    // PHASE 5c.3: H(e,e'p) elastic with acceptance-based angle generation
+    // H(e,e'p) elastic scattering
+    // Based on Fortran event.f complete_ev subroutine
+    // 
+    // For elastic: Only electron angles are GENERATED
+    // Proton angles are CALCULATED from elastic kinematics (q-vector)
     // ========================================================================
-    //
-    // Previous (Phase 5c.2): Calculated p_theta, p_phi from q-vector
-    // Now (Phase 5c.3): p_theta, p_phi are GENERATED in GeneratePhaseSpace
-    //
-    // We apply a kinematic constraint: reject if generated proton direction
-    // doesn't match the q-vector direction (within tolerance)
-    // ========================================================================
-     static int debug_count = 0;
-    if (debug_count < 3) {
-        std::cout << "\n=== SolveHydrogenElastic DEBUG ===" << std::endl;
-        std::cout << "event.e_theta = " << event.e_theta << " rad = " << (event.e_theta * 180.0 / kPi) << " deg" << std::endl;
-        std::cout << "event.ue_z = " << event.ue_z << std::endl;
-        std::cout << "cos(e_theta) should be: " << std::cos(event.e_theta) << std::endl;
-        debug_count++;
-    }
+    
     // Calculate electron energy from elastic formula
     double denominator = kProtonMass + event.Ein * (1.0 - event.ue_z);
     
@@ -445,18 +550,6 @@ namespace simc {
     }
     
     event.e_E = event.Ein * kProtonMass / denominator;
-
-// ADD DEBUG HERE:
-static int debug_count_2 = 0;
-if (debug_count_2 < 3) {
-    std::cout << "\nInside SolveHydrogenElastic AFTER calculation:" << std::endl;
-    std::cout << "  event.Ein = " << event.Ein << " MeV" << std::endl;
-    std::cout << "  denominator = " << denominator << " MeV" << std::endl;
-    std::cout << "  event.e_E = " << event.e_E << " MeV" << std::endl;
-    std::cout << "  event.e_P = " << event.e_P << " MeV" << std::endl;
-    debug_count_2++;
-}
-    
     
     if (event.e_E >= event.Ein || event.e_E < kElectronMass) {
       return false;
@@ -464,13 +557,7 @@ if (debug_count_2 < 3) {
     
     event.e_P = std::sqrt(event.e_E * event.e_E - kElectronMass * kElectronMass);
     event.e_delta = 100.0 * (event.e_P - spec_electron_.P) / spec_electron_.P;
-    // ADD DEBUG HERE:
-if (debug_count_2 < 3) {
-    std::cout << "  After e_P calculation:" << std::endl;
-    std::cout << "  event.e_P = " << event.e_P << " MeV" << std::endl;
-    std::cout << "  spec_electron_.P = " << spec_electron_.P << " MeV" << std::endl;
-    std::cout << "  event.e_delta = " << event.e_delta << " %" << std::endl;
-}
+    
     // Calculate Q² and nu
     double sin_half = std::sin(event.e_theta / 2.0);
     event.nu = event.Ein - event.e_E;
@@ -484,53 +571,43 @@ if (debug_count_2 < 3) {
     
     double q_mag = std::sqrt(q_vec.x*q_vec.x + q_vec.y*q_vec.y + q_vec.z*q_vec.z);
     
-    // Expected proton direction from elastic kinematics (along q-vector)
-    double up_x_elastic = q_vec.x / q_mag;
-    double up_y_elastic = q_vec.y / q_mag;
-    double up_z_elastic = q_vec.z / q_mag;
-    
-    // Actual proton direction (from generated angles in Phase 5c.3)
-    double cos_theta_p = std::cos(event.p_theta);
-    double sin_theta_p = std::sin(event.p_theta);
-    double cos_phi_p = std::cos(event.p_phi);
-    double sin_phi_p = std::sin(event.p_phi);
-    
-    event.up_x = sin_theta_p * cos_phi_p;
-    event.up_y = sin_theta_p * sin_phi_p;
-    event.up_z = cos_theta_p;
-    
     // ========================================================================
-    // PHASE 5c.3: Accept all generated angles - let SHMS determine acceptance
+    // ELASTIC KINEMATICS: Proton direction = q-vector direction
     // ========================================================================
-    // NOTE: Originally we checked if generated proton direction matched
-    // elastic kinematics (q-vector direction). However, this is too restrictive
-    // because:
-    // 1. SHMS may not be at the elastic angle (e.g., SHMS at 35° vs q at 32°)
-    // 2. We're testing SHMS acceptance, not elastic kinematics
-    // 3. The SHMS apertures will naturally reject unphysical events
-    //
-    // For true physics simulation, this check should be re-enabled with proper
-    // alignment between spectrometer angle and elastic kinematics.
+    // In elastic scattering, the proton recoils along the momentum transfer
+    // This is NOT randomly generated - it's determined by kinematics
     // ========================================================================
     
-    // (Kinematic constraint check removed - SHMS acceptance handles it)
+    // Proton unit vector (from q-vector)
+    event.up_x = q_vec.x / q_mag;
+    event.up_y = q_vec.y / q_mag;
+    event.up_z = q_vec.z / q_mag;
     
-    // ========================================================================
-    // Event passes kinematic constraint - set final values
-    // ========================================================================
+    // Calculate proton physics angles from unit vector
+    event.p_theta = std::acos(event.up_z);
+
+    event.p_phi = std::atan2(event.up_y, event.up_x);
+    if (event.p_phi < 0.0) {
+      event.p_phi += 2.0 * kPi;
+    }
+    
+    // Calculate proton spectrometer angles from physics angles
+    SpectrometerAngles(spec_hadron_.theta, spec_hadron_.phi,
+                       event.p_theta, event.p_phi,
+                       event.p_xptar, event.p_yptar);
     
     // Proton momentum (from q magnitude for elastic)
     event.p_P = q_mag;
     event.p_E = std::sqrt(event.p_P * event.p_P + kProtonMass * kProtonMass);
     event.p_delta = 100.0 * (event.p_P - spec_hadron_.P) / spec_hadron_.P;
     
-    // q-vector unit vector
-    event.uq_x = up_x_elastic;
-    event.uq_y = up_y_elastic;
-    event.uq_z = up_z_elastic;
+    // q-vector unit vector (store for later use)
+    event.uq_x = event.up_x;
+    event.uq_y = event.up_y;
+    event.uq_z = event.up_z;
     
     return true;
-  }
+}
 
   // ============================================================================
   // Solve Deuterium
@@ -642,42 +719,50 @@ void EventGenerator::PhysicsAngles(
 //  SpectrometerAngles Angles
 // ============================================================================
 
-void EventGenerator::SpectrometerAngles(
+ void EventGenerator::SpectrometerAngles(
     Double_t theta0, Double_t phi0,
     Double_t theta, Double_t phi,
     Double_t& xptar, Double_t& yptar) const {
     
-    double cos_th0 = std::cos(theta0);
-    double sin_th0 = std::sin(theta0);
-    double cos_ph0 = std::cos(phi0);
-    double sin_ph0 = std::sin(phi0);
+    // Unit vector for event (lab frame)
+    double x = std::sin(theta) * std::cos(phi);
+    double y = std::sin(theta) * std::sin(phi);
+    double z = std::cos(theta);
     
-    // Unit vector in lab frame
-    double ux = std::sin(theta) * std::cos(phi);
-    double uy = std::sin(theta) * std::sin(phi);
-    double uz = std::cos(theta);
+    // Unit vector for spectrometer central angle
+    double x0 = std::sin(theta0) * std::cos(phi0);
+    double y0 = std::sin(theta0) * std::sin(phi0);
+    double z0 = std::cos(theta0);
     
-    // Inverse rotation: lab -> spectrometer
-    double dx = cos_th0 * cos_ph0 * ux + cos_th0 * sin_ph0 * uy - sin_th0 * uz;
-    double dy = -sin_ph0 * ux + cos_ph0 * uy;
-    double dz = sin_th0 * cos_ph0 * ux + sin_th0 * sin_ph0 * uy + cos_th0 * uz;
+    // Dot product = cos(angle between event and spectrometer)
+    double cos_dtheta = x*x0 + y*y0 + z*z0;
     
-    // Check that dz is positive (particle going forward through spectrometer)
-    if (dz <= 0.0) {
-        std::cerr << "ERROR in SpectrometerAngles: dz <= 0 (particle going backwards!)" << std::endl;
-        std::cerr << "  theta0=" << theta0 << ", phi0=" << phi0 << std::endl;
-        std::cerr << "  theta=" << theta << ", phi=" << phi << std::endl;
-        std::cerr << "  dz=" << dz << std::endl;
+    if (cos_dtheta <= 0.0) {
+        std::cerr << "ERROR in SpectrometerAngles: cos_dtheta <= 0" << std::endl;
         xptar = 0.0;
         yptar = 0.0;
         return;
     }
     
-    xptar = dx / dz;
-    yptar = dy / dz;
+    // Calculate slopes
+    xptar = x / cos_dtheta;
+    
+    // Calculate dy with proper sign
+    double term = 1.0/(cos_dtheta*cos_dtheta) - 1.0 - xptar*xptar;
+    if (term < 0.0) {
+        std::cerr << "ERROR in SpectrometerAngles: negative term in sqrt" << std::endl;
+        yptar = 0.0;
+        return;
+    }
+    
+    yptar = std::sqrt(term);
+    
+    // Sign correction: projected y-coordinate
+    double y_event = y / cos_dtheta;
+    if (y_event < y0) {
+        yptar = -yptar;
+    }
 }
-
- 
 
   // ============================================================================
   // Calculate Basic Kinematics
