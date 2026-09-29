@@ -77,10 +77,18 @@ add_custom_command(TARGET copy_data_files POST_BUILD
 # Find ROOT
 # ============================================================================
 
+# SIMC_BUILD_LEGACY: the pre-translation code (simc, simc_core, simc_io, old tests).
+# It keeps building for now; nothing in the new framework may depend on it (P1.3).
+option(SIMC_BUILD_LEGACY "Build the legacy (pre-translation) targets" ON)
+
+enable_testing()
+
+if(SIMC_BUILD_LEGACY)
 find_package(ROOT 6.20 REQUIRED COMPONENTS Core Tree Hist RIO)
 if(ROOT_FOUND)
     message(STATUS "Found ROOT ${ROOT_VERSION} at ${ROOT_USE_FILE}")
     include(${ROOT_USE_FILE})
+endif()
 endif()
 
 # ============================================================================
@@ -102,11 +110,36 @@ endif()
 # Include directories
 # ============================================================================
 
+# ============================================================================
+# New framework (translation branch, docs/ARCHITECTURE.md). ROOT-free core.
+# ============================================================================
+
+set(SIMC_REFERENCE_DIR "/home/ayerbe/NewDisk/reference" CACHE PATH
+    "Fortran reference data (reference/runs, reference/functions); tests skip if absent")
+set(SIMC_FORTRAN_DIR "/home/ayerbe/NewDisk/simc_gfortran" CACHE PATH
+    "Fortran SIMC source tree (read-only; infiles/ used by tests)")
+
+add_library(simcfw STATIC
+    src/core/SimcParameters.cpp
+    src/input/InpReader.cpp
+    src/input/EffectiveValues.cpp
+)
+target_include_directories(simcfw PUBLIC ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(simcfw PUBLIC nlohmann_json::nlohmann_json)
+target_compile_options(simcfw PRIVATE -Wall -Wextra -pedantic)
+
+add_executable(inp2json tools/inp2json.cpp)
+target_link_libraries(inp2json PRIVATE simcfw)
+set_target_properties(inp2json PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
+add_subdirectory(tests/unit)
+
+if(SIMC_BUILD_LEGACY)
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${ROOT_INCLUDE_DIRS})
 
 # ============================================================================
-# Add subdirectories
+# Add subdirectories (legacy)
 # ============================================================================
 
 add_subdirectory(src)
@@ -134,15 +167,15 @@ set_target_properties(simc PROPERTIES
 # Tests (optional)
 # ============================================================================
 
-option(BUILD_TESTS "Build unit tests" ON)
+option(BUILD_TESTS "Build legacy unit tests" ON)
 if(BUILD_TESTS)
     if(EXISTS ${CMAKE_SOURCE_DIR}/tests/CMakeLists.txt)
-        enable_testing()
         add_subdirectory(tests)
     else()
         message(STATUS "tests/CMakeLists.txt not found - skipping tests")
     endif()
 endif()
+endif()  # SIMC_BUILD_LEGACY
 
 # ============================================================================
 # Installation
