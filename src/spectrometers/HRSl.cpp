@@ -1,6 +1,15 @@
 /**
  * HRSl.cpp - Complete implementation with all 32 aperture checks
  * Based on mc_hrsr.f from simc_gfortran
+ *
+ * FIXED (Phase B1, applied to HRSl 2026-09-02): ParseMatrixFile exponent-digit
+ * bug corrected. Was taking exponent-string characters [0,1,2,3,4] (dropping
+ * the delta exponent, substituting the always-zero TOF placeholder in its
+ * place); now correctly takes [0,1,2,3,5] and validates the TOF digit per
+ * Fortran's transp.f logic (discard the term if TOF!=0 and all of coeff[0..3]
+ * are zero; fatal error if TOF!=0 and any of coeff[0..3] are nonzero).
+ * Verified against real data in data/matrices/hrsl/hrs_forward_cosy.dat
+ * would be the natural next check before trusting this in production.
  */
 
 #include "simc/spectrometers/HRSl.h"
@@ -506,18 +515,44 @@ bool HRSl::ParseMatrixFile(const std::string& filepath, MatrixElements& matrices
                 term.coeff[i] = 0.0;
             }
             
-            // Parse exponents (pad to 6 digits if needed)
+            // --- FIXED (Phase B1): exponent-digit parsing ---
+            // Fortran (shared/transp.f, format 1200) packs the 6-digit exponent
+            // field, in read order, as [x, xp, y, yp, TOF(discard), delta].
+            // The OLD code took characters [0,1,2,3,4] (dropping delta,
+            // substituting the always-zero TOF placeholder). This takes the
+            // correct [0,1,2,3,5], and replicates Fortran's exact handling of
+            // a non-zero TOF digit: fatal if any of coeff[0..3] are also
+            // nonzero (matches Fortran's "stop" condition), otherwise the term
+            // is silently discarded (matches Fortran's n_terms -= 1) rather
+            // than kept with a corrupted exponent.
             std::string expon_str = std::to_string(expon_int);
             while (expon_str.length() < 6) {
                 expon_str = "0" + expon_str;
             }
-            
-            for (int i = 0; i < 5; ++i) {
-                term.expon[i] = expon_str[i] - '0';
+
+            term.expon[0] = expon_str[0] - '0';  // x
+            term.expon[1] = expon_str[1] - '0';  // xp
+            term.expon[2] = expon_str[2] - '0';  // y
+            term.expon[3] = expon_str[3] - '0';  // yp
+            int tof_digit  = expon_str[4] - '0';  // TOF placeholder (should be 0)
+            term.expon[4] = expon_str[5] - '0';  // delta
+
+            if (tof_digit != 0) {
+                bool has_nonzero_xy_coeff = (term.coeff[0] != 0.0 || term.coeff[1] != 0.0 ||
+                                              term.coeff[2] != 0.0 || term.coeff[3] != 0.0);
+                if (has_nonzero_xy_coeff) {
+                    std::cerr << "FATAL: non-zero TOF term with nonzero x/xp/y/yp "
+                              << "coefficient in " << filepath
+                              << " — matrix file format not understood." << std::endl;
+                    return false;
+                }
+                // Discard this term silently (matches Fortran's n_terms -= 1) —
+                // do NOT push_back, do NOT increment n_terms.
+            } else {
+                matrices.classes[current_class].terms.push_back(term);
+                matrices.classes[current_class].n_terms++;
             }
-            
-            matrices.classes[current_class].terms.push_back(term);
-            matrices.classes[current_class].n_terms++;
+            // --- end fix ---
         }
     }
     
