@@ -166,6 +166,8 @@ target_compile_options(simcfw_physics PRIVATE -Wall -Wextra -pedantic)
 add_subdirectory(src/material)
 add_subdirectory(src/setup)
 add_subdirectory(src/optics)      # shared COSY engine: transp, project, rotate_*axis, locforunt (P6.1)
+add_subdirectory(src/spectrometers/hms)   # ISpectrometer "hms" (P6.2)
+add_subdirectory(src/spectrometers/shms)  # ISpectrometer "shms" (P6.3)
 
 add_subdirectory(tests/unit)
 add_subdirectory(tests/l1)
