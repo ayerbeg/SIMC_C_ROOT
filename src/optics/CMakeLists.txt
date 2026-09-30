@@ -5,5 +5,5 @@ add_library(simcfw_optics STATIC
     CosyEngine.cpp
     ForwardChains.cpp
 )
-target_link_libraries(simcfw_optics PUBLIC simcfw)
+target_link_libraries(simcfw_optics PUBLIC simcfw simcfw_kinematics)
 target_compile_options(simcfw_optics PRIVATE -Wall -Wextra -pedantic)

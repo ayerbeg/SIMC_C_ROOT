@@ -1,7 +1,7 @@
 // src/setup/SetupBuilder.cpp
 //
 // Port of the Fortran start-up sequence (simc.f l.53-101 without calculate_central):
-// dbase.f:dbase_read post-read logic, init.f:target_init (non energy-loss part), theory_init,
+// dbase.f:dbase_read post-read logic, init.f:target_init and extreme_trip_thru_target (through ITargetLossProvider, default material::HallCCryoTarget), theory_init,
 // limits_init, radc_init, simc.f:94-101. Line numbers refer to simc_gfortran/{dbase,init,simc}.f.
 //
 // Numerics: the Fortran is compiled with -fdefault-real-8, so every literal is a double and
@@ -14,6 +14,7 @@
 #include <sstream>
 
 #include "simc/core/SimcConstants.h"
+#include "simc/setup/HallCTargetLosses.h"
 
 namespace simc {
 
@@ -184,6 +185,7 @@ bool ReadMomentumDistribution(const std::string& path, MomentumDistribution& d) 
 // =============================================================================================
 RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITargetLossProvider* losses) {
     RunSetup s = RunSetup::FromParameters(p, opt.run_name);
+    s.built = true;
     auto stop = [&](const std::string& why) { s.stops.push_back("STOP " + why); };
     auto msg = [&](const std::string& m) { s.messages.push_back(m); };
     const int A = nint(p.targ.A);
@@ -466,29 +468,11 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
     }
     if (nint(t.Z) == 1) sw.using_Coulomb = false;   // no coulomb corr. for Z=1
 
-    // ---- init.f:target_init (l.1-88), called at dbase.f:551
-    t.L1 = std::log(184.15) - std::log(t.Z) / 3.0;
-    t.L2 = std::log(1194.) - 2. * std::log(t.Z) / 3.0;
-    if (t.Z == 1) {
-        t.L1 = 5.31;
-        t.L2 = 6.144;
-    }
+    // ---- init.f:target_init (l.1-88), called at dbase.f:551. Single implementation: the provider
+    // (default HallCTargetLosses -> material::HallCCryoTarget::targetInit).
+    HallCTargetLosses default_losses(p.electron_arm, p.hadron_arm);
+    if (!losses) losses = &default_losses;
     {
-        const double za2 = (t.Z * K::alpha) * (t.Z * K::alpha);
-        const double fc = za2 * (1.202 + za2 * (-1.0369 + za2 * 1.008 / (za2 + 1)));
-        if (A == 1) {
-            t.X0 = 61.28;
-        } else if (A == 2) {
-            t.X0 = 122.4;
-        } else if (A == 4) {
-            t.X0 = 94.32;
-        } else {
-            if (A == 3) msg("Using Tsai formula for He-3 radiation length!!! (is there a better value?)");
-            t.X0 = 716.405 * t.A / t.Z / (t.Z * (t.L1 - fc) + t.L2);
-        }
-        t.X0_cm = t.X0 / t.rho;
-    }
-    if (losses) {   // init.f:44-55 (trip_thru_target typeflag 4)
         TargetInitArgs a;
         a.using_Eloss = sw.using_Eloss;
         a.using_Coulomb = sw.using_Coulomb;
@@ -498,21 +482,7 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
         a.Mh2 = s.Mh2;
         a.Ebeam = s.Ebeam;
         a.Pe_cent = s.spec.e.P;
-        losses->mostProbableLosses(a, t);
-    }
-    if (!sw.using_Eloss)
-        for (auto& e : t.Eloss) e.ave = 0.0;   // init.f:56-60
-    if (sw.using_Coulomb) {                    // init.f:62-82 (Aste et al. version)
-        t.Coulomb.ave = 0.75 * 1.5 * (t.Z - 1.) * K::alpha * K::hbarc /
-                        (1.1 * std::pow(t.A, 1. / 3.) + 0.86 * std::pow(t.A, -1. / 3.));
-        t.Coulomb_constant = t.Coulomb.ave;
-        t.Coulomb.min = t.Coulomb_constant;
-        t.Coulomb.max = t.Coulomb_constant;
-    } else {
-        t.Coulomb.ave = 0.0;
-        t.Coulomb_constant = 0.0;
-        t.Coulomb.min = 0.0;
-        t.Coulomb.max = 0.0;
+        losses->targetInit(a, t, s.messages);
     }
 
     // ---- dbase.f:555-558 theory_init
@@ -637,10 +607,8 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
     xa.pe = edge.e.E;
     xa.pp = pp;
     xa.m = s.Mh;
-    if (losses) {
-        losses->extremeLosses(xa, t);
-        s.target_losses_from_provider = true;
-    }
+    losses->extremeLosses(xa, t);   // init.f:245
+    s.target_losses_from_provider = true;
     if (!sw.using_Eloss) {   // init.f:247-252
         for (auto& e : t.Eloss) {
             e.min = 0.0;

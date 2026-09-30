@@ -10,6 +10,7 @@
 #include <string>
 
 #include "simc/core/SimcConstants.h"
+#include "simc/setup/KinematicsUtils.h"
 #include "simc/stages/IRandom.h"
 
 namespace simc {
@@ -28,15 +29,15 @@ double powi(double x, int m) {
 
 namespace {
 
-// Fortran: loren.f:loren (l.1-26). Local copy for the decay branches of transp/project.
+// Fortran: loren.f:loren (l.1-26). Single implementation in setup/KinematicsUtils (P2.2).
 void loren(double gam, double bx, double by, double bz, double e, double x, double y, double z, double& ef1,
            double& pxf, double& pyf, double& pzf, double& pf1) {
-    const double gam1 = gam * gam / (1. + gam);
-    ef1 = gam * (e - bx * x - by * y - bz * z);
-    pxf = (1 + gam1 * (bx * bx)) * x + gam1 * bx * (by * y + bz * z) - gam * bx * e;
-    pyf = (1 + gam1 * (by * by)) * y + gam1 * by * (bx * x + bz * z) - gam * by * e;
-    pzf = (1 + gam1 * (bz * bz)) * z + gam1 * bz * (by * y + bx * x) - gam * bz * e;
-    pf1 = std::sqrt(pxf * pxf + pyf * pyf + pzf * pzf);
+    const LorenResult r = Loren(gam, bx, by, bz, e, x, y, z);
+    ef1 = r.ef1;
+    pxf = r.pxf;
+    pyf = r.pyf;
+    pzf = r.pzf;
+    pf1 = r.pf1;
 }
 
 // gfortran list-directed integer field (I11 after a one-blank separator).

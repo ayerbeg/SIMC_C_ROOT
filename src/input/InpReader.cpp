@@ -73,10 +73,19 @@ struct Expr {
         const char* start = s.c_str() + i;
         char* end = nullptr;
         double v;
-        if (s.compare(i, 2, "0x") == 0 || s.compare(i, 2, "0X") == 0)
+        if (s.compare(i, 2, "0x") == 0 || s.compare(i, 2, "0X") == 0) {
             v = static_cast<double>(std::strtol(start, &end, 16));
-        else
+        } else {
             v = std::strtod(start, &end);
+            // CTP float literals (D-018): thTestParse.c:391-394 stores a TOKFLOAT literal through
+            // `DAFLOAT f = atof(string)` (DAFLOAT = float, daVar.h:114). Integer literals (only digits)
+            // stay exact. The arithmetic of thTestExecute.c:487-560 then promotes the operands to
+            // double (dl = fl) and computes + - * / in double, and unary minus is exact, so rounding
+            // each non-integer literal to float and evaluating in double reproduces CTP.
+            const std::string lit(start, static_cast<size_t>(end - start));
+            if (end != start && lit.find_first_of(".eE") != std::string::npos)
+                v = static_cast<double>(static_cast<float>(v));
+        }
         if (end == start) { ok = false; return 0.0; }
         i += static_cast<size_t>(end - start);
         return v;

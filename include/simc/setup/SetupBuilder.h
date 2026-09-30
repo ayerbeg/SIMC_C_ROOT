@@ -4,7 +4,7 @@
 // (l.53-101) minus calculate_central:
 //   init.f:min_max_init (l.921-1193)        -> the ±1e10 defaults of the RunSetup structs
 //   dbase.f:dbase_read post-read (l.119-966) -> flags, masses, unit conversions, cuts, switches
-//     init.f:target_init (l.1-88)             (energy-loss part through ITargetLossProvider)
+//     init.f:target_init (l.1-88)             (through ITargetLossProvider, default HallCCryoTarget)
 //     init.f:theory_init (l.828-920)          (D(e,e'p), A(e,e'p) without Benhar SF)
 //     dbase.f:571-596 momentum distributions  (deut/he pion, kaon, semi)
 //     init.f:limits_init (l.91-575)           (extreme_trip_thru_target through the provider)
@@ -31,7 +31,7 @@ struct SetupOptions {
     std::string data_dir;
 };
 
-/// Build the run setup. `losses` may be null (see TargetLossProvider.h). Fortran STOP conditions are
+/// Build the run setup. `losses` = null uses HallCTargetLosses (material::HallCCryoTarget), see TargetLossProvider.h. Fortran STOP conditions are
 /// returned in RunSetup::stops; the builder returns at the point where the Fortran would stop.
 RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt = {},
                        ITargetLossProvider* losses = nullptr);

@@ -5,23 +5,12 @@
 // (simc.f:report l.646-1140) that the setup can compute. The C++ value is rendered with the SAME
 // Fortran edit descriptor (f15.4, e12.6, f12.3, ...) and must give the identical text.
 //
-// Quantities that need the energy-loss code (target_init averages, extreme_trip_thru_target) come
-// through ITargetLossProvider. Two modes:
-//   * no provider: those checks are DEFERRED unless the Fortran zeroes them anyway
-//     (using_Eloss = mc_smear = false); teff and musc_nsig_max are always deferred;
-//   * --tables <functions dir> --cfg N: a provider that serves the Fortran harness tables
-//     target_init/ and extreme_trip_thru_target/ row cfg=N, after checking that the arguments the
-//     builder passes (angles, momenta, z range, masses) equal the table inputs to |rel| <= 1e-12.
-// Quantities of the event loop / central event (calculate_central, genvol, normfac, counters,
-// contrib lo/hi, recon summary, central radiative constants) are listed as DEFERRED.
+// The energy-loss numbers (target_init, extreme_trip_thru_target) come from the default provider of
+// BuildRunSetup, material::HallCCryoTarget (P2.2). The real inputs are read by InpReader with the CTP
+// float-literal semantics (D-018). Quantities of the event loop / central event (calculate_central,
+// genvol, normfac, counters, contrib lo/hi, recon summary, central radiative constants) are DEFERRED.
 //
-// CTP float literals: CTP parses every real literal of the .inp with `DAFLOAT f = atof(...)`
-// (CTP/thTestParse.c:391-394, DAFLOAT = float, daVar.h:114), so the Fortran sees float-rounded values
-// (e.g. spec%e%P = 8360.989 -> 8360.9892578125, printed 8360.9893). The P1.3 InpReader keeps the full
-// double. --ctp-float rounds every real parameter to float after reading, which is what CTP does for
-// plain literals; without it the test exercises the InpReader as it is.
-//
-// Usage: test_setup_hist <run.inp> <run.hist> [--data-dir DIR] [--tables DIR --cfg N] [--ctp-float 1]
+// Usage: test_setup_hist <run.inp> <run.hist> [--data-dir DIR]
 // Exit: 0 all checks pass, 1 failure, 77 reference missing.
 #include <cmath>
 #include <cstdio>
@@ -35,6 +24,7 @@
 
 #include "simc/core/SimcConstants.h"
 #include "simc/input/InpReader.h"
+#include "simc/output/SummaryJson.h"
 #include "simc/setup/SetupBuilder.h"
 
 using namespace simc;
@@ -178,91 +168,6 @@ private:
     std::vector<std::pair<std::string, std::string>> lines_;
 };
 
-// ------------------------------------------------------------------ table-driven loss provider
-struct TableRow {
-    std::map<std::string, double> v;
-    double operator[](const std::string& k) const {
-        auto it = v.find(k);
-        if (it == v.end()) throw std::runtime_error("column " + k + " missing");
-        return it->second;
-    }
-};
-bool loadRow(const std::string& path, int cfg, TableRow& row) {
-    std::ifstream f(path);
-    if (!f) return false;
-    std::string l;
-    std::vector<std::string> head;
-    while (std::getline(f, l)) {
-        if (trim(l).empty() || trim(l)[0] == '#') continue;
-        auto t = tokens(l);
-        if (head.empty()) { head = t; continue; }
-        if (t.size() != head.size()) continue;
-        TableRow r;
-        for (size_t i = 0; i < t.size(); ++i) r.v[head[i]] = std::strtod(t[i].c_str(), nullptr);
-        if (std::lround(r["cfg"]) == cfg) { row = r; return true; }
-    }
-    return false;
-}
-
-class TableLosses : public ITargetLossProvider {
-public:
-    TableRow ti, xt;
-    std::vector<std::string> mismatches;
-    int calls{0};
-    double arg_tol{1e-12};   ///< relaxed with --ctp-float: the tables were made from the unrounded doubles
-    double max_arg_rel{0};
-
-    void same(const std::string& what, double cpp, double ref) {
-        const double rel = ref == 0 ? std::abs(cpp) : std::abs(cpp - ref) / std::abs(ref);
-        if (rel > max_arg_rel) max_arg_rel = rel;
-        if (!(rel <= arg_tol)) {
-            char b[256];
-            std::snprintf(b, sizeof b, "%s: builder %.17g vs table %.17g (rel %.2e)", what.c_str(), cpp, ref, rel);
-            mismatches.push_back(b);
-        }
-    }
-    void mostProbableLosses(const TargetInitArgs& a, TargetInfo& t) override {
-        ++calls;
-        same("target_init Ebeam", a.Ebeam, ti["Ebeam"]);
-        same("target_init Pe_cent", a.Pe_cent, ti["Pe_cent"]);
-        same("target_init Pp_cent", a.Pp_cent, ti["Pp_cent"]);
-        same("target_init the_cent", a.the_cent, std::abs(ti["the_cent_deg"]) / constants::degrad);
-        same("target_init thp_cent", a.thp_cent, std::abs(ti["thp_cent_deg"]) / constants::degrad);
-        same("target_init Mh2", a.Mh2, ti["Mh"] * ti["Mh"]);
-        same("target_init targ%thick", t.thick, ti["targ_thick"]);
-        same("target_init targ%length", t.length, ti["targ_length"]);
-        same("target_init targ%X0_cm", t.X0_cm, ti["X0_cm"]);
-        for (int i = 0; i < 3; ++i) {
-            t.Eloss[i].ave = ti["Eloss_ave_" + std::to_string(i + 1)];
-            t.teff[i].ave = ti["teff_ave_" + std::to_string(i + 1)];
-        }
-    }
-    void extremeLosses(const ExtremeTripArgs& a, TargetInfo& t) override {
-        ++calls;
-        same("extreme Ebeam", a.Ebeam, xt["Ebeam"]);
-        same("extreme the_min", a.the.min, xt["the_min"]);
-        same("extreme the_max", a.the.max, xt["the_max"]);
-        same("extreme thp_min", a.thp.min, xt["thp_min"]);
-        same("extreme thp_max", a.thp.max, xt["thp_max"]);
-        same("extreme pe_min", a.pe.min, xt["pe_min"]);
-        same("extreme pe_max", a.pe.max, xt["pe_max"]);
-        same("extreme pp_min", a.pp.min, xt["pp_min"]);
-        same("extreme pp_max", a.pp.max, xt["pp_max"]);
-        same("extreme z_max", a.z.max, 0.5 * xt["targ_length"]);
-        same("extreme z_min", a.z.min, -0.5 * xt["targ_length"]);
-        same("extreme m", a.m, xt["Mh"]);
-        for (int i = 0; i < 3; ++i) {
-            const std::string k = std::to_string(i + 1);
-            t.Eloss[i].min = xt["Eloss_min_" + k];
-            t.Eloss[i].max = xt["Eloss_max_" + k];
-            t.teff[i].min = xt["teff_min_" + k];
-            t.teff[i].max = xt["teff_max_" + k];
-            t.musc_max[i] = xt["musc_max_" + k];
-        }
-        t.musc_nsig_max = xt["musc_nsig_max"];
-    }
-};
-
 // ------------------------------------------------------------------ checks
 enum class Dep { None, Loss, Provider };
 
@@ -335,20 +240,13 @@ std::string L(bool b) { return b ? "T" : "F"; }
 
 int main(int argc, char** argv) {
     if (argc < 3) {
-        std::fprintf(stderr, "usage: %s run.inp run.hist [--data-dir DIR] [--tables DIR --cfg N]\n", argv[0]);
+        std::fprintf(stderr, "usage: %s run.inp run.hist [--data-dir DIR]\n", argv[0]);
         return 1;
     }
     const std::string inp = argv[1], histfile = argv[2];
-    std::string data_dir, tables;
-    int cfg = 0;
-    bool ctp_float = false;
-    for (int i = 3; i + 1 < argc; i += 2) {
-        const std::string a = argv[i];
-        if (a == "--data-dir") data_dir = argv[i + 1];
-        else if (a == "--tables") tables = argv[i + 1];
-        else if (a == "--cfg") cfg = std::atoi(argv[i + 1]);
-        else if (a == "--ctp-float") ctp_float = std::atoi(argv[i + 1]) != 0;
-    }
+    std::string data_dir;
+    for (int i = 3; i + 1 < argc; i += 2)
+        if (std::string(argv[i]) == "--data-dir") data_dir = argv[i + 1];
     Hist H;
     if (!H.load(histfile)) {
         std::printf("SKIP: %s missing\n", histfile.c_str());
@@ -360,46 +258,18 @@ int main(int argc, char** argv) {
         std::printf("SKIP: cannot read %s\n", inp.c_str());
         return 77;
     }
-    if (ctp_float) {   // CTP/thTestParse.c:391-394: real literals are stored through a float
-        for (const auto& d : ParameterTable()) {
-            if (d.kind == ParamKind::Double) {
-                double* v = d.asDouble(p);
-                *v = static_cast<double>(static_cast<float>(*v));
-            } else if (d.kind == ParamKind::DoubleArray) {
-                double* v = d.asDouble(p);
-                for (int k = 0; k < d.size; ++k) v[k] = static_cast<double>(static_cast<float>(v[k]));
-            }
-        }
-    }
-    TableLosses tl;
-    if (ctp_float) tl.arg_tol = 1e-6;
-    ITargetLossProvider* prov = nullptr;
-    if (!tables.empty()) {
-        if (!loadRow(tables + "/target_init/output.txt", cfg, tl.ti) ||
-            !loadRow(tables + "/extreme_trip_thru_target/output.txt", cfg, tl.xt)) {
-            std::printf("SKIP: tables for cfg %d missing under %s\n", cfg, tables.c_str());
-            return 77;
-        }
-        prov = &tl;
-    }
     SetupOptions opt;
     opt.data_dir = data_dir;
-    const RunSetup s = BuildRunSetup(p, opt, prov);
-    std::printf("setup vs .hist: %s\n  inp %s\n  provider: %s\n  real inputs: %s\n", histfile.c_str(), inp.c_str(),
-                prov ? ("harness tables cfg " + std::to_string(cfg)).c_str() : "none",
-                ctp_float ? "float-rounded like CTP (--ctp-float)" : "as read by InpReader (double)");
-    if (prov) std::printf("  provider arguments vs table inputs: max |rel| = %.3e (tolerance %.0e)\n", tl.max_arg_rel, tl.arg_tol);
+    const RunSetup s = BuildRunSetup(p, opt);   // default provider: material::HallCCryoTarget
+    std::printf("setup vs .hist: %s\n  inp %s\n", histfile.c_str(), inp.c_str());
     for (const auto& m : s.stops) std::printf("  setup STOP: %s\n", m.c_str());
-    for (const auto& m : tl.mismatches) std::printf("  PROVIDER ARG MISMATCH %s\n", m.c_str());
     if (!s.ok()) return 1;
 
     const RunSwitches& sw = s.sw;
     const ReactionFlags& f = s.flags;
     const TargetInfo& t = s.targ;
     const double degrad = constants::degrad;
-    // Loss-dependent numbers are exact without a provider when the Fortran zeroes them anyway.
-    const bool loss_ok = prov != nullptr || (!sw.using_Eloss && !sw.mc_smear);
-    Checker C(H, loss_ok, prov != nullptr);
+    Checker C(H, s.target_losses_from_provider, s.target_losses_from_provider);
     const Dep LO = Dep::Loss, PR = Dep::Provider;
     // Eloss ave rows: exact zero if !using_Eloss
     const Dep ELAVE = sw.using_Eloss ? PR : Dep::None;
@@ -549,6 +419,15 @@ int main(int argc, char** argv) {
     };
     spe("e", s.SPedge.e);
     spe("p", s.SPedge.p);
+    // The same numbers through the run-summary JSON echo (SummaryJson.cpp, P2.2)
+    {
+        const Json sj = BuildSummaryJson(s, RunSummary{});
+        for (const char* arm : {"e", "p"})
+            for (const char* v : {"delta", "yptar", "xptar"})
+                for (int k = 0; k < 2; ++k)
+                    C.kv("spedge", std::string("SPedge.") + arm + "." + v + ".min/max", k,
+                         fmtF(sj["spedge"][arm][v][k].get<double>(), 15, 4));
+    }
 
     // ---- Limiting VERTEX values (simc.f:1007-1040), format 9917 f12.3 (used columns only)
     auto pair = [&](const std::string& sec, const std::string& label, double a, double b, Dep d) {
@@ -606,8 +485,7 @@ int main(int argc, char** argv) {
 
     std::printf("\nDEFERRED (%d):\n", C.res.deferred);
     for (const auto& d : C.res.deferred_items) std::printf("  - %s\n", d.c_str());
-    const bool okp = tl.mismatches.empty();
-    std::printf("\nSUMMARY %s: passed %d, failed %d, deferred %d%s\n", histfile.c_str(), C.res.pass, C.res.fail,
-                C.res.deferred, okp ? "" : ", PROVIDER ARGUMENT MISMATCH");
-    return (C.res.fail == 0 && okp) ? 0 : 1;
+    std::printf("\nSUMMARY %s: passed %d, failed %d, deferred %d\n", histfile.c_str(), C.res.pass, C.res.fail,
+                C.res.deferred);
+    return C.res.fail == 0 ? 0 : 1;
 }

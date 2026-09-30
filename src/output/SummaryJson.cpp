@@ -199,18 +199,28 @@ Json BuildSummaryJson(const RunSetup& s, const RunSummary& r) {
                        {"e", arm(p.spec.e)},
                        {"p", arm(p.spec.p)}};
 
-    // SPedge echo. The Fortran prints SPedge after slop widening (init.f:209-216); until the
-    // SetupBuilder provides it, the C++ echoes the converted input and says so in "notes".
-    auto edge = [](const SimcParameters::ArmEdge& a) {
-        const double dmin = a.delta.min <= -100.0 ? -99.99 : a.delta.min;   // dbase.f:479-480
-        return Json{{"delta", {dmin, a.delta.max}},
-                    {"yptar", {a.yptar.min / 1000., a.yptar.max / 1000.}},
-                    {"xptar", {a.xptar.min / 1000., a.xptar.max / 1000.}}};
-    };
-    j["spedge"] = {{"e", edge(p.SPedge.e)}, {"p", edge(p.SPedge.p)}};
+    // SPedge echo, as the Fortran .hist prints it (simc.f:990-1002): after the dbase.f conversions and the
+    // slop%MC widening of limits_init (init.f:201-212), i.e. RunSetup::SPedge from BuildRunSetup (P2.2).
+    // A setup filled only by RunSetup::FromParameters falls back to the converted input (and says so).
     j["notes"] = Json::array();
-    if (!r.extra.contains("spedge"))
-        j["notes"].push_back("spedge is the converted input, not yet widened by slop%MC (SetupBuilder pending)");
+    if (s.built) {
+        auto edge = [](const ArmCuts& a) {
+            return Json{{"delta", {a.delta.min, a.delta.max}},
+                        {"yptar", {a.yptar.min, a.yptar.max}},
+                        {"xptar", {a.xptar.min, a.xptar.max}}};
+        };
+        j["spedge"] = {{"e", edge(s.SPedge.e)}, {"p", edge(s.SPedge.p)}};
+    } else {
+        auto edge = [](const SimcParameters::ArmEdge& a) {
+            const double dmin = a.delta.min <= -100.0 ? -99.99 : a.delta.min;   // dbase.f:479-480
+            return Json{{"delta", {dmin, a.delta.max}},
+                        {"yptar", {a.yptar.min / 1000., a.yptar.max / 1000.}},
+                        {"xptar", {a.xptar.min / 1000., a.xptar.max / 1000.}}};
+        };
+        j["spedge"] = {{"e", edge(p.SPedge.e)}, {"p", edge(p.SPedge.p)}};
+        if (!r.extra.contains("spedge"))
+            j["notes"].push_back("spedge is the converted input, not widened by slop%MC (setup not built by BuildRunSetup)");
+    }
 
     // Stop counters: stops.<spectrometer>.<key> (flat integers), roles in stop_roles.
     j["stops"] = Json::object();

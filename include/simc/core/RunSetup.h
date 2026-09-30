@@ -236,6 +236,8 @@ struct RunSetup {
     double targetfac{0};                  ///< simc.f:94-95
     double luminosity{0};                 ///< [ub^-1] simc.f:101 EXPER%charge/targetfac
 
+    /// True when filled by BuildRunSetup (false for RunSetup::FromParameters only).
+    bool built{false};
     /// Provenance of the energy-loss/multiple-scattering numbers (see setup/TargetLossProvider.h).
     bool target_losses_from_provider{false};
     /// Fortran STOP conditions reached (the Fortran aborts: the fields after it are not meaningful).

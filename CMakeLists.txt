@@ -159,6 +159,16 @@ add_library(simcfw_physics OBJECT
 target_link_libraries(simcfw_physics PUBLIC simcfw)
 target_compile_options(simcfw_physics PRIVATE -Wall -Wextra -pedantic)
 
+# IRandom implementations and gauss1 (src/core/random; P3.1, own target since P2.2). No SIMC_REGISTER in
+# these files, so a STATIC library is safe.
+add_library(simcfw_random STATIC
+    src/core/random/Gauss1.cpp
+    src/core/random/Mt64Random.cpp
+    src/core/random/ScriptedRandom.cpp
+)
+target_link_libraries(simcfw_random PUBLIC simcfw)
+target_compile_options(simcfw_random PRIVATE -Wall -Wextra -pedantic)
+
 # Phase 2/3 modules: each has its own CMakeLists so parallel tasks don't edit this file (director, P2).
 #   src/setup    : RunSetup from init.f / calculate_central (target simcfw_setup)
 #   src/optics   : shared COSY transport engine (target simcfw_optics)

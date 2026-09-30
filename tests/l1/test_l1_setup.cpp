@@ -6,7 +6,7 @@
 //   loren               reference/functions/loren/                (loren.f)
 //   target_init_nonloss reference/functions/target_init/  columns that need no energy loss
 //                       (targ_thick, targ_length, L1, L2, X0, X0_cm, Coulomb_ave, Coulomb_const)
-//                       computed through BuildRunSetup (dbase.f conversions + init.f:target_init l.19-82).
+//                       computed through BuildRunSetup (dbase.f conversions + init.f:target_init via the default HallCCryoTarget provider).
 //
 // Usage: test_l1_setup <routine> <table_dir> [rel_tol] [data_dir (target_init_nonloss: *.theory files)]
 // Exit: 0 pass, 1 fail, 77 table missing.

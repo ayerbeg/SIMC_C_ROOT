@@ -68,7 +68,10 @@ int main() {
     check(p.targ.can == -2, "floatToLong(-1.5) = -2");
     check(p.targ.A == 0.0, "obsolete name does not reach targ%A");
     check(p.debug[1] && p.debug[4] && !p.debug[0], "debug(2) and debug[4]");
-    check(p.lambda[0] == 0.1 && p.lambda[1] == 0.2 && p.lambda[2] == 0.3, "lambda with continuation");
+    // CTP float literals (D-018, CTP/thTestParse.c:391-394): real literals go through a 32-bit float.
+    check(p.lambda[0] == static_cast<double>(0.1f) && p.lambda[1] == static_cast<double>(0.2f) &&
+              p.lambda[2] == static_cast<double>(0.3f),
+          "lambda with continuation (float-rounded literals)");
     check(p.using_rad, "using_rad from extra");
     check(p.cuts.Em.min == 0.0 && p.cuts.Em.max == 0.0, "cuts%Em from extra");
 
@@ -95,5 +98,18 @@ int main() {
     }
     check(em_min == "-1000000", "cuts%Em opened when min=max (dbase.f:534-538), got " + em_min);
     check(dE == "0", "dEbeam effective in MeV");
+    // EvalCtpNumber: CTP literal and expression precision (thTestParse.c:391-394, thTestExecute.c:487-560)
+    {
+        double v = 0;
+        bool isint = false;
+        check(EvalCtpNumber("8360.989", v, isint) && v == 8360.9892578125 && !isint, "8360.989 -> float 8360.9892578125");
+        check(EvalCtpNumber("-36.594", v, isint) && v == -static_cast<double>(36.594f), "unary minus of a float literal");
+        check(EvalCtpNumber("10600", v, isint) && v == 10600.0 && isint, "integer literal exact");
+        check(EvalCtpNumber("1/3", v, isint) && v == 1.0 / 3.0, "int/int division is double (OPDIV)");
+        check(EvalCtpNumber("0.1+0.2", v, isint) && v == static_cast<double>(0.1f) + static_cast<double>(0.2f),
+              "arithmetic in double on float operands");
+        check(EvalCtpNumber("1.e6", v, isint) && v == 1.0e6, "1.e6 (exactly representable)");
+        check(EvalCtpNumber("123456789", v, isint) && v == 123456789.0, "large integer literal stays exact");
+    }
     return simctest::finish("inp_reader_ctp_semantics");
 }
