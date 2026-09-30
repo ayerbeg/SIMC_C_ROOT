@@ -161,9 +161,11 @@ target_compile_options(simcfw_physics PRIVATE -Wall -Wextra -pedantic)
 
 # Phase 2/3 modules: each has its own CMakeLists so parallel tasks don't edit this file (director, P2).
 #   src/setup    : RunSetup from init.f / calculate_central (target simcfw_setup)
+#   src/optics   : shared COSY transport engine (target simcfw_optics)
 #   src/material : enerloss_new, musc, musc_ext, target_musc, gauss1, trip_thru_target (target simcfw_material)
 add_subdirectory(src/material)
 add_subdirectory(src/setup)
+add_subdirectory(src/optics)      # shared COSY engine: transp, project, rotate_*axis, locforunt (P6.1)
 
 add_subdirectory(tests/unit)
 add_subdirectory(tests/l1)
