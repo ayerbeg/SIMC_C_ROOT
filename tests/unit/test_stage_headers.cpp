@@ -55,7 +55,7 @@ struct DummyModel : IPhysicsModel {
 struct DummyRadiator : IRadiator {
     DUMMY_STAGE_BASICS("dummy")
     void initEvent(MainEvent&, const Event&) override {}
-    bool radiate(MainEvent&, const Event&, Event&, IRandom&) override { return true; }
+    bool radiate(MainEvent&, Event&, Event&, IRandom&, const CompleteEvFn&) override { return true; }
 };
 struct DummyMaterial : IMaterialModel {
     DUMMY_STAGE_BASICS("dummy")
