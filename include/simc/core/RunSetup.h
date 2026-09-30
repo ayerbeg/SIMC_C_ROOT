@@ -1,11 +1,20 @@
 // include/simc/core/RunSetup.h
 //
-// RunSetup: quantities derived once from SimcParameters (dbase.f / init.f equivalents).
-// This is the P1.4 subset needed by the output sinks; the SetupBuilder of later tasks
-// completes it (edges, slops, target_init, radc_init, central event).
+// RunSetup: every quantity the Fortran derives once, before the event loop, from the input
+// variables (dbase.f:dbase_read post-read logic, init.f:min_max_init / target_init / limits_init /
+// radc_init / theory_init, simc.f:95-101). It is filled by simc::BuildRunSetup
+// (include/simc/setup/SetupBuilder.h, task P2.1). The P1.4 subset (params, flags, run_name,
+// spectrometer angles, histogram axes) can still be filled alone by RunSetup::FromParameters.
+//
+// Units are the Fortran INTERNAL units after dbase.f conversion: MeV, MeV/c, cm, rad, g/cm^2,
+// delta in %. `params` keeps the raw input (.inp units) untouched.
+//
+// The structs mirror the Fortran COMMON blocks / derived types they come from (structures.inc,
+// target.inc, simulate.inc, radc.inc, brem.inc); each field names its Fortran origin.
 #ifndef SIMC_CORE_RUNSETUP_H
 #define SIMC_CORE_RUNSETUP_H
 
+#include <array>
 #include <string>
 #include <vector>
 
@@ -45,17 +54,197 @@ struct DiagHistAxes {
     HistAxis Em, Pm;
 };
 
+// ---------------------------------------------------------------------------------------------
+// Derived types (structures.inc / target.inc). Defaults = init.f:min_max_init (l.921-1193):
+// every min/max pair that min_max_init touches starts at -/+1e10; everything else is zero
+// (zero-initialised COMMON).
+// ---------------------------------------------------------------------------------------------
+
+constexpr double kMinMaxInit = 1.0e10;   ///< Fortran: min_max_init xmax (init.f:936-937)
+
+/// Fortran: structures.inc cutstype (min, max), initialised by min_max_init.
+struct Cut {
+    double min{-kMinMaxInit};
+    double max{kMinMaxInit};
+};
+
+/// Fortran: structures.inc slop_item (lo, hi, used). lo/hi are run accumulators (0 at start).
+struct SlopItem {
+    double lo{0}, hi{0}, used{0};
+};
+
+/// Fortran: target.inc target_function (ave, min, max).
+struct TargetFunction {
+    double ave{0}, min{0}, max{0};
+};
+
+/// Fortran: target.inc type target_info (COMMON /target_info/ targ), after dbase.f conversions.
+struct TargetInfo {
+    double A{0}, Z{0}, N{0};          ///< dbase.f:250 N = A - Z
+    double mass_amu{0};               ///< [amu] input
+    double M{0};                      ///< [MeV] dbase.f:251 (+ forced Mp/Md l.256-266)
+    double mrec_amu{0};               ///< [amu] input
+    double Mrec{0};                   ///< [MeV] dbase.f:252 (+ l.256-272, 410-412, 437-439, 445-450)
+    double rho{0};                    ///< [g/cm^3]
+    double thick{0};                  ///< [g/cm^2] dbase.f:452 thick/1000
+    double angle{0};                  ///< [rad] dbase.f:454 (forced 0 for liquid, l.458-461)
+    double abundancy{0};              ///< [%]
+    double length{0};                 ///< [cm] dbase.f:453 thick/rho
+    double zoffset{0}, xoffset{0}, yoffset{0};   ///< [cm]
+    double X0{0};                     ///< [g/cm^2] init.f:target_init l.33-42
+    double X0_cm{0};                  ///< [cm] init.f:43
+    double L1{0}, L2{0};              ///< init.f:19-24
+    double fr1{0}, fr2{0};            ///< [cm] raster
+    int fr_pattern{0}, can{0};
+    std::array<TargetFunction, 3> Eloss{};   ///< [MeV] 1 beam, 2 e', 3 hadron. ave: target_init (hook),
+                                             ///< min/max: extreme_trip_thru_target (hook); zeroed if !using_Eloss
+    std::array<TargetFunction, 3> teff{};    ///< [rad. len.] same origin (never zeroed)
+    TargetFunction Coulomb;                  ///< [MeV] init.f:target_init l.62-82
+    double Coulomb_constant{0};              ///< [MeV] init.f:75/79
+    std::array<double, 3> musc_max{};        ///< [rad] extreme_target_musc (hook); zeroed if !mc_smear (init.f:254-258)
+    double musc_nsig_max{0};                 ///< extreme_target_musc (hook)
+    double Mtar_struck{0}, Mrec_struck{0};   ///< [MeV] dbase.f:277-450
+};
+
+/// Fortran: structures.inc spectrometer offsets (after dbase.f:472-475 xptar/yptar mrad -> rad).
+struct SpecOffset {
+    double x{0}, y{0}, z{0};          ///< [cm]
+    double xptar{0}, yptar{0};        ///< [rad] (NB: the .hist prints these under 'mr' without *1000)
+};
+
+/// Fortran: structures.inc spec%e / spec%p (after dbase.f:238-262).
+struct SpecArm {
+    double P{0};                      ///< [MeV/c]
+    double theta{0};                  ///< [rad] dbase.f:239/242 abs(theta)/degrad
+    double cos_th{0}, sin_th{0};
+    double phi{0};                    ///< [rad] dbase.f:247-262: 3pi/2 (arms 1,3,7) or pi/2 (2,4,5,6,8)
+    SpecOffset offset;
+};
+
+/// Fortran: arm cuts in double_arm_cuts (SPedge%e / SPedge%p): delta [%], yptar/xptar [rad], z.
+struct ArmCuts {
+    Cut delta, yptar, xptar, z;
+};
+
+/// Fortran: edge_arm (E, yptar, xptar).
+struct EdgeArm {
+    Cut E, yptar, xptar;
+};
+
+/// Fortran: edge_true (edge, VERTEXedge).
+struct EdgeTrue {
+    EdgeArm e, p;
+    Cut Em, Pm, Mrec, Trec, Trec_struck;
+};
+
+/// Fortran: arm_limits (gen%e / gen%p).
+struct GenArm {
+    Cut delta, yptar, xptar, E;
+};
+
+/// Fortran: gen_limits (gen).
+struct GenLimits {
+    GenArm e, p;
+    Cut sumEgen, Trec;
+    double xwid{0}, ywid{0};          ///< [cm] input gen%xwid/ywid
+};
+
+/// Fortran: sloptype (slop%total, slop%MC).
+struct Slops {
+    struct Total { SlopItem Em, Pm; } total;
+    struct Arm { SlopItem delta, yptar, xptar; };
+    struct MC { Arm e, p; } MC;
+};
+
+/// Run-level logicals and codes after dbase.f/init.f adjustments (simulate.inc, radc.inc, brem.inc).
+/// Where the Fortran overwrites an input variable, the effective value is here; params keeps the raw one.
+struct RunSwitches {
+    bool using_E_arm_montecarlo{false};  ///< dbase.f:533 spect_mode /= 1 and /= -1
+    bool using_P_arm_montecarlo{false};  ///< dbase.f:534 spect_mode /= 1 and /= -2
+    bool using_Eloss{false};
+    bool correct_Eloss{false};           ///< dbase.f:542-545 forced .false. if !using_Eloss
+    bool using_Coulomb{false};           ///< dbase.f:547 forced .false. for nint(Z)=1
+    bool mc_smear{false};
+    bool using_rad{false};
+    int rad_flag{0};                     ///< dbase.f:228 forced 0 by doing_phsp
+    int extrad_flag{0};                  ///< init.f:radc_init l.619-627 default 3 (rad_flag 0) or 1 (1..3)
+    std::array<bool, 3> doing_tail{};    ///< dbase.f:500-519
+    bool hardwired_rad{false};           ///< dbase.f:521-525 Egamma_gen_max > 0.01
+    // brem.inc flags set by radc_init (init.f:634-645)
+    bool produce_output{false};          ///< = debug(1)
+    bool exponentiate{false};            ///< use_expon == 1
+    bool include_hard{true};
+    bool calculate_spence{true};
+};
+
+/// Fortran: theory_init (init.f:828-920) — spectral-function table for D(e,e'p) / A(e,e'p).
+struct TheoryData {
+    struct PmAxis { double min{0}, max{0}, bin{0}; int n{0}; };   ///< structures.inc axis
+    std::string file;                   ///< theory_file (h2.theory, c12.theory, ...)
+    bool loaded{false};
+    int nrhoPm{0};
+    double E_Fermi{0};
+    std::vector<double> nprot, Em, Emsig, bs_norm, Em_int;   ///< per distribution m (0-based)
+    std::vector<PmAxis> Pm;                                  ///< Pm_theory(m)
+    std::vector<std::vector<double>> theory;                 ///< theory(m, n) (0-based both)
+};
+
+/// Fortran: dbase.f:571-596 momentum distribution (pval, mprob, nump) for deut/he pion/kaon/semi.
+struct MomentumDistribution {
+    std::string file;
+    std::vector<double> pval, mprob;    ///< mprob normalised to mprob(nump)
+};
+
+/// Fortran: radc.inc quantities fixed by radc_init / limits_init (per-event ones live elsewhere).
+struct RadSetup {
+    double etatzai{0};                  ///< init.f:630 (12+(Z+1)/(Z*L1+L2))/9
+    double Egamma_tot_max{0};           ///< init.f:limits_init l.408-418
+    double Egamma1_max{0}, Egamma2_max{0}, Egamma3_max{0};   ///< init.f:419-421 (0 if tail off)
+};
+
 struct RunSetup {
     SimcParameters params;          ///< raw input (.inp units)
     ReactionFlags flags;
     std::string run_name{"simc"};   ///< Fortran `base` (file stem)
     std::string output_dir{"."};    ///< Fortran 'outfiles/' and 'worksim/'
 
-    // dbase.f:239-244
+    // dbase.f:239-244 (kept for the P1.4 sinks; identical to spec.e/p.theta, sin_th, cos_th)
     double e_theta{0}, e_sin_th{0}, e_cos_th{0};   ///< rad
     double p_theta{0}, p_sin_th{0}, p_cos_th{0};
 
-    DiagHistAxes hist;              ///< filled by limits_init equivalent (SetupBuilder)
+    DiagHistAxes hist;              ///< init.f:limits_init l.515-570
+
+    // ---------------- filled by BuildRunSetup (P2.1) ----------------
+    double Mh{0}, Mh2{0}, Mh2_final{0};   ///< [MeV] dbase.f:136-219, 221-222
+    double sign_hadron{0};                ///< dbase.f:277-446 (0 if no branch sets it, e.g. doing_phsp)
+    double Ebeam{0};                      ///< [MeV]
+    double dEbeam{0};                     ///< [MeV] dbase.f:238 Ebeam*dEbeam/100 (full width)
+    double Ebeam_vertex_ave{0};           ///< [MeV] init.f:283 Ebeam + Coulomb.ave - Eloss(1).ave
+    struct { SpecArm e, p; } spec;        ///< dbase.f:238-262, 472-475
+    TargetInfo targ;
+    double targ_Bangle{0}, targ_Bphi{0};  ///< [rad] dbase.f:455-456
+    struct { ArmCuts e, p; } SPedge;      ///< dbase.f:479-490 then + slop%MC (init.f:209-220)
+    struct { Cut Em, Pm; } cuts;          ///< [MeV] dbase.f:536-540 (±1e6 for pion/kaon/delta or Em.min=Em.max)
+    EdgeTrue edge;                        ///< init.f:limits_init
+    EdgeTrue VERTEXedge;                  ///< init.f:limits_init
+    GenLimits gen;                        ///< init.f:limits_init (+ dbase.f:524-531 /1000 of the ±1e10 defaults)
+    Slops slop;                           ///< init.f:limits_init
+    RunSwitches sw;
+    RadSetup rad;
+    TheoryData theory;                    ///< only for doing_deuterium / doing_heavy (no Benhar SF)
+    MomentumDistribution pdist;           ///< only for deut/he pion, kaon, semi
+    double targetfac{0};                  ///< simc.f:94-95
+    double luminosity{0};                 ///< [ub^-1] simc.f:101 EXPER%charge/targetfac
+
+    /// Provenance of the energy-loss/multiple-scattering numbers (see setup/TargetLossProvider.h).
+    bool target_losses_from_provider{false};
+    /// Fortran STOP conditions reached (the Fortran aborts: the fields after it are not meaningful).
+    std::vector<std::string> stops;
+    /// Informational messages the Fortran prints (WARNING/NOTE lines of dbase.f/init.f).
+    std::vector<std::string> messages;
+    /// Pieces that are not ported yet and were skipped (e.g. sf_lookup_init).
+    std::vector<std::string> not_ported;
+    bool ok() const { return stops.empty(); }
 
     /// Fill params, flags and the spectrometer angles (direct dbase.f conversions only).
     static RunSetup FromParameters(const SimcParameters& p, const std::string& run_name = "simc");

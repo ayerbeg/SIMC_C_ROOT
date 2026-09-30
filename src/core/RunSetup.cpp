@@ -33,6 +33,8 @@ ReactionFlags DeriveReactionFlags(const SimcParameters& p, std::vector<std::stri
     if (f.doing_pion) {
         if (A == 1 && p.which_pion == 1 && !f.doing_pizero) problem(problems, "STOP Pi- production from Hydrogen not allowed!");
         if (A <= 2 && p.which_pion >= 10) problem(problems, "STOP Coherent production from Hydrogen/Deuterium not allowed!");
+        if (A == 3 && p.which_pion == 11) problem(problems, "STOP Coherent Pi- production from 3He not allowed!");  // dbase.f:142-143
+        if (A == 4 && p.which_pion >= 10) problem(problems, "STOP Coherent production from 4He not allowed!");     // dbase.f:144-145
         f.doing_hydpi = A == 1;
         f.doing_deutpi = A == 2;
         f.doing_hepi = A >= 3;

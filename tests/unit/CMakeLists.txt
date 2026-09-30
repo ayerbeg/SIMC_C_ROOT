@@ -60,3 +60,4 @@ set_tests_properties(output_sinks hist2json_eep_h_test_pctnames hist2json_hms_sh
 foreach(r ${_hist_runs})
     set_tests_properties(hist2json_${r} PROPERTIES SKIP_RETURN_CODE 77)
 endforeach()
+include(${CMAKE_CURRENT_SOURCE_DIR}/setup.cmake OPTIONAL)   # P2.1 setup vs .hist
