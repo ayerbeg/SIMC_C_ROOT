@@ -15,6 +15,9 @@ public:
     virtual double sigcc(const Event& vertex, const MainEvent& main) = 0;
     /// main%sigcc_recon for the reconstructed event (1.0 where the Fortran does not compute it).
     virtual double sigccRecon(const Event& recon, const MainEvent& main) = 0;
+    /// Called by the driver before each event with the Fortran `nevent` counter (simc.f:165-349).
+    /// Models only use it in WARNING messages (e.g. deForest, physics_proton.f:75). Default: ignore.
+    virtual void beginEvent(long nevent) { (void)nevent; }
 };
 
 }  // namespace simc

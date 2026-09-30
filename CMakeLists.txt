@@ -149,7 +149,16 @@ add_library(simcfw_root OBJECT
 target_link_libraries(simcfw_root PUBLIC simcfw ROOT::Core ROOT::RIO ROOT::Tree ROOT::Hist)
 target_compile_options(simcfw_root PRIVATE -Wall -Wextra -pedantic)
 
+# Physics-model plug-ins (ROOT-free). OBJECT library so the SIMC_REGISTER registrations are linked.
+add_library(simcfw_physics OBJECT
+    src/physics/proton/ProtonCrossSections.cpp
+    src/physics/proton/ProtonModels.cpp
+)
+target_link_libraries(simcfw_physics PUBLIC simcfw)
+target_compile_options(simcfw_physics PRIVATE -Wall -Wextra -pedantic)
+
 add_subdirectory(tests/unit)
+add_subdirectory(tests/l1)
 
 if(SIMC_BUILD_LEGACY)
 include_directories(${CMAKE_SOURCE_DIR}/include)
