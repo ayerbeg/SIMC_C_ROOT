@@ -1,0 +1,1192 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "simc_run_summary/1",
+  "title": "SIMC run summary (C++ RunSummarySink and Fortran .hist/.geni via hist2json)",
+  "description": "See docs/OUTPUT_FORMAT.md. Units follow the Fortran .hist print-out.",
+  "type": "object",
+  "required": [
+    "schema",
+    "schema_version",
+    "run",
+    "counters",
+    "normalization",
+    "stops"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "type": "string",
+      "enum": [
+        "simc_run_summary"
+      ]
+    },
+    "schema_version": {
+      "type": "integer",
+      "enum": [
+        1
+      ]
+    },
+    "run": {
+      "type": "object",
+      "required": [
+        "tag",
+        "producer"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "tag": {
+          "type": "string"
+        },
+        "producer": {
+          "type": "string",
+          "description": "'simc++' for the C++; contains 'hist2json' for Fortran-derived files"
+        },
+        "random_seed": {
+          "type": "integer"
+        },
+        "reaction": {
+          "type": "string"
+        },
+        "reaction_detail": {
+          "type": "string"
+        },
+        "begin_time": {
+          "type": "string"
+        },
+        "end_time": {
+          "type": "string"
+        },
+        "theory_file": {
+          "type": "string"
+        },
+        "random_state_file": {
+          "type": "string"
+        }
+      }
+    },
+    "counters": {
+      "type": "object",
+      "required": [
+        "ngen",
+        "ntried",
+        "ncontribute"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "ngen": {
+          "type": "integer",
+          "description": "Fortran sign convention: <0 means |ngen| tries"
+        },
+        "ntried": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ncontribute": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "nco_no_rad_prot": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "pct_no_rad_proton": {
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      }
+    },
+    "normalization": {
+      "type": "object",
+      "required": [
+        "wtcontr",
+        "sigcc_central",
+        "sigcc_average",
+        "charge_mC",
+        "targetfac",
+        "luminosity_ub",
+        "luminosity_GeV2",
+        "genvol",
+        "normfac"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "wtcontr": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "sigcc_central": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "sigcc_average": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "charge_mC": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "targetfac": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "luminosity_ub": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "luminosity_GeV2": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "genvol": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "normfac": {
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      }
+    },
+    "flags": {
+      "type": "object",
+      "description": "logical values as printed in the .hist FLAGS/RADIATIVE blocks, names as printed",
+      "additionalProperties": {
+        "type": "boolean"
+      }
+    },
+    "kinematics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Ebeam": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "dE_over_E": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "x_width": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "y_width": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "fr1": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "fr2": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "fr_pattern": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "e": {
+          "type": "object",
+          "properties": {
+            "angle_deg": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "momentum": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "offset_x": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "offset_y": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "offset_z": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "offset_xptar_mr": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "offset_yptar_mr": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "delta": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "xptar_mr": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "yptar_mr": {
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "p": {
+          "type": "object",
+          "properties": {
+            "angle_deg": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "momentum": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "offset_x": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "offset_y": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "offset_z": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "offset_xptar_mr": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "offset_yptar_mr": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "delta": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "xptar_mr": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "yptar_mr": {
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "central": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Q2_GeV2": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "q": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "nu": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "Em": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "Pm": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "W": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "MM": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "e": {
+          "type": "object",
+          "properties": {
+            "angle_deg": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "momentum": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "offset_x": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "offset_y": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "offset_z": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "offset_xptar_mr": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "offset_yptar_mr": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "delta": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "xptar_mr": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "yptar_mr": {
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "p": {
+          "type": "object",
+          "properties": {
+            "angle_deg": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "momentum": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "offset_x": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "offset_y": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "offset_z": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "offset_xptar_mr": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "offset_yptar_mr": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "delta": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "xptar_mr": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "yptar_mr": {
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "A": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "Z": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "mass_amu": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "mass_MeV": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "Mrec_amu": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "Mrec_MeV": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "Mtar_struck": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "Mrec_struck": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "rho": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "thick_g_cm2": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "angle_deg": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "abundancy": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "X0": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "X0_cm": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "length": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "zoffset": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "xoffset": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "yoffset": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "musc_nsig_max": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "musc_max_beam_mr": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "musc_max_e_mr": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "musc_max_p_mr": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "losses": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "minItems": 3,
+            "maxItems": 3
+          }
+        }
+      }
+    },
+    "radiative": {
+      "type": "object",
+      "additionalProperties": {
+        "type": [
+          "integer",
+          "number",
+          "null",
+          "object"
+        ]
+      },
+      "properties": {
+        "central": {
+          "type": "object",
+          "additionalProperties": {
+            "type": [
+              "number",
+              "null",
+              "array"
+            ]
+          }
+        }
+      }
+    },
+    "recon_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "e": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "ave_error": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "resolution": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "units": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "p": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "ave_error": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "resolution": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "units": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    "spedge": {
+      "type": "object",
+      "required": [
+        "e",
+        "p"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "e": {
+          "type": "object",
+          "properties": {
+            "delta": {
+              "type": "array",
+              "items": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "yptar": {
+              "type": "array",
+              "items": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "xptar": {
+              "type": "array",
+              "items": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "minItems": 2,
+              "maxItems": 2
+            }
+          },
+          "required": [
+            "delta",
+            "yptar",
+            "xptar"
+          ],
+          "additionalProperties": false
+        },
+        "p": {
+          "type": "object",
+          "properties": {
+            "delta": {
+              "type": "array",
+              "items": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "yptar": {
+              "type": "array",
+              "items": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "xptar": {
+              "type": "array",
+              "items": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "minItems": 2,
+              "maxItems": 2
+            }
+          },
+          "required": [
+            "delta",
+            "yptar",
+            "xptar"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "vertex": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "label",
+              "used",
+              "found",
+              "units"
+            ],
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "used": {
+                "type": "array",
+                "items": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "found": {
+                "type": "array",
+                "items": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "units": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "original": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "label",
+              "used",
+              "found",
+              "units"
+            ],
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "used": {
+                "type": "array",
+                "items": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "found": {
+                "type": "array",
+                "items": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "units": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "spectrometer": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "label",
+              "used",
+              "found",
+              "units"
+            ],
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "used": {
+                "type": "array",
+                "items": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "found": {
+                "type": "array",
+                "items": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "units": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "radiation": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "label",
+              "used",
+              "found",
+              "units"
+            ],
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "used": {
+                "type": "array",
+                "items": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "found": {
+                "type": "array",
+                "items": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "units": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    "slop": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "MC": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "label",
+              "used",
+              "min",
+              "max",
+              "units"
+            ],
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "used": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "min": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "max": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "units": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "total": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "label",
+              "used",
+              "min",
+              "max",
+              "units"
+            ],
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "used": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "min": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "max": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "units": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "tree": {
+      "type": "object",
+      "description": "Where the event tree of this run is (relative paths are relative to the JSON file).",
+      "required": [
+        "file"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "file": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "weight_branch": {
+          "type": "string"
+        }
+      }
+    },
+    "settings": {
+      "type": "object",
+      "description": "integer/real settings of the FLAGS block (which_pion, electron_arm, ctau, ...)",
+      "additionalProperties": {
+        "type": [
+          "integer",
+          "number",
+          "null"
+        ]
+      }
+    },
+    "stops": {
+      "type": "object",
+      "description": "stops.<spectrometer>.<counter>; keys in docs/OUTPUT_FORMAT.md",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "trials",
+          "successes"
+        ],
+        "additionalProperties": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "stop_roles": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "enum": [
+          "electron",
+          "hadron",
+          "both"
+        ]
+      }
+    }
+  }
+}

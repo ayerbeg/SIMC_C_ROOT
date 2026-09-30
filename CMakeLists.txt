@@ -83,8 +83,8 @@ option(SIMC_BUILD_LEGACY "Build the legacy (pre-translation) targets" ON)
 
 enable_testing()
 
-if(SIMC_BUILD_LEGACY)
 find_package(ROOT 6.20 REQUIRED COMPONENTS Core Tree Hist RIO)
+if(SIMC_BUILD_LEGACY)
 if(ROOT_FOUND)
     message(STATUS "Found ROOT ${ROOT_VERSION} at ${ROOT_USE_FILE}")
     include(${ROOT_USE_FILE})
@@ -121,8 +121,11 @@ set(SIMC_FORTRAN_DIR "/home/ayerbe/NewDisk/simc_gfortran" CACHE PATH
 
 add_library(simcfw STATIC
     src/core/SimcParameters.cpp
+    src/core/RunSetup.cpp
     src/input/InpReader.cpp
     src/input/EffectiveValues.cpp
+    src/output/NtupleLayout.cpp
+    src/output/SummaryJson.cpp
 )
 target_include_directories(simcfw PUBLIC ${CMAKE_SOURCE_DIR}/include)
 target_link_libraries(simcfw PUBLIC nlohmann_json::nlohmann_json)
@@ -131,6 +134,20 @@ target_compile_options(simcfw PRIVATE -Wall -Wextra -pedantic)
 add_executable(inp2json tools/inp2json.cpp)
 target_link_libraries(inp2json PRIVATE simcfw)
 set_target_properties(inp2json PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
+add_executable(hist2json tools/hist2json.cpp)
+target_link_libraries(hist2json PRIVATE simcfw)
+set_target_properties(hist2json PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
+# ROOT-based output sinks. OBJECT library so that the SIMC_REGISTER static
+# registrations are always linked in (see core/Registry.h).
+add_library(simcfw_root OBJECT
+    src/output/RootTreeSink.cpp
+    src/output/RunSummarySink.cpp
+    src/output/GenHistSink.cpp
+)
+target_link_libraries(simcfw_root PUBLIC simcfw ROOT::Core ROOT::RIO ROOT::Tree ROOT::Hist)
+target_compile_options(simcfw_root PRIVATE -Wall -Wextra -pedantic)
 
 add_subdirectory(tests/unit)
 
