@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # check_all.sh - Clean build of everything in SIMC++_Claude plus the full test suite, logged.
 #
-# Usage: tools/check_all.sh [--label NAME]
+# Usage: tools/check_all.sh [--label NAME] [--commit REV]
+#   --commit REV  build a clean detached worktree of REV instead of the working tree
+#                 (use this while other agents have uncommitted work in the repo)
 #
 # Builds from scratch (fresh build dirs):
 #   1. the main CMake project (library, tools, unit + L1 tests)  -> ctest
@@ -17,10 +19,11 @@ SRC_DIR="$PROJECT_DIR/SIMC++_Claude"
 RUNS_DIR="$PROJECT_DIR/simc_runs"
 ROOT_DIR="${ROOTSYS:-/home/ayerbe/Builds/ROOT6_install}"
 export LD_LIBRARY_PATH="$ROOT_DIR/lib:/usr/local/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-LABEL=""
+LABEL=""; REV=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --label) LABEL="$2"; shift ;;
+    --commit) REV="$2"; shift ;;
     -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
   esac; shift
 done
@@ -28,6 +31,12 @@ done
 mkdir -p "$RUNS_DIR"
 exec 9>"$RUNS_DIR/.lock"; flock 9          # same lock as run_simc.sh
 
+WT=""
+if [[ -n "$REV" ]]; then
+  WT="$(mktemp -d "${TMPDIR:-/tmp}/simc_check_wt.XXXXXX")"
+  git -C "$SRC_DIR" worktree add -q --detach "$WT" "$REV" || { echo "bad --commit $REV"; exit 2; }
+  SRC_DIR="$WT"
+fi
 COMMIT="$(git -C "$SRC_DIR" rev-parse --short HEAD)"
 DIRTY="$(git -C "$SRC_DIR" status --porcelain | wc -l)"
 RUN_ID="$(date +%Y%m%d_%H%M%S)_check${LABEL:+_$LABEL}"
@@ -38,7 +47,8 @@ T0=$(date +%s)
   git -C "$SRC_DIR" status --short; } > "$OUT/git.txt"
 
 jobs=$(nproc)
-( cmake -S "$SRC_DIR" -B "$BUILD" -DCMAKE_PREFIX_PATH="$ROOT_DIR" -DCMAKE_BUILD_TYPE=Release &&
+REFS=(-DSIMC_REFERENCE_DIR=/home/ayerbe/NewDisk/reference -DSIMC_FORTRAN_DIR=/home/ayerbe/NewDisk/simc_gfortran)
+( cmake -S "$SRC_DIR" -B "$BUILD" -DCMAKE_PREFIX_PATH="$ROOT_DIR" -DCMAKE_BUILD_TYPE=Release "${REFS[@]}" &&
   cmake --build "$BUILD" -j"$jobs" ) > "$OUT/build.log" 2>&1; B=$?
 T=skipped; if [[ $B -eq 0 ]]; then (cd "$BUILD" && ctest --output-on-failure) > "$OUT/tests.log" 2>&1; T=$?; fi
 ( cmake -S "$SRC_DIR/validation" -B "$VBUILD" -DCMAKE_PREFIX_PATH="$ROOT_DIR" -DCMAKE_BUILD_TYPE=Release &&
@@ -61,6 +71,7 @@ cat > "$OUT/summary.md" <<EOF
 EOF
 # keep the logs, drop the build trees (they are large)
 rm -rf "$BUILD" "$VBUILD"
+if [[ -n "$WT" ]]; then git -C "$PROJECT_DIR/SIMC++_Claude" worktree remove --force "$WT"; git -C "$PROJECT_DIR/SIMC++_Claude" worktree prune; fi
 [[ -f "$RUNS_DIR/index.tsv" ]] || printf "run_id\toverall\tbuild\trun\ttests\tseconds\tconfig\n" > "$RUNS_DIR/index.tsv"
 printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\n" "$RUN_ID" "$OVERALL" "$B/$VB" "n/a" "$T/$VT" "$SECS" "check_all@$COMMIT" >> "$RUNS_DIR/index.tsv"
 ln -sfn "$RUN_ID" "$RUNS_DIR/latest"
