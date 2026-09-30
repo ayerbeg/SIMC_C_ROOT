@@ -130,13 +130,6 @@ bool HRSr::Transport(TrackState& track) {
     
     // APERTURE 6: Q1 entrance
     // Fortran lines 216-222
-    static int q1_check_count = 0;
-    q1_check_count++;
-    if (q1_check_count == 1) {
-        std::cout << "DEBUG: First particle at Q1 entrance check: x=" << track.x 
-                  << " y=" << track.y << " r=" << std::sqrt(track.x*track.x + track.y*track.y)
-                  << " (limit r=" << q1_.radius << ")" << std::endl;
-    }
     
     if (track.x*track.x + track.y*track.y > q1_.radius*q1_.radius) {
         ++stats_.rSTOP_Q1_in;

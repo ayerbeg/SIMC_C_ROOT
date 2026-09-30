@@ -54,17 +54,6 @@ namespace simc {
     // Apply reconstruction matrix (class 0)
     const auto& recon_class = recon_matrix_.classes[0];
     
-    // DEBUG: Print diagnostics
-    static bool first_call = true;
-    static bool second_call = true;
-
-    if (first_call) {
-      std::cout << "=== HMS Reconstruct DEBUG ===" << std::endl;
-      std::cout << "  Input: fp.x=" << fp.x << " fp.xp=" << fp.xp 
-		<< " fp.y=" << fp.y << " fp.yp=" << fp.yp << std::endl;
-      std::cout << "  Matrix class 0 has " << recon_class.terms.size() << " terms" << std::endl;
-      first_call = false;
-    }
 
 
 
@@ -89,15 +78,6 @@ namespace simc {
     target.yp = sum[2];   // mrad
     target.delta = sum[3]; // fraction → %
     
-    // DEBUG: Print output
-    if (second_call) {
-      std::cout << "=== HMS Reconstruct OUTPUT ===" << std::endl;
-      std::cout << "  sum[0]=" << sum[0] << " sum[1]=" << sum[1] 
-		<< " sum[2]=" << sum[2] << " sum[3]=" << sum[3] << std::endl;
-      std::cout << "  target.xp=" << target.xp << " target.yp=" << target.yp 
-		<< " target.delta=" << target.delta << std::endl;
-      second_call = false;
-    }   
     return true;
   }
   
@@ -105,14 +85,6 @@ namespace simc {
     // Extract focal plane coordinates
     // Units: x,y in cm; xp,yp in mrad; delta in %
 
-   // ADD THIS DEBUG OUTPUT HERE:
-    static bool first_debug = true;
-    if (first_debug) {
-        std::cout << "=== HMS GetFocalPlane DEBUG ===" << std::endl;
-        std::cout << "  track.dx=" << track.dx << " track.dy=" << track.dy << std::endl;
-        std::cout << "  Converting to fp: track.dx * 1000 = " << (track.dx * 1000.0) << std::endl;
-        first_debug = false;
-    }
     
 
     
@@ -122,13 +94,6 @@ namespace simc {
     fp.yp = track.dy * 1000.0;  // slope → mrad
     fp.delta = track.delta;
 
-    // DEBUG: Print loaded drift lengths
-    std::cout << "=== HMS DRIFT LENGTHS (cm) ===" << std::endl;
-    std::cout << "  target_to_q1: " << drifts_.target_to_q1 << std::endl;
-    std::cout << "  q1_to_q2: " << drifts_.q1_to_q2 << std::endl;
-    std::cout << "  q2_to_q3: " << drifts_.q2_to_q3 << std::endl;
-    std::cout << "  q3_to_d1: " << drifts_.q3_to_d1 << std::endl;
-    std::cout << "  d1_to_fp: " << drifts_.d1_to_fp << std::endl;
     
     return true;
   }
@@ -497,15 +462,6 @@ namespace simc {
     double zdrift = drifts_.target_to_q1 - z_start;
 
   
-    // DEBUG- Print BEFORE drift
- 
-        static int call_count = 0;
-    if (call_count < 3) {
-        std::cout << "=== TransportQ1 DEBUG (call #" << call_count << ") ===" << std::endl;
-        std::cout << "  BEFORE drift: track.z=" << track.z << " track.x=" << track.x << " track.y=" << track.y << std::endl;
-        std::cout << "  Slopes: track.dx=" << track.dx << " track.dy=" << track.dy << std::endl;
-        std::cout << "  z_start=" << z_start << " zdrift=" << zdrift << std::endl;
-    }
 
     
     // NOTE: Fortran checks if transformation 1 is a drift
@@ -514,12 +470,6 @@ namespace simc {
     Project(track, zdrift);
 
     
-    // DEBUG - Print AFTER drift
-    if (call_count < 3) {
-        std::cout << "  AFTER drift: track.z=" << track.z << " track.x=" << track.x << " track.y=" << track.y << std::endl;
-        std::cout << "  r²=" << (track.x*track.x + track.y*track.y) << " vs r_Q1²=" << (apertures_.r_Q1 * apertures_.r_Q1) << std::endl;
-        call_count++;  // Increment ONLY ONCE at the end
-    }
 
     
     // Check Q1 entrance

@@ -79,6 +79,8 @@ add_custom_command(TARGET copy_data_files POST_BUILD
 
 # SIMC_BUILD_LEGACY: the pre-translation code (simc, simc_core, simc_io, old tests).
 # It keeps building for now; nothing in the new framework may depend on it (P1.3).
+# P1.7: still ON by default because tools/run_simc.sh runs the legacy `simc` binary; the new
+# framework and all tests/unit + tests/l1 build and pass with -DSIMC_BUILD_LEGACY=OFF.
 option(SIMC_BUILD_LEGACY "Build the legacy (pre-translation) targets" ON)
 
 enable_testing()

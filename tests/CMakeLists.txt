@@ -1,9 +1,14 @@
-# tests/CMakeLists.txt
-# Simple standalone test system without Google Test dependency
+# tests/CMakeLists.txt — LEGACY tests (built only with SIMC_BUILD_LEGACY=ON).
+# They exercise the pre-translation classes (simc_core/simc_io) and are unverified against the
+# Fortran (D-004). New tests go in tests/unit and tests/l1.
+#
+# P1.7 housekeeping: every test executable built here is registered in CTest. Removed from the
+# build: test_integrated_generation (hung: nonsense MeV/GeV momenta, never terminated),
+# test_event_generator_diagnostic (a print-only diagnostic, no checks), test_sos_transport /
+# test_hrsr_transport / test_hrsl_transport (FATAL: SOS/HRS matrix files not in data/; SOS/HRS are
+# out of scope until P14, sources kept for then). The other unbuilt *.cpp here are older one-off
+# diagnostics that were already outside the build.
 
-message(STATUS "Building standalone tests (no Google Test required)")
-
-# Simple test executable - ALL EXISTING TESTS
 add_executable(simc_tests
     test_main.cpp
     test_event.cpp
@@ -14,67 +19,11 @@ add_executable(simc_tests
     test_multiple_scattering.cpp
     test_spectrometer_optics.cpp
 )
+target_link_libraries(simc_tests PRIVATE simc_core simc_io)
+add_test(NAME legacy_AllTests COMMAND simc_tests)
 
-# Link libraries
-target_link_libraries(simc_tests
-    PRIVATE
-        simc_core
-        simc_io
-)
+add_executable(test_event_generator test_event_generator.cpp)
+target_link_libraries(test_event_generator PRIVATE simc_core simc_io)
+add_test(NAME legacy_EventGeneratorTests COMMAND test_event_generator)
 
-add_executable(test_integrated_generation 
-    test_integrated_generation.cpp
-)
-
-target_link_libraries(test_integrated_generation
-    simc_core
-    simc_io
-    ${ROOT_LIBRARIES}
-)
-
-# Add tests to CTest (will run all tests in one executable)
-add_test(NAME AllTests COMMAND simc_tests)
-
-# =============================================================================
-# NEW: Event Generator test executable (separate)
-# =============================================================================
-add_executable(test_event_generator
-    test_event_generator.cpp
-)
-
-target_link_libraries(test_event_generator
-    PRIVATE
-        simc_core
-        simc_io
-)
-
-add_executable(test_event_generator_diagnostic test_event_generator_diagnostic.cpp)
-target_link_libraries(test_event_generator_diagnostic simc_core)
-
-add_executable(test_sos_transport test_sos_transport.cpp)
-target_link_libraries(test_sos_transport
-    simc_core
-    ${ROOT_LIBRARIES}
-)
-
-add_executable(test_hrsr_transport test_hrsr_transport.cpp)
-target_link_libraries(test_hrsr_transport
-    simc_core
-    ${ROOT_LIBRARIES}
-)
-
-add_executable(test_hrsl_transport test_hrsl_transport.cpp)
-target_link_libraries(test_hrsl_transport
-    simc_core
-    ${ROOT_LIBRARIES}
-)
-
-
-
-
-# Add as separate test
-add_test(NAME EventGeneratorTests COMMAND test_event_generator)
-
-message(STATUS "Tests will run without external test framework")
-message(STATUS "Run with: cd build && ./tests/simc_tests")
-message(STATUS "Run event generator tests: cd build/tests && ./test_event_generator")
+set_tests_properties(legacy_AllTests legacy_EventGeneratorTests PROPERTIES TIMEOUT 120)

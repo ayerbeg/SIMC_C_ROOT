@@ -60,16 +60,6 @@ bool SHMS::Reconstruct(const FocalPlaneState& fp, TargetState& target) {
     if (std::abs(ray[4]) <= 1.e-30) ray[4] = 1.e-30;
 
 
-// DEBUG: First call
-    static bool first_call = true;
-    if (first_call) {
-        std::cout << "=== SHMS Reconstruct DEBUG ===" << std::endl;
-        std::cout << "  Input: fp.x=" << fp.x << " fp.xp=" << fp.xp 
-                  << " fp.y=" << fp.y << " fp.yp=" << fp.yp << std::endl;
-        std::cout << "  Ray: x=" << ray[0] << " xp=" << ray[1] 
-                  << " y=" << ray[2] << " yp=" << ray[3] << std::endl;
-        first_call = false;
-    }
 
     
     // Initialize reconstruction sums
@@ -79,12 +69,6 @@ bool SHMS::Reconstruct(const FocalPlaneState& fp, TargetState& target) {
     const auto& recon_class = recon_matrix_.classes[0];
 
 
- // DEBUG: Matrix info
-    static bool show_matrix = true;
-    if (show_matrix) {
-        std::cout << "  Matrix class 0 has " << recon_class.terms.size() << " terms" << std::endl;
-        show_matrix = false;
-    }
 
     
     for (const auto& term : recon_class.terms) {
@@ -99,14 +83,6 @@ bool SHMS::Reconstruct(const FocalPlaneState& fp, TargetState& target) {
         }
     }
 
- // DEBUG: Second call output
-    static bool second_call = true;
-    if (second_call) {
-        std::cout << "=== SHMS Reconstruct OUTPUT ===" << std::endl;
-        std::cout << "  sum[0]=" << sum[0] << " sum[1]=" << sum[1] 
-                  << " sum[2]=" << sum[2] << " sum[3]=" << sum[3] << std::endl;
-        second_call = false;
-    }
 
     
     // Unpack results
