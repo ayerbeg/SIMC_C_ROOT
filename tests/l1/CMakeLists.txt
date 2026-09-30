@@ -19,3 +19,7 @@ foreach(r sigmott fofa_best_fit sigep deforest)
     set_tests_properties(l1_${r} PROPERTIES SKIP_RETURN_CODE 77)
 endforeach()
 add_test(NAME physics_proton_plugins COMMAND test_l1_physics_proton plugins)
+
+# Per-module L1 tests (separate files so parallel tasks don't collide; director, P2)
+include(${CMAKE_CURRENT_SOURCE_DIR}/material.cmake OPTIONAL)
+include(${CMAKE_CURRENT_SOURCE_DIR}/setup.cmake OPTIONAL)
