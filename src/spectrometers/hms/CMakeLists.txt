@@ -1,1 +1,14 @@
-# simcfw_hms: filled by task P6.2
+# simcfw_hms (task P6.2): ISpectrometer "hms" — mc_hms, mc_hms_coll, mc_hms_hut (+ CERNLIB lfit), recon via the
+# shared COSY engine (simcfw_optics). OBJECT library so the SIMC_REGISTER registration is always linked.
+# Consumers must also link simcfw_optics and simcfw_material (object files of OBJECT libraries do not propagate).
+add_library(simcfw_hms OBJECT
+    HmsSpectrometer.cpp
+    McHmsColl.cpp
+    McHmsHut.cpp
+    Lfit.cpp
+)
+target_link_libraries(simcfw_hms PUBLIC simcfw simcfw_optics)
+target_compile_options(simcfw_hms PRIVATE -Wall -Wextra -pedantic)
+# Default location of hms/forward_cosy.dat and hms/recon_cosy.dat (byte-identical copies of the Fortran files).
+target_compile_definitions(simcfw_hms PRIVATE
+    SIMC_HMS_DEFAULT_MATRIX_DIR="${CMAKE_SOURCE_DIR}/data/matrices/simc_fortran")
