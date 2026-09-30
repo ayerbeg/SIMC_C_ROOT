@@ -1,0 +1,23 @@
+{
+  "_comment": "simc_compare default configuration (validation/README.md). All keys optional.",
+  "alpha": 0.01,
+  "global_alpha": 0.001,
+  "gross_p": 1e-5,
+  "nbins": 50,
+  "quantile_lo": 0.005,
+  "quantile_hi": 0.995,
+  "det_rel_tol": 1e-6,
+  "norm_a": "per_tried",
+  "norm_b": "per_tried",
+  "tree_name": "h10",
+  "weight_branch": "Weight",
+  "sigcc_branch": "sigcc",
+  "variables": [],
+  "skip": [],
+  "binning": {},
+  "tests": {"chi2_abs": true, "chi2_ww": true, "chi2_uu": true, "ks_weighted": true},
+  "stop_per_counter": true,
+  "ratio_lo": 0.8,
+  "ratio_hi": 1.2,
+  "pdf": true
+}
