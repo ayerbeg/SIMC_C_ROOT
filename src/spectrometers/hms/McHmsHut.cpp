@@ -7,7 +7,7 @@
 #include <cmath>
 
 #include "simc/spectrometers/hms/HmsSpectrometer.h"
-#include "simc/spectrometers/hms/Lfit.h"
+#include "simc/optics/Lfit.h"
 #include "simc/stages/IRandom.h"
 
 namespace simc {

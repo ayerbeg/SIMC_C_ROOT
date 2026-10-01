@@ -1,5 +1,5 @@
-// src/spectrometers/hms/Lfit.cpp — see include/simc/spectrometers/hms/Lfit.h.
-#include "simc/spectrometers/hms/Lfit.h"
+// src/optics/Lfit.cpp — see include/simc/optics/Lfit.h (moved from src/spectrometers/hms in P6.3).
+#include "simc/optics/Lfit.h"
 
 namespace simc {
 namespace cern {

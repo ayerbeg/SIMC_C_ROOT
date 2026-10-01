@@ -1,4 +1,4 @@
-// include/simc/spectrometers/hms/Lfit.h
+// include/simc/optics/Lfit.h
 //
 // CERNLIB LFIT (Mathlib E250, cern/lfit.f): least-squares straight line y = a*x + b through l points.
 // Fortran: cern/lfit.f:LFIT(X,Y,L,KEY,A,B,E) (l.11-60), as compiled by SIMC.
@@ -9,11 +9,11 @@
 // three results are rounded to float (cvtsd2ss). B = YMED - A*XMED and E use the ALREADY ROUNDED float A.
 //
 // FORTRAN-QUIRK (CERNLIB): with KEY = 0 every point whose Y is exactly 0.0 (float compare, -0.0 included) is
-// ignored. mc_hms_hut / mc_shms_hut rely on this: the planes that measure the other coordinate are set to 0,
+// ignored. mc_hms_hut / mc_shms_hut (both call it) rely on this: the planes that measure the other coordinate are set to 0,
 // and a real hit that happens to round to exactly 0.0f is silently dropped as well.
 // Fewer than 2 used points, or all used X equal, gives A = B = E = 0.
-#ifndef SIMC_SPECTROMETERS_HMS_LFIT_H
-#define SIMC_SPECTROMETERS_HMS_LFIT_H
+#ifndef SIMC_OPTICS_LFIT_H
+#define SIMC_OPTICS_LFIT_H
 
 namespace simc {
 namespace cern {
@@ -24,4 +24,4 @@ void lfit(const float* x, const float* y, int l, int key, float& a, float& b, fl
 }  // namespace cern
 }  // namespace simc
 
-#endif  // SIMC_SPECTROMETERS_HMS_LFIT_H
+#endif  // SIMC_OPTICS_LFIT_H

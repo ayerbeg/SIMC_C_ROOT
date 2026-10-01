@@ -4,6 +4,7 @@
 add_library(simcfw_optics STATIC
     CosyEngine.cpp
     ForwardChains.cpp
+    Lfit.cpp          # CERNLIB lfit (cern/lfit.f), used by mc_hms_hut and mc_shms_hut (moved here in P6.3)
 )
 target_link_libraries(simcfw_optics PUBLIC simcfw simcfw_kinematics)
 target_compile_options(simcfw_optics PRIVATE -Wall -Wextra -pedantic)
