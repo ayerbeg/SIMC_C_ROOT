@@ -43,7 +43,8 @@ struct DummyTarget : ITarget {
 };
 struct DummyReaction : IReaction {
     DUMMY_STAGE_BASICS("dummy")
-    bool generate(MainEvent&, Event&, IRandom&) override { return true; }
+    bool generate(MainEvent&, Event&, Event&, IRandom&) override { return true; }
+    bool completeEv(MainEvent&, Event&, IRandom&) override { return true; }
     bool completeRecon(Event&) override { return true; }
     double genVolume() const override { return 1.0; }
 };

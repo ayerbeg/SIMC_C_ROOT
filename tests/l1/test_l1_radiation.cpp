@@ -15,11 +15,10 @@
 //   rad_distributions <dir> <cfgid> <radc_state dir>: real RNG (Mt64Random, 1e6 samples): quantiles, KS, chi2
 //   selftest: registry / interface
 //
-// generate_rad calls complete_ev after the incoming-electron photon (radc.f:324). complete_ev (event.f) is not
-// ported yet (Phase 4): the callback used here, ElasticCompleteEv, is a TEST-ONLY transcription of the H(e,e'p)
-// path of event.f:complete_ev (l.497-563, 914-938, 1025-1045) on top of the ported trip_thru_target
-// (material::HallCCryoTarget) and radc_init_ev (SimcRadiator::initEvent). Its output is checked against the
-// recorded pre-state columns of the table (pre_e_E, pre_p_E, pre_teff_2/3, pre_hardcorfac, pre_frac_*, ...).
+// generate_rad calls complete_ev after the incoming-electron photon (radc.f:324). Since P4.1 the callback is the
+// real port, reactions::HydrogenElastic::completeEv (event.f:complete_ev), wired to the same target and radiator.
+// Its output is also checked against the recorded pre-state columns of the table (pre_e_E, pre_p_E, pre_teff_2/3,
+// pre_hardcorfac, pre_frac_*, ...).
 //
 // Exit: 0 pass, 1 fail, 77 table missing.
 #include <algorithm>
@@ -45,6 +44,7 @@
 #include "simc/radiation/Brem.h"
 #include "simc/radiation/Radc.h"
 #include "simc/radiation/SimcRadiator.h"
+#include "simc/reactions/HydrogenElastic.h"
 #include "simc/setup/KinematicsUtils.h"
 #include "simc/setup/SetupBuilder.h"
 
@@ -379,6 +379,7 @@ struct CfgProcess {
     RunSetup setup;
     material::HallCCryoTarget target;
     SimcRadiator rad;
+    std::unique_ptr<reactions::HydrogenElastic> reaction;   // event.f:complete_ev (P4.1)
     double ntup_radphot{0}, ntup_radarm{0};   // COMMON /ntuple_variables/ (not part of main in the Fortran)
     std::string error;
 };
@@ -412,69 +413,14 @@ std::unique_ptr<CfgProcess> makeProcess(const std::string& inp, const std::strin
     P->target.init(P->setup);
     P->rad.setLog(nullptr);
     P->rad.init(P->setup);
+    P->reaction = std::make_unique<reactions::HydrogenElastic>();
+    P->reaction->configure(Json::object(), P->params);
+    P->reaction->setLog(nullptr);
+    P->reaction->setTarget(&P->target);
+    P->reaction->setRadiator(&P->rad);
+    P->reaction->init(P->setup);
     return P;
 }
-
-/// TEST-ONLY transcription of event.f:complete_ev for H(e,e'p) (doing_hyd_elast), the only reaction of the
-/// P5.F1 tables. The Phase-4 reaction stage will own the real port.
-struct ElasticCompleteEv {
-    CfgProcess& P;
-    bool operator()(MainEvent& main, Event& v, IRandom& rng) const {
-        using constants::Me;
-        using constants::Mp;
-        using constants::pi;
-        const RunSetup& s = P.setup;
-        const double Mh = s.Mh, Mh2 = s.Mh2;
-        main.jacobian = 1.0;   // l.498
-        // l.504-506
-        v.ue.x = std::sin(v.e.theta) * std::cos(v.e.phi);
-        v.ue.y = std::sin(v.e.theta) * std::sin(v.e.phi);
-        v.ue.z = std::cos(v.e.theta);
-        // l.517-524
-        v.e.E = v.Ein * Mh / (Mh + v.Ein * (1. - v.ue.z));
-        if (v.e.E > v.Ein) return false;
-        v.e.P = v.e.E;
-        v.e.delta = (v.e.P - s.spec.e.P) * 100. / s.spec.e.P;
-        // l.530-539
-        v.nu = v.Ein - v.e.E;
-        v.Q2 = 2 * v.Ein * v.e.E * (1. - v.ue.z);
-        v.q = std::sqrt(v.Q2 + v.nu * v.nu);
-        v.xbj = v.Q2 / 2. / Mp / v.nu;
-        v.uq.x = -v.e.P * v.ue.x / v.q;
-        v.uq.y = -v.e.P * v.ue.y / v.q;
-        v.uq.z = (v.Ein - v.e.P * v.ue.z) / v.q;
-        // l.546-562 (p = q)
-        v.Em = 0.0;
-        v.Pm = 0.0;
-        v.Mrec = 0.0;
-        v.up = v.uq;
-        v.p.P = v.q;
-        v.p.theta = std::acos(v.up.z);
-        v.p.phi = std::atan2(v.up.y, v.up.x);
-        if (v.p.phi < 0.) v.p.phi = v.p.phi + 2. * pi;
-        SpectrometerAngles(s.spec.p.theta, s.spec.p.phi, v.p.xptar, v.p.yptar, v.p.theta, v.p.phi);
-        v.p.E = std::sqrt(v.p.P * v.p.P + Mh2);
-        v.p.delta = (v.p.P - s.spec.p.P) * 100. / s.spec.p.P;
-        // l.914-926
-        v.Pmx = v.p.P * v.up.x - v.q * v.uq.x;
-        v.Pmy = v.p.P * v.up.y - v.q * v.uq.y;
-        v.Pmz = v.p.P * v.up.z - v.q * v.uq.z;
-        v.Pmiss = std::sqrt(v.Pmx * v.Pmx + v.Pmy * v.Pmy + v.Pmz * v.Pmz);
-        v.Emiss = v.nu + s.targ.M - v.p.E;
-        v.Trec = 0.0;   // l.937-938
-        // l.1025-1036: trip_thru_target (typeflag 1: one gauss1 per material with thickness > 0)
-        P.target.trip(2, main.target.z - s.targ.zoffset, v.e.E, v.e.theta, main.target.Eloss[1], main.target.teff[1],
-                      Me, 1, rng);
-        P.target.trip(3, main.target.z - s.targ.zoffset, v.p.E, v.p.theta, main.target.Eloss[2], main.target.teff[2],
-                      Mh, 1, rng);
-        if (!s.sw.using_Eloss) {
-            main.target.Eloss[1] = 0.0;
-            main.target.Eloss[2] = 0.0;
-        }
-        P.rad.initEvent(main, v);   // l.1045
-        return true;
-    }
-};
 
 const std::vector<std::string> kGenRadOut = {
     "success",      "n_unif",       "n_gauss",      "rng_err",      "ntail",        "radphot",      "radarm",
@@ -511,7 +457,7 @@ void generateRadRow(CfgProcess& P, const Row& r, Outputs& o, bool capture, bool 
     std::vector<double> pg;
     for (int i = 1; i <= iv(r, "npg"); ++i) pg.push_back(r["pg" + std::to_string(i)]);
     rng.load(pg, {});
-    const ElasticCompleteEv complete_ev{P};
+    const CompleteEvFn complete_ev = P.reaction->completeEvFn();
     const bool okpre = complete_ev(m, v, rng);
     m.Trec = v.Trec;
     m.sigcc = 1.0;
@@ -951,7 +897,7 @@ int runRadDistributions(const std::string& dir, int cfgid, const std::string& ra
     std::printf("L1 rad_distributions cfgid %d kind %d: Mt64Random seed %ld, %d samples\n", cfgid, kind, seed, nsamp);
     int fail = 0;
     const RunSetup& s = P->setup;
-    const ElasticCompleteEv complete_ev{*P};
+    const CompleteEvFn complete_ev = P->reaction->completeEvFn();
     // Central pre-state (drv_raddist.f): trip_thru_target(1,0,Ebeam,0,...,Me,4), vertex at the central angles,
     // complete_ev (gauss1 from the real stream), main%Trec.
     MainEvent m0;
