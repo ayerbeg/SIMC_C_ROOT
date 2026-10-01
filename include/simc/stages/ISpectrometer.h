@@ -36,6 +36,11 @@ struct SpecResult {
     double pathlen{0};               ///< cm
     double resmult{0};               ///< DC resolution factor (ntup%resfac)
     double m2_final{0};              ///< mass squared after possible decay
+    // P7.1 (additive): what simc.f:montecarlo needs beyond the above.
+    bool resmult_written{false};     ///< the routine wrote its resmult argument (HMS/SHMS: the hut was reached);
+                                     ///< simc.f keeps a stale tmpfact for the electron arm otherwise
+    double decdist{0};               ///< COMMON decdist after the call (starts at 0, simc.f:177)
+    double Mh2_final{0};             ///< COMMON Mh2_final after the call (starts at in.m2, simc.f:174)
 };
 
 class ISpectrometer : public IStage {

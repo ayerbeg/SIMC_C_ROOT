@@ -375,6 +375,9 @@ SpecResult HmsSpectrometer::transport(const SpecInput& in, IRandom& rng) {
     r.pathlen = a.pathlen;
     r.resmult = det.reached_hut ? a.resmult : 0.0;
     r.m2_final = a.m2;
+    r.resmult_written = det.reached_hut;
+    r.decdist = a.decdist;
+    r.Mh2_final = a.Mh2_final;
     return r;
 }
 
