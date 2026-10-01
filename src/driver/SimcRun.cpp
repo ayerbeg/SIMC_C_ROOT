@@ -12,10 +12,6 @@
 #include "simc/core/random/Mt64Random.h"
 #include "simc/driver/FortranWriter.h"
 #include "simc/driver/ReportSink.h"
-#include "simc/material/HallCCryoTarget.h"
-#include "simc/radiation/SimcRadiator.h"
-#include "simc/reactions/HydrogenElastic.h"
-#include "simc/reactions/StandardBeam.h"
 #include "simc/setup/SetupBuilder.h"
 
 namespace simc {
@@ -23,23 +19,12 @@ namespace driver {
 
 namespace {
 
-radiation::SimcRadiator* asSimcRad(IRadiator* r) { return dynamic_cast<radiation::SimcRadiator*>(r); }
-
+/// The driver's --quiet: every stage gets "verbose": false unless its config says otherwise (stage messages only;
+/// no numerical effect).
 Json withVerbose(Json cfg, bool quiet) {
     if (!cfg.is_object()) cfg = Json::object();
     if (quiet && !cfg.contains("verbose")) cfg["verbose"] = false;
     return cfg;
-}
-
-/// Wire the collaborators of a stage: the optional driver interfaces first, then the known P4 classes.
-void wireTarget(IStage* s, ITarget* t) {
-    if (auto* n = dynamic_cast<INeedsTarget*>(s)) n->setTarget(t);
-    else if (auto* b = dynamic_cast<reactions::StandardBeam*>(s)) b->setTarget(t);
-    else if (auto* r = dynamic_cast<reactions::HydrogenElastic*>(s)) r->setTarget(t);
-}
-void wireRadiator(IStage* s, IRadiator* rad) {
-    if (auto* n = dynamic_cast<INeedsRadiator*>(s)) n->setRadiator(rad);
-    else if (auto* r = dynamic_cast<reactions::HydrogenElastic*>(s)) r->setRadiator(rad);
 }
 
 }  // namespace
@@ -60,9 +45,11 @@ void SimcRun::setRandom(std::unique_ptr<IRandom> rng) {
     rngPtr_ = rng_.get();
 }
 
-void SimcRun::addSink(std::shared_ptr<IOutputSink> sink) {
+IOutputSink& SimcRun::addSink(std::unique_ptr<IOutputSink> sink) {
     if (initialised_) throw std::logic_error("SimcRun::addSink after initialise()");
+    if (!sink) throw std::invalid_argument("SimcRun::addSink: null sink");
     extraSinks_.push_back(std::move(sink));
+    return *extraSinks_.back();
 }
 
 void SimcRun::log(const std::string& line) { (opt_.log ? *opt_.log : std::cout) << line << "\n"; }
@@ -70,11 +57,16 @@ void SimcRun::log(const std::string& line) { (opt_.log ? *opt_.log : std::cout) 
 // Fortran: simc.f l.53-160
 void SimcRun::initialise() {
     if (initialised_) return;
-    // ---- dbase_read, init.f (min_max_init, target_init, limits_init, radc_init), targetfac, luminosity
-    SetupOptions so;
-    so.run_name = opt_.run_name;
-    so.data_dir = opt_.data_dir;
-    setup_ = BuildRunSetup(params_, so);
+    // ---- dbase_read, init.f (min_max_init, target_init, limits_init, radc_init), targetfac, luminosity.
+    // target_init and extreme_trip_thru_target come from the pipeline's target model (ITargetLossProvider), through a
+    // dedicated instance: the event-loop target below starts from its own fresh state, as before P7.4.
+    {
+        SetupOptions so;
+        so.run_name = opt_.run_name;
+        so.data_dir = opt_.data_dir;
+        std::unique_ptr<ITarget> startupTarget = Registry<ITarget>::create(PipelineConfig::TargetType(pipelineJson_));
+        setup_ = BuildRunSetup(params_, so, startupTarget.get());
+    }
     for (const auto& m : setup_.messages) log(" " + m);
     if (!setup_.ok()) {
         std::string all;
@@ -94,7 +86,10 @@ void SimcRun::initialise() {
     if (pipe_.reaction.type.empty())
         throw NotPorted("reaction '" + ReactionTitle(setup_.flags, params_) +
                         "' is not ported yet (only H(e,e'p) and doing_phsp; P8+)");
+    const bool quiet = opt_.quiet_stages;
 
+    // ---- the stages, created by name and wired through the StageContext (interfaces only)
+    StageContext ctx(setup_);
     if (!rngPtr_) {
         // Mt64Random lives in the STATIC library simcfw_random: constructing it here also makes the linker keep its
         // object file, hence its SIMC_REGISTER(IRandom, "mt64") registration.
@@ -103,71 +98,52 @@ void SimcRun::initialise() {
         else
             rng_ = Registry<IRandom>::create(pipe_.rng.type);
         rng_->configure(pipe_.rng.config, params_);
-        rng_->init(setup_);
+        rng_->init(ctx);
         rngPtr_ = rng_.get();
     }
     target_ = Registry<ITarget>::create(pipe_.target.type);
-    if (auto* t = dynamic_cast<material::HallCCryoTarget*>(target_.get())) {
-        if (opt_.quiet_stages) t->setLog(nullptr);
-    }
-    target_->configure(pipe_.target.config, params_);
-    target_->init(setup_);
+    target_->configure(withVerbose(pipe_.target.config, quiet), params_);
+    target_->init(ctx);
 
     radiator_ = Registry<IRadiator>::create(pipe_.radiator.type);
-    radiator_->configure(withVerbose(pipe_.radiator.config, opt_.quiet_stages), params_);
-    radiator_->init(setup_);
+    radiator_->configure(withVerbose(pipe_.radiator.config, quiet), params_);
+    radiator_->init(ctx);
+
+    ctx.target = target_.get();
+    ctx.radiator = radiator_.get();
 
     beam_ = Registry<IBeam>::create(pipe_.beam.type);
-    beam_->configure(pipe_.beam.config, params_);
-    wireTarget(beam_.get(), target_.get());
-    beam_->init(setup_);
+    beam_->configure(withVerbose(pipe_.beam.config, quiet), params_);
+    beam_->init(ctx);
 
     reaction_ = Registry<IReaction>::create(pipe_.reaction.type);
-    reaction_->configure(withVerbose(pipe_.reaction.config, opt_.quiet_stages), params_);
-    wireTarget(reaction_.get(), target_.get());
-    wireRadiator(reaction_.get(), radiator_.get());
-    reaction_->init(setup_);
+    reaction_->configure(withVerbose(pipe_.reaction.config, quiet), params_);
+    reaction_->init(ctx);
 
     model_ = Registry<IPhysicsModel>::create(pipe_.physics.type);
-    model_->configure(pipe_.physics.config, params_);
-    model_->init(setup_);
+    model_->configure(withVerbose(pipe_.physics.config, quiet), params_);
+    model_->init(ctx);
 
-    MonteCarlo::ArmChoice hadron{pipe_.hadron_arm.type, pipe_.hadron_arm.config};
-    MonteCarlo::ArmChoice electron{pipe_.electron_arm.type, pipe_.electron_arm.config};
+    MonteCarlo::ArmChoice hadron{pipe_.hadron_arm.type, quiet ? withVerbose(pipe_.hadron_arm.config, true)
+                                                              : pipe_.hadron_arm.config};
+    MonteCarlo::ArmChoice electron{pipe_.electron_arm.type, quiet ? withVerbose(pipe_.electron_arm.config, true)
+                                                                  : pipe_.electron_arm.config};
     mc_ = std::make_unique<MonteCarlo>(setup_, *target_, hadron, electron);
-    if (opt_.quiet_stages) mc_->setLog(nullptr);
+    if (quiet) mc_->setLog(nullptr);
 
     for (const auto& s : pipe_.sinks) {
-        std::shared_ptr<IOutputSink> sink(Registry<IOutputSink>::create(s.type).release());
+        std::unique_ptr<IOutputSink> sink = Registry<IOutputSink>::create(s.type);
         sink->configure(s.config, params_);
-        sink->init(setup_);
-        sinks_.push_back(sink);
+        sink->init(ctx);
+        sinks_.push_back(std::move(sink));
     }
-    for (auto& s : extraSinks_) sinks_.push_back(s);
+    for (auto& s : extraSinks_) sinks_.push_back(std::move(s));
+    extraSinks_.clear();
 
     ctx_ = reactions::MainContext::FromSetup(setup_);
 
-    // ---- simc.f:85 calculate_central (after radc_init)
+    // ---- simc.f:85 calculate_central (after radc_init; central%rad from the radiator, simc.f:1268-1281)
     central_ = calculateCentral(setup_, *reaction_, *radiator_, *model_, ctx_);
-    if (setup_.sw.using_rad) {   // simc.f:1268-1281
-        if (auto* sr = asSimcRad(radiator_.get())) {
-            const auto& st = sr->state();
-            CentralRad& cr = central_.central.rad;
-            cr.hardcorfac = st.hardcorfac;
-            cr.etatzai = sr->run().etatzai;
-            cr.g_int = st.g_int;
-            cr.g_ext = st.g_ext;
-            for (int i = 0; i <= 3; ++i) {
-                if (i > 0) cr.frac[i] = st.frac[i];
-                if (i > 0) cr.lambda[i] = st.lambda[i];
-                if (i > 0 && i < 3) cr.bt[i] = st.bt[i];
-                cr.c_int[i] = st.c_int[i];
-                cr.c_ext[i] = st.c_ext[i];
-                cr.c[i] = st.c[i];
-                cr.g[i] = st.g[i];
-            }
-        }
-    }
 
     // ---- report bookkeeping
     report_ = RunReport{};
@@ -269,9 +245,7 @@ void SimcRun::step() {
     if (success) {
         // l.295-298
         T.ncontribute = T.ncontribute + 1;
-        auto* sr = asSimcRad(radiator_.get());
-        const bool rad_proton = sr ? sr->state().rad_proton_this_ev : false;
-        if (!rad_proton) T.ncontribute_no_rad_proton = T.ncontribute_no_rad_proton + 1;
+        if (!radiator_->hadronRadiates()) T.ncontribute_no_rad_proton = T.ncontribute_no_rad_proton + 1;
         // l.311-329
         if (ev.pass_cuts) {
             const Event& r = ev.recon;
@@ -300,10 +274,9 @@ void SimcRun::step() {
             T.sumerr2.p.yptar = T.sumerr2.p.yptar + yp * yp;
             T.sumerr2.p.ytar = T.sumerr2.p.ytar + zp * zp;
         }
-        // l.332-333 limits_update
-        std::array<double, 4> Egamma_used{};
-        if (sr) Egamma_used = sr->state().Egamma_used;
-        reactions::limitsUpdate(main, ev.vertex, ev.orig, ev.recon, S.flags, Egamma_used, T.contrib, T.slop);
+        // l.332-333 limits_update (Egamma_used from the radiator)
+        reactions::limitsUpdate(main, ev.vertex, ev.orig, ev.recon, S.flags, radiator_->photonEnergies(), T.contrib,
+                                T.slop);
     }
 
     // l.341-347

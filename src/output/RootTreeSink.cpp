@@ -24,7 +24,7 @@ void RootTreeSink::configure(const Json& config, const SimcParameters&) {
     }
 }
 
-void RootTreeSink::init(RunSetup&) {}
+void RootTreeSink::init(const StageContext&) {}
 
 void RootTreeSink::beginRun(const RunSetup& setup) {
     setup_ = setup;

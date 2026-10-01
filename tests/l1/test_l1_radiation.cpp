@@ -416,9 +416,10 @@ std::unique_ptr<CfgProcess> makeProcess(const std::string& inp, const std::strin
     P->reaction = std::make_unique<reactions::HydrogenElastic>();
     P->reaction->configure(Json::object(), P->params);
     P->reaction->setLog(nullptr);
-    P->reaction->setTarget(&P->target);
-    P->reaction->setRadiator(&P->rad);
-    P->reaction->init(P->setup);
+    StageContext sc(P->setup);
+    sc.target = &P->target;
+    sc.radiator = &P->rad;
+    P->reaction->init(sc);
     return P;
 }
 

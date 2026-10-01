@@ -82,7 +82,7 @@ void updateSlopRange(double val, SlopItem& slop) {
 
 // Fortran: event.f:limits_update (l.1-91)
 void limitsUpdate(const MainEvent& main, const Event& vertex, const Event& orig, const Event& recon,
-                  const ReactionFlags& f, const std::array<double, 4>& Egamma_used, Contrib& contrib, Slops& slop) {
+                  const ReactionFlags& f, const std::array<double, 3>& Egamma_used, Contrib& contrib, Slops& slop) {
     // GENERATION values
     updateRange(vertex.e.delta, contrib.gen.e.delta);
     updateRange(vertex.e.yptar, contrib.gen.e.yptar);
@@ -122,8 +122,8 @@ void limitsUpdate(const MainEvent& main, const Event& vertex, const Event& orig,
     updateRange(vertex.Pm, contrib.vertex.Pm);
 
     // RADIATION
-    for (int i = 1; i <= 3; ++i) updateRange(Egamma_used[i], contrib.rad.Egamma[i - 1]);
-    updateRange(Egamma_used[1] + Egamma_used[2] + Egamma_used[3], contrib.rad.Egamma_total);
+    for (int i = 0; i < 3; ++i) updateRange(Egamma_used[i], contrib.rad.Egamma[i]);   // Fortran Egamma_used(i+1)
+    updateRange(Egamma_used[0] + Egamma_used[1] + Egamma_used[2], contrib.rad.Egamma_total);
 
     // MC slops
     updateSlopRange(main.RECON.e.delta - main.SP.e.delta, slop.MC.e.delta);

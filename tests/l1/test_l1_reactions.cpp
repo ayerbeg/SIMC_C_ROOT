@@ -160,7 +160,7 @@ struct RecordingRadiator : IRadiator {
     bool called{false}, result{false};
     std::string name() const override { return "recording"; }
     void configure(const Json&, const SimcParameters&) override {}
-    void init(RunSetup& s) override { inner.init(s); }
+    void init(const StageContext& c) override { inner.init(c); }
     void initEvent(MainEvent& m, const Event& v) override { inner.initEvent(m, v); }
     bool radiate(MainEvent& m, Event& v, Event& o, IRandom& r, const CompleteEvFn& c) override {
         called = true;
@@ -203,15 +203,15 @@ std::unique_ptr<Process> makeProcess(const std::string& inp, const std::string& 
     P->target.init(P->setup);
     P->rad.inner.setLog(nullptr);
     P->rad.init(P->setup);
+    StageContext sc(P->setup);
+    sc.target = &P->target;
+    sc.radiator = &P->rad;
     P->beam.configure(Json::object(), P->params);
-    P->beam.setTarget(&P->target);
-    P->beam.init(P->setup);
+    P->beam.init(sc);
     P->reaction = std::make_unique<HydrogenElastic>(P->setup.flags.doing_phsp ? "phase_space" : "hydrogen_elastic");
     P->reaction->configure(Json::object(), P->params);
     P->reaction->setLog(nullptr);
-    P->reaction->setTarget(&P->target);
-    P->reaction->setRadiator(&P->rad);
-    P->reaction->init(P->setup);
+    P->reaction->init(sc);
     P->model = Registry<IPhysicsModel>::create("sigep");
     P->model->configure(Json::object(), P->params);
     P->model->init(P->setup);

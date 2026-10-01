@@ -33,6 +33,7 @@
 #include <iosfwd>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "simc/material/TargetInfo.h"
 #include "simc/stages/IMaterialModel.h"
@@ -63,10 +64,11 @@ public:
     std::string name() const override { return "hallc_cryo"; }
     /// dbase.f conversions of the targ% input and the target_init arguments.
     /// JSON (all optional): { "Mh": MeV (default Mp; the reaction's hadron mass, dbase.f:215-226),
-    ///                        "material": IMaterialModel name (default "simc_material") }
+    ///                        "material": IMaterialModel name (default "simc_material"), "material_config": {...},
+    ///                        "verbose": bool (default true; false = no Fortran write(6,*) messages) }
     void configure(const Json& config, const SimcParameters& params) override;
     /// Fortran: dbase.f:551 call target_init(...) with the configured inputs.
-    void init(RunSetup& setup) override;
+    void init(const StageContext& ctx) override;
 
     // ---- ITarget ---------------------------------------------------------------------------
     double generateZ(IRandom& rng) override;
@@ -74,6 +76,12 @@ public:
                         IRandom& rng, double& eloss, double& radlen) override;
     /// target_musc (3.5 sigma): dangles[0..1] in rad.
     void multipleScattering(double p, double beta, double teff, double dangles[2], IRandom& rng) override;
+
+    // ---- ITargetLossProvider (the set-up's start-up losses; arms taken from the arguments) ---------------------
+    /// Fortran: init.f:target_init on the RunSetup target description (copied in, results copied back).
+    void targetInit(const TargetInitArgs& args, simc::TargetInfo& targ, std::vector<std::string>& messages) override;
+    /// Fortran: target.f:extreme_trip_thru_target (+ extreme_target_musc) on the RunSetup target description.
+    void extremeLosses(const ExtremeTripArgs& args, simc::TargetInfo& targ) override;
 
     // ---- Fortran routines (same argument order) --------------------------------------------
     /// Fortran: target.f:trip_thru_target(narm,zpos,energy,theta,Eloss,radlen,mass,typeflag)
@@ -103,7 +111,7 @@ public:
     const TargetInitInputs& initInputs() const { return init_; }
     TargetInitInputs& initInputs() { return init_; }
 
-    void setMaterialModel(std::shared_ptr<IMaterialModel> m) { material_ = std::move(m); }
+    void setMaterialModel(std::unique_ptr<IMaterialModel> m) { material_ = std::move(m); }
     IMaterialModel& materialModel() { return *material_; }
 
     /// Where the Fortran write(6,*) warnings go (default std::cout; nullptr = silent).
@@ -116,7 +124,7 @@ private:
     TargetInfo targ_;
     int electron_arm_{0}, hadron_arm_{0};
     TargetInitInputs init_;
-    std::shared_ptr<IMaterialModel> material_;
+    std::unique_ptr<IMaterialModel> material_;   ///< owned; default SimcMaterial ("simc_material")
     std::ostream* log_;
     double thCan_{0};   ///< target.f: th_can (static local, -fno-automatic)
 };

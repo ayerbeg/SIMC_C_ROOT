@@ -77,10 +77,10 @@ public:
     /// Creates (through Registry<ISpectrometer>) and initialises the arm spectrometers of setup.params
     /// (electron_arm, hadron_arm). `target` provides target_musc and trip_thru_target (correct_Eloss).
     /// Throws NotPorted for arms other than 1 (HMS) and 5/6 (SHMS), or for using_tgt_field.
-    MonteCarlo(RunSetup& setup, ITarget& target);
+    MonteCarlo(const RunSetup& setup, ITarget& target);
     /// P7.2 (additive): the same with the arm plug-ins chosen explicitly (e.g. from the JSON "pipeline").
     /// Arms with the same type share one object (one Fortran COMMON block of counters), as above.
-    MonteCarlo(RunSetup& setup, ITarget& target, const ArmChoice& hadron, const ArmChoice& electron);
+    MonteCarlo(const RunSetup& setup, ITarget& target, const ArmChoice& hadron, const ArmChoice& electron);
 
     /// Fortran: simc.f:montecarlo(orig,main,recon,success). Returns success.
     bool run(const Event& orig, MainEvent& main, Event& recon, IRandom& rng);
@@ -94,12 +94,13 @@ public:
     void setLog(std::ostream* os) { log_ = os; }
 
 private:
-    std::shared_ptr<ISpectrometer> makeArm(int code, const ArmChoice& choice, RunSetup& setup);
+    ISpectrometer* makeArm(int code, const ArmChoice& choice);
 
     const RunSetup& setup_;
     ITarget& target_;
-    std::map<std::string, std::shared_ptr<ISpectrometer>> specs_;   ///< one per type (COMMON counters)
-    std::shared_ptr<ISpectrometer> pArm_, eArm_;
+    std::map<std::string, std::unique_ptr<ISpectrometer>> specs_;   ///< owned, one per type (COMMON counters)
+    ISpectrometer* pArm_{nullptr};   ///< the hadron arm (points into specs_)
+    ISpectrometer* eArm_{nullptr};   ///< the electron arm (may be the same object as pArm_)
     MonteCarloInfo info_;
     double tmpfact_{0};   ///< simc.f:1334 local tmpfact (static under -fno-automatic)
     std::ostream* log_;

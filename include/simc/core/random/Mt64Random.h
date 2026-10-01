@@ -25,7 +25,7 @@ public:
 
     std::string name() const override { return "mt64"; }
     void configure(const Json& config, const SimcParameters& params) override;
-    void init(RunSetup&) override {}
+    void init(const StageContext&) override {}
 
     double uniform() override { return (static_cast<double>(eng_() >> 11) + 0.5) * 0x1.0p-53; }
     double gauss1(double nsig_max) override;

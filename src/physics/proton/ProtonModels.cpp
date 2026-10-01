@@ -26,7 +26,7 @@ class SigEPModel : public IPhysicsModel {
 public:
     std::string name() const override { return "sigep"; }
     void configure(const Json&, const SimcParameters&) override {}
-    void init(RunSetup&) override {}
+    void init(const StageContext&) override {}
     double sigcc(const Event& vertex, const MainEvent&) override { return sigep(vertex); }
     double sigccRecon(const Event& recon, const MainEvent&) override { return sigep(recon); }
 };
@@ -52,7 +52,7 @@ public:
         if (cfg.is_object() && cfg.contains("Mh")) Mh = cfg.at("Mh").get<double>();
         st_.Mh2 = Mh * Mh;
     }
-    void init(RunSetup&) override {}
+    void init(const StageContext&) override {}
     void beginEvent(long nevent) override { st_.nevent = nevent; }
     double sigcc(const Event& vertex, const MainEvent&) override { return deForest(vertex, st_); }
     double sigccRecon(const Event& recon, const MainEvent&) override { return deForest(recon, st_); }

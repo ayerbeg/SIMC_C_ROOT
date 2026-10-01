@@ -20,7 +20,7 @@
 
 #include "simc/core/RunSetup.h"
 #include "simc/core/SimcParameters.h"
-#include "simc/setup/TargetLossProvider.h"
+#include "simc/stages/ITargetLossProvider.h"
 
 namespace simc {
 
@@ -31,7 +31,8 @@ struct SetupOptions {
     std::string data_dir;
 };
 
-/// Build the run setup. `losses` = null uses HallCTargetLosses (material::HallCCryoTarget), see TargetLossProvider.h. Fortran STOP conditions are
+/// Build the run setup. `losses` = the target model's start-up losses (any ITarget; driver::SimcRun passes a dedicated
+/// instance of the pipeline target); null uses material::HallCCryoTarget, see stages/ITargetLossProvider.h. Fortran STOP conditions are
 /// returned in RunSetup::stops; the builder returns at the point where the Fortran would stop.
 RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt = {},
                        ITargetLossProvider* losses = nullptr);

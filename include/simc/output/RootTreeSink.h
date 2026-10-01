@@ -30,7 +30,7 @@ public:
     ~RootTreeSink() override;
     std::string name() const override { return "root_tree"; }
     void configure(const Json& config, const SimcParameters& params) override;
-    void init(RunSetup& setup) override;
+    void init(const StageContext& ctx) override;
     void beginRun(const RunSetup& setup) override;
     void fill(const MainEvent& main, const Event& vertex, const Event& orig, const Event& recon,
               bool success) override;

@@ -102,9 +102,10 @@ void HmsSpectrometer::configure(const Json& config, const SimcParameters& params
     if (config.contains("ms_flag")) msOverride_ = config.at("ms_flag").get<bool>();
     if (config.contains("wcs_flag")) wcsOverride_ = config.at("wcs_flag").get<bool>();
     if (config.contains("decay")) decayOverride_ = config.at("decay").get<bool>();
+    if (config.contains("verbose") && !config.at("verbose").get<bool>()) setLog(nullptr);
 }
 
-void HmsSpectrometer::init(RunSetup&) {
+void HmsSpectrometer::init(const StageContext&) {
     ensureForward();
     ensureRecon();
 }

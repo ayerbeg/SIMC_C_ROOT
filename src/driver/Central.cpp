@@ -75,7 +75,8 @@ CentralResult calculateCentral(const RunSetup& s, IReaction& reaction, IRadiator
     main0.target.teff[1] = s.targ.teff[1].ave;
     main0.target.teff[2] = s.targ.teff[2].ave;
     radiator.initEvent(main0, vertex0);
-    // l.1268-1281: central%rad is copied by the caller from its radiator state (CentralRad).
+    // l.1268-1281
+    if (s.sw.using_rad) central.rad = radiator.currentValues();
 
     // l.1288-1290: recon0 = vertex0; complete_main(.true., main0, vertex0, vertex0, recon0, success)
     const Event recon0 = vertex0;

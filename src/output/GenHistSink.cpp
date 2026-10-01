@@ -21,7 +21,7 @@ void GenHistSink::configure(const Json& config, const SimcParameters&) {
     if (config.is_object()) file_ = config.value("file", file_);
 }
 
-void GenHistSink::init(RunSetup&) {}
+void GenHistSink::init(const StageContext&) {}
 
 int GenHistSink::FortranBin(double val, const HistAxis& ax) {
     // ibin = nint(0.5+(val-hist%min)/hist%bin); Fortran nint rounds half away from zero.

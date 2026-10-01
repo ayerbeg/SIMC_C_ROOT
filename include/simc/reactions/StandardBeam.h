@@ -10,7 +10,7 @@
 //   Ein_shift/Ee_shift                                                                  (l.211-212)
 // RNG order (D-024): 2 gauss1, 2 grnd (raster 1/2/3), 1 grnd (z), the target gaussians, 1 grnd (Ein, drawn even for
 // dEbeam = 0). The target gaussians are drawn even with using_Eloss = 0 (Eloss(1) is zeroed afterwards).
-// Needs the target: setTarget() before use (the driver owns it).
+// Collaborator: the run's ITarget, taken from the StageContext at init() (the driver owns it).
 #ifndef SIMC_REACTIONS_STANDARDBEAM_H
 #define SIMC_REACTIONS_STANDARDBEAM_H
 
@@ -27,14 +27,12 @@ class StandardBeam : public IBeam {
 public:
     std::string name() const override { return "standard"; }
     void configure(const Json& config, const SimcParameters& params) override;
-    void init(RunSetup& setup) override;
+    void init(const StageContext& ctx) override;
     /// Fortran: event.f:generate l.156-212.
     void generate(MainEvent& main, Event& vertex, IRandom& rng) override;
 
-    void setTarget(ITarget* t) { target_ = t; }
-
 private:
-    ITarget* target_{nullptr};
+    ITarget* target_{nullptr};   ///< not owned (StageContext::target)
     // run constants (RunSetup)
     double xwid_{0}, ywid_{0}, xoffset_{0}, yoffset_{0}, fr1_{0}, fr2_{0}, zoffset_{0};
     int fr_pattern_{0};

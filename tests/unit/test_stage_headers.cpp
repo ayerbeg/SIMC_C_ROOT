@@ -23,7 +23,7 @@ namespace {
 #define DUMMY_STAGE_BASICS(N)                                            \
     std::string name() const override { return N; }                      \
     void configure(const Json&, const SimcParameters&) override {}       \
-    void init(RunSetup&) override {}
+    void init(const StageContext&) override {}
 
 struct DummyRandom : IRandom {
     DUMMY_STAGE_BASICS("dummy")
@@ -40,6 +40,8 @@ struct DummyTarget : ITarget {
     double generateZ(IRandom& r) override { return r.uniform(); }
     void tripThruTarget(int, double, double, double, double, LossMode, IRandom&, double& e, double& t) override { e = t = 0; }
     void multipleScattering(double, double, double, double d[2], IRandom&) override { d[0] = d[1] = 0; }
+    void targetInit(const TargetInitArgs&, TargetInfo&, std::vector<std::string>&) override {}
+    void extremeLosses(const ExtremeTripArgs&, TargetInfo&) override {}
 };
 struct DummyReaction : IReaction {
     DUMMY_STAGE_BASICS("dummy")

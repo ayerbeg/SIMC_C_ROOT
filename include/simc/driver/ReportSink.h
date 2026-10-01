@@ -48,7 +48,7 @@ public:
 
     std::string name() const override { return "fortran_hist"; }
     void configure(const Json& config, const SimcParameters& params) override;
-    void init(RunSetup&) override {}
+    void init(const StageContext&) override {}
     void beginRun(const RunSetup& setup) override;
     void fill(const MainEvent& main, const Event& vertex, const Event& orig, const Event& recon, bool success) override;
     void endRun(const RunSummary&) override {}

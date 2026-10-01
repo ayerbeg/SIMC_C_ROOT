@@ -9,8 +9,10 @@
 // or simply run.run().
 //
 // Ownership and data flow (docs/DRIVER.md):
-//   * the run owns every stage (unique_ptr, created by name through the Registry from the PipelineConfig) and wires
-//     the collaborators explicitly (beam -> target, reaction -> target + radiator, montecarlo -> target + arms);
+//   * the run owns every stage (unique_ptr, created by name through the Registry from the PipelineConfig) and hands
+//     the collaborators to them through a StageContext at init(), as INTERFACES (beam -> target, reaction -> target +
+//     radiator, montecarlo -> target + arms); the driver never casts a stage to a concrete class;
+//   * the set-up takes its start-up target losses from the pipeline's target model (ITargetLossProvider);
 //   * the per-event state is ONE EventState (main, vertex, orig, recon) handed to the stages on every try; the
 //     Fortran keeps stale values across tries in these structures and SIMC++ reproduces that (EventState.h);
 //   * the run-level accumulators are RunTotals; nothing is global.
@@ -43,18 +45,6 @@
 namespace simc {
 namespace driver {
 
-/// Optional collaborator interfaces for new plug-ins (the driver also knows the concrete P4 classes).
-class INeedsTarget {
-public:
-    virtual ~INeedsTarget() = default;
-    virtual void setTarget(ITarget* t) = 0;
-};
-class INeedsRadiator {
-public:
-    virtual ~INeedsRadiator() = default;
-    virtual void setRadiator(IRadiator* r) = 0;
-};
-
 struct RunOptions {
     std::string run_name{"simc"};   ///< Fortran `base`: output file stem
     std::string output_dir{"."};    ///< Fortran outfiles/ and worksim/
@@ -74,8 +64,9 @@ public:
 
     /// Use this random source instead of the pipeline "rng" stage (e.g. ScriptedRandom for a replay).
     void setRandom(std::unique_ptr<IRandom> rng);
-    /// Add a sink created outside the registry (tests, user code). Before initialise().
-    void addSink(std::shared_ptr<IOutputSink> sink);
+    /// Add a sink created outside the registry (tests, user code). Before initialise(). The run takes ownership;
+    /// the returned reference stays valid for the lifetime of the run.
+    IOutputSink& addSink(std::unique_ptr<IOutputSink> sink);
 
     void initialise();
     bool done() const;
@@ -93,7 +84,7 @@ public:
     IRandom& rng() { return *rngPtr_; }
     IRadiator& radiator() { return *radiator_; }
     MonteCarlo& montecarlo() { return *mc_; }
-    const std::vector<std::shared_ptr<IOutputSink>>& sinks() const { return sinks_; }
+    const std::vector<std::unique_ptr<IOutputSink>>& sinks() const { return sinks_; }
 
 private:
     void resetForTry();
@@ -115,7 +106,7 @@ private:
     std::unique_ptr<IReaction> reaction_;
     std::unique_ptr<IPhysicsModel> model_;
     std::unique_ptr<MonteCarlo> mc_;
-    std::vector<std::shared_ptr<IOutputSink>> sinks_, extraSinks_;
+    std::vector<std::unique_ptr<IOutputSink>> sinks_, extraSinks_;
 
     reactions::MainContext ctx_;
     CentralResult central_;

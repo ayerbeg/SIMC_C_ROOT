@@ -8,7 +8,6 @@ target_compile_options(simcfw_kinematics PRIVATE -Wall -Wextra -pedantic)
 # material::HallCCryoTarget as the default target_init / extreme_trip_thru_target provider.
 add_library(simcfw_setup STATIC
     SetupBuilder.cpp
-    HallCTargetLosses.cpp
 )
 target_link_libraries(simcfw_setup PUBLIC simcfw simcfw_kinematics simcfw_material)
 target_compile_options(simcfw_setup PRIVATE -Wall -Wextra -pedantic)

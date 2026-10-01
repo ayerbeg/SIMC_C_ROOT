@@ -28,12 +28,23 @@ Json StageSpec::toJson() const {
     return j;
 }
 
+namespace {
+constexpr const char* kDefaultTarget = "hallc_cryo";   // the Fortran's target model (target.f)
+}  // namespace
+
+std::string PipelineConfig::TargetType(const Json& section) {
+    StageSpec t;
+    t.type = kDefaultTarget;
+    if (section.is_object() && section.contains("target")) t.apply(section.at("target"), "target");
+    return t.type;
+}
+
 PipelineConfig PipelineConfig::Defaults(const RunSetup& s) {
     PipelineConfig p;
     const ReactionFlags& f = s.flags;
     p.rng.type = "mt64";
     if (s.params.random_seed > 0) p.rng.config["seed"] = static_cast<std::uint64_t>(s.params.random_seed);
-    p.target.type = "hallc_cryo";
+    p.target.type = kDefaultTarget;
     p.target.config["Mh"] = s.Mh;
     p.beam.type = "standard";
     // event.f dispatch: the reaction is chosen by the flags (D-009)

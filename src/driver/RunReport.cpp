@@ -424,9 +424,9 @@ std::string FormatHist(const RunSetup& s, const RunReport& r) {
         o.list("Central Values:");
         o.line(rad4("hardcorfac", {cr.hardcorfac}));
         o.line(rad4("etatzai", {cr.etatzai}));
-        o.line(rad4("frac(1:3)", {cr.frac[1], cr.frac[2], cr.frac[3]}));
-        o.line(rad4("lambda(1:3)", {cr.lambda[1], cr.lambda[2], cr.lambda[3]}));
-        o.line(rad4("bt(1:2)", {cr.bt[1], cr.bt[2]}));
+        o.line(rad4("frac(1:3)", {cr.frac[0], cr.frac[1], cr.frac[2]}));
+        o.line(rad4("lambda(1:3)", {cr.lambda[0], cr.lambda[1], cr.lambda[2]}));
+        o.line(rad4("bt(1:2)", {cr.bt[0], cr.bt[1]}));
         o.line(rad4("c_int(0:3)", {cr.c_int[0], cr.c_int[1], cr.c_int[2], cr.c_int[3]}));
         o.line(rad4("c_ext(0:3)", {cr.c_ext[0], cr.c_ext[1], cr.c_ext[2], cr.c_ext[3]}));
         o.line(rad4("c(0:3)", {cr.c[0], cr.c[1], cr.c[2], cr.c[3]}));
@@ -666,9 +666,9 @@ RunSummary MakeRunSummary(const RunSetup& s, const RunReport& r) {
                           {"dE_edge_test", radiation::RadcRun::FromSetup(s).dE_edge_test},
                           {"Egamma_max", s.rad.Egamma_tot_max},
                           {"central", {{"hardcorfac", cr.hardcorfac}, {"etatzai", cr.etatzai},
-                                       {"frac", {cr.frac[1], cr.frac[2], cr.frac[3]}},
-                                       {"lambda", {cr.lambda[1], cr.lambda[2], cr.lambda[3]}},
-                                       {"bt", {cr.bt[1], cr.bt[2]}},
+                                       {"frac", {cr.frac[0], cr.frac[1], cr.frac[2]}},
+                                       {"lambda", {cr.lambda[0], cr.lambda[1], cr.lambda[2]}},
+                                       {"bt", {cr.bt[0], cr.bt[1]}},
                                        {"c_int", {cr.c_int[0], cr.c_int[1], cr.c_int[2], cr.c_int[3]}},
                                        {"c_ext", {cr.c_ext[0], cr.c_ext[1], cr.c_ext[2], cr.c_ext[3]}},
                                        {"c", {cr.c[0], cr.c[1], cr.c[2], cr.c[3]}},

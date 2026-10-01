@@ -147,7 +147,7 @@ public:
     ///   "use_sieve"    : bool (default false; mc_hms.f:55 mock sieve slit, a Fortran compile-time option)
     void configure(const Json& config, const SimcParameters& params) override;
     /// Loads the COSY maps (the Fortran does it on the first call; loading here only moves the file reading).
-    void init(RunSetup& setup) override;
+    void init(const StageContext& ctx) override;
 
     SpecResult transport(const SpecInput& in, IRandom& rng) override;
     const std::map<std::string, long>& stopCounters() const override;

@@ -19,7 +19,7 @@ class RunSummarySink : public IOutputSink {
 public:
     std::string name() const override { return "run_summary"; }
     void configure(const Json& config, const SimcParameters& params) override;
-    void init(RunSetup& setup) override;
+    void init(const StageContext& ctx) override;
     void beginRun(const RunSetup& setup) override;
     void fill(const MainEvent&, const Event&, const Event&, const Event&, bool) override {}
     void endRun(const RunSummary& summary) override;

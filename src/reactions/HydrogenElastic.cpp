@@ -30,15 +30,17 @@ void HydrogenElastic::configure(const Json& config, const SimcParameters& params
     if (config.is_object() && config.contains("verbose") && !config.at("verbose").get<bool>()) log_ = nullptr;
 }
 
-void HydrogenElastic::init(RunSetup& setup) {
-    const ReactionFlags& f = setup.flags;
+void HydrogenElastic::init(const StageContext& ctx) {
+    const ReactionFlags& f = ctx.setup.flags;
     if (f.doing_deuterium || f.doing_heavy || f.doing_pion || f.doing_kaon || f.doing_delta || f.doing_rho ||
         f.doing_semi)
         throw std::invalid_argument("reaction '" + name_ +
                                     "': only H(e,e'p) (doing_hyd_elast) and doing_phsp are ported (event.f, P4.1)");
     if (!f.doing_hyd_elast && !f.doing_phsp)
         throw std::invalid_argument("reaction '" + name_ + "': the setup is neither doing_hyd_elast nor doing_phsp");
-    s_ = &setup;
+    s_ = &ctx.setup;
+    target_ = &ctx.requireTarget("reaction '" + name_ + "'");
+    radiator_ = &ctx.requireRadiator("reaction '" + name_ + "'");
 }
 
 CompleteEvFn HydrogenElastic::completeEvFn() {
@@ -47,7 +49,7 @@ CompleteEvFn HydrogenElastic::completeEvFn() {
 
 // Fortran: event.f:generate (l.214-428), after the beam part (StandardBeam).
 bool HydrogenElastic::generate(MainEvent& main, Event& vertex, Event& orig, IRandom& rng) {
-    if (!s_ || !radiator_) throw std::logic_error("HydrogenElastic: init/setRadiator missing");
+    if (!s_) throw std::logic_error("HydrogenElastic: init() was not called");
     const RunSetup& s = *s_;
 
     // l.216-217
@@ -93,7 +95,7 @@ bool HydrogenElastic::completeEv(MainEvent& main, Event& vertex, IRandom& rng) {
     using constants::Me;
     using constants::Mp;
     using constants::pi;
-    if (!s_ || !target_ || !radiator_) throw std::logic_error("HydrogenElastic: init/setTarget/setRadiator missing");
+    if (!s_) throw std::logic_error("HydrogenElastic: init() was not called");
     const RunSetup& s = *s_;
     const ReactionFlags& f = s.flags;
     const double Mh2 = s.Mh2;

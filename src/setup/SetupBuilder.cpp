@@ -1,7 +1,7 @@
 // src/setup/SetupBuilder.cpp
 //
 // Port of the Fortran start-up sequence (simc.f l.53-101 without calculate_central):
-// dbase.f:dbase_read post-read logic, init.f:target_init and extreme_trip_thru_target (through ITargetLossProvider, default material::HallCCryoTarget), theory_init,
+// dbase.f:dbase_read post-read logic, init.f:target_init and extreme_trip_thru_target (through the target model's ITargetLossProvider, default material::HallCCryoTarget), theory_init,
 // limits_init, radc_init, simc.f:94-101. Line numbers refer to simc_gfortran/{dbase,init,simc}.f.
 //
 // Numerics: the Fortran is compiled with -fdefault-real-8, so every literal is a double and
@@ -14,7 +14,7 @@
 #include <sstream>
 
 #include "simc/core/SimcConstants.h"
-#include "simc/setup/HallCTargetLosses.h"
+#include "simc/material/HallCCryoTarget.h"
 
 namespace simc {
 
@@ -468,12 +468,15 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
     }
     if (nint(t.Z) == 1) sw.using_Coulomb = false;   // no coulomb corr. for Z=1
 
-    // ---- init.f:target_init (l.1-88), called at dbase.f:551. Single implementation: the provider
-    // (default HallCTargetLosses -> material::HallCCryoTarget::targetInit).
-    HallCTargetLosses default_losses(p.electron_arm, p.hadron_arm);
-    if (!losses) losses = &default_losses;
+    // ---- init.f:target_init (l.1-88), called at dbase.f:551, through the target model's ITargetLossProvider
+    // (the pipeline target from SimcRun; default material::HallCCryoTarget, the Fortran's target model). The same
+    // provider object serves extreme_trip_thru_target below, like the single Fortran process.
+    material::HallCCryoTarget default_target;
+    if (!losses) losses = &default_target;
     {
         TargetInitArgs a;
+        a.electron_arm = p.electron_arm;
+        a.hadron_arm = p.hadron_arm;
         a.using_Eloss = sw.using_Eloss;
         a.using_Coulomb = sw.using_Coulomb;
         a.the_cent = s.spec.e.theta;
@@ -589,6 +592,8 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
 
     // init.f:228-246 extreme theta/z for extreme_trip_thru_target
     ExtremeTripArgs xa;
+    xa.electron_arm = p.electron_arm;
+    xa.hadron_arm = p.hadron_arm;
     xa.Ebeam = s.Ebeam;
     {
         const ArmCuts& a = s.SPedge.e;

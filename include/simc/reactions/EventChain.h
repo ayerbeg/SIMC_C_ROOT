@@ -60,9 +60,10 @@ struct Contrib {
 void updateRange(double val, Range& range);
 /// Fortran: event.f:update_slop_range (l.112-125).
 void updateSlopRange(double val, SlopItem& slop);
-/// Fortran: event.f:limits_update (l.1-91). Egamma_used(1:3) = the radiator's per-event values (index 1..3 used).
+/// Fortran: event.f:limits_update (l.1-91). Egamma_used = IRadiator::photonEnergies() (Fortran Egamma_used(1:3) at
+/// [0..2]).
 void limitsUpdate(const MainEvent& main, const Event& vertex, const Event& orig, const Event& recon,
-                  const ReactionFlags& f, const std::array<double, 4>& Egamma_used, Contrib& contrib, Slops& slop);
+                  const ReactionFlags& f, const std::array<double, 3>& Egamma_used, Contrib& contrib, Slops& slop);
 
 /// Outputs of jacobians.f:transform_to_cm.
 struct CmTransform {

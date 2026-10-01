@@ -6,10 +6,14 @@
 #define SIMC_STAGES_ITARGET_H
 
 #include "simc/stages/IStage.h"
+#include "simc/stages/ITargetLossProvider.h"
 
 namespace simc {
 
-class ITarget : public IStage {
+/// A target model. Besides the per-event calls below it provides the start-up losses of the set-up
+/// (ITargetLossProvider: init.f:target_init, target.f:extreme_trip_thru_target), so that BuildRunSetup uses the same
+/// model as the event loop.
+class ITarget : public IStage, public ITargetLossProvider {
 public:
     /// Arm codes as in trip_thru_target: 1 = incoming beam, 2 = scattered electron, 3 = hadron.
     enum Arm { kBeam = 1, kElectron = 2, kHadron = 3 };

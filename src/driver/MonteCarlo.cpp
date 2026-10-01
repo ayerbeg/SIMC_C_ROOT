@@ -44,7 +44,7 @@ MonteCarlo::ArmChoice MonteCarlo::DefaultArm(int code) {
     return c;
 }
 
-std::shared_ptr<ISpectrometer> MonteCarlo::makeArm(int code, const ArmChoice& choice, RunSetup& setup) {
+ISpectrometer* MonteCarlo::makeArm(int code, const ArmChoice& choice) {
     std::string name = choice.type;
     Json cfg = Json::object();
     if (name.empty()) {
@@ -62,23 +62,26 @@ std::shared_ptr<ISpectrometer> MonteCarlo::makeArm(int code, const ArmChoice& ch
     if (choice.config.is_object())
         for (auto it = choice.config.begin(); it != choice.config.end(); ++it) cfg[it.key()] = it.value();
     auto it = specs_.find(name);
-    if (it != specs_.end()) return it->second;   // both arms the same type: one COMMON block, one object
-    std::shared_ptr<ISpectrometer> s(Registry<ISpectrometer>::create(name).release());
-    s->configure(cfg, setup.params);
-    s->init(setup);
-    specs_[name] = s;
-    return s;
+    if (it != specs_.end()) return it->second.get();   // both arms the same type: one COMMON block, one object
+    std::unique_ptr<ISpectrometer> s = Registry<ISpectrometer>::create(name);
+    s->configure(cfg, setup_.params);
+    StageContext ctx(setup_);
+    ctx.target = &target_;
+    s->init(ctx);
+    ISpectrometer* raw = s.get();
+    specs_[name] = std::move(s);
+    return raw;
 }
 
-MonteCarlo::MonteCarlo(RunSetup& setup, ITarget& target) : MonteCarlo(setup, target, ArmChoice{}, ArmChoice{}) {}
+MonteCarlo::MonteCarlo(const RunSetup& setup, ITarget& target) : MonteCarlo(setup, target, ArmChoice{}, ArmChoice{}) {}
 
-MonteCarlo::MonteCarlo(RunSetup& setup, ITarget& target, const ArmChoice& hadron, const ArmChoice& electron)
+MonteCarlo::MonteCarlo(const RunSetup& setup, ITarget& target, const ArmChoice& hadron, const ArmChoice& electron)
     : setup_(setup), target_(target), log_(&std::cout) {
     if (setup.params.using_tgt_field || setup.flags.using_tgt_field)
         throw NotPorted("montecarlo: using_tgt_field (track_from_tgt / track_to_tgt, trg_track.f) not ported");
     // Fortran order of the calls: hadron arm first, then electron arm.
-    pArm_ = makeArm(setup.params.hadron_arm, hadron, setup);
-    eArm_ = makeArm(setup.params.electron_arm, electron, setup);
+    pArm_ = makeArm(setup.params.hadron_arm, hadron);
+    eArm_ = makeArm(setup.params.electron_arm, electron);
 }
 
 // Fortran: simc.f:montecarlo

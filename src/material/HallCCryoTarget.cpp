@@ -4,10 +4,12 @@
 #include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 
 #include "simc/core/Registry.h"
+#include "simc/core/RunSetup.h"
 #include "simc/core/SimcConstants.h"
 #include "simc/core/SimcParameters.h"
 #include "simc/material/FortranFormat.h"
@@ -25,7 +27,7 @@ class NoRandom : public IRandom {
 public:
     std::string name() const override { return "none"; }
     void configure(const Json&, const SimcParameters&) override {}
-    void init(RunSetup&) override {}
+    void init(const StageContext&) override {}
     double uniform() override { throw std::logic_error("hallc_cryo: unexpected random-number request"); }
     double gauss1(double) override { throw std::logic_error("hallc_cryo: unexpected random-number request"); }
     void seed(std::uint64_t) override {}
@@ -33,7 +35,7 @@ public:
 
 }  // namespace
 
-HallCCryoTarget::HallCCryoTarget() : material_(std::make_shared<SimcMaterial>()), log_(&std::cout) {}
+HallCCryoTarget::HallCCryoTarget() : material_(std::make_unique<SimcMaterial>()), log_(&std::cout) {}
 
 void HallCCryoTarget::setLog(std::ostream* os) {
     log_ = os;
@@ -43,6 +45,7 @@ void HallCCryoTarget::setLog(std::ostream* os) {
 // Fortran: dbase.f:451-468 (targ conversions and checks), 239-244 (spectrometer angles),
 //          547 (no Coulomb correction for Z=1), 551 (target_init arguments).
 void HallCCryoTarget::configure(const Json& config, const SimcParameters& params) {
+    if (config.is_object() && config.contains("verbose") && !config.at("verbose").get<bool>()) log_ = nullptr;
     const auto& t = params.targ;
     targ_ = TargetInfo{};
     targ_.A = t.A;
@@ -95,15 +98,15 @@ void HallCCryoTarget::configure(const Json& config, const SimcParameters& params
 
     std::string mat = "simc_material";
     if (config.is_object() && config.contains("material")) mat = config.at("material").get<std::string>();
-    material_ = std::shared_ptr<IMaterialModel>(Registry<IMaterialModel>::create(mat));
+    material_ = Registry<IMaterialModel>::create(mat);
     material_->configure(config.is_object() && config.contains("material_config") ? config.at("material_config")
                                                                                   : Json::object(),
                          params);
     setLog(log_);
 }
 
-void HallCCryoTarget::init(RunSetup& setup) {
-    material_->init(setup);
+void HallCCryoTarget::init(const StageContext& ctx) {
+    material_->init(StageContext(ctx.setup));
     targetInit(init_.using_Eloss, init_.using_Coulomb, init_.the_cent, init_.thp_cent, init_.Pp_cent, init_.Mh2,
                init_.Ebeam, init_.Pe_cent);
 }
@@ -499,6 +502,78 @@ void HallCCryoTarget::targetInit(bool using_Eloss, bool using_Coulomb, double th
         targ.Coulomb.min = 0.0;
         targ.Coulomb.max = 0.0;
     }
+}
+
+// ---- ITargetLossProvider: the set-up's view (task P7.4; was setup/HallCTargetLosses, P2.2) ------------------------
+namespace {
+void copyIn(const simc::TargetInfo& t, TargetInfo& m) {
+    m.A = t.A; m.Z = t.Z; m.N = t.N;
+    m.mass_amu = t.mass_amu; m.M = t.M; m.mrec_amu = t.mrec_amu; m.Mrec = t.Mrec;
+    m.rho = t.rho; m.thick = t.thick; m.angle = t.angle; m.abundancy = t.abundancy; m.length = t.length;
+    m.zoffset = t.zoffset; m.X0 = t.X0; m.X0_cm = t.X0_cm; m.L1 = t.L1; m.L2 = t.L2;
+    m.fr1 = t.fr1; m.fr2 = t.fr2; m.xoffset = t.xoffset; m.yoffset = t.yoffset;
+    m.fr_pattern = t.fr_pattern; m.can = t.can;
+    for (int i = 0; i < 3; ++i) {
+        m.Eloss[i] = {t.Eloss[i].ave, t.Eloss[i].min, t.Eloss[i].max};
+        m.teff[i] = {t.teff[i].ave, t.teff[i].min, t.teff[i].max};
+        m.musc_max[i] = t.musc_max[i];
+    }
+    m.Coulomb = {t.Coulomb.ave, t.Coulomb.min, t.Coulomb.max};
+    m.Coulomb_constant = t.Coulomb_constant;
+    m.musc_nsig_max = t.musc_nsig_max;
+    m.Mtar_struck = t.Mtar_struck; m.Mrec_struck = t.Mrec_struck;
+}
+void splitLines(const std::string& text, std::vector<std::string>& out) {
+    std::istringstream is(text);
+    std::string l;
+    while (std::getline(is, l)) {
+        const auto a = l.find_first_not_of(' ');
+        if (a != std::string::npos) out.push_back(l.substr(a));
+    }
+}
+}  // namespace
+
+// Fortran: init.f:target_init (l.1-88), called at dbase.f:551, on the set-up's target description. The messages that
+// target_init prints are returned in `messages`. Overwrites this object's target state (SimcRun uses a dedicated
+// instance for the set-up).
+void HallCCryoTarget::targetInit(const TargetInitArgs& a, simc::TargetInfo& t, std::vector<std::string>& messages) {
+    std::ostream* const saved = log_;
+    std::ostringstream log;
+    setArms(a.electron_arm, a.hadron_arm);
+    setLog(&log);
+    copyIn(t, targ_);
+    targetInit(a.using_Eloss, a.using_Coulomb, a.the_cent, a.thp_cent, a.Pp_cent, a.Mh2, a.Ebeam, a.Pe_cent);
+    t.L1 = targ_.L1;
+    t.L2 = targ_.L2;
+    t.X0 = targ_.X0;
+    t.X0_cm = targ_.X0_cm;
+    for (int i = 0; i < 3; ++i) {
+        t.Eloss[i].ave = targ_.Eloss[i].ave;
+        t.teff[i].ave = targ_.teff[i].ave;
+    }
+    t.Coulomb = {targ_.Coulomb.ave, targ_.Coulomb.min, targ_.Coulomb.max};
+    t.Coulomb_constant = targ_.Coulomb_constant;
+    setLog(saved);
+    splitLines(log.str(), messages);
+}
+
+// Fortran: target.f:extreme_trip_thru_target (+ extreme_target_musc), called at init.f:245. Silent (as before P7.4).
+void HallCCryoTarget::extremeLosses(const ExtremeTripArgs& x, simc::TargetInfo& t) {
+    std::ostream* const saved = log_;
+    setArms(x.electron_arm, x.hadron_arm);
+    setLog(nullptr);
+    copyIn(t, targ_);
+    extremeTripThruTarget(x.Ebeam, Limits{x.the.min, x.the.max}, Limits{x.thp.min, x.thp.max},
+                          Limits{x.pe.min, x.pe.max}, Limits{x.pp.min, x.pp.max}, Limits{x.z.min, x.z.max}, x.m);
+    for (int i = 0; i < 3; ++i) {
+        t.Eloss[i].min = targ_.Eloss[i].min;
+        t.Eloss[i].max = targ_.Eloss[i].max;
+        t.teff[i].min = targ_.teff[i].min;
+        t.teff[i].max = targ_.teff[i].max;
+        t.musc_max[i] = targ_.musc_max[i];
+    }
+    t.musc_nsig_max = targ_.musc_nsig_max;
+    setLog(saved);
 }
 
 }  // namespace material

@@ -6,8 +6,8 @@
 // calculateCentral() builds vertex0 from the central spectrometer settings exactly like the Fortran (zero
 // deltas/angles, Ein = Ebeam_vertex_ave, /pfermi/ = 0), runs complete_recon_ev on it (IReaction::completeRecon),
 // then radc_init_ev (IRadiator::initEvent) with main0's teff(1:3) = the target averages, and complete_main with
-// force_sigcc = .true. The radiation "Central Values" printed in the .hist are the radiator state right after that
-// radc_init_ev call; the caller reads them from its radiator (CentralRad) because they are not part of IRadiator.
+// force_sigcc = .true. The radiation "Central Values" printed in the .hist (central%rad) are the radiator's
+// currentValues() right after that radc_init_ev call (only when using_rad, simc.f:1268).
 //
 // FORTRAN-QUIRKs kept: main0 is a SAVEd local, so the fields calculate_central does not set are 0 (in particular
 // main0%jacobian = 0, so main0%weight = 0; only main0%sigcc is used); complete_recon_ev is used instead of
@@ -28,14 +28,9 @@
 namespace simc {
 namespace driver {
 
-/// Fortran: central%rad (radc.inc values copied by calculate_central when using_rad). Index = Fortran index.
-struct CentralRad {
-    double hardcorfac{0}, etatzai{0}, g_int{0}, g_ext{0};
-    std::array<double, 4> frac{};     ///< frac(1:3)
-    std::array<double, 4> lambda{};   ///< lambda(1:3)
-    std::array<double, 3> bt{};       ///< bt(1:2)
-    std::array<double, 4> c_int{}, c_ext{}, c{}, g{};   ///< (0:3)
-};
+/// Fortran: central%rad (radc.inc values copied by calculate_central when using_rad): the radiator's
+/// RadiationValues (tails 1..3 at [0..2]).
+using CentralRad = RadiationValues;
 
 /// Fortran: type event_central (structures.inc).
 struct CentralEvent {
@@ -52,7 +47,7 @@ struct CentralResult {
     MainEvent main0;   ///< the SAVEd local main0 after the call (diagnostics)
 };
 
-/// Fortran: simc.f:calculate_central (l.1143-1309), without the central%rad copy (see CentralRad).
+/// Fortran: simc.f:calculate_central (l.1143-1309).
 /// Throws std::runtime_error with the Fortran STOP text if complete_recon_ev fails.
 CentralResult calculateCentral(const RunSetup& setup, IReaction& reaction, IRadiator& radiator, IPhysicsModel& model,
                                const reactions::MainContext& ctx);

@@ -49,6 +49,9 @@ struct PipelineConfig {
     std::vector<StageSpec> sinks;
 
     static PipelineConfig Defaults(const RunSetup& setup);
+    /// The target type a "pipeline" JSON section selects ("hallc_cryo" if it does not say). Needed BEFORE the set-up
+    /// is built: the set-up takes its start-up losses from that target model (ITargetLossProvider).
+    static std::string TargetType(const Json& section);
     /// Apply a "pipeline" JSON section (see the header comment). Unknown keys throw std::invalid_argument.
     void apply(const Json& section);
     Json toJson() const;

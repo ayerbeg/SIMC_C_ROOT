@@ -30,7 +30,7 @@ public:
 
     std::string name() const override { return "scripted"; }
     void configure(const Json&, const SimcParameters&) override {}
-    void init(RunSetup&) override {}
+    void init(const StageContext&) override {}
 
     /// Fortran harness: hrng_load(ng, g, nu, u). Replaces both queues and resets all counters.
     void load(std::vector<double> gaussians, std::vector<double> uniforms = {});

@@ -45,7 +45,7 @@ public:
 
     std::string name() const override { return "simc_material"; }
     void configure(const Json&, const SimcParameters&) override {}
-    void init(RunSetup&) override {}
+    void init(const StageContext&) override {}
 
     double energyLoss(double len_cm, double density, double zeff, double aeff, double epart, double mpart,
                       int typeflag, IRandom& rng) override;

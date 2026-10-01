@@ -29,7 +29,7 @@ public:
 
     std::string name() const override { return "simc_rad"; }
     void configure(const Json& config, const SimcParameters& params) override;
-    void init(RunSetup& setup) override;
+    void init(const StageContext& ctx) override;
 
     /// Fortran: init.f:radc_init_ev(main, vertex).
     void initEvent(MainEvent& main, const Event& vertex) override;
@@ -38,6 +38,10 @@ public:
     /// Fortran: radc.f:peaked_rad_weight(vertex, Egamma, emin, emax, basicrad_val_reciprocal, basicrad_weight).
     double peakedRadWeight(const Event& vertex, double Egamma, double emin, double emax, double basicrad_val_reciprocal,
                            double basicrad_weight);
+
+    RadiationValues currentValues() const override;
+    std::array<double, 3> photonEnergies() const override;
+    bool hadronRadiates() const override;
 
     /// Set the run constants directly (L1 tests, or a caller without a RunSetup).
     void setRun(const RadcRun& run) { run_ = run; }

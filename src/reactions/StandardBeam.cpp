@@ -14,7 +14,9 @@ namespace reactions {
 
 void StandardBeam::configure(const Json&, const SimcParameters&) {}
 
-void StandardBeam::init(RunSetup& s) {
+void StandardBeam::init(const StageContext& ctx) {
+    const RunSetup& s = ctx.setup;
+    target_ = &ctx.requireTarget("beam 'standard'");
     xwid_ = s.gen.xwid;
     ywid_ = s.gen.ywid;
     xoffset_ = s.targ.xoffset;
@@ -35,7 +37,7 @@ void StandardBeam::init(RunSetup& s) {
 // Fortran: event.f:generate (l.156-212)
 void StandardBeam::generate(MainEvent& main, Event& vertex, IRandom& rng) {
     using constants::pi;
-    if (!target_) throw std::logic_error("StandardBeam: no target (setTarget)");
+    if (!target_) throw std::logic_error("StandardBeam: init() was not called");
     constexpr double nsig_max = 3.0e0;   // l.140-141
 
     main.target.x = rng.gauss1(nsig_max) * xwid_ + xoffset_;   // l.156-157

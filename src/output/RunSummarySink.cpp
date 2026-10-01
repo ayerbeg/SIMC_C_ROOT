@@ -15,7 +15,7 @@ void RunSummarySink::configure(const Json& config, const SimcParameters&) {
     if (config.is_object()) file_ = config.value("file", file_);
 }
 
-void RunSummarySink::init(RunSetup&) {}
+void RunSummarySink::init(const StageContext&) {}
 
 void RunSummarySink::beginRun(const RunSetup& setup) {
     setup_ = setup;

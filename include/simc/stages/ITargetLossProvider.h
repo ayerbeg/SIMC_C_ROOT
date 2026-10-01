@@ -1,7 +1,9 @@
-// include/simc/setup/TargetLossProvider.h
+// include/simc/stages/ITargetLossProvider.h
 //
-// Hook between the run setup (src/setup) and the target / energy-loss code (src/material). The setup
-// calls, at exactly the point where the Fortran makes the call and with the Fortran arguments:
+// The start-up part of a target model: the hook between the run set-up (src/setup, BuildRunSetup) and the target
+// plug-in. Every ITarget implements it (ITarget.h), so a new target plug-in also defines the losses that the set-up
+// uses for the limits and the .hist (P7.4). The set-up calls, at exactly the point where the Fortran makes the call
+// and with the Fortran arguments:
 //
 //   init.f:target_init (l.1-88)         whole routine: targ%L1, L2, X0, X0_cm, the most probable
 //                                        losses targ%Eloss(i)%ave (zeroed if !using_Eloss) and
@@ -11,10 +13,11 @@
 //
 // BuildRunSetup applies the limits_init post-processing itself (zeroing Eloss min/max when
 // !using_Eloss, musc_max when !mc_smear, adding the losses to the edges ...).
-// Default implementation: HallCTargetLosses (setup/HallCTargetLosses.h) on top of
-// material::HallCCryoTarget (P3.1), which BuildRunSetup uses when no provider is passed (P2.2).
-#ifndef SIMC_SETUP_TARGETLOSSPROVIDER_H
-#define SIMC_SETUP_TARGETLOSSPROVIDER_H
+// driver::SimcRun passes a dedicated instance of the pipeline's target (created by name, not configured: the two
+// calls below get everything through their arguments). BuildRunSetup without a provider uses material::HallCCryoTarget,
+// the only target model of the Fortran.
+#ifndef SIMC_STAGES_ITARGETLOSSPROVIDER_H
+#define SIMC_STAGES_ITARGETLOSSPROVIDER_H
 
 #include "simc/core/RunSetup.h"
 
@@ -22,6 +25,7 @@ namespace simc {
 
 /// Arguments of init.f:target_init (dbase.f:551-552). Fortran units.
 struct TargetInitArgs {
+    int electron_arm{0}, hadron_arm{0};   ///< Fortran COMMON electron_arm/hadron_arm (window materials per arm)
     bool using_Eloss{false};
     bool using_Coulomb{false};
     double the_cent{0};    ///< [rad] spec%e%theta
@@ -35,6 +39,7 @@ struct TargetInitArgs {
 /// Arguments of target.f:extreme_trip_thru_target(ebeam, the, thp, pe, pp, z, m) as built by
 /// init.f:limits_init l.231-246. Fortran units (MeV, rad, cm).
 struct ExtremeTripArgs {
+    int electron_arm{0}, hadron_arm{0};   ///< Fortran COMMON electron_arm/hadron_arm
     double Ebeam{0};
     Cut the;               ///< the_phys min/max [rad] (init.f:232-235)
     Cut thp;               ///< thp_phys min/max [rad] (init.f:236-239)
@@ -61,4 +66,4 @@ public:
 
 }  // namespace simc
 
-#endif  // SIMC_SETUP_TARGETLOSSPROVIDER_H
+#endif  // SIMC_STAGES_ITARGETLOSSPROVIDER_H

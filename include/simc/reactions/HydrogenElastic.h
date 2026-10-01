@@ -13,9 +13,9 @@
 // momentum with spec%p%P (event.f:1132-1136) and complete_main sets sigcc = 1. Reactions whose generate/complete_ev
 // branches are not ported (deuterium, A>1, pion, kaon, delta, rho, semi) are refused in init().
 //
-// Collaborators (set by the driver before init): the target (trip_thru_target for arms 2/3) and the radiator
-// (radc_init_ev at the end of complete_ev, generate_rad when using_rad). complete_ev is handed to the radiator as
-// the CompleteEvFn (D-022).
+// Collaborators (from the StageContext at init(), through their interfaces): the target (trip_thru_target for arms 2/3)
+// and the radiator (radc_init_ev at the end of complete_ev, generate_rad when using_rad). complete_ev is handed to the
+// radiator as the CompleteEvFn (D-022).
 //
 // FORTRAN-QUIRKs (D-024): x**2 -> x*x; complete_ev never sets W, epsilon, theta_pq, phi_pq for H; the only failure
 // of the elastic branch is e%E > Ein (theta = 0 rounding); at theta = 0 the q-normalisation check sees NaN and does
@@ -51,15 +51,13 @@ public:
 
     std::string name() const override { return name_; }
     void configure(const Json& config, const SimcParameters& params) override;
-    void init(RunSetup& setup) override;
+    void init(const StageContext& ctx) override;
 
     bool generate(MainEvent& main, Event& vertex, Event& orig, IRandom& rng) override;
     bool completeEv(MainEvent& main, Event& vertex, IRandom& rng) override;
     bool completeRecon(Event& recon) override;
     double genVolume() const override;
 
-    void setTarget(ITarget* t) { target_ = t; }
-    void setRadiator(IRadiator* r) { radiator_ = r; }
     void setLog(std::ostream* os) { log_ = os; }
 
     const FermiMomentum& fermi() const { return fermi_; }
@@ -71,8 +69,8 @@ public:
 private:
     std::string name_;
     const RunSetup* s_{nullptr};
-    ITarget* target_{nullptr};
-    IRadiator* radiator_{nullptr};
+    ITarget* target_{nullptr};       ///< not owned (StageContext::target)
+    IRadiator* radiator_{nullptr};   ///< not owned (StageContext::radiator)
     std::ostream* log_;
     FermiMomentum fermi_;      ///< COMMON /pfermi/
     double krel_{0};           ///< complete_ev SAVEd local krel (-fno-automatic)

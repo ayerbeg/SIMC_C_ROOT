@@ -167,7 +167,7 @@ class NtupleCapture : public IOutputSink {
 public:
     std::string name() const override { return "test_ntuple_capture"; }
     void configure(const Json&, const SimcParameters&) override {}
-    void init(RunSetup&) override {}
+    void init(const StageContext&) override {}
     void beginRun(const RunSetup& s) override { setup_ = s; }
     void fill(const MainEvent& m, const Event& v, const Event& o, const Event& r, bool success) override {
         if (!success) return;
@@ -240,8 +240,9 @@ int replay(const std::string& capdir, const std::string& rundir, const std::stri
     srng->load(gauss, unif);
     ScriptedRandom* rng = srng.get();
     sr.setRandom(std::move(srng));
-    auto cap = std::make_shared<NtupleCapture>();
-    sr.addSink(cap);
+    auto capOwned = std::make_unique<NtupleCapture>();
+    NtupleCapture* cap = capOwned.get();
+    sr.addSink(std::move(capOwned));
 
     bool ok = true;
     sr.initialise();

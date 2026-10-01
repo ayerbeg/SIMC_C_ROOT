@@ -172,7 +172,7 @@ public:
     ///   "use_sieve", "use_2sieve" : mock sieve options of mc_shms.f:58-66 (default false)
     ///   "use_coll", "skip_hb"     : mc_shms.f compile-time options (defaults true / false, as in SIMC)
     void configure(const Json& config, const SimcParameters& params) override;
-    void init(RunSetup& setup) override;
+    void init(const StageContext& ctx) override;
 
     SpecResult transport(const SpecInput& in, IRandom& rng) override;
     /// All counters by key, plus "q2_mid_dup" (= q2_mid, simc.f:519-520 label bug) and without stop_id.
