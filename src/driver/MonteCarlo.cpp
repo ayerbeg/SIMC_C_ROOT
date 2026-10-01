@@ -20,17 +20,16 @@ constexpr double beta_electron = 1.;   // simc.f:1329
 constexpr double zero = 0.0e0;         // simc.f:1347
 }  // namespace
 
-std::shared_ptr<ISpectrometer> MonteCarlo::makeArm(int code, RunSetup& setup) {
-    std::string name;
-    Json cfg = Json::object();
+MonteCarlo::ArmChoice MonteCarlo::DefaultArm(int code) {
+    ArmChoice c;
     switch (code) {
         case 1:
-            name = "hms";
+            c.type = "hms";
             break;
         case 5:
         case 6:   // 6 = SHMS LSA: mc_shms STOPs on the first call (FortranStop)
-            name = "shms";
-            cfg["spectr"] = code;
+            c.type = "shms";
+            c.config["spectr"] = code;
             break;
         case 2:
         case 3:
@@ -42,6 +41,26 @@ std::shared_ptr<ISpectrometer> MonteCarlo::makeArm(int code, RunSetup& setup) {
         default:
             throw NotPorted("montecarlo: unknown arm code " + std::to_string(code));
     }
+    return c;
+}
+
+std::shared_ptr<ISpectrometer> MonteCarlo::makeArm(int code, const ArmChoice& choice, RunSetup& setup) {
+    std::string name = choice.type;
+    Json cfg = Json::object();
+    if (name.empty()) {
+        const ArmChoice d = DefaultArm(code);
+        name = d.type;
+        cfg = d.config;
+    } else {
+        // an explicit type keeps the default config of the arm code when it is the same type (e.g. SHMS "spectr")
+        try {
+            const ArmChoice d = DefaultArm(code);
+            if (d.type == name) cfg = d.config;
+        } catch (const NotPorted&) {
+        }
+    }
+    if (choice.config.is_object())
+        for (auto it = choice.config.begin(); it != choice.config.end(); ++it) cfg[it.key()] = it.value();
     auto it = specs_.find(name);
     if (it != specs_.end()) return it->second;   // both arms the same type: one COMMON block, one object
     std::shared_ptr<ISpectrometer> s(Registry<ISpectrometer>::create(name).release());
@@ -51,12 +70,15 @@ std::shared_ptr<ISpectrometer> MonteCarlo::makeArm(int code, RunSetup& setup) {
     return s;
 }
 
-MonteCarlo::MonteCarlo(RunSetup& setup, ITarget& target) : setup_(setup), target_(target), log_(&std::cout) {
+MonteCarlo::MonteCarlo(RunSetup& setup, ITarget& target) : MonteCarlo(setup, target, ArmChoice{}, ArmChoice{}) {}
+
+MonteCarlo::MonteCarlo(RunSetup& setup, ITarget& target, const ArmChoice& hadron, const ArmChoice& electron)
+    : setup_(setup), target_(target), log_(&std::cout) {
     if (setup.params.using_tgt_field || setup.flags.using_tgt_field)
         throw NotPorted("montecarlo: using_tgt_field (track_from_tgt / track_to_tgt, trg_track.f) not ported");
     // Fortran order of the calls: hadron arm first, then electron arm.
-    pArm_ = makeArm(setup.params.hadron_arm, setup);
-    eArm_ = makeArm(setup.params.electron_arm, setup);
+    pArm_ = makeArm(setup.params.hadron_arm, hadron, setup);
+    eArm_ = makeArm(setup.params.electron_arm, electron, setup);
 }
 
 // Fortran: simc.f:montecarlo

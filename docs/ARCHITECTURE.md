@@ -60,6 +60,8 @@ A new plug-in is a new `.cpp` with a `SIMC_REGISTER` line. The driver doesn't ch
 
 ## 4. Driver (`SimcRun`, follows simc.f)
 
+Implemented in P7.2; the full description (pipeline JSON, EventState, outputs, validation) is in [DRIVER.md](DRIVER.md).
+
 ```
 configure: JSON (or .inp → JSON converter) → SimcParameters → RunSetup (init.f equivalents)
 calculate_central()                                   // simc.f:1143

@@ -1,10 +1,35 @@
-# simcfw_driver (tasks P7.1/P7.2): the per-event driver.
-#   MonteCarlo.cpp : simc.f:montecarlo — both arms through target multiple scattering, ISpectrometer "hms"/"shms"
-#                    (from the registry) and the track back to the target (P7.1).
+# simcfw_driver (tasks P7.1/P7.2): the SIMC main program.
+#   MonteCarlo.cpp    : simc.f:montecarlo — both arms through target multiple scattering, ISpectrometer "hms"/"shms"
+#                       (from the registry) and the track back to the target (P7.1).
+#   Central.cpp       : simc.f:calculate_central (P7.2)
+#   RunReport.cpp     : simc.f normalisation (l.360-432), report (.hist) and .geni text, summary sections (P7.2)
+#   FortranWriter.cpp : gfortran formatted-output emulation for the .hist/.geni text
+#   Pipeline.cpp      : the JSON plug-in choice per stage (docs/DRIVER.md)
+#   SimcRun.cpp       : the main loop (simc.f l.1-623)
 # Consumers must also link simcfw_hms, simcfw_shms (OBJECT libraries: their registrations), simcfw_optics,
-# simcfw_material and simcfw_setup.
+# simcfw_material and simcfw_setup — or simply ${SIMC_DRIVER_LIBS} (everything a full run needs).
 add_library(simcfw_driver STATIC
     MonteCarlo.cpp
+    Central.cpp
+    FortranWriter.cpp
+    Pipeline.cpp
+    RunReport.cpp
+    SimcRun.cpp
 )
-target_link_libraries(simcfw_driver PUBLIC simcfw simcfw_kinematics simcfw_material)
+target_link_libraries(simcfw_driver PUBLIC simcfw simcfw_kinematics simcfw_material simcfw_setup)
 target_compile_options(simcfw_driver PRIVATE -Wall -Wextra -pedantic)
+
+# The "fortran_hist" sink (SIMC_REGISTER): OBJECT library so the registration is linked.
+add_library(simcfw_driver_sinks OBJECT ReportSink.cpp)
+target_link_libraries(simcfw_driver_sinks PUBLIC simcfw_driver)
+target_compile_options(simcfw_driver_sinks PRIVATE -Wall -Wextra -pedantic)
+
+# Everything a complete run links (OBJECT libraries must be linked directly by the executable).
+set(SIMC_DRIVER_LIBS simcfw_driver simcfw_driver_sinks simcfw_reactions simcfw_radiation simcfw_physics simcfw_root
+    simcfw_hms simcfw_shms simcfw_optics simcfw_setup simcfw_material simcfw_kinematics simcfw_random simcfw
+    CACHE INTERNAL "libraries of a complete SIMC++ run")
+
+# The command line `simc++` (tools/simc_main.cpp)
+add_executable(simcpp ${CMAKE_SOURCE_DIR}/tools/simc_main.cpp)
+target_link_libraries(simcpp PRIVATE ${SIMC_DRIVER_LIBS})
+set_target_properties(simcpp PROPERTIES OUTPUT_NAME "simc++" RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)

@@ -1,0 +1,184 @@
+{
+  "_comment": "SIMC++ run configuration (docs/DRIVER.md). parameters = inp2json of reference/runs/acc_phsp_hms_shms_A/acc_phsp_hms_shms_A.inp (Fortran .inp units); pipeline = the default plug-ins written out explicitly; run = output naming.",
+  "parameters": {
+    "EXPER": {
+      "charge": 1.0
+    },
+    "Ebeam": 10600.0,
+    "Egamma_gen_max": 0.0,
+    "Nntu": 1,
+    "SPedge": {
+      "e": {
+        "delta": {
+          "max": 22.0,
+          "min": -10.0
+        },
+        "xptar": {
+          "max": 80.0,
+          "min": -80.0
+        },
+        "yptar": {
+          "max": 60.0,
+          "min": -60.0
+        }
+      },
+      "p": {
+        "delta": {
+          "max": 10.0,
+          "min": -10.0
+        },
+        "xptar": {
+          "max": 80.0,
+          "min": -80.0
+        },
+        "yptar": {
+          "max": 60.0,
+          "min": -60.0
+        }
+      }
+    },
+    "correct_Eloss": true,
+    "correct_raster": true,
+    "ctau": 780.4000244140625,
+    "cuts": {
+      "Em": {
+        "max": 200.0,
+        "min": 0.0
+      }
+    },
+    "dE_edge_test": 0.0,
+    "dEbeam": 0.0,
+    "deForest_flag": 0,
+    "debug": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ],
+    "do_fermi": false,
+    "doing_decay": false,
+    "doing_delta": false,
+    "doing_hplus": true,
+    "doing_kaon": false,
+    "doing_phsp": true,
+    "doing_pion": false,
+    "doing_pizero": false,
+    "doing_rho": false,
+    "doing_semi": false,
+    "drift_to_cal": 0.0,
+    "electron_arm": 5,
+    "extra_dbase_file": "",
+    "extrad_flag": 2,
+    "gen": {
+      "xwid": 0.008867999538779259,
+      "ywid": 0.004234999883919954
+    },
+    "hadron_arm": 1,
+    "hard_cuts": false,
+    "intcor_mode": 1,
+    "lambda": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "mc_smear": true,
+    "ngen": -1000000,
+    "one_tail": 0,
+    "pizero_ngamma": 0,
+    "pt_b_param": 0.0,
+    "rad_flag": 0,
+    "random_seed": 12345,
+    "random_state_file": "",
+    "sigc_flag": 0,
+    "sigc_kin_ind": 0.0,
+    "sigc_kin_max": 0.0,
+    "sigc_kin_min": 0.0,
+    "sigc_nbin": 0,
+    "spec": {
+      "e": {
+        "P": 8360.9892578125,
+        "offset": {
+          "x": 0.0,
+          "xptar": 0.0,
+          "y": 0.0,
+          "yptar": 0.0,
+          "z": 0.0
+        },
+        "theta": 12.5
+      },
+      "p": {
+        "P": 3035.5849609375,
+        "offset": {
+          "x": 0.0,
+          "xptar": 0.0,
+          "y": 0.0,
+          "yptar": 0.0,
+          "z": 0.0
+        },
+        "theta": 36.59400177001953
+      }
+    },
+    "spect_mode": 0,
+    "targ": {
+      "A": 1.0,
+      "Z": 1.0,
+      "abundancy": 100.0,
+      "angle": 0.0,
+      "can": 1,
+      "fr1": 0.10000000149011612,
+      "fr2": 0.10000000149011612,
+      "fr_pattern": 1,
+      "mass_amu": 1.0072760581970215,
+      "mrec_amu": 0.0,
+      "rho": 0.0723000019788742,
+      "thick": 100.0,
+      "xoffset": 0.0,
+      "yoffset": 0.0,
+      "zoffset": 0.0
+    },
+    "targ_Bangle": 0.0,
+    "targ_Bphi": 0.0,
+    "targ_pol": 0.0,
+    "tgt_field_file": "",
+    "transparency": 0.0,
+    "use_benhar_sf": false,
+    "use_expon": 0,
+    "use_first_cer": 0,
+    "use_offshell_rad": true,
+    "using_Coulomb": true,
+    "using_Eloss": true,
+    "using_HMScoll": false,
+    "using_SHMScoll": false,
+    "using_cit_generation": false,
+    "using_rad": true,
+    "using_tgt_field": false,
+    "which_kaon": 0,
+    "which_pion": 0
+  },
+  "pipeline": {
+    "rng": {
+      "type": "mt64"
+    },
+    "target": "hallc_cryo",
+    "beam": "standard",
+    "reaction": "phase_space",
+    "physics": "sigep",
+    "radiator": "simc_rad",
+    "spectrometers": {
+      "hadron": "hms",
+      "electron": "shms"
+    },
+    "sinks": [
+      "root_tree",
+      "run_summary",
+      "gen_hist",
+      "fortran_hist"
+    ]
+  },
+  "run": {
+    "name": "acceptance_phsp_hms_shms",
+    "output_dir": "."
+  }
+}

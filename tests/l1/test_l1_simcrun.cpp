@@ -1,0 +1,447 @@
+// tests/l1/test_l1_simcrun.cpp
+//
+// VALIDATION A of task P7.2: full-run replay of the four P4.F1 capture runs of the unmodified Fortran SIMC
+// (reference/runs/p4f1_<cfg>_cap/, reference/functions/event_capture/<cfg>/, reference/P4.F1_report.md).
+//
+//   replay <cap_dir> <run_dir> <cfg> <out_dir>
+//     The complete SIMC++ driver (SimcRun with the default pipeline) runs the capture .inp with a ScriptedRandom that
+//     holds the whole captured RANLUX stream (every grnd and gauss1 value of every phase, in order). Required, all
+//     bitwise / text-identical:
+//       * random stream consumed exactly (no queue error, nothing left over);
+//       * per try (cap_loop): success, pass_cuts, npasscuts, ncontribute, nc_no_rad_prot, wtcontribute, sum_sigcc;
+//       * every written event: the 46 ntuple values in double precision (FillEepNtuple) == the capture .bin records;
+//       * the C++ tree <out>/<run>.root (h10, Float_t) == the Fortran <run>.root event by event, all 46 branches;
+//       * the normalisation (cap_final): ntried, nevent, ncontribute, npasscuts, targetfac, luminosity, genvol, normfac,
+//         wtcontribute*normfac;
+//       * <run>.hist (except the two BEGIN/END Time lines), <run>.geni and <run>.gen text == the Fortran files;
+//       * the gen_hist sink (TH1D, <run>.gen.root) bins == the .gen values at the e11.4 print precision.
+// Exit: 0 pass, 1 fail, 77 reference missing.
+#include <array>
+#include <cmath>
+#include <cstdint>
+#include <cstdio>
+#include <cstring>
+#include <fstream>
+#include <map>
+#include <memory>
+#include <sstream>
+#include <string>
+#include <vector>
+
+#include <TFile.h>
+#include <TH1D.h>
+#include <TTree.h>
+
+#include "simc/core/SimcParameters.h"
+#include "simc/core/random/ScriptedRandom.h"
+#include "simc/driver/FortranWriter.h"
+#include "simc/driver/SimcRun.h"
+#include "simc/input/InpReader.h"
+#include "simc/output/NtupleLayout.h"
+#include "simc/output/SummaryJson.h"
+
+using namespace simc;
+
+namespace {
+
+bool exists(const std::string& p) { return static_cast<bool>(std::ifstream(p)); }
+
+struct Tab {
+    std::vector<std::string> names;
+    std::map<std::string, int> idx;
+    std::vector<std::vector<double>> rows;
+    int col(const std::string& n) const {
+        auto it = idx.find(n);
+        if (it == idx.end()) throw std::runtime_error("missing column " + n);
+        return it->second;
+    }
+};
+
+bool loadTab(const std::string& base, Tab& t) {
+    FILE* f = nullptr;
+    bool piped = false;
+    if (exists(base)) {
+        f = std::fopen(base.c_str(), "r");
+    } else if (exists(base + ".xz")) {
+        f = popen(("xz -dc '" + base + ".xz'").c_str(), "r");
+        piped = true;
+    }
+    if (!f) return false;
+    std::string acc;
+    char buf[1 << 16];
+    bool header = false;
+    while (std::fgets(buf, sizeof buf, f)) {
+        acc += buf;
+        if (acc.back() != '\n') continue;
+        std::string line;
+        line.swap(acc);
+        const auto p = line.find_first_not_of(" \t\r\n");
+        if (p == std::string::npos || line[p] == '#') continue;
+        std::istringstream is(line);
+        std::string tok;
+        if (!header) {
+            while (is >> tok) {
+                t.idx[tok] = static_cast<int>(t.names.size());
+                t.names.push_back(tok);
+            }
+            header = true;
+            continue;
+        }
+        std::vector<double> r;
+        while (is >> tok) r.push_back(std::strtod(tok.c_str(), nullptr));
+        if (r.size() != t.names.size()) {
+            piped ? pclose(f) : std::fclose(f);
+            return false;
+        }
+        t.rows.push_back(std::move(r));
+    }
+    piped ? pclose(f) : std::fclose(f);
+    return header;
+}
+
+bool readRecords(const std::string& path, std::vector<std::string>& recs) {
+    std::ifstream f(path, std::ios::binary);
+    if (!f) return false;
+    while (true) {
+        std::int32_t n1, n2;
+        if (!f.read(reinterpret_cast<char*>(&n1), 4)) break;
+        std::string d(static_cast<std::size_t>(n1), '\0');
+        f.read(&d[0], n1);
+        f.read(reinterpret_cast<char*>(&n2), 4);
+        if (!f || n1 != n2) return false;
+        recs.push_back(std::move(d));
+    }
+    return true;
+}
+
+std::string slurp(const std::string& p) {
+    std::ifstream f(p);
+    std::ostringstream s;
+    s << f.rdbuf();
+    return s.str();
+}
+
+std::vector<std::string> lines(const std::string& t) {
+    std::vector<std::string> v;
+    std::istringstream is(t);
+    for (std::string l; std::getline(is, l);) v.push_back(l);
+    return v;
+}
+
+bool same(double a, double b) {
+    if (std::isnan(a) && std::isnan(b)) return true;
+    return std::memcmp(&a, &b, sizeof a) == 0;
+}
+
+struct Counter {
+    long n{0}, diff{0}, first{-1};
+    double fr{0}, fc{0};
+};
+using Counters = std::map<std::string, Counter>;
+void check(Counters& c, const std::string& k, double cpp, double ref, long where) {
+    Counter& x = c[k];
+    ++x.n;
+    if (!same(cpp, ref)) {
+        if (x.diff++ == 0) {
+            x.first = where;
+            x.fr = ref;
+            x.fc = cpp;
+        }
+    }
+}
+bool report(const char* title, const Counters& c) {
+    long n = 0, d = 0;
+    for (const auto& kv : c) {
+        n += kv.second.n;
+        d += kv.second.diff;
+        if (kv.second.diff)
+            std::printf("    %-22s %8ld of %8ld differ; first at %ld: ref %.17g cpp %.17g\n", kv.first.c_str(),
+                        kv.second.diff, kv.second.n, kv.second.first, kv.second.fr, kv.second.fc);
+    }
+    std::printf("  %-58s %3zu quantities, %9ld values, %ld differ\n", title, c.size(), n, d);
+    return d == 0;
+}
+
+/// Records the double-precision ntuple of every successful event (results_ntu_write before the real*4 conversion).
+class NtupleCapture : public IOutputSink {
+public:
+    std::string name() const override { return "test_ntuple_capture"; }
+    void configure(const Json&, const SimcParameters&) override {}
+    void init(RunSetup&) override {}
+    void beginRun(const RunSetup& s) override { setup_ = s; }
+    void fill(const MainEvent& m, const Event& v, const Event& o, const Event& r, bool success) override {
+        if (!success) return;
+        FillEepNtuple(setup_, m, v, o, r, ntu_);
+        rows.push_back(ntu_);
+    }
+    void endRun(const RunSummary&) override {}
+    std::vector<std::array<double, kEepNtupleSize>> rows;
+
+private:
+    RunSetup setup_;
+    std::array<double, kEepNtupleSize> ntu_{};
+};
+
+/// Compares a text file with the Fortran one, line by line; `skip` = 1-based line numbers not compared.
+bool compareText(const char* what, const std::string& cpp, const std::string& ref, std::initializer_list<int> skip) {
+    const auto a = lines(cpp), b = lines(ref);
+    long bad = 0;
+    for (std::size_t i = 0; i < std::max(a.size(), b.size()); ++i) {
+        bool sk = false;
+        for (int s : skip) sk = sk || (static_cast<int>(i) + 1 == s);
+        if (sk) continue;
+        const std::string x = i < a.size() ? a[i] : "<missing>";
+        const std::string y = i < b.size() ? b[i] : "<missing>";
+        if (x != y) {
+            if (bad < 8) std::printf("    %s line %zu:\n      ref |%s|\n      cpp |%s|\n", what, i + 1, y.c_str(), x.c_str());
+            ++bad;
+        }
+    }
+    std::printf("  %-58s %zu lines (C++) / %zu (Fortran), %ld differ\n", what, a.size(), b.size(), bad);
+    return bad == 0 && a.size() == b.size();
+}
+
+int replay(const std::string& capdir, const std::string& rundir, const std::string& cfg, const std::string& outdir) {
+    const std::string run = "p4f1_" + cfg + "_cap";
+    const std::string inp = rundir + "/" + run + ".inp";
+    if (!exists(inp) || !exists(capdir + "/cap_final.txt")) {
+        std::printf("replay %s: SKIP (reference missing)\n", cfg.c_str());
+        return 77;
+    }
+    Tab rngT, loopT, fin;
+    if (!loadTab(capdir + "/cap_rng.txt", rngT) || !loadTab(capdir + "/cap_loop.txt", loopT) ||
+        !loadTab(capdir + "/cap_final.txt", fin)) {
+        std::printf("replay %s: SKIP (cannot read the capture tables; xz needed)\n", cfg.c_str());
+        return 77;
+    }
+    // the whole random stream, in order (phases 1 generate, 6 generate_rad, 2 montecarlo)
+    std::vector<double> gauss, unif;
+    {
+        const int ck = rngT.col("kind"), cv = rngT.col("value");
+        for (const auto& r : rngT.rows) (std::lround(r[ck]) == 2 ? gauss : unif).push_back(r[cv]);
+    }
+    std::printf("replay %s: %zu grnd + %zu gauss1 values, %zu tries in cap_loop\n", cfg.c_str(), unif.size(),
+                gauss.size(), loopT.rows.size());
+
+    SimcParameters p;
+    InpReader rd(p);
+    if (!rd.loadRun(inp)) {
+        std::printf("cannot read %s\n", inp.c_str());
+        return 1;
+    }
+    driver::RunOptions opt;
+    opt.run_name = run;
+    opt.output_dir = outdir;
+    opt.quiet_stages = true;
+    std::ostringstream log;
+    opt.log = &log;
+    driver::SimcRun sr(p, Json::object(), opt);
+    auto srng = std::make_unique<ScriptedRandom>(ScriptedRandom::GaussMode::Scripted);
+    srng->load(gauss, unif);
+    ScriptedRandom* rng = srng.get();
+    sr.setRandom(std::move(srng));
+    auto cap = std::make_shared<NtupleCapture>();
+    sr.addSink(cap);
+
+    bool ok = true;
+    sr.initialise();
+    // ---- per try
+    Counters cl;
+    {
+        const int cN = loopT.col("ntried"), cS = loopT.col("success"), cP = loopT.col("pass_cuts_simc"),
+                  cNp = loopT.col("npasscuts"), cNc = loopT.col("ncontribute"), cNr = loopT.col("nc_no_rad_prot"),
+                  cW = loopT.col("wtcontribute"), cSs = loopT.col("sum_sigcc_recomp");
+        std::size_t i = 0;
+        while (!sr.done()) {
+            sr.step();
+            const auto& T = sr.totals();
+            if (i >= loopT.rows.size()) {
+                std::printf("  C++ makes more tries than the Fortran (%ld)\n", T.ntried);
+                ok = false;
+                break;
+            }
+            const auto& L = loopT.rows[i++];
+            const long nt = T.ntried;
+            check(cl, "ntried", static_cast<double>(nt), L[cN], nt);
+            check(cl, "success", sr.event().success ? 1. : 0., L[cS], nt);
+            check(cl, "pass_cuts", sr.event().pass_cuts ? 1. : 0., L[cP], nt);
+            check(cl, "npasscuts", static_cast<double>(T.npasscuts), L[cNp], nt);
+            check(cl, "ncontribute", static_cast<double>(T.ncontribute), L[cNc], nt);
+            check(cl, "nc_no_rad_prot", static_cast<double>(T.ncontribute_no_rad_proton), L[cNr], nt);
+            check(cl, "wtcontribute", T.wtcontribute, L[cW], nt);
+            check(cl, "sum_sigcc", T.sum_sigcc, L[cSs], nt);
+        }
+        if (i != loopT.rows.size()) {
+            std::printf("  C++ stopped after %zu tries, Fortran %zu\n", i, loopT.rows.size());
+            ok = false;
+        }
+    }
+    sr.finish();
+    ok = report("per-try bookkeeping vs cap_loop (bitwise)", cl) && ok;
+    const bool rngOk = !rng->error() && rng->gaussiansLeft() == 0 && rng->uniformsLeft() == 0;
+    std::printf("  %-58s grnd %zu used / %zu left, gauss1 %zu used / %zu left, queue error %d -> %s\n",
+                "random stream", rng->nUniform(), rng->uniformsLeft(), rng->nGauss(), rng->gaussiansLeft(),
+                rng->error() ? 1 : 0, rngOk ? "exact" : "MISMATCH");
+    ok = ok && rngOk;
+
+    // ---- normalisation vs cap_final
+    {
+        Counters cn;
+        const auto& F = fin.rows.at(0);
+        auto f = [&](const char* n) { return F[fin.col(n)]; };
+        const auto& T = sr.totals();
+        const auto& N = sr.report().norm;
+        check(cn, "ntried", static_cast<double>(T.ntried), f("ntried"), 0);
+        check(cn, "nevent", static_cast<double>(T.nevent), f("nevent"), 0);
+        check(cn, "ngen", static_cast<double>(sr.report().ngen), f("ngen"), 0);
+        check(cn, "ncontribute", static_cast<double>(T.ncontribute), f("ncontribute"), 0);
+        check(cn, "npasscuts", static_cast<double>(T.npasscuts), f("npasscuts"), 0);
+        check(cn, "nc_no_rad_prot", static_cast<double>(T.ncontribute_no_rad_proton), f("nc_no_rad_prot"), 0);
+        check(cn, "targetfac", N.targetfac, f("targetfac"), 0);
+        check(cn, "luminosity", N.luminosity, f("luminosity"), 0);
+        check(cn, "genvol", N.genvol, f("genvol"), 0);
+        check(cn, "normfac", N.normfac, f("normfac"), 0);
+        check(cn, "wtcontribute_norm", N.wtcontribute, f("wtcontribute_norm"), 0);
+        check(cn, "sum_sigcc", T.sum_sigcc, f("sum_sigcc_recomp"), 0);
+        ok = report("normalisation vs cap_final (bitwise)", cn) && ok;
+    }
+
+    // ---- ntuple in double precision vs the .bin
+    {
+        std::vector<std::string> recs;
+        Counters cb;
+        if (!readRecords(rundir + "/" + run + ".bin", recs) || recs.empty()) {
+            std::printf("  cannot read the .bin\n");
+            ok = false;
+        } else {
+            std::int32_t nsz;
+            std::memcpy(&nsz, recs[0].data(), 4);
+            const std::size_t first = 1 + static_cast<std::size_t>(nsz);
+            const std::size_t nev = (recs.size() - first) / static_cast<std::size_t>(nsz);
+            if (nev != cap->rows.size() || nsz != kEepNtupleSize) {
+                std::printf("  .bin: %zu events x %d columns, C++ %zu events\n", nev, nsz, cap->rows.size());
+                ok = false;
+            }
+            const auto& cols = EepNtupleColumns();
+            for (std::size_t k = 0; k < std::min(nev, cap->rows.size()); ++k)
+                for (int i = 0; i < kEepNtupleSize; ++i) {
+                    double v;
+                    std::memcpy(&v, recs[first + k * static_cast<std::size_t>(nsz) + static_cast<std::size_t>(i)].data(), 8);
+                    check(cb, cols[static_cast<std::size_t>(i)].name, cap->rows[k][static_cast<std::size_t>(i)], v,
+                          static_cast<long>(k));
+                }
+            ok = report("ntuple (double) vs the Fortran .bin, 46 columns (bitwise)", cb) && ok;
+        }
+    }
+
+    // ---- the C++ tree vs the Fortran tree (Float_t)
+    {
+        Counters ct;
+        std::unique_ptr<TFile> fa(TFile::Open((outdir + "/" + run + ".root").c_str()));
+        std::unique_ptr<TFile> fb(TFile::Open((rundir + "/" + run + ".root").c_str()));
+        TTree* ta = fa ? dynamic_cast<TTree*>(fa->Get("h10")) : nullptr;
+        TTree* tb = fb ? dynamic_cast<TTree*>(fb->Get("h10")) : nullptr;
+        if (!ta || !tb) {
+            std::printf("  cannot read the h10 trees\n");
+            ok = false;
+        } else {
+            const auto& cols = EepNtupleColumns();
+            std::vector<float> va(cols.size()), vb(cols.size());
+            for (std::size_t i = 0; i < cols.size(); ++i) {
+                ta->SetBranchAddress(cols[i].name, &va[i]);
+                tb->SetBranchAddress(cols[i].name, &vb[i]);
+            }
+            if (ta->GetEntries() != tb->GetEntries()) {
+                std::printf("  h10 entries: C++ %lld, Fortran %lld\n", ta->GetEntries(), tb->GetEntries());
+                ok = false;
+            }
+            for (Long64_t k = 0; k < std::min(ta->GetEntries(), tb->GetEntries()); ++k) {
+                ta->GetEntry(k);
+                tb->GetEntry(k);
+                for (std::size_t i = 0; i < cols.size(); ++i) {
+                    const bool eq = (std::isnan(va[i]) && std::isnan(vb[i])) || std::memcmp(&va[i], &vb[i], 4) == 0;
+                    check(ct, cols[i].name, eq ? 0. : static_cast<double>(va[i]), eq ? 0. : static_cast<double>(vb[i]),
+                          static_cast<long>(k));
+                }
+            }
+            char title[96];
+            std::snprintf(title, sizeof title, "tree h10 vs the Fortran .root (%lld events, Float_t bitwise)",
+                          tb->GetEntries());
+            ok = report(title, ct) && ok;
+        }
+    }
+
+    // ---- text files
+    ok = compareText((run + ".hist (except BEGIN/END Time)").c_str(), slurp(outdir + "/" + run + ".hist"),
+                     slurp(rundir + "/" + run + ".hist"), {2, 3}) && ok;
+    ok = compareText((run + ".geni").c_str(), slurp(outdir + "/" + run + ".geni"), slurp(rundir + "/" + run + ".geni"), {}) && ok;
+    ok = compareText((run + ".gen").c_str(), slurp(outdir + "/" + run + ".gen"), slurp(rundir + "/" + run + ".gen"), {}) && ok;
+
+    // ---- gen_hist sink (TH1D) vs the Fortran .gen buffers at the e11.4 print precision
+    {
+        std::unique_ptr<TFile> fg(TFile::Open((outdir + "/" + run + ".gen.root").c_str()));
+        const auto ref = lines(slurp(rundir + "/" + run + ".gen"));
+        long bad = 0, n = 0;
+        // .gen block b (0-based) starts at line 1 + 52*b; rows follow the 2 header lines.
+        struct Col { int block; int col; const char* h; };
+        const Col cols[] = {{0, 1, "recon_e_delta"}, {0, 3, "recon_e_yptar"}, {0, 5, "recon_e_xptar"},
+                            {1, 1, "recon_p_delta"}, {1, 3, "recon_p_yptar"}, {1, 5, "recon_p_xptar"},
+                            {2, 1, "gen_e_delta"},   {2, 3, "gen_e_yptar"},   {2, 5, "gen_e_xptar"},
+                            {3, 1, "gen_p_delta"},   {3, 3, "gen_p_yptar"},   {3, 5, "gen_p_xptar"},
+                            {4, 3, "geni_e_yptar"},  {4, 5, "geni_e_xptar"},  {5, 1, "geni_p_delta"},
+                            {5, 3, "geni_p_yptar"},  {5, 5, "geni_p_xptar"},  {6, 1, "geni_Em"}, {6, 3, "geni_Pm"}};
+        for (const auto& c : cols) {
+            const TH1D* h = fg ? dynamic_cast<TH1D*>(fg->Get(c.h)) : nullptr;
+            if (!h) {
+                std::printf("    gen.root: missing %s\n", c.h);
+                ++bad;
+                continue;
+            }
+            for (int i = 1; i <= 50; ++i) {
+                const std::size_t li = static_cast<std::size_t>(52 * c.block + 2 + i - 1);
+                if (li >= ref.size()) break;
+                std::istringstream is(ref[li]);
+                std::vector<std::string> tok;
+                for (std::string t; is >> t;) tok.push_back(t);
+                ++n;
+                const std::string mine = fortran::E(h->GetBinContent(i), 11, 4);
+                const std::string theirs = fortran::E(std::strtod(tok.at(static_cast<std::size_t>(c.col)).c_str(), nullptr), 11, 4);
+                if (mine != theirs) {
+                    if (bad < 5) std::printf("    %s bin %d: ref %s cpp %s\n", c.h, i, theirs.c_str(), mine.c_str());
+                    ++bad;
+                }
+            }
+        }
+        std::printf("  %-58s %ld bins, %ld differ\n", "gen_hist sink (.gen.root) vs the Fortran .gen (e11.4)", n, bad);
+        ok = ok && bad == 0;
+    }
+
+    // ---- the summary JSON against docs/summary.schema.json
+    {
+        Json sum, schema;
+        std::ifstream(outdir + "/" + run + ".summary.json") >> sum;
+        std::ifstream(std::string(SIMC_SOURCE_DIR) + "/docs/summary.schema.json") >> schema;
+        const auto errs = ValidateAgainstSchema(sum, schema);
+        for (std::size_t i = 0; i < errs.size() && i < 5; ++i) std::printf("    schema: %s\n", errs[i].c_str());
+        std::printf("  %-58s %zu violations\n", (run + ".summary.json vs summary.schema.json").c_str(), errs.size());
+        ok = ok && errs.empty();
+    }
+
+    std::printf("replay %s: %s\n", cfg.c_str(), ok ? "PASS" : "FAIL");
+    return ok ? 0 : 1;
+}
+
+}  // namespace
+
+int main(int argc, char** argv) {
+    if (argc < 6 || std::string(argv[1]) != "replay") {
+        std::fprintf(stderr, "usage: %s replay <cap_dir> <run_dir> <cfg> <out_dir>\n", argv[0]);
+        return 2;
+    }
+    try {
+        return replay(argv[2], argv[3], argv[4], argv[5]);
+    } catch (const std::exception& e) {
+        std::printf("exception: %s\n", e.what());
+        return 1;
+    }
+}

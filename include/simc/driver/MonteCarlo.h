@@ -65,10 +65,22 @@ struct MonteCarloInfo {
 
 class MonteCarlo {
 public:
+    /// P7.2 (additive): an arm plug-in = ISpectrometer registry name + its JSON config.
+    struct ArmChoice {
+        std::string type;               ///< "" = from the Fortran arm code (DefaultArm)
+        Json config = Json::object();   ///< merged over the default config of the arm code
+    };
+    /// The Fortran choice for an arm code (simc.f:montecarlo dispatch): 1 -> "hms", 5/6 -> "shms" {"spectr": code}.
+    /// Throws NotPorted for 2-4 (SOS/HRS, P14), 7/8 (mc_calo) and unknown codes.
+    static ArmChoice DefaultArm(int code);
+
     /// Creates (through Registry<ISpectrometer>) and initialises the arm spectrometers of setup.params
     /// (electron_arm, hadron_arm). `target` provides target_musc and trip_thru_target (correct_Eloss).
     /// Throws NotPorted for arms other than 1 (HMS) and 5/6 (SHMS), or for using_tgt_field.
     MonteCarlo(RunSetup& setup, ITarget& target);
+    /// P7.2 (additive): the same with the arm plug-ins chosen explicitly (e.g. from the JSON "pipeline").
+    /// Arms with the same type share one object (one Fortran COMMON block of counters), as above.
+    MonteCarlo(RunSetup& setup, ITarget& target, const ArmChoice& hadron, const ArmChoice& electron);
 
     /// Fortran: simc.f:montecarlo(orig,main,recon,success). Returns success.
     bool run(const Event& orig, MainEvent& main, Event& recon, IRandom& rng);
@@ -82,7 +94,7 @@ public:
     void setLog(std::ostream* os) { log_ = os; }
 
 private:
-    std::shared_ptr<ISpectrometer> makeArm(int code, RunSetup& setup);
+    std::shared_ptr<ISpectrometer> makeArm(int code, const ArmChoice& choice, RunSetup& setup);
 
     const RunSetup& setup_;
     ITarget& target_;
