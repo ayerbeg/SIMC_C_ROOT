@@ -114,3 +114,9 @@ data/                     COSY files, tables, JSON configs
 - **Removed** once superseded: SpectrometerOptics, Kinematics, pion/kaon stubs, the duplicate RadiativeCorrections,
   `*.backup`/`*.v1`, stale docs and tests. They remain in git history.
 - SOS/HRS classes: left in place but out of the build until Phase 14.
+- **P7.2 (done):** the legacy build (SIMC_BUILD_LEGACY, src/main.cpp, EventGenerator, MonteCarloTransport,
+  SpectrometerOptics, Kinematics, the old HMS/SHMS/SOS/HRSl/HRSr classes, ConfigManager, OutputManager,
+  CrossSection, RadiativeCorrections, Bremsstrahlung, EnergyLoss, MultipleScattering, ExternalRadiation, CosyMatrix,
+  MathUtils, RandomGenerator, SimcEvent/SimcTypes, the *.backup/*.v1 files and the non-Fortran data/matrices copies)
+  was removed; everything is in git history. SOS, HRSl, HRSr (and the calorimeter) are to be **re-ported from the
+  Fortran in P14** (sos/, hrsl/, hrsr/, calo/); none of the legacy physics was validated, so nothing is lost.
