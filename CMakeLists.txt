@@ -179,6 +179,7 @@ add_subdirectory(src/optics)      # shared COSY engine: transp, project, rotate_
 add_subdirectory(src/spectrometers/hms)   # ISpectrometer "hms" (P6.2)
 add_subdirectory(src/spectrometers/shms)  # ISpectrometer "shms" (P6.3)
 add_subdirectory(src/radiation)           # IRadiator "simc_rad": radc.f, brem.f, radc_init_ev (P5.1)
+add_subdirectory(src/reactions)           # IBeam "standard", IReaction "hydrogen_elastic"/"phase_space": event.f (P4.1)
 
 add_subdirectory(tests/unit)
 add_subdirectory(tests/l1)
