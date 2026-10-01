@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# tests/regression/output_identity.sh — before/after output identity of a complete simc++ run (task P7.4).
+#
+# Usage: output_identity.sh SIMCPP ROOT_IDENTITY INPUT SEED RUN_NAME BASELINE_DIR WORK_DIR
+#
+# Runs   SIMCPP INPUT --seed SEED --run-name RUN_NAME -o WORK_DIR --quiet
+# and requires every output file to be identical to the file of the same name in BASELINE_DIR:
+#   *.root                     bitwise identical trees (all branches, all entries) and histograms (ROOT_IDENTITY);
+#                              the TFile/TKey date stamps are ignored
+#   .hist .geni .gen .summary.txt .summary.json
+#                              text-identical apart from the time stamps (BEGIN/END Time, begin_time/end_time)
+# The set of output files must also be the same. BASELINE_DIR holds the files of a reference commit (README.txt
+# and MD5SUMS there are ignored). Exit: 0 identical, 1 different, 77 (CTest SKIP) if the baseline or the input
+# is missing, 2 if simc++ fails.
+set -uo pipefail
+if [[ $# -ne 7 ]]; then sed -n '2,16p' "$0"; exit 2; fi
+SIMCPP=$1; ROOTID=$2; INPUT=$3; SEED=$4; RUN=$5; BASE=$6; WORK=$7
+
+if [[ ! -d "$BASE" || ! -f "$INPUT" ]]; then echo "SKIP: baseline $BASE or input $INPUT missing"; exit 77; fi
+rm -rf "$WORK"; mkdir -p "$WORK"
+if ! "$SIMCPP" "$INPUT" --seed "$SEED" --run-name "$RUN" -o "$WORK" --quiet > "$WORK/run.log" 2>&1; then
+    echo "simc++ failed:"; tail -n 20 "$WORK/run.log"; exit 2
+fi
+
+strip_times() {   # the only lines that legitimately differ between two runs
+    grep -v -E '^ (BEGIN|END) Time:|^ *"?(begin|end)_time"? *[=:]' "$1"
+}
+
+status=0
+base_files=$(cd "$BASE" && ls | grep -v -E '^(README\.txt|MD5SUMS)$' | sort)
+work_files=$(cd "$WORK" && ls | grep -v -E '^run\.log$' | sort)
+if [[ "$base_files" != "$work_files" ]]; then
+    echo "DIFFERENT file sets:"; diff <(echo "$base_files") <(echo "$work_files"); status=1
+fi
+for f in $base_files; do
+    [[ -f "$WORK/$f" ]] || continue
+    case "$f" in
+        *.root)
+            if "$ROOTID" "$BASE/$f" "$WORK/$f" > "$WORK/$f.identity.txt" 2>&1; then
+                echo "identical  $f  ($(grep -c 'identical' "$WORK/$f.identity.txt") trees, $(grep -o '[0-9]* histograms' "$WORK/$f.identity.txt" || echo '0 histograms'))"
+            else
+                echo "DIFFERENT  $f"; cat "$WORK/$f.identity.txt"; status=1
+            fi ;;
+        *)
+            if diff <(strip_times "$BASE/$f") <(strip_times "$WORK/$f") > "$WORK/$f.diff" 2>&1; then
+                echo "identical  $f  ($(wc -l < "$BASE/$f") lines, time stamps ignored)"
+            else
+                echo "DIFFERENT  $f"; head -n 20 "$WORK/$f.diff"; status=1
+            fi ;;
+    esac
+done
+[[ $status -eq 0 ]] && echo "OUTPUT IDENTITY: PASS ($RUN vs $BASE)" || echo "OUTPUT IDENTITY: FAIL ($RUN vs $BASE)"
+exit $status

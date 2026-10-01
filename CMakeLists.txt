@@ -104,6 +104,7 @@ add_subdirectory(src/driver)              # simc.f: montecarlo (P7.1), main loop
 
 add_subdirectory(tests/unit)
 add_subdirectory(tests/l1)
+add_subdirectory(tests/regression)
 
 # ============================================================================
 # Installation
