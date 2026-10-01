@@ -3,7 +3,7 @@
 //
 // Usage:
 //   simc_compare --a SPEC --b SPEC --out DIR [--config CFG.json]
-//                [--label-a NAME] [--label-b NAME] [--perturb VAR:SHIFT]...
+//                [--label-a NAME] [--label-b NAME] [--perturb VAR:SHIFT]... [--empty-tree-b]
 //                [--skip v1,v2] [--nbins N] [--prefer-hist] [--no-pdf]
 //                [--expect PASS|FAIL|IDENTICAL] [--expect-flagged v1,v2]
 //   simc_compare --dump-summary SPEC OUT.json
@@ -240,7 +240,7 @@ void quantileRange(const std::vector<double>& a, const std::vector<double>& b, d
 
 struct VarResult {
     std::string name;
-    std::string status = "compared";  // compared | constant | skipped | missing
+    std::string status = "compared";  // compared | constant | skipped | missing | empty | nonfinite
     double lo = 0, hi = 0;
     int nbins = 0;
     std::vector<Test*> tests;
@@ -270,7 +270,7 @@ void writeLines(TCanvas& c, const std::vector<std::string>& lines, const std::st
 
 void usage() {
     std::cerr << "usage: simc_compare --a SPEC --b SPEC --out DIR [--config CFG.json]\n"
-                 "                    [--label-a NAME] [--label-b NAME] [--perturb VAR:SHIFT]...\n"
+                 "                    [--label-a NAME] [--label-b NAME] [--perturb VAR:SHIFT]... [--empty-tree-b]\n"
                  "                    [--skip v1,v2] [--nbins N] [--prefer-hist] [--no-pdf]\n"
                  "                    [--expect PASS|FAIL|IDENTICAL] [--expect-flagged v1,v2]\n"
                  "       simc_compare --dump-summary SPEC OUT.json\n";
@@ -292,7 +292,7 @@ int main(int argc, char** argv) {
     std::vector<std::pair<std::string, double>> perturb;
     std::vector<std::string> expectFlagged, extraSkip;
     int nbinsCli = 0;
-    bool preferHist = false, noPdf = false;
+    bool preferHist = false, noPdf = false, emptyTreeB = false;
     try {
         for (int i = 1; i < argc; ++i) {
             std::string a = argv[i];
@@ -312,6 +312,7 @@ int main(int argc, char** argv) {
             else if (a == "--nbins") nbinsCli = std::stoi(next());
             else if (a == "--prefer-hist") preferHist = true;
             else if (a == "--no-pdf") noPdf = true;
+            else if (a == "--empty-tree-b") emptyTreeB = true;
             else if (a == "--perturb") {
                 std::string v = next();
                 size_t c = v.rfind(':');
@@ -372,6 +373,12 @@ int main(int argc, char** argv) {
     } catch (const std::exception& e) {
         std::cerr << "simc_compare: " << e.what() << "\n";
         return 2;
+    }
+    // empty tree (test option): run B keeps its branches but loses every entry
+    if (emptyTreeB) {
+        for (auto& kv : TB.cols) kv.second.clear();
+        TB.n = 0;
+        warnings.push_back("B: TREE EMPTIED (test option --empty-tree-b)");
     }
     // perturbation (test option): applied to run B
     for (auto& [v, sh] : perturb) {
@@ -641,6 +648,63 @@ int main(int argc, char** argv) {
     if (!onlyA.empty()) { std::string s; for (auto& x : onlyA) s += " " + x; warnings.push_back("branches only in A:" + s); }
     if (!onlyB.empty()) { std::string s; for (auto& x : onlyB) s += " " + x; warnings.push_back("branches only in B:" + s); }
 
+    // Non-finite tree entries (P7.4): counted per run at the EVENT level (an event with any NaN/inf branch among the
+    // compared variables or the weight) and reported as an info test; the per-variable tests below exclude them and
+    // warn per variable. The Fortran can write NaN events (e.g. K2 norad, D-028 F2).
+    {
+        auto scan = [&](const TreeData& T, const std::vector<double>* W, std::string& brs) {
+            std::vector<char> bad(T.n, 0);
+            std::vector<std::string> names(vars);
+            if (std::find(names.begin(), names.end(), RA.weightBranch) == names.end()) names.push_back(RA.weightBranch);
+            for (const auto& v : names) {
+                const std::vector<double>* c = (v == RA.weightBranch) ? W : T.col(v);
+                if (!c) continue;
+                size_t nv = 0;
+                for (size_t i = 0; i < c->size(); ++i)
+                    if (!std::isfinite((*c)[i])) { bad[i] = 1; ++nv; }
+                if (nv) brs += (brs.empty() ? "" : ",") + v + "(" + std::to_string(nv) + ")";
+            }
+            size_t n = 0;
+            for (char b : bad) n += b ? 1 : 0;
+            return n;
+        };
+        std::string brA, brB;
+        const size_t nA = scan(TA, WA, brA), nB = scan(TB, WB, brB);
+        Test t;
+        t.category = "info";
+        t.name = "tree events with non-finite values";
+        t.method = "count";
+        t.a = double(nA);
+        t.b = double(nB);
+        t.counted = false;
+        t.note = "excluded from the per-variable tests";
+        if (nA) t.note += "; A: " + brA;
+        if (nB) t.note += "; B: " + brB;
+        add(t);
+        if (nA || nB)
+            warnings.push_back("non-finite tree events (excluded from the per-variable tests): A=" + std::to_string(nA) +
+                               (nA ? " [" + brA + "]" : "") + " B=" + std::to_string(nB) + (nB ? " [" + brB + "]" : ""));
+    }
+
+    // Empty trees (P7.4): both empty (e.g. Ncontribute = 0 in both runs) -> nothing to compare per variable, the
+    // run-level tests decide; exactly one empty -> a real difference (deterministic FAIL).
+    const bool emptyA = TA.n == 0, emptyB = TB.n == 0;
+    if (emptyA && emptyB) {
+        warnings.push_back("both trees are empty (0 entries): the per-variable tests are skipped");
+    } else if (emptyA || emptyB) {
+        Test t;
+        t.category = "det";
+        t.name = "tree entries (one tree is empty)";
+        t.method = "det";
+        t.a = double(TA.n);
+        t.b = double(TB.n);
+        t.pass = false;
+        t.p = 0.0;
+        t.note = std::string("tree ") + (emptyA ? "A" : "B") + " has no entries, the other has " +
+                 std::to_string(emptyA ? TB.n : TA.n) + "; per-variable tests skipped";
+        add(t);
+    }
+
     std::vector<VarResult> vres;
     int hid = 0;
     for (const auto& v : vars) {
@@ -648,6 +712,11 @@ int main(int argc, char** argv) {
         r.name = v;
         if (cfg.skip.count(v)) {
             r.status = "skipped";
+            vres.push_back(std::move(r));
+            continue;
+        }
+        if (emptyA || emptyB) {
+            r.status = "empty";
             vres.push_back(std::move(r));
             continue;
         }
@@ -673,6 +742,12 @@ int main(int argc, char** argv) {
             r.hi = binIt->second.hi;
         } else {
             quantileRange(fa, fb, cfg.qlo, cfg.qhi, r.lo, r.hi);
+        }
+        if (fa.empty() && fb.empty()) {
+            // every entry non-finite in both runs: nothing to compare (reported above and in the warnings)
+            r.status = "nonfinite";
+            vres.push_back(std::move(r));
+            continue;
         }
         if (!(r.hi > r.lo)) {
             // constant branch in both runs: compare the constant value
@@ -834,7 +909,7 @@ int main(int argc, char** argv) {
             o << std::left << std::setw(11) << r.name << std::setw(10) << r.status << std::right << std::setw(12)
               << fmt(r.lo, 4) << std::setw(12) << fmt(r.hi, 4) << std::setw(12) << P("chi2_abs") << std::setw(12)
               << P("chi2_ww") << std::setw(12) << P("chi2_uu") << std::setw(12) << P("ks_w") << "  "
-              << (r.status == "skipped" ? "-" : (ok ? "ok" : "FAIL"));
+              << ((r.status == "skipped" || r.status == "empty" || r.status == "nonfinite") ? "-" : (ok ? "ok" : "FAIL"));
             line(o.str());
         }
         if (!warnings.empty()) {
@@ -853,6 +928,7 @@ int main(int argc, char** argv) {
         j["labels"] = {{"A", labelA}, {"B", labelB}};
         j["sources"] = {{"A", RA.source}, {"B", RB.source}};
         j["trees"] = {{"A", RA.treeFile}, {"B", RB.treeFile}};
+        j["tree_entries"] = {{"A", TA.n}, {"B", TB.n}};
         j["config"] = {{"alpha", cfg.alpha}, {"global_alpha", cfg.globalAlpha}, {"gross_p", cfg.grossP},
                        {"nbins", cfg.nbins}, {"quantile_lo", cfg.qlo}, {"quantile_hi", cfg.qhi},
                        {"det_rel_tol", cfg.detRelTol}, {"norm_a", cfg.normA}, {"norm_b", cfg.normB}};

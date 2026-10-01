@@ -74,6 +74,30 @@ if(EXISTS ${R}/eep_h_elastic_norad_A/eep_h_elastic_norad_A.hist)
             --b ${CMAKE_CURRENT_SOURCE_DIR}/examples/eep_h_elastic_rad_A.summary.json
             --out ${T}/json_vs_hist --config ${CFG} --no-pdf --expect IDENTICAL)
   set_tests_properties(compare_json_vs_hist_identical PROPERTIES DEPENDS compare_dump_summary)
+  # P7.4: exactly one tree empty -> deterministic FAIL (the run-level numbers are identical here)
+  add_test(NAME compare_one_tree_empty
+    COMMAND simc_compare --a ${R}/eep_h_elastic_rad_A/eep_h_elastic_rad_A.hist
+            --b ${R}/eep_h_elastic_rad_A/eep_h_elastic_rad_A.hist --empty-tree-b
+            --out ${T}/one_tree_empty --config ${CFG} --no-pdf --expect FAIL)
 else()
   message(STATUS "reference runs not found under ${R}: compare self-tests not registered")
+endif()
+
+set(SIMC_BASELINE_DIR "/home/ayerbe/NewDisk/SIMC++_Project/baselines" CACHE PATH "SIMC++ baseline outputs")
+# P7.4: both trees empty (Ncontribute = 0 in both runs, K2 acceptance) -> per-variable tests skipped, PASS
+set(_K2C ${SIMC_BASELINE_DIR}/f9cea51_K2K4_s4242)
+if(EXISTS ${R}/acc_phsp_K2_A/acc_phsp_K2_A.hist AND EXISTS ${_K2C}/cpp_acc_phsp_K2_A.summary.json)
+  add_test(NAME compare_both_trees_empty
+    COMMAND simc_compare --a ${R}/acc_phsp_K2_A --b ${_K2C}/cpp_acc_phsp_K2_A.summary.json
+            --label-a F_K2_A --label-b cpp_K2_A --out ${T}/both_trees_empty --config ${CFG} --no-pdf --expect PASS)
+endif()
+# P7.4: a Fortran tree with a NaN event (K2 norad, D-028 F2): reported, excluded, identical to itself
+if(EXISTS ${R}/eep_h_K2_norad_A/eep_h_K2_norad_A.hist)
+  add_test(NAME compare_nan_event_AvsA
+    COMMAND simc_compare --a ${R}/eep_h_K2_norad_A/eep_h_K2_norad_A.hist --b ${R}/eep_h_K2_norad_A/eep_h_K2_norad_A.hist
+            --out ${T}/nan_AvsA --config ${CFG} --no-pdf --expect IDENTICAL)
+  add_test(NAME compare_nan_event_reported
+    COMMAND grep -q "non-finite tree events (excluded from the per-variable tests): A=1 \\[.*\\] B=1 \\["
+            ${T}/nan_AvsA/summary.txt)
+  set_tests_properties(compare_nan_event_reported PROPERTIES DEPENDS compare_nan_event_AvsA)
 endif()

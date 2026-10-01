@@ -49,7 +49,19 @@ Exit codes:
 * 2: usage or I/O error.
 
 `--perturb VAR:SHIFT` is a test option. It adds `SHIFT`, in branch units, to `VAR` in run B.
-For example, `hsdelta:0.1` is +0.1 % in HMS delta.
+For example, `hsdelta:0.1` is +0.1 % in HMS delta. `--empty-tree-b` (test option) drops every entry of
+the tree of run B.
+
+Empty trees and non-finite entries (P7.4):
+
+* both trees empty (for example Ncontribute = 0 in both runs): the per-variable tests are skipped
+  (status `empty`) with a warning; the run-level tests decide the verdict;
+* exactly one tree empty: a deterministic failure `tree entries (one tree is empty)` (verdict FAIL);
+  the per-variable tests are skipped;
+* NaN/inf entries: the info test `tree events with non-finite values` reports, per run, the number of
+  events with any non-finite compared branch (or weight) and the branches concerned; such entries are
+  excluded from the per-variable histograms and KS tests (one warning per variable). A variable that is
+  non-finite in every entry of both runs gets status `nonfinite` and no test.
 
 ### Configuration (`config/compare_default.json`, all keys optional)
 
