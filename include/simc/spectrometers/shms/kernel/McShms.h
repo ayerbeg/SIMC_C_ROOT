@@ -40,7 +40,7 @@
 //   * the hut's `spec` ntuple array is real*4 in mc_shms_hut but real*8 in mc_shms (type mismatch through the
 //     argument); it is never read or written out, so it has no observable effect and is not ported;
 //   * spectr = 6 (SHMS LSA) -> Fortran STOP, but the Fortran checks it only on the FIRST call; the port throws
-//     optics::FortranStop for spectr != 5 on every call (a later spectr = 6 call would use unloaded maps).
+//     simc::FortranStop for spectr != 5 on every call (a later spectr = 6 call would use unloaded maps).
 #ifndef SIMC_SPECTROMETERS_SHMS_KERNEL_MCSHMS_H
 #define SIMC_SPECTROMETERS_SHMS_KERNEL_MCSHMS_H
 

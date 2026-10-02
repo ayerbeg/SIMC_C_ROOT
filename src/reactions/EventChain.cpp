@@ -6,6 +6,7 @@
 #include <ostream>
 #include <stdexcept>
 
+#include "simc/core/Errors.h"
 #include "simc/core/SimcConstants.h"
 #include "simc/setup/KinematicsUtils.h"
 
@@ -43,7 +44,7 @@ bool completeMain(bool force_sigcc, MainEvent& main, const Event& vertex, const 
         f.doing_semi) {
         main.SF_weight = 1.0;
     } else {
-        throw std::invalid_argument("complete_main: spectral-function weight for D/A(e,e'p) not ported (P4.1)");
+        throw NotPorted("complete_main: spectral-function weight for D/A(e,e'p) not ported (P4.1)");
     }
     if (main.SF_weight <= 0 && !force_sigcc) return false;   // l.1436
 
@@ -56,7 +57,7 @@ bool completeMain(bool force_sigcc, MainEvent& main, const Event& vertex, const 
         main.sigcc = model.sigcc(vertex, main);
         main.sigcc_recon = model.sigccRecon(recon, main);
     } else {
-        throw std::invalid_argument("complete_main: pion/kaon/delta/rho/semi cross sections not ported (P4.1)");
+        throw NotPorted("complete_main: pion/kaon/delta/rho/semi cross sections not ported (P4.1)");
     }
 
     // Coulomb focusing factor (l.1533-1535)

@@ -28,15 +28,11 @@
 #include <string>
 
 #include "simc/core/RunSetup.h"
+#include "simc/core/Errors.h"
 
 namespace simc {
 namespace radiation {
 
-/// A Fortran STOP inside the radiation code (radc.f:215, 697; init.f:628).
-class FortranStop : public std::runtime_error {
-public:
-    explicit FortranStop(const std::string& what) : std::runtime_error(what) {}
-};
 
 /// Fortran: brem.inc COMMON /bremcom/ (set by init.f:radc_init l.638-647).
 struct BremFlags {

@@ -6,6 +6,7 @@
 #include <iostream>
 #include <stdexcept>
 
+#include "simc/core/Errors.h"
 #include "simc/core/Event.h"
 #include "simc/core/Registry.h"
 #include "simc/core/SimcConstants.h"
@@ -34,10 +35,10 @@ void HydrogenElastic::init(const StageContext& ctx) {
     const ReactionFlags& f = ctx.setup.flags;
     if (f.doing_deuterium || f.doing_heavy || f.doing_pion || f.doing_kaon || f.doing_delta || f.doing_rho ||
         f.doing_semi)
-        throw std::invalid_argument("reaction '" + name_ +
+        throw NotPorted("reaction '" + name_ +
                                     "': only H(e,e'p) (doing_hyd_elast) and doing_phsp are ported (event.f, P4.1)");
     if (!f.doing_hyd_elast && !f.doing_phsp)
-        throw std::invalid_argument("reaction '" + name_ + "': the setup is neither doing_hyd_elast nor doing_phsp");
+        throw NotPorted("reaction '" + name_ + "': the setup is neither doing_hyd_elast nor doing_phsp");
     s_ = &ctx.setup;
     target_ = &ctx.requireTarget("reaction '" + name_ + "'");
     radiator_ = &ctx.requireRadiator("reaction '" + name_ + "'");
@@ -131,7 +132,7 @@ bool HydrogenElastic::completeEv(MainEvent& main, Event& vertex, IRandom& rng) {
     vertex.uq.z = (vertex.Ein - vertex.e.P * vertex.ue.z) / vertex.q;
     // FORTRAN-QUIRK(D-024): NaN (theta = 0, q = 0) does not trigger the STOP.
     if (std::fabs(sq(vertex.uq.x) + sq(vertex.uq.y) + sq(vertex.uq.z) - 1) > 0.01)
-        throw std::runtime_error("Error in q vector normalization (event.f:538-539)");
+        throw FortranStop("Error in q vector normalization (event.f:538-539)");
 
     if (f.doing_hyd_elast) {   // p = q (l.546-563)
         vertex.Em = 0.0;

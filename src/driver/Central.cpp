@@ -5,6 +5,8 @@
 #include <cmath>
 #include <stdexcept>
 
+#include "simc/core/Errors.h"
+
 namespace simc {
 namespace driver {
 
@@ -50,7 +52,7 @@ CentralResult calculateCentral(const RunSetup& s, IReaction& reaction, IRadiator
     vertex0.Em = s.targ.Mtar_struck + s.targ.Mrec - s.targ.M;
 
     // l.1240-1242
-    if (!reaction.completeRecon(vertex0)) throw std::runtime_error("COMPLETE_EV failed trying to complete a CENTRAL event!");
+    if (!reaction.completeRecon(vertex0)) throw FortranStop("COMPLETE_EV failed trying to complete a CENTRAL event! (simc.f:1240-1242)");
     central.Q2 = vertex0.Q2;
     central.q = vertex0.q;
     central.nu = vertex0.nu;

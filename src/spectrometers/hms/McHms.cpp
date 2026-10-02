@@ -93,7 +93,7 @@ void McHms::setLog(std::ostream* os) {
 void McHms::ensureForward() {
     if (eng_->hasForward(spectr)) return;
     const int n_classes = eng_->initForward(spectr, matrixDir_);
-    if (n_classes != 12) throw optics::FortranStop("MC_HMS, wrong number of transport classes");
+    if (n_classes != 12) throw simc::FortranStop("MC_HMS, wrong number of transport classes");
 }
 
 // Fortran: mc_hms_recon.f firsttime block

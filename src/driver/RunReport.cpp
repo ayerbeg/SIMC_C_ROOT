@@ -8,6 +8,7 @@
 #include <sstream>
 #include <stdexcept>
 
+#include "simc/core/Errors.h"
 #include "simc/core/SimcConstants.h"
 #include "simc/driver/FortranWriter.h"
 
@@ -89,7 +90,7 @@ void reactionLines(Out& o, const RunSetup& s) {
     const ReactionFlags& f = s.flags;
     const SimcParameters& p = s.params;
     const double A = s.targ.A;
-    auto stop = [](const std::string& m) { throw std::runtime_error(m); };
+    auto stop = [](const std::string& m) { throw FortranStop(m); };
     if (f.doing_eep) {
         if (f.doing_hyd_elast) o.list("              ****--------  H(e,e'p)  --------****");
         else if (f.doing_deuterium) o.list("              ****--------  D(e,e'p)  --------****");

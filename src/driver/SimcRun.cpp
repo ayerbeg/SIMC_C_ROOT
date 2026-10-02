@@ -8,6 +8,7 @@
 #include <sstream>
 #include <stdexcept>
 
+#include "simc/core/Errors.h"
 #include "simc/core/Registry.h"
 #include "simc/core/random/Mt64Random.h"
 #include "simc/driver/FortranWriter.h"
@@ -71,7 +72,7 @@ void SimcRun::initialise() {
     if (!setup_.ok()) {
         std::string all;
         for (const auto& s : setup_.stops) all += (all.empty() ? "" : "; ") + s;
-        throw std::runtime_error("Fortran STOP during the setup: " + all);
+        throw FortranStop("Fortran STOP during the setup: " + all);
     }
     setup_.run_name = opt_.run_name;
     setup_.output_dir = opt_.output_dir;

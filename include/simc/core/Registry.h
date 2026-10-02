@@ -70,7 +70,7 @@ private:
 #define SIMC_REGISTER(Iface, Name, Class)                                                      \
     namespace {                                                                                \
     const bool SIMC_REGISTRY_CONCAT(simc_registered_, __LINE__) =                              \
-        ::simc::Registry<Iface>::add(Name, [] { return std::unique_ptr<Iface>(new Class()); }); \
+        ::simc::Registry<Iface>::add(Name, [] { return std::unique_ptr<Iface>(std::make_unique<Class>()); }); \
     }
 
 #endif  // SIMC_CORE_REGISTRY_H

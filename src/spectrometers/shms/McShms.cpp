@@ -109,11 +109,11 @@ void McShms::setLog(std::ostream* os) {
 void McShms::ensureForward(int spectr) {
     if (spectr != 5) {
         if (log_) *log_ << " LSA tune no longer in use!\n";
-        throw optics::FortranStop("mc_shms: spectr = " + std::to_string(spectr) + " (LSA tune no longer in use!)");
+        throw simc::FortranStop("mc_shms: spectr = " + std::to_string(spectr) + " (LSA tune no longer in use!)");
     }
     if (eng_->hasForward(spectr)) return;
     const int n_classes = eng_->initForward(spectr, matrixDir_);
-    if (n_classes != 32) throw optics::FortranStop("Bender-SHMS, wrong number of transport classes");
+    if (n_classes != 32) throw simc::FortranStop("Bender-SHMS, wrong number of transport classes");
 }
 
 // Fortran: mc_shms_recon.f firsttime block

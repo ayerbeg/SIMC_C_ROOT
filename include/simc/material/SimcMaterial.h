@@ -16,7 +16,7 @@
 //   FORTRAN-QUIRK(D-012 F3): Eloss > KE is clipped to KE - 1e-7 with a warning printed only the
 //   first 10 times (numerr is a DATA variable counting over the whole process).
 //   FORTRAN-QUIRK(D-012 F2): x == 0 (gauss1 returned 0) gives lambda = 1e5 instead of -2 ln 0.
-// Fortran STOP (musc_ext with x_len <= 0 or rad_len < 0) -> throws simc::material::FortranStop.
+// Fortran STOP (musc_ext with x_len <= 0 or rad_len < 0) -> throws simc::FortranStop.
 #ifndef SIMC_MATERIAL_SIMCMATERIAL_H
 #define SIMC_MATERIAL_SIMCMATERIAL_H
 
@@ -25,15 +25,11 @@
 #include <string>
 
 #include "simc/stages/IMaterialModel.h"
+#include "simc/core/Errors.h"
 
 namespace simc {
 namespace material {
 
-/// A Fortran STOP statement reached in a ported routine.
-class FortranStop : public std::runtime_error {
-public:
-    using std::runtime_error::runtime_error;
-};
 
 /// Gaussian truncations (Fortran PARAMETERs / literals).
 constexpr double kEnerlossNsig = 10.0e0;   ///< enerloss_new.f: gauss1(10.0e0)

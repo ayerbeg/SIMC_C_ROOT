@@ -336,7 +336,7 @@ int runSelftest() {
         bool thr = false;
         try {
             sp.mcShms(a, rng);
-        } catch (const optics::FortranStop&) {
+        } catch (const simc::FortranStop&) {
             thr = true;
         }
         expect(thr, "spectr = 6 (LSA) -> FortranStop");

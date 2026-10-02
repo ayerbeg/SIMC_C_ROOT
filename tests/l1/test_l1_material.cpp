@@ -566,12 +566,12 @@ int runSelftest() {
         bool t1 = false, t2 = false;
         try {
             m.muscExt(0.26, 1000., 0.01, 0.0, a, b, c, d, s);
-        } catch (const material::FortranStop&) {
+        } catch (const simc::FortranStop&) {
             t1 = true;
         }
         try {
             m.muscExt(0.26, 1000., -0.01, 1.0, a, b, c, d, s);
-        } catch (const material::FortranStop&) {
+        } catch (const simc::FortranStop&) {
             t2 = true;
         }
         expect(t1 && t2, "musc_ext STOP (x_len<=0, rad_len<0) -> FortranStop");
@@ -630,7 +630,7 @@ int runSelftest() {
         bool thc = false;
         try {
             T->configure(Json::object(), p);
-        } catch (const material::FortranStop&) {
+        } catch (const simc::FortranStop&) {
             thc = true;
         }
         expect(thc, "liquid target with can 4 -> FortranStop (dbase.f:461)");

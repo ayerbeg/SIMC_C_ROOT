@@ -17,9 +17,9 @@
 // earlier tries; main.ntup.resfac is reset here (simc.f:1352) and must also be reset by the loop (simc.f:178).
 // main.ntup.decdist / Mh2_final are set from the hadron arm (the loop resets them per event, simc.f:174-177).
 //
-// Not ported (throw simc::driver::NotPorted): SOS / HRS arms (codes 2-4, task P14), the calorimeter arms 7/8
+// Not ported (throw simc::NotPorted): SOS / HRS arms (codes 2-4, task P14), the calorimeter arms 7/8
 // (mc_calo), the polarized-target field (using_tgt_field: track_from_tgt / track_to_tgt). Arm code 6 (SHMS LSA)
-// reaches mc_shms, which STOPs (optics::FortranStop).
+// reaches mc_shms, which STOPs (simc::FortranStop).
 //
 // FORTRAN-QUIRKs reproduced:
 //   * the electron-arm resmult goes through the SAVEd local tmpfact (simc.f:1334): if the electron-arm MC stops
@@ -42,6 +42,7 @@
 #include "simc/core/RunSetup.h"
 #include "simc/stages/ISpectrometer.h"
 #include "simc/stages/ITarget.h"
+#include "simc/core/Errors.h"
 
 namespace simc {
 
@@ -49,11 +50,6 @@ class IRandom;
 
 namespace driver {
 
-/// A feature that the Fortran supports but that is not ported yet.
-class NotPorted : public std::runtime_error {
-public:
-    using std::runtime_error::runtime_error;
-};
 
 /// Diagnostics of one montecarlo call.
 struct MonteCarloInfo {

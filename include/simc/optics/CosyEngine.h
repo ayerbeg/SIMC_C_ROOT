@@ -24,6 +24,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include "simc/core/Errors.h"
 
 namespace simc {
 
@@ -31,11 +32,6 @@ class IRandom;
 
 namespace optics {
 
-/// A Fortran STOP statement reached in a ported optics routine.
-class FortranStop : public std::runtime_error {
-public:
-    using std::runtime_error::runtime_error;
-};
 
 /// Fortran: COMMON /track/ (spectrometers.inc l.23-25): the ray carried through transp/project/rotate/recon.
 struct Track {
