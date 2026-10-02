@@ -102,6 +102,19 @@ add_subdirectory(src/radiation)           # IRadiator "simc_rad": radc.f, brem.f
 add_subdirectory(src/reactions)           # IBeam "standard", IReaction "hydrogen_elastic"/"phase_space": event.f (P4.1)
 add_subdirectory(src/driver)              # simc.f: montecarlo (P7.1), main loop + normalisation (P7.2)
 
+# Example plug-ins (docs/EXTENDING.md): built as OBJECT libraries and linked into simc++ so that they can be selected
+# from the JSON pipeline. Each example adds its target to SIMC_EXAMPLE_PLUGINS.
+option(SIMC_BUILD_EXAMPLES "Build the example plug-ins (examples/) into simc++" ON)
+set(SIMC_EXAMPLE_PLUGINS "")
+if(SIMC_BUILD_EXAMPLES)
+    add_subdirectory(examples)
+endif()
+
+# The command line `simc++` (tools/simc_main.cpp): the full framework + the example plug-ins.
+add_executable(simcpp ${CMAKE_SOURCE_DIR}/tools/simc_main.cpp)
+target_link_libraries(simcpp PRIVATE ${SIMC_DRIVER_LIBS} ${SIMC_EXAMPLE_PLUGINS})
+set_target_properties(simcpp PROPERTIES OUTPUT_NAME "simc++" RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
 add_subdirectory(tests/unit)
 add_subdirectory(tests/l1)
 add_subdirectory(tests/regression)

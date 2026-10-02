@@ -572,6 +572,11 @@ long cnt(const RunReport& r, const std::string& spec, const std::string& key) {
         }
     throw std::runtime_error("FormatGeni: no stop counters for " + spec);
 }
+bool has(const RunReport& r, const std::string& spec) {
+    for (const auto& sc : r.stops)
+        if (sc.spectrometer == spec) return true;
+    return false;
+}
 }  // namespace
 
 // Fortran: simc.f l.462-532
@@ -583,7 +588,9 @@ std::string FormatGeni(const RunSetup& s, const RunReport& r) {
         for (const char* k : keys) x.listInt(cnt(r, spec, k));
         o.line(x);
     };
-    if (ea == 1 || ha == 1) {
+    // The Fortran blocks (by arm code) are written for the Fortran spectrometers; an arm served by another ISpectrometer
+    // plug-in (e.g. examples/ideal_box) gets a generic block at the end (P7.4).
+    if ((ea == 1 || ha == 1) && has(r, "hms")) {
         row("HMS Trials:           ", "hms", {"trials"});
         row("Slit hor/vert/corners ", "hms", {"slit_hor", "slit_vert", "slit_oct"});
         row("Q1 entrance/mid/exit  ", "hms", {"Q1_in", "Q1_mid", "Q1_out"});
@@ -595,9 +602,7 @@ std::string FormatGeni(const RunSetup& s, const RunReport& r) {
         row("Successes             ", "hms", {"successes"});
         o.line("");
     }
-    if (ea == 2 || ha == 2 || ea == 3 || ha == 3 || ea == 4 || ha == 4)
-        throw std::runtime_error("FormatGeni: SOS/HRS stop counters are not ported (P14)");
-    if (ea == 5 || ha == 5 || ea == 6 || ha == 6) {
+    if ((ea == 5 || ha == 5 || ea == 6 || ha == 6) && has(r, "shms")) {
         row("SHMS Trials:          ", "shms", {"trials"});
         row("HB phys entrance/mag entr/mag exit/phys exit  ", "shms", {"hb_in", "hb_men", "hb_mex", "hb_out"});
         row("Slit hor/vert/corners ", "shms", {"slit_hor", "slit_vert", "slit_oct"});
@@ -615,8 +620,18 @@ std::string FormatGeni(const RunSetup& s, const RunReport& r) {
         row("Successes             ", "shms", {"successes"});
         o.line("");
     }
-    if (ea == 7 || ha == 7 || ea == 8 || ha == 8)
-        throw std::runtime_error("FormatGeni: calorimeter stop counters are not ported");
+    // SOS/HRS/calorimeter arms (codes 2-4, 7, 8) have no Fortran-format block yet (P14); without a plug-in they are
+    // refused at initialise (MonteCarlo::DefaultArm). Every non-Fortran spectrometer: one "key value" line per counter.
+    for (const auto& sc : r.stops) {
+        if (sc.spectrometer == "hms" || sc.spectrometer == "shms") continue;
+        o.list(sc.spectrometer + " stop counters (" + sc.role + " arm, SIMC++ plug-in):");
+        for (const auto& kv : sc.counts) {
+            Record x = List(" " + kv.first);
+            x.listInt(kv.second);
+            o.line(x);
+        }
+        o.line("");
+    }
     return o.str();
 }
 

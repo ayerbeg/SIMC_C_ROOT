@@ -28,8 +28,4 @@ target_compile_options(simcfw_driver_sinks PRIVATE -Wall -Wextra -pedantic)
 set(SIMC_DRIVER_LIBS simcfw_driver simcfw_driver_sinks simcfw_reactions simcfw_radiation simcfw_physics simcfw_root
     simcfw_hms simcfw_shms simcfw_optics simcfw_setup simcfw_material simcfw_kinematics simcfw_random simcfw
     CACHE INTERNAL "libraries of a complete SIMC++ run")
-
-# The command line `simc++` (tools/simc_main.cpp)
-add_executable(simcpp ${CMAKE_SOURCE_DIR}/tools/simc_main.cpp)
-target_link_libraries(simcpp PRIVATE ${SIMC_DRIVER_LIBS})
-set_target_properties(simcpp PROPERTIES OUTPUT_NAME "simc++" RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+# The command line simc++ is defined in the top-level CMakeLists.txt (it also links the example plug-ins).

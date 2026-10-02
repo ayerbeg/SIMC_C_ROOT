@@ -61,15 +61,18 @@ ISpectrometer* MonteCarlo::makeArm(int code, const ArmChoice& choice) {
     }
     if (choice.config.is_object())
         for (auto it = choice.config.begin(); it != choice.config.end(); ++it) cfg[it.key()] = it.value();
-    auto it = specs_.find(name);
-    if (it != specs_.end()) return it->second.get();   // both arms the same type: one COMMON block, one object
+    // Both arms with the same type AND the same config share one object: one Fortran COMMON block of counters (e.g.
+    // HMS for both arms). Different configs (e.g. two ideal_box arms with different acceptances) get two objects.
+    const std::string key = name + "\n" + cfg.dump();
+    auto it = specs_.find(key);
+    if (it != specs_.end()) return it->second.get();
     std::unique_ptr<ISpectrometer> s = Registry<ISpectrometer>::create(name);
     s->configure(cfg, setup_.params);
     StageContext ctx(setup_);
     ctx.target = &target_;
     s->init(ctx);
     ISpectrometer* raw = s.get();
-    specs_[name] = std::move(s);
+    specs_[key] = std::move(s);
     return raw;
 }
 

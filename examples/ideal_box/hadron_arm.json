@@ -1,0 +1,9 @@
+{
+  "_comment": "examples/ideal_box: the hadron arm is the ideal_box plug-in (perfect resolution, box acceptance). Use: simc++ <file.inp> --pipeline examples/ideal_box/hadron_arm.json",
+  "pipeline": {
+    "spectrometers": {
+      "hadron": {"type": "ideal_box", "delta_min": -8.0, "delta_max": 8.0,
+                 "xptar_min": -0.05, "xptar_max": 0.05, "yptar_min": -0.03, "yptar_max": 0.03}
+    }
+  }
+}

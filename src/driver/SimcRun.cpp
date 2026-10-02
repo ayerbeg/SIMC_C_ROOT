@@ -300,6 +300,10 @@ std::vector<StopCounters> SimcRun::collectStops() const {
     if (e != h) {
         StopCounters se;
         se.spectrometer = e->name();
+        if (se.spectrometer == sh.spectrometer) {   // two objects of one type (different configs): keep keys unique
+            v.front().spectrometer += "_hadron";
+            se.spectrometer += "_electron";
+        }
         se.role = "electron";
         se.counts = e->stopCounters();
         v.push_back(se);

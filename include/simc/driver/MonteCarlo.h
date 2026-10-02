@@ -75,7 +75,8 @@ public:
     /// Throws NotPorted for arms other than 1 (HMS) and 5/6 (SHMS), or for using_tgt_field.
     MonteCarlo(const RunSetup& setup, ITarget& target);
     /// P7.2 (additive): the same with the arm plug-ins chosen explicitly (e.g. from the JSON "pipeline").
-    /// Arms with the same type share one object (one Fortran COMMON block of counters), as above.
+    /// Arms with the same type and the same (merged) config share one object (one Fortran COMMON block of counters);
+    /// otherwise each arm has its own object (P7.4).
     MonteCarlo(const RunSetup& setup, ITarget& target, const ArmChoice& hadron, const ArmChoice& electron);
 
     /// Fortran: simc.f:montecarlo(orig,main,recon,success). Returns success.
@@ -94,7 +95,7 @@ private:
 
     const RunSetup& setup_;
     ITarget& target_;
-    std::map<std::string, std::unique_ptr<ISpectrometer>> specs_;   ///< owned, one per type (COMMON counters)
+    std::map<std::string, std::unique_ptr<ISpectrometer>> specs_;   ///< owned, one per (type, config): COMMON counters
     ISpectrometer* pArm_{nullptr};   ///< the hadron arm (points into specs_)
     ISpectrometer* eArm_{nullptr};   ///< the electron arm (may be the same object as pArm_)
     MonteCarloInfo info_;
