@@ -20,14 +20,27 @@ public:
     /// Energy-loss mode as in enerloss_new typeflag: 1 sample, 2 min, 3 max, 4 most probable.
     enum LossMode { kSample = 1, kMin = 2, kMax = 3, kMostProbable = 4 };
 
+    /// Material traversed along one path: energy loss (MeV) and thickness (radiation lengths).
+    struct Traversal {
+        double eloss{0};
+        double radlen{0};
+    };
+    /// Multiple-scattering angle kicks (rad) added to the slopes (Fortran target_musc dangles(1), dangles(2)).
+    struct ScatteringAngles {
+        double dyptar{0};
+        double dxptar{0};
+    };
+
     /// Generate the z position of the interaction (cm, including zoffset).
     virtual double generateZ(IRandom& rng) = 0;
-    /// Energy loss (MeV) and thickness in radiation lengths along the path of `arm`.
-    virtual void tripThruTarget(int arm, double zpos, double energy, double theta, double mass,
-                                LossMode mode, IRandom& rng, double& eloss, double& radlen) = 0;
-    /// Multiple-scattering angle offsets dangles[0..1] (rad) for momentum p (MeV/c).
-    virtual void multipleScattering(double p, double beta, double teff, double dangles[2],
-                                    IRandom& rng) = 0;
+    /// Path of `arm` from the vertex at `zpos` (cm, relative to the target centre) with total energy `energy` (MeV),
+    /// angle `theta` (rad) and mass `mass` (MeV). Fortran: trip_thru_target(narm, zpos, energy, theta, Eloss, radlen,
+    /// mass, typeflag).
+    virtual Traversal tripThruTarget(Arm arm, double zpos, double energy, double theta, double mass, LossMode mode,
+                                     IRandom& rng) = 0;
+    /// Multiple-scattering kicks for momentum p (MeV/c), velocity beta and thickness teff (radiation lengths).
+    /// Fortran: target_musc(p, beta, teff, dangles).
+    virtual ScatteringAngles multipleScattering(double p, double beta, double teff, IRandom& rng) = 0;
 };
 
 }  // namespace simc

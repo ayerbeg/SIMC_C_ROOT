@@ -1,7 +1,7 @@
-// src/radiation/Brem.cpp — see include/simc/radiation/Brem.h.
+// src/radiation/Brem.cpp — see include/simc/radiation/kernel/Brem.h.
 // Fortran: simc_gfortran/brem.f. Operation order follows the Fortran source (left-to-right evaluation,
 // parentheses kept); comments give the Fortran line numbers.
-#include "simc/radiation/Brem.h"
+#include "simc/radiation/kernel/Brem.h"
 
 #include <cmath>
 #include <ostream>

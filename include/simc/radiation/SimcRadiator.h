@@ -14,18 +14,23 @@
 #define SIMC_RADIATION_SIMCRADIATOR_H
 
 #include <iosfwd>
+#include <memory>
 #include <string>
 
-#include "simc/radiation/Radc.h"
-#include "simc/radiation/RadcState.h"
 #include "simc/stages/IRadiator.h"
 
 namespace simc {
 namespace radiation {
 
+struct RadcRun;     // kernel (kernel/RadcState.h): run constants of radc.inc
+struct RadcState;   // kernel (kernel/RadcState.h): /radccom/ + SAVEd locals
+
 class SimcRadiator : public IRadiator {
 public:
     SimcRadiator();
+    ~SimcRadiator() override;
+    SimcRadiator(const SimcRadiator&) = delete;
+    SimcRadiator& operator=(const SimcRadiator&) = delete;
 
     std::string name() const override { return "simc_rad"; }
     void configure(const Json& config, const SimcParameters& params) override;
@@ -43,18 +48,19 @@ public:
     std::array<double, 3> photonEnergies() const override;
     bool hadronRadiates() const override;
 
+    // ---- kernel access (L1 tests, diagnostics; include kernel/RadcState.h to use them) ------------------------
     /// Set the run constants directly (L1 tests, or a caller without a RunSetup).
-    void setRun(const RadcRun& run) { run_ = run; }
-    const RadcRun& run() const { return run_; }
+    void setRun(const RadcRun& run);
+    const RadcRun& run() const { return *run_; }
     /// The radiation COMMON of the current event (ntail, Egamma_used, rad_proton_this_ev, hardcorfac, frac, ...).
-    RadcState& state() { return st_; }
-    const RadcState& state() const { return st_; }
+    RadcState& state() { return *st_; }
+    const RadcState& state() const { return *st_; }
     /// Where the Fortran write(6,*) messages go (nullptr = silent).
     void setLog(std::ostream* os) { log_ = os; }
 
 private:
-    RadcRun run_;
-    RadcState st_;
+    std::unique_ptr<RadcRun> run_;
+    std::unique_ptr<RadcState> st_;
     std::ostream* log_;
 };
 

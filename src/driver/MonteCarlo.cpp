@@ -107,13 +107,9 @@ bool MonteCarlo::run(const Event& orig, MainEvent& main, Event& recon, IRandom& 
     (void)frx;
 
     // Beam multiple scattering
-    double dang_in[2], dangles[2];
-    if (mc_smear) {
-        target_.multipleScattering(orig.Ein, beta_electron, main.target.teff[0], dang_in, rng);
-    } else {
-        dang_in[0] = 0.0;   // yp offset, goes directly to yp of both arms
-        dang_in[1] = 0.0;   // xp offset, mult. by cos_th for xp of both arms
-    }
+    // dang_in.dyptar: yp offset, goes directly to yp of both arms; dang_in.dxptar: xp offset, mult. by cos_th
+    ITarget::ScatteringAngles dang_in, dangles;   // 0 unless mc_smear
+    if (mc_smear) dang_in = target_.multipleScattering(orig.Ein, beta_electron, main.target.teff[0], rng);
 
     //____ P arm ________________
     if (S.sw.using_Eloss) {
@@ -125,13 +121,12 @@ bool MonteCarlo::run(const Event& orig, MainEvent& main, Event& recon, IRandom& 
     // ... multiple scattering
     if (mc_smear) {
         const double beta = orig.p.P / orig.p.E;
-        target_.multipleScattering(orig.p.P, beta, main.target.teff[2], dangles, rng);
+        dangles = target_.multipleScattering(orig.p.P, beta, main.target.teff[2], rng);
     } else {
-        dangles[0] = 0.0;
-        dangles[1] = 0.0;
+        dangles = ITarget::ScatteringAngles{};
     }
-    main.SP.p.yptar = orig.p.yptar + dangles[0] + dang_in[0];
-    main.SP.p.xptar = orig.p.xptar + dangles[1] + dang_in[1] * sp.cos_th;
+    main.SP.p.yptar = orig.p.yptar + dangles.dyptar + dang_in.dyptar;
+    main.SP.p.xptar = orig.p.xptar + dangles.dxptar + dang_in.dxptar * sp.cos_th;
 
     if (S.sw.using_P_arm_montecarlo) {
         // ... change to P arm spectrometer coordinates (TRANSPORT system)
@@ -175,8 +170,8 @@ bool MonteCarlo::run(const Event& orig, MainEvent& main, Event& recon, IRandom& 
         info_.p_called = true;
         const SpecResult r = pArm_->transport(in, rng);
         // the resmult argument IS ntup%resfac: written only when the routine writes it
-        if (r.resmult_written) main.ntup.resfac = r.resmult;
-        main.ntup.decdist = r.decdist;
+        if (r.resolution_factor) main.ntup.resfac = *r.resolution_factor;
+        main.ntup.decdist = r.decay_distance;
         main.ntup.Mh2_final = r.Mh2_final;
         info_.p_stop = r.stop_reason;
         if (!r.ok) {
@@ -214,9 +209,9 @@ bool MonteCarlo::run(const Event& orig, MainEvent& main, Event& recon, IRandom& 
     }
     // ... correct for energy loss - use most probable (last flag = 4)
     if (S.sw.correct_Eloss) {
-        double eloss_P_arm, r;
-        target_.tripThruTarget(ITarget::kHadron, zero, recon.p.E, recon.p.theta, S.Mh, ITarget::kMostProbable, rng,
-                               eloss_P_arm, r);
+        const double eloss_P_arm =
+            target_.tripThruTarget(ITarget::kHadron, zero, recon.p.E, recon.p.theta, S.Mh, ITarget::kMostProbable, rng)
+                .eloss;
         recon.p.E = recon.p.E + eloss_P_arm;
         recon.p.E = std::max(recon.p.E, std::sqrt(S.Mh2 + 0.000001));
         recon.p.P = std::sqrt(recon.p.E * recon.p.E - S.Mh2);
@@ -225,13 +220,12 @@ bool MonteCarlo::run(const Event& orig, MainEvent& main, Event& recon, IRandom& 
     //___ E arm ______________
     main.SP.e.delta = 100 * (orig.e.E - main.target.Eloss[1] - main.target.Coulomb - se.P) / se.P;
     if (mc_smear) {
-        target_.multipleScattering(orig.e.P, beta_electron, main.target.teff[1], dangles, rng);
+        dangles = target_.multipleScattering(orig.e.P, beta_electron, main.target.teff[1], rng);
     } else {
-        dangles[0] = 0.0;
-        dangles[1] = 0.0;
+        dangles = ITarget::ScatteringAngles{};
     }
-    main.SP.e.yptar = orig.e.yptar + dangles[0] + dang_in[0];
-    main.SP.e.xptar = orig.e.xptar + dangles[1] + dang_in[1] * se.cos_th;
+    main.SP.e.yptar = orig.e.yptar + dangles.dyptar + dang_in.dyptar;
+    main.SP.e.xptar = orig.e.xptar + dangles.dxptar + dang_in.dxptar * se.cos_th;
 
     if (S.sw.using_E_arm_montecarlo) {
         if (std::fabs(std::cos(se.phi)) > 0.0001 && log_) {
@@ -271,7 +265,7 @@ bool MonteCarlo::run(const Event& orig, MainEvent& main, Event& recon, IRandom& 
         info_.e_called = true;
         const SpecResult r = eArm_->transport(in, rng);
         // FORTRAN-QUIRK: tmpfact is a SAVEd local, stale if the routine did not write it
-        if (r.resmult_written) tmpfact_ = r.resmult;
+        if (r.resolution_factor) tmpfact_ = *r.resolution_factor;
         main.ntup.resfac = main.ntup.resfac + tmpfact_;
         info_.e_stop = r.stop_reason;
         if (!r.ok) {
@@ -307,9 +301,10 @@ bool MonteCarlo::run(const Event& orig, MainEvent& main, Event& recon, IRandom& 
     }
     // ... correct for energy loss (Coulomb deceleration is not corrected, simc.f:1840-1842)
     if (S.sw.correct_Eloss) {
-        double eloss_E_arm, r;
-        target_.tripThruTarget(ITarget::kElectron, zero, recon.e.E, recon.e.theta, constants::Me,
-                               ITarget::kMostProbable, rng, eloss_E_arm, r);
+        const double eloss_E_arm = target_
+                                       .tripThruTarget(ITarget::kElectron, zero, recon.e.E, recon.e.theta,
+                                                       constants::Me, ITarget::kMostProbable, rng)
+                                       .eloss;
         recon.e.E = recon.e.E + eloss_E_arm;
     }
     // recon%e%E = recon%e%E (simc.f:1842, no-op)

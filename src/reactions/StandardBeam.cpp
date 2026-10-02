@@ -71,8 +71,11 @@ void StandardBeam::generate(MainEvent& main, Event& vertex, IRandom& rng) {
     main.target.rasterx = t5;
 
     // l.193-205
-    target_->tripThruTarget(ITarget::kBeam, main.target.z - zoffset_, Ebeam_, 0.0e0, constants::Me, ITarget::kSample,
-                            rng, main.target.Eloss[0], main.target.teff[0]);
+    const ITarget::Traversal tb =
+        target_->tripThruTarget(ITarget::kBeam, main.target.z - zoffset_, Ebeam_, 0.0e0, constants::Me, ITarget::kSample,
+                                rng);
+    main.target.Eloss[0] = tb.eloss;
+    main.target.teff[0] = tb.radlen;
     if (!using_Eloss_) main.target.Eloss[0] = 0.0;
     if (using_Coulomb_)
         main.target.Coulomb = Coulomb_constant_;

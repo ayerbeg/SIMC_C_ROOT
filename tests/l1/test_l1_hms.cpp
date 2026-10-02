@@ -11,7 +11,7 @@
 //                                 differs, the distributions must agree): stop fractions (two-sample binomial pulls),
 //                                 binned chi2 + binned KS against the 200-bin reference histograms, quantiles.
 //   selftest                    : lfit, hit_dipole, pion_coll_absorb, registry, collimator/decay smoke tests.
-// The COSY files come from HmsSpectrometer::defaultMatrixDir() (data/matrices/simc_fortran, md5-checked by
+// The COSY files come from McHms::defaultMatrixDir() (data/matrices/simc_fortran, md5-checked by
 // l1_optics_cosy_files). Exit: 0 pass, 1 fail, 77 table missing.
 #include <algorithm>
 #include <cmath>
@@ -31,10 +31,12 @@
 #include "simc/core/random/Mt64Random.h"
 #include "simc/core/random/ScriptedRandom.h"
 #include "simc/spectrometers/hms/HmsSpectrometer.h"
+#include "simc/spectrometers/hms/kernel/McHms.h"
 #include "simc/optics/Lfit.h"
 
 using namespace simc;
 using simc::hms::HmsSpectrometer;
+using simc::hms::McHms;
 using simc::hms::McHmsArgs;
 using simc::hms::McHmsDetail;
 using simcl1::ColumnSpec;
@@ -50,7 +52,8 @@ constexpr double kUnset = -999999.;          // drv_mc.f / drv_mcdist.f preset
 
 // ---------------------------------------------------------------------------------------------- mc / mc_smear
 int runMc(const std::string& dir, double tol) {
-    HmsSpectrometer hms;
+    HmsSpectrometer plugin;
+    McHms& hms = plugin.kernel();
     std::ostringstream log;
     hms.setLog(&log);
     ScriptedRandom rng(ScriptedRandom::GaussMode::Scripted);
@@ -159,7 +162,7 @@ int runMc(const std::string& dir, double tol) {
             okc = false;
         }
     }
-    const auto& m = hms.stopCounters();
+    const auto& m = plugin.stopCounters();
     if (m.size() != 22 || m.at("trials") != cn[hms::kTrials]) okc = false;
     if (!log.str().empty()) {
         std::printf("  unexpected messages:\n%s", log.str().c_str());
@@ -178,7 +181,7 @@ int runP12(const std::string& dir, double tol) {
         std::printf("p12: SKIP (%s)\n", err.c_str());
         return 77;
     }
-    HmsSpectrometer hms;
+    McHms hms;
     Mt64Random rng(12345);
     const char* cols[8] = {"hsdelta", "hsyptar", "hsxptar", "hsytar", "hsxfp", "hsxpfp", "hsyfp", "hsypfp"};
     std::vector<simcl1::ColumnResult> res(8);
@@ -252,7 +255,7 @@ int runDist(const std::string& refdir, const std::string& cfg, long nray, std::u
     const double p_spec = 3035.585, th = std::fabs(36.594) / kDegrad, m2 = kMp * kMp;
     const double dlo = -12., dhi = 12., ax = 0.09, ay = 0.05, xw = 0.1, yw = 1.0;
 
-    HmsSpectrometer hms;
+    McHms hms;
     Mt64Random rng(seed);
     std::map<std::string, std::vector<double>> v;
     std::map<simcl1::dist::CodeKey, long> ncode;
@@ -364,7 +367,7 @@ int runSelftest() {
                "transport(): central ray accepted, fp = 0, pathlen 2677.493 cm");
     }
     {   // collimator (using_HMScoll, pions): smoke test, no Fortran table yet
-        HmsSpectrometer h;
+        McHms h;
         std::ostringstream log;
         h.setLog(&log);
         Mt64Random rng(11);
@@ -388,7 +391,7 @@ int runSelftest() {
         expect(ok > 0 && coll > 0 && h.counters()[hms::kSlitHor] > 0, "collimator stepping runs (pions)");
     }
     {   // decay: pions with a short ctau decay (optics::project decay branch) and change m2
-        HmsSpectrometer h;
+        McHms h;
         Mt64Random rng(13);
         const double mpi2 = 139.57018 * 139.57018;
         long decayed = 0;

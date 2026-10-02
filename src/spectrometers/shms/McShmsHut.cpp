@@ -7,7 +7,7 @@
 
 #include "ShmsHutConstants.h"
 #include "simc/optics/Lfit.h"
-#include "simc/spectrometers/shms/ShmsSpectrometer.h"
+#include "simc/spectrometers/shms/kernel/McShms.h"
 #include "simc/stages/IRandom.h"
 
 namespace simc {
@@ -20,7 +20,7 @@ constexpr double nsig_max = 99.0e0;
 constexpr bool use_det_cut = true;   // mc_shms_hut.f:66
 }  // namespace
 
-int ShmsSpectrometer::mcShmsHut(optics::DecayState& d, McShmsArgs& a, double /*zinit (unused)*/, IRandom& rng,
+int McShms::mcShmsHut(optics::DecayState& d, McShmsArgs& a, double /*zinit (unused)*/, IRandom& rng,
                                 McShmsDetail& det) {
     optics::Track& t = track_;
     double& pathlen = a.pathlen;

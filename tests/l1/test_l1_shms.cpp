@@ -24,11 +24,13 @@
 #include "simc/core/random/Mt64Random.h"
 #include "simc/core/random/ScriptedRandom.h"
 #include "simc/spectrometers/shms/ShmsSpectrometer.h"
+#include "simc/spectrometers/shms/kernel/McShms.h"
 
 using namespace simc;
 using simc::shms::McShmsArgs;
 using simc::shms::McShmsDetail;
 using simc::shms::ShmsSpectrometer;
+using simc::shms::McShms;
 using simcl1::ColumnSpec;
 using simcl1::Outputs;
 using simcl1::Row;
@@ -45,7 +47,8 @@ std::string codeName(int c) { return c == 0 ? "success" : shms::counterName(c); 
 
 // ---------------------------------------------------------------------------------------------- mc / mc_smear
 int runMc(const std::string& dir, double tol) {
-    ShmsSpectrometer sp;
+    ShmsSpectrometer plugin;
+    McShms& sp = plugin.kernel();
     std::ostringstream log;
     sp.setLog(&log);
     ScriptedRandom rng(ScriptedRandom::GaussMode::Scripted);
@@ -154,7 +157,7 @@ int runMc(const std::string& dir, double tol) {
             okc = false;
         }
     }
-    const auto& m = sp.stopCounters();
+    const auto& m = plugin.stopCounters();
     if (m.size() != 52 || m.at("q2_mid_dup") != cn[shms::kQ2Mid] || m.count("stop_id")) okc = false;
     if (!log.str().empty()) {
         std::printf("  unexpected messages:\n%s", log.str().c_str());
@@ -173,7 +176,7 @@ int runP12(const std::string& dir, double tol) {
         std::printf("p12: SKIP (%s)\n", err.c_str());
         return 77;
     }
-    ShmsSpectrometer sp;
+    McShms sp;
     Mt64Random rng(12345);
     const char* cols[8] = {"ssdelta", "ssyptar", "ssxptar", "ssytar", "ssxfp", "ssxpfp", "ssyfp", "ssypfp"};
     std::vector<simcl1::ColumnResult> res(8);
@@ -245,7 +248,7 @@ int runDist(const std::string& refdir, const std::string& cfg, long nray, std::u
     // drv_mcdist.f source for spectr 5
     const double p_spec = 8360.989, th = std::fabs(12.5) / kDegrad, m2 = kMe2;
     const double dlo = -12., dhi = 25., ax = 0.06, ay = 0.04, xw = 0.1, yw = 1.0;
-    ShmsSpectrometer sp;
+    McShms sp;
     Mt64Random rng(seed);
     std::map<std::string, std::vector<double>> v;
     std::map<simcl1::dist::CodeKey, long> ncode;
@@ -317,12 +320,12 @@ int runSelftest() {
         SpecResult r = s->transport(in, rng);
         expect(r.ok && r.stop_reason.empty() && r.x_fp == 7.3325866460800171E-001 &&
                    r.dx_fp == 2.6422363589517772E-004 && r.pathlen == 2.1517928545169530E+003 &&
-                   r.delta_recon == 6.2609139619365581E-002 && r.resmult == 1.0 &&
+                   r.delta_recon == 6.2609139619365581E-002 && r.resolution_factor && *r.resolution_factor == 1.0 &&
                    s->stopCounters().at("successes") == 1 && s->stopCounters().at("q2_mid_dup") == 0,
                "transport(): mc_shms row 1 reproduced exactly (fp, pathlen, recon delta), keys");
     }
     {
-        ShmsSpectrometer sp;
+        McShms sp;
         std::ostringstream log;
         sp.setLog(&log);
         Mt64Random rng(1);
@@ -339,7 +342,7 @@ int runSelftest() {
         expect(thr, "spectr = 6 (LSA) -> FortranStop");
     }
     {   // collimator (using_SHMScoll, pions): smoke test, no Fortran table yet
-        ShmsSpectrometer sp;
+        McShms sp;
         std::ostringstream log;
         sp.setLog(&log);
         Mt64Random rng(11);
@@ -361,7 +364,7 @@ int runSelftest() {
         expect(ok > 0 && sp.counters()[shms::kColl] > 0, "collimator stepping runs (pions)");
     }
     {
-        ShmsSpectrometer sp;
+        McShms sp;
         Mt64Random rng(13);
         const double mpi2 = 139.57018 * 139.57018;
         long decayed = 0;

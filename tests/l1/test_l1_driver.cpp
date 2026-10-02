@@ -37,8 +37,9 @@
 #include "simc/input/InpReader.h"
 #include "simc/material/HallCCryoTarget.h"
 #include "simc/setup/SetupBuilder.h"
-#include "simc/spectrometers/hms/HmsSpectrometer.h"
+#include "simc/spectrometers/hms/kernel/McHms.h"
 #include "simc/spectrometers/shms/ShmsSpectrometer.h"
+#include "simc/spectrometers/shms/kernel/McShms.h"
 
 using namespace simc;
 
@@ -311,7 +312,7 @@ int replay(const std::string& capdir, const std::string& rundir, const std::stri
         check(c, "fail_arm", ok ? 0. : I.fail_arm, ok ? 0. : m("fail_arm"), nt);
         check(c, "hms_stop", I.p_called ? stopIndexHms(I.p_stop) : -9., m("hms_stop"), nt);
         check(c, "shms_stop", I.e_called ? stopIndexShms(I.e_stop) : -9., m("shms_stop"), nt);
-        check(c, "shms_stop_id", shmsArm ? shmsArm->stopId() : 0., m("shms_stop_id"), nt);
+        check(c, "shms_stop_id", shmsArm ? shmsArm->kernel().stopId() : 0., m("shms_stop_id"), nt);
         check(c, "n_unif", static_cast<double>(srng.nUniform()), m("n_unif"), nt);
         check(c, "n_gauss", static_cast<double>(srng.nGauss()), m("n_gauss"), nt);
         const double sp[8] = {main.SP.e.delta, main.SP.e.yptar, main.SP.e.xptar, main.SP.e.z,

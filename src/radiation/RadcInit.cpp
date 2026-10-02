@@ -3,8 +3,8 @@
 #include <ostream>
 
 #include "simc/core/SimcConstants.h"
-#include "simc/radiation/Brem.h"
-#include "simc/radiation/Radc.h"
+#include "simc/radiation/kernel/Brem.h"
+#include "simc/radiation/kernel/Radc.h"
 
 namespace simc {
 namespace radiation {

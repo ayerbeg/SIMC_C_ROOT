@@ -72,10 +72,10 @@ public:
 
     // ---- ITarget ---------------------------------------------------------------------------
     double generateZ(IRandom& rng) override;
-    void tripThruTarget(int arm, double zpos, double energy, double theta, double mass, LossMode mode,
-                        IRandom& rng, double& eloss, double& radlen) override;
-    /// target_musc (3.5 sigma): dangles[0..1] in rad.
-    void multipleScattering(double p, double beta, double teff, double dangles[2], IRandom& rng) override;
+    Traversal tripThruTarget(Arm arm, double zpos, double energy, double theta, double mass, LossMode mode,
+                             IRandom& rng) override;
+    /// target_musc (3.5 sigma).
+    ScatteringAngles multipleScattering(double p, double beta, double teff, IRandom& rng) override;
 
     // ---- ITargetLossProvider (the set-up's start-up losses; arms taken from the arguments) ---------------------
     /// Fortran: init.f:target_init on the RunSetup target description (copied in, results copied back).

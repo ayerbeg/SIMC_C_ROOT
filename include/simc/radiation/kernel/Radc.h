@@ -1,4 +1,5 @@
-// include/simc/radiation/Radc.h
+// include/simc/radiation/kernel/Radc.h
+// KERNEL header (not installed): included only by src/radiation, the radiation plug-in and the L1 tests.
 //
 // The SIMC radiative-correction routines as free functions (task P5.1), ported operation by operation:
 //
@@ -36,7 +37,7 @@
 #include <iosfwd>
 
 #include "simc/core/Event.h"
-#include "simc/radiation/RadcState.h"
+#include "simc/radiation/kernel/RadcState.h"
 #include "simc/stages/IRadiator.h"
 
 namespace simc {

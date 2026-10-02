@@ -2,7 +2,8 @@
 # shared COSY engine (simcfw_optics). OBJECT library so the SIMC_REGISTER registration is always linked.
 # Consumers must also link simcfw_optics and simcfw_material (object files of OBJECT libraries do not propagate).
 add_library(simcfw_hms OBJECT
-    HmsSpectrometer.cpp
+    HmsSpectrometer.cpp   # ISpectrometer "hms" plug-in
+    McHms.cpp             # kernel: mc_hms.f, hit_dipole
     McHmsColl.cpp
     McHmsHut.cpp
 )

@@ -6,7 +6,7 @@
 // expressions are folded in double, like the constexpr ones here.
 #include <cmath>
 
-#include "simc/spectrometers/hms/HmsSpectrometer.h"
+#include "simc/spectrometers/hms/kernel/McHms.h"
 #include "simc/optics/Lfit.h"
 #include "simc/stages/IRandom.h"
 
@@ -113,7 +113,7 @@ bool inHodo1(const optics::Track& t) {
 
 }  // namespace
 
-int HmsSpectrometer::mcHmsHut(optics::DecayState& d, McHmsArgs& a, double zinit, IRandom& rng, McHmsDetail& det) {
+int McHms::mcHmsHut(optics::DecayState& d, McHmsArgs& a, double zinit, IRandom& rng, McHmsDetail& det) {
     optics::Track& t = track_;
     double& pathlen = a.pathlen;
     // m2 = d.m2, p = d.ph (updated by project() on decay)

@@ -10,7 +10,6 @@
 
 #include "simc/core/SimcConstants.h"
 #include "simc/driver/FortranWriter.h"
-#include "simc/radiation/RadcState.h"
 
 namespace simc {
 namespace driver {
@@ -391,7 +390,6 @@ std::string FormatHist(const RunSetup& s, const RunReport& r) {
 
     // Radiative corrections (l.924-951)
     o.list("RADIATIVE CORRECTIONS:");
-    const radiation::RadcRun rr = radiation::RadcRun::FromSetup(s);
     if (!s.sw.using_rad) {
         Record x;
         x.x(1).a("using_rad", 14).lit("=").l(s.sw.using_rad, 3);
@@ -418,7 +416,7 @@ std::string FormatHist(const RunSetup& s, const RunReport& r) {
             x.x(1).a("intcor_mode", 14).lit("=").i(p.intcor_mode, 3);
             o.line(x);
         }
-        { Record x; x.x(1).a("dE_edge_test", 14).lit("=").f(rr.dE_edge_test, 11, 3); o.line(x); }
+        { Record x; x.x(1).a("dE_edge_test", 14).lit("=").f(s.params.dE_edge_test, 11, 3); o.line(x); }
         { Record x; x.x(1).a("Egamma_max", 14).lit("=").f(s.rad.Egamma_tot_max, 11, 3); o.line(x); }
         const CentralRad& cr = central.rad;
         o.list("Central Values:");
@@ -663,7 +661,7 @@ RunSummary MakeRunSummary(const RunSetup& s, const RunReport& r) {
         const CentralRad& cr = c.rad;
         x["radiative"] = {{"rad_flag", s.sw.rad_flag}, {"extrad_flag", s.sw.extrad_flag}, {"one_tail", s.params.one_tail},
                           {"intcor_mode", s.params.intcor_mode},
-                          {"dE_edge_test", radiation::RadcRun::FromSetup(s).dE_edge_test},
+                          {"dE_edge_test", s.params.dE_edge_test},
                           {"Egamma_max", s.rad.Egamma_tot_max},
                           {"central", {{"hardcorfac", cr.hardcorfac}, {"etatzai", cr.etatzai},
                                        {"frac", {cr.frac[0], cr.frac[1], cr.frac[2]}},

@@ -38,8 +38,8 @@ struct DummyBeam : IBeam {
 struct DummyTarget : ITarget {
     DUMMY_STAGE_BASICS("dummy")
     double generateZ(IRandom& r) override { return r.uniform(); }
-    void tripThruTarget(int, double, double, double, double, LossMode, IRandom&, double& e, double& t) override { e = t = 0; }
-    void multipleScattering(double, double, double, double d[2], IRandom&) override { d[0] = d[1] = 0; }
+    Traversal tripThruTarget(Arm, double, double, double, double, LossMode, IRandom&) override { return {}; }
+    ScatteringAngles multipleScattering(double, double, double, IRandom&) override { return {}; }
     void targetInit(const TargetInitArgs&, TargetInfo&, std::vector<std::string>&) override {}
     void extremeLosses(const ExtremeTripArgs&, TargetInfo&) override {}
 };

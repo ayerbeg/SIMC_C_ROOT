@@ -1,12 +1,14 @@
 // include/simc/stages/ISpectrometer.h
 // Single-arm spectrometer Monte Carlo: forward transport through apertures and magnets,
 // detector hut, reconstruction.
-// Fortran: hms/mc_hms.f, shms/mc_shms.f, sos/mc_sos.f, hrsr/, hrsl/, calo/ — the argument
-//          list of mc_hms (mc_hms.f l.1-4) is mirrored by SpecInput/SpecResult.
+// Fortran: hms/mc_hms.f, shms/mc_shms.f, sos/mc_sos.f, hrsr/, hrsl/, calo/ — the physics content of the mc_hms
+//          argument list (mc_hms.f l.1-4) is carried by SpecInput/SpecResult; the Fortran argument mirrors themselves
+//          (McHmsArgs, McShmsArgs) are private to the spectrometer kernels.
 #ifndef SIMC_STAGES_ISPECTROMETER_H
 #define SIMC_STAGES_ISPECTROMETER_H
 
 #include <map>
+#include <optional>
 #include <string>
 
 #include "simc/stages/IStage.h"
@@ -30,17 +32,18 @@ struct SpecInput {
 /// Output of the single-arm MC.
 struct SpecResult {
     bool ok{false};
-    std::string stop_reason;         ///< name of the aperture that stopped the track ("" if ok)
-    double x_fp{0}, dx_fp{0}, y_fp{0}, dy_fp{0};   ///< focal plane (cm, slopes)
-    double delta_recon{0}, dxdz_recon{0}, dydz_recon{0}, y_recon{0};  ///< reconstructed target
+    std::string stop_reason;         ///< name of the aperture/detector that stopped the track ("" if ok)
+    double x_fp{0}, dx_fp{0}, y_fp{0}, dy_fp{0};   ///< focal plane (cm, slopes); used when ok
+    double delta_recon{0}, dxdz_recon{0}, dydz_recon{0}, y_recon{0};  ///< reconstructed target (%, slopes, cm); when ok
     double pathlen{0};               ///< cm
-    double resmult{0};               ///< DC resolution factor (ntup%resfac)
-    double m2_final{0};              ///< mass squared after possible decay
-    // P7.1 (additive): what simc.f:montecarlo needs beyond the above.
-    bool resmult_written{false};     ///< the routine wrote its resmult argument (HMS/SHMS: the hut was reached);
-                                     ///< simc.f keeps a stale tmpfact for the electron arm otherwise
-    double decdist{0};               ///< COMMON decdist after the call (starts at 0, simc.f:177)
-    double Mh2_final{0};             ///< COMMON Mh2_final after the call (starts at in.m2, simc.f:174)
+    /// Resolution factor of the track reconstruction (ntup%resfac; HMS/SHMS: 1 or 2 from the wire chambers), if the
+    /// spectrometer determined one for this track (HMS/SHMS: the detector hut was reached). Empty otherwise: the
+    /// driver then leaves ntup%resfac unchanged for the hadron arm and re-uses the previous value for the electron arm
+    /// (FORTRAN-QUIRK simc.f:1334, SAVEd tmpfact).
+    std::optional<double> resolution_factor;
+    double m2_final{0};              ///< particle mass squared after a possible decay (MeV^2)
+    double decay_distance{0};        ///< decay distance (cm; Fortran COMMON decdist, 0 if no decay)
+    double Mh2_final{0};             ///< hadron mass squared after a possible decay (Fortran COMMON Mh2_final; = m2 if none)
 };
 
 class ISpectrometer : public IStage {

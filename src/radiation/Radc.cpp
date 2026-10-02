@@ -1,13 +1,13 @@
-// src/radiation/Radc.cpp — see include/simc/radiation/Radc.h.
+// src/radiation/Radc.cpp — see include/simc/radiation/kernel/Radc.h.
 // Fortran: simc_gfortran/radc.f. Operation order follows the Fortran source; comments give the line numbers.
-#include "simc/radiation/Radc.h"
+#include "simc/radiation/kernel/Radc.h"
 
 #include <algorithm>
 #include <cmath>
 #include <ostream>
 
 #include "simc/core/SimcConstants.h"
-#include "simc/radiation/Brem.h"
+#include "simc/radiation/kernel/Brem.h"
 #include "simc/stages/IRandom.h"
 
 namespace simc {

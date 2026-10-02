@@ -114,13 +114,17 @@ void HallCCryoTarget::init(const StageContext& ctx) {
 // Fortran: event.f:185  main%target%z = (0.5-grnd())*targ%length+targ%zoffset
 double HallCCryoTarget::generateZ(IRandom& rng) { return (0.5 - rng.uniform()) * targ_.length + targ_.zoffset; }
 
-void HallCCryoTarget::tripThruTarget(int arm, double zpos, double energy, double theta, double mass, LossMode mode,
-                                     IRandom& rng, double& eloss, double& radlen) {
-    trip(arm, zpos, energy, theta, eloss, radlen, mass, static_cast<int>(mode), rng);
+ITarget::Traversal HallCCryoTarget::tripThruTarget(Arm arm, double zpos, double energy, double theta, double mass,
+                                                   LossMode mode, IRandom& rng) {
+    Traversal t;
+    trip(static_cast<int>(arm), zpos, energy, theta, t.eloss, t.radlen, mass, static_cast<int>(mode), rng);
+    return t;
 }
 
-void HallCCryoTarget::multipleScattering(double p, double beta, double teff, double dangles[2], IRandom& rng) {
+ITarget::ScatteringAngles HallCCryoTarget::multipleScattering(double p, double beta, double teff, IRandom& rng) {
+    double dangles[2];
     targetMusc(p, beta, teff, dangles, rng);
+    return {dangles[0], dangles[1]};
 }
 
 // Fortran: target.f:trip_thru_target (l.1-306)
@@ -506,23 +510,6 @@ void HallCCryoTarget::targetInit(bool using_Eloss, bool using_Coulomb, double th
 
 // ---- ITargetLossProvider: the set-up's view (task P7.4; was setup/HallCTargetLosses, P2.2) ------------------------
 namespace {
-void copyIn(const simc::TargetInfo& t, TargetInfo& m) {
-    m.A = t.A; m.Z = t.Z; m.N = t.N;
-    m.mass_amu = t.mass_amu; m.M = t.M; m.mrec_amu = t.mrec_amu; m.Mrec = t.Mrec;
-    m.rho = t.rho; m.thick = t.thick; m.angle = t.angle; m.abundancy = t.abundancy; m.length = t.length;
-    m.zoffset = t.zoffset; m.X0 = t.X0; m.X0_cm = t.X0_cm; m.L1 = t.L1; m.L2 = t.L2;
-    m.fr1 = t.fr1; m.fr2 = t.fr2; m.xoffset = t.xoffset; m.yoffset = t.yoffset;
-    m.fr_pattern = t.fr_pattern; m.can = t.can;
-    for (int i = 0; i < 3; ++i) {
-        m.Eloss[i] = {t.Eloss[i].ave, t.Eloss[i].min, t.Eloss[i].max};
-        m.teff[i] = {t.teff[i].ave, t.teff[i].min, t.teff[i].max};
-        m.musc_max[i] = t.musc_max[i];
-    }
-    m.Coulomb = {t.Coulomb.ave, t.Coulomb.min, t.Coulomb.max};
-    m.Coulomb_constant = t.Coulomb_constant;
-    m.musc_nsig_max = t.musc_nsig_max;
-    m.Mtar_struck = t.Mtar_struck; m.Mrec_struck = t.Mrec_struck;
-}
 void splitLines(const std::string& text, std::vector<std::string>& out) {
     std::istringstream is(text);
     std::string l;
@@ -541,7 +528,7 @@ void HallCCryoTarget::targetInit(const TargetInitArgs& a, simc::TargetInfo& t, s
     std::ostringstream log;
     setArms(a.electron_arm, a.hadron_arm);
     setLog(&log);
-    copyIn(t, targ_);
+    targ_ = t;   // the set-up target description (same type since P7.4)
     targetInit(a.using_Eloss, a.using_Coulomb, a.the_cent, a.thp_cent, a.Pp_cent, a.Mh2, a.Ebeam, a.Pe_cent);
     t.L1 = targ_.L1;
     t.L2 = targ_.L2;
@@ -562,7 +549,7 @@ void HallCCryoTarget::extremeLosses(const ExtremeTripArgs& x, simc::TargetInfo& 
     std::ostream* const saved = log_;
     setArms(x.electron_arm, x.hadron_arm);
     setLog(nullptr);
-    copyIn(t, targ_);
+    targ_ = t;   // the set-up target description (same type since P7.4)
     extremeTripThruTarget(x.Ebeam, Limits{x.the.min, x.the.max}, Limits{x.thp.min, x.thp.max},
                           Limits{x.pe.min, x.pe.max}, Limits{x.pp.min, x.pp.max}, Limits{x.z.min, x.z.max}, x.m);
     for (int i = 0; i < 3; ++i) {

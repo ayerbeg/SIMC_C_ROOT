@@ -4,7 +4,8 @@
 # OBJECT library so the SIMC_REGISTER registration is always linked. Consumers must also link simcfw_hms,
 # simcfw_optics and simcfw_material (object files of OBJECT libraries do not propagate).
 add_library(simcfw_shms OBJECT
-    ShmsSpectrometer.cpp
+    ShmsSpectrometer.cpp  # ISpectrometer "shms" plug-in
+    McShms.cpp            # kernel: mc_shms.f
     McShmsColl.cpp
     McShmsHut.cpp
 )

@@ -180,10 +180,16 @@ bool HydrogenElastic::completeEv(MainEvent& main, Event& vertex, IRandom& rng) {
     main.jacobian = main.jacobian / (r * r * r);   // r**3 (powi: (r*r)*r)
 
     // l.1029-1040
-    target_->tripThruTarget(ITarget::kElectron, main.target.z - s.targ.zoffset, vertex.e.E, vertex.e.theta, Me,
-                            ITarget::kSample, rng, main.target.Eloss[1], main.target.teff[1]);
-    target_->tripThruTarget(ITarget::kHadron, main.target.z - s.targ.zoffset, vertex.p.E, vertex.p.theta, s.Mh,
-                            ITarget::kSample, rng, main.target.Eloss[2], main.target.teff[2]);
+    {
+        const ITarget::Traversal te = target_->tripThruTarget(ITarget::kElectron, main.target.z - s.targ.zoffset,
+                                                              vertex.e.E, vertex.e.theta, Me, ITarget::kSample, rng);
+        main.target.Eloss[1] = te.eloss;
+        main.target.teff[1] = te.radlen;
+        const ITarget::Traversal tp = target_->tripThruTarget(ITarget::kHadron, main.target.z - s.targ.zoffset,
+                                                              vertex.p.E, vertex.p.theta, s.Mh, ITarget::kSample, rng);
+        main.target.Eloss[2] = tp.eloss;
+        main.target.teff[2] = tp.radlen;
+    }
     if (!s.sw.using_Eloss) {
         main.target.Eloss[1] = 0.0;
         main.target.Eloss[2] = 0.0;

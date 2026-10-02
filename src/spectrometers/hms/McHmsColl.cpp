@@ -4,7 +4,7 @@
 // ray is outside the octagon opening. Only called by mc_hms when using_HMScoll and 100 < sqrt(m2) < 200 MeV.
 #include <cmath>
 
-#include "simc/spectrometers/hms/HmsSpectrometer.h"
+#include "simc/spectrometers/hms/kernel/McHms.h"
 #include "simc/stages/IRandom.h"
 
 namespace simc {
@@ -58,7 +58,7 @@ double pionCollAbsorb(double ppi, double thick) {
 
 // Fortran: hms/mc_hms_coll.f:mc_hms_coll(m2,p,p_spec,decay_flag,dflag,success,coll_flag,pathlen)
 // m2 = d.m2, p = d.ph (mc_hms's local p, modified in place). Returns `success`.
-bool HmsSpectrometer::mcHmsColl(optics::DecayState& d, double p_spec, double& pathlen, IRandom& rng) {
+bool McHms::mcHmsColl(optics::DecayState& d, double p_spec, double& pathlen, IRandom& rng) {
     constexpr double h_entr = 4.575;
     constexpr double v_entr = 11.646;
     constexpr double h_exit = 4.759;

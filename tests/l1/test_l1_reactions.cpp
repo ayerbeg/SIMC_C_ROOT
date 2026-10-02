@@ -35,6 +35,7 @@
 #include "simc/input/InpReader.h"
 #include "simc/material/HallCCryoTarget.h"
 #include "simc/radiation/SimcRadiator.h"
+#include "simc/radiation/kernel/RadcState.h"
 #include "simc/reactions/EventChain.h"
 #include "simc/reactions/HydrogenElastic.h"
 #include "simc/reactions/StandardBeam.h"

@@ -1,4 +1,5 @@
-// include/simc/radiation/Brem.h
+// include/simc/radiation/kernel/Brem.h
+// KERNEL header (not installed): included only by src/radiation, the radiation plug-in and the L1 tests.
 //
 // Exact soft-photon bremsstrahlung (brem.f), ported operation by operation (task P5.1).
 // All internal kinematics are in GeV, as in the Fortran; dbsoft is returned per MeV.
@@ -19,7 +20,7 @@
 
 #include <iosfwd>
 
-#include "simc/radiation/RadcState.h"
+#include "simc/radiation/kernel/RadcState.h"
 
 namespace simc {
 namespace radiation {

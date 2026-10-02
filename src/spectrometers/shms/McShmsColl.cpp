@@ -4,14 +4,14 @@
 // coll_radl = 0.42084 (HMS value scaled by 6.35/6.30). Hadronic absorption uses hms/pion_coll_absorb.f.
 #include <cmath>
 
-#include "simc/spectrometers/hms/HmsSpectrometer.h"   // hms::pionCollAbsorb
-#include "simc/spectrometers/shms/ShmsSpectrometer.h"
+#include "simc/spectrometers/hms/kernel/McHms.h"   // hms::pionCollAbsorb
+#include "simc/spectrometers/shms/kernel/McShms.h"
 #include "simc/stages/IRandom.h"
 
 namespace simc {
 namespace shms {
 
-bool ShmsSpectrometer::mcShmsColl(optics::DecayState& d, double p_spec, double& pathlen, IRandom& rng) {
+bool McShms::mcShmsColl(optics::DecayState& d, double p_spec, double& pathlen, IRandom& rng) {
     constexpr double h_entr = 8.50;
     constexpr double v_entr = 12.50;
     constexpr double h_exit = 8.65;

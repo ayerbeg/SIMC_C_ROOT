@@ -1,4 +1,5 @@
-// include/simc/radiation/RadcState.h
+// include/simc/radiation/kernel/RadcState.h
+// KERNEL header (not installed): included only by src/radiation, the radiation plug-in and the L1 tests.
 //
 // State of the SIMC radiative-correction chain (task P5.1).
 //
