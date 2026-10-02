@@ -1,6 +1,5 @@
-// include/simc/SimcConstants.h
-// Physical constants for SIMC Monte Carlo
-// All energies in MeV, distances in cm, angles in radians
+// include/simc/core/SimcConstants.h
+// Physical constants of SIMC (constants.inc). Units: simc/core/Units.h (MeV, cm, rad).
 
 #ifndef SIMC_CONSTANTS_H
 #define SIMC_CONSTANTS_H
@@ -54,15 +53,7 @@ constexpr double pi     = 3.141592653589793;
 constexpr double twopi  = 2.0 * pi;
 constexpr double degrad = 180.0 / pi;      ///< Degrees per radian (rad to deg)
 
-// ============================================================================
-// Unit Conversions
-// ============================================================================
-constexpr double GEV_TO_MEV = 1000.0;      ///< GeV to MeV conversion
-constexpr double MEV_TO_GEV = 0.001;       ///< MeV to GeV conversion
-constexpr double RAD_TO_MR  = 1000.0;      ///< Radians to milliradians
-constexpr double MR_TO_RAD  = 0.001;       ///< Milliradians to radians
-constexpr double RAD_TO_DEG = degrad;      ///< Radians to degrees
-constexpr double DEG_TO_RAD = pi / 180.0;  ///< Degrees to radians
+// Unit conversions: see simc/core/Units.h (the single unit convention of SIMC++).
 
 // ============================================================================
 // Resonance Widths (MeV)

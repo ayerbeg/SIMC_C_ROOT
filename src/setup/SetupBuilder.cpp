@@ -15,6 +15,7 @@
 
 #include "simc/core/SimcConstants.h"
 #include "simc/material/HallCCryoTarget.h"
+#include "simc/core/Units.h"
 
 namespace simc {
 
@@ -240,10 +241,10 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
 
     // ---- dbase.f:238-263 kinematics_main
     s.Ebeam = p.Ebeam;
-    s.dEbeam = p.Ebeam * p.dEbeam / 100.;
+    s.dEbeam = p.Ebeam * p.dEbeam / units::kPercent;
     auto arm = [&](const SimcParameters::Arm& a, SpecArm& o) {
         o.P = a.P;
-        o.theta = std::abs(a.theta) / K::degrad;
+        o.theta = std::abs(a.theta) / units::kDegPerRad;
         o.cos_th = std::cos(o.theta);
         o.sin_th = std::sin(o.theta);
         o.offset.x = a.offset.x;
@@ -384,11 +385,11 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
     }
 
     // ---- dbase.f:451-468 target geometry
-    t.thick = t.thick / 1000.;
+    t.thick = t.thick / units::kMgPerG;
     t.length = t.thick / t.rho;
-    t.angle = t.angle / K::degrad;
-    s.targ_Bangle = p.targ_Bangle / K::degrad;
-    s.targ_Bphi = p.targ_Bphi / K::degrad;
+    t.angle = t.angle / units::kDegPerRad;
+    s.targ_Bangle = p.targ_Bangle / units::kDegPerRad;
+    s.targ_Bphi = p.targ_Bphi / units::kDegPerRad;
     if (t.Z < 2.4) {   // liquid target
         if (std::abs(t.angle) > 0.0001) {
             t.angle = 0.0;
@@ -405,20 +406,20 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
     }
 
     // ---- dbase.f:472-475 offsets mrad -> rad
-    s.spec.e.offset.xptar = s.spec.e.offset.xptar / 1000.;
-    s.spec.e.offset.yptar = s.spec.e.offset.yptar / 1000.;
-    s.spec.p.offset.xptar = s.spec.p.offset.xptar / 1000.;
-    s.spec.p.offset.yptar = s.spec.p.offset.yptar / 1000.;
+    s.spec.e.offset.xptar = s.spec.e.offset.xptar / units::kMradPerRad;
+    s.spec.e.offset.yptar = s.spec.e.offset.yptar / units::kMradPerRad;
+    s.spec.p.offset.xptar = s.spec.p.offset.xptar / units::kMradPerRad;
+    s.spec.p.offset.yptar = s.spec.p.offset.yptar / units::kMradPerRad;
 
     // ---- dbase.f:479-488 SPedge (min_max_init ±1e10 defaults already in params)
     auto spedge = [](const SimcParameters::ArmEdge& in, ArmCuts& o) {
         o.delta.min = in.delta.min;
         o.delta.max = in.delta.max;
         if (o.delta.min <= -100.0) o.delta.min = -99.99;
-        o.yptar.min = in.yptar.min / 1000.;
-        o.yptar.max = in.yptar.max / 1000.;
-        o.xptar.min = in.xptar.min / 1000.;
-        o.xptar.max = in.xptar.max / 1000.;
+        o.yptar.min = in.yptar.min / units::kMradPerRad;
+        o.yptar.max = in.yptar.max / units::kMradPerRad;
+        o.xptar.min = in.xptar.min / units::kMradPerRad;
+        o.xptar.max = in.xptar.max / units::kMradPerRad;
     };
     spedge(p.SPedge.e, s.SPedge.e);
     spedge(p.SPedge.p, s.SPedge.p);
@@ -440,14 +441,14 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
     GenLimits& gen = s.gen;
     gen.xwid = p.gen.xwid;
     gen.ywid = p.gen.ywid;
-    gen.e.yptar.min = gen.e.yptar.min / 1000.;
-    gen.e.yptar.max = gen.e.yptar.max / 1000.;
-    gen.p.yptar.min = gen.p.yptar.min / 1000.;
-    gen.p.yptar.max = gen.p.yptar.max / 1000.;
-    gen.e.xptar.min = gen.e.xptar.min / 1000.;
-    gen.e.xptar.max = gen.e.xptar.max / 1000.;
-    gen.p.xptar.min = gen.p.xptar.min / 1000.;
-    gen.p.xptar.max = gen.p.xptar.max / 1000.;
+    gen.e.yptar.min = gen.e.yptar.min / units::kMradPerRad;
+    gen.e.yptar.max = gen.e.yptar.max / units::kMradPerRad;
+    gen.p.yptar.min = gen.p.yptar.min / units::kMradPerRad;
+    gen.p.yptar.max = gen.p.yptar.max / units::kMradPerRad;
+    gen.e.xptar.min = gen.e.xptar.min / units::kMradPerRad;
+    gen.e.xptar.max = gen.e.xptar.max / units::kMradPerRad;
+    gen.p.xptar.min = gen.p.xptar.min / units::kMradPerRad;
+    gen.p.xptar.max = gen.p.xptar.max / units::kMradPerRad;
 
     // ---- dbase.f:531-547 flags
     sw.using_E_arm_montecarlo = p.spect_mode != 1 && p.spect_mode != -1;

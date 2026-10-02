@@ -1,6 +1,7 @@
 // src/output/NtupleLayout.cpp
 // Fortran: NtupleInit.f, results_write.f:results_ntu_write (l.1-271).
 #include "simc/output/NtupleLayout.h"
+#include "simc/core/Units.h"
 
 #include <cmath>
 
@@ -114,24 +115,24 @@ bool FillEepNtuple(const RunSetup& s, const MainEvent& main, const Event& /*vert
         fillArm(0, recon.p, main.FP.p, orig.p, main.target.z * s.p_sin_th);
         fillArm(12, recon.e, main.FP.e, orig.e, -main.target.z * s.e_sin_th);
     }
-    ntu[24] = recon.q / 1000.;
-    ntu[25] = recon.nu / 1000.;
+    ntu[24] = recon.q / units::kMeVPerGeV;
+    ntu[25] = recon.nu / units::kMeVPerGeV;
     ntu[26] = recon.Q2 / 1.e6;
-    ntu[27] = recon.W / 1000.;
+    ntu[27] = recon.W / units::kMeVPerGeV;
     ntu[28] = recon.epsilon;
-    ntu[29] = recon.Em / 1000.;
-    ntu[30] = recon.Pm / 1000.;
+    ntu[29] = recon.Em / units::kMeVPerGeV;
+    ntu[30] = recon.Pm / units::kMeVPerGeV;
     ntu[31] = recon.theta_pq;
     ntu[32] = recon.phi_pq;
-    ntu[33] = corrsing / 1000.;
-    ntu[34] = Pm_Heepx / 1000.;
-    ntu[35] = Pm_Heepy / 1000.;
-    ntu[36] = Pm_Heepz / 1000.;
-    ntu[37] = recon.PmPar / 1000.;
-    ntu[38] = recon.PmPer / 1000.;
-    ntu[39] = recon.PmOop / 1000.;
+    ntu[33] = corrsing / units::kMeVPerGeV;
+    ntu[34] = Pm_Heepx / units::kMeVPerGeV;
+    ntu[35] = Pm_Heepy / units::kMeVPerGeV;
+    ntu[36] = Pm_Heepz / units::kMeVPerGeV;
+    ntu[37] = recon.PmPar / units::kMeVPerGeV;
+    ntu[38] = recon.PmPer / units::kMeVPerGeV;
+    ntu[39] = recon.PmOop / units::kMeVPerGeV;
     ntu[40] = -main.target.rastery;
-    ntu[41] = main.ntup.radphot / 1000.;
+    ntu[41] = main.ntup.radphot / units::kMeVPerGeV;
     ntu[42] = main.sigcc;
     ntu[43] = main.weight;
     ntu[44] = recon.e.theta;

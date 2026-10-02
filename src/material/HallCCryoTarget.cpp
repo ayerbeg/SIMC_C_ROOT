@@ -16,6 +16,7 @@
 #include "simc/material/MaterialConstants.h"
 #include "simc/material/SimcMaterial.h"
 #include "simc/stages/IRandom.h"
+#include "simc/core/Units.h"
 
 namespace simc {
 namespace material {
@@ -62,9 +63,9 @@ void HallCCryoTarget::configure(const Json& config, const SimcParameters& params
     targ_.zoffset = t.zoffset;
     targ_.abundancy = t.abundancy;
     targ_.can = t.can;
-    targ_.thick = t.thick / 1000.;                       // dbase.f:451 mg/cm2 -> g/cm2
+    targ_.thick = t.thick / units::kMgPerG;                      // dbase.f:451 mg/cm2 -> g/cm2
     targ_.length = targ_.thick / targ_.rho;              // dbase.f:452
-    targ_.angle = t.angle / constants::degrad;           // dbase.f:453
+    targ_.angle = t.angle / units::kDegPerRad;           // dbase.f:453
     if (targ_.Z < 2.4) {                                 // liquid target (dbase.f:456-462)
         if (std::fabs(targ_.angle) > 0.0001) {
             targ_.angle = 0.0;
@@ -89,8 +90,8 @@ void HallCCryoTarget::configure(const Json& config, const SimcParameters& params
     init_.using_Eloss = params.using_Eloss;
     init_.using_Coulomb = params.using_Coulomb;
     if (std::lround(targ_.Z) == 1) init_.using_Coulomb = false;   // dbase.f:547
-    init_.the_cent = std::fabs(params.spec.e.theta) / constants::degrad;   // dbase.f:239
-    init_.thp_cent = std::fabs(params.spec.p.theta) / constants::degrad;   // dbase.f:242
+    init_.the_cent = std::fabs(params.spec.e.theta) / units::kDegPerRad;   // dbase.f:239
+    init_.thp_cent = std::fabs(params.spec.p.theta) / units::kDegPerRad;   // dbase.f:242
     init_.Pp_cent = params.spec.p.P;
     init_.Pe_cent = params.spec.e.P;
     init_.Ebeam = params.Ebeam;

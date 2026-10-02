@@ -9,6 +9,7 @@
 //   cuts%Em opened to +-1e6 (l.534-538), correct_Eloss forced off (l.542-545),
 //   using_Coulomb off for Z=1 (l.547), extrad_flag default (init.f:radc_init l.621-626).
 #include "simc/input/EffectiveValues.h"
+#include "simc/core/Units.h"
 
 #include <cmath>
 #include <cstdio>
@@ -79,7 +80,7 @@ std::vector<EffectiveRow> EffectiveValues(const SimcParameters& in) {
             r.units = "rad";
             r.rule = "dbase.f:239-244 abs()/degrad";
         } else if (n == "targ%thick") {
-            r.effective = num(p.targ.thick / 1000.0);
+            r.effective = num(p.targ.thick / units::kMgPerG);
             r.units = "g/cm^2";
             r.rule = "dbase.f:451 /1000";
         } else if (n == "targ%angle") {
@@ -97,7 +98,7 @@ std::vector<EffectiveRow> EffectiveValues(const SimcParameters& in) {
             r.rule = "dbase.f:454-455 /degrad";
         } else if (n.find("offset%xptar") != std::string::npos || n.find("offset%yptar") != std::string::npos) {
             const SimcParameters::Offset& o = (n[5] == 'e') ? p.spec.e.offset : p.spec.p.offset;
-            r.effective = num((n.find("xptar") != std::string::npos ? o.xptar : o.yptar) / 1000.0);
+            r.effective = num((n.find("xptar") != std::string::npos ? o.xptar : o.yptar) / units::kMradPerRad);
             r.units = "rad";
             r.rule = "dbase.f:472-475 /1000";
         } else if (n.rfind("SPedge%", 0) == 0) {
@@ -112,7 +113,7 @@ std::vector<EffectiveRow> EffectiveValues(const SimcParameters& in) {
                 r.effective = num(v);
             } else {
                 const ParamRange& rg = (n.find("yptar") != std::string::npos) ? a.yptar : a.xptar;
-                r.effective = num((is_min ? rg.min : rg.max) / 1000.0);
+                r.effective = num((is_min ? rg.min : rg.max) / units::kMradPerRad);
                 r.units = "rad";
                 r.rule = "dbase.f:481-488 /1000 (later widened by slop in init.f:limits_init)";
             }

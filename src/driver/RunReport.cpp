@@ -11,6 +11,7 @@
 #include "simc/core/Errors.h"
 #include "simc/core/SimcConstants.h"
 #include "simc/driver/FortranWriter.h"
+#include "simc/core/Units.h"
 
 namespace simc {
 namespace driver {
@@ -325,9 +326,9 @@ std::string FormatHist(const RunSetup& s, const RunReport& r) {
     o.line(targ3("teff_e", tg.teff[1], "radlen"));
     o.line(targ3("teff_p", tg.teff[2], "radlen"));
     o.line(targ1("musc_nsig_max", tg.musc_nsig_max, " "));
-    o.line(targ1("musc_max_beam", tg.musc_max[0] * 1000., "mr"));
-    o.line(targ1("musc_max_e", tg.musc_max[1] * 1000., "mr"));
-    o.line(targ1("musc_max_p", tg.musc_max[2] * 1000., "mr"));
+    o.line(targ1("musc_max_beam", tg.musc_max[0] * units::kMradPerRad, "mr"));
+    o.line(targ1("musc_max_e", tg.musc_max[1] * units::kMradPerRad, "mr"));
+    o.line(targ1("musc_max_p", tg.musc_max[2] * units::kMradPerRad, "mr"));
 
     // Flags (l.878-913). Values as the Fortran COMMON holds them after dbase.f.
     o.list("FLAGS:");
@@ -466,14 +467,14 @@ std::string FormatHist(const RunSetup& s, const RunReport& r) {
     o.list("RECON SUMMARY:            Ave.Error   Resolution");
     const TwoArmSums& ae = n.aveerr;
     const TwoArmSums& rs = n.resol;
-    o.line(recon("Electron arm: delta =", 10. * ae.e.delta, 10. * rs.e.delta, "x10^-3"));
-    o.line(recon("xptar =", 1000. * ae.e.xptar, 1000. * rs.e.xptar, "mr"));
-    o.line(recon("yptar =", 1000. * ae.e.yptar, 1000. * rs.e.yptar, "mr"));
-    o.line(recon("ytar  =", 10. * ae.e.ytar, 10. * rs.e.ytar, "mm"));
-    o.line(recon("Hadron arm:   delta =", 10. * ae.p.delta, 10. * rs.p.delta, "x10-3"));
-    o.line(recon("xptar =", 1000. * ae.p.xptar, 1000. * rs.p.xptar, "mr"));
-    o.line(recon("yptar =", 1000. * ae.p.yptar, 1000. * rs.p.yptar, "mr"));
-    o.line(recon("ytar  =", 10. * ae.p.ytar, 10. * rs.p.ytar, "mm"));
+    o.line(recon("Electron arm: delta =", units::kPermillePerPercent * ae.e.delta, units::kPermillePerPercent * rs.e.delta, "x10^-3"));
+    o.line(recon("xptar =", units::kMradPerRad * ae.e.xptar, units::kMradPerRad * rs.e.xptar, "mr"));
+    o.line(recon("yptar =", units::kMradPerRad * ae.e.yptar, units::kMradPerRad * rs.e.yptar, "mr"));
+    o.line(recon("ytar  =", units::kMmPerCm * ae.e.ytar, units::kMmPerCm * rs.e.ytar, "mm"));
+    o.line(recon("Hadron arm:   delta =", units::kPermillePerPercent * ae.p.delta, units::kPermillePerPercent * rs.p.delta, "x10-3"));
+    o.line(recon("xptar =", units::kMradPerRad * ae.p.xptar, units::kMradPerRad * rs.p.xptar, "mr"));
+    o.line(recon("yptar =", units::kMradPerRad * ae.p.yptar, units::kMradPerRad * rs.p.yptar, "mr"));
+    o.line(recon("ytar  =", units::kMmPerCm * ae.p.ytar, units::kMmPerCm * rs.p.ytar, "mm"));
 
     // Input spectrometer limits (l.991-1003)
     o.list("Input Spectrometer Limits:");
@@ -653,8 +654,8 @@ RunSummary MakeRunSummary(const RunSetup& s, const RunReport& r) {
                    {"rho", tg.rho}, {"thick_g_cm2", tg.thick}, {"angle_deg", tg.angle * degrad},
                    {"abundancy", tg.abundancy}, {"X0", tg.X0}, {"X0_cm", tg.X0_cm}, {"length", tg.length},
                    {"zoffset", tg.zoffset}, {"xoffset", tg.xoffset}, {"yoffset", tg.yoffset},
-                   {"musc_nsig_max", tg.musc_nsig_max}, {"musc_max_beam_mr", tg.musc_max[0] * 1000.},
-                   {"musc_max_e_mr", tg.musc_max[1] * 1000.}, {"musc_max_p_mr", tg.musc_max[2] * 1000.},
+                   {"musc_nsig_max", tg.musc_nsig_max}, {"musc_max_beam_mr", tg.musc_max[0] * units::kMradPerRad},
+                   {"musc_max_e_mr", tg.musc_max[1] * units::kMradPerRad}, {"musc_max_p_mr", tg.musc_max[2] * units::kMradPerRad},
                    {"losses", {{"Coulomb", tf(tg.Coulomb)}, {"Eloss_beam", tf(tg.Eloss[0])}, {"Eloss_e", tf(tg.Eloss[1])},
                                {"Eloss_p", tf(tg.Eloss[2])}, {"teff_beam", tf(tg.teff[0])}, {"teff_e", tf(tg.teff[1])},
                                {"teff_p", tf(tg.teff[2])}}}};
@@ -678,10 +679,10 @@ RunSummary MakeRunSummary(const RunSetup& s, const RunReport& r) {
     const TwoArmSums& ae = n.aveerr;
     const TwoArmSums& rs = n.resol;
     x["recon_summary"] = {
-        {"e", {{"delta", rec(10. * ae.e.delta, 10. * rs.e.delta, "x10^-3")}, {"xptar", rec(1000. * ae.e.xptar, 1000. * rs.e.xptar, "mr")},
-               {"yptar", rec(1000. * ae.e.yptar, 1000. * rs.e.yptar, "mr")}, {"ytar", rec(10. * ae.e.ytar, 10. * rs.e.ytar, "mm")}}},
-        {"p", {{"delta", rec(10. * ae.p.delta, 10. * rs.p.delta, "x10-3")}, {"xptar", rec(1000. * ae.p.xptar, 1000. * rs.p.xptar, "mr")},
-               {"yptar", rec(1000. * ae.p.yptar, 1000. * rs.p.yptar, "mr")}, {"ytar", rec(10. * ae.p.ytar, 10. * rs.p.ytar, "mm")}}}};
+        {"e", {{"delta", rec(units::kPermillePerPercent * ae.e.delta, units::kPermillePerPercent * rs.e.delta, "x10^-3")}, {"xptar", rec(units::kMradPerRad * ae.e.xptar, units::kMradPerRad * rs.e.xptar, "mr")},
+               {"yptar", rec(units::kMradPerRad * ae.e.yptar, units::kMradPerRad * rs.e.yptar, "mr")}, {"ytar", rec(units::kMmPerCm * ae.e.ytar, units::kMmPerCm * rs.e.ytar, "mm")}}},
+        {"p", {{"delta", rec(units::kPermillePerPercent * ae.p.delta, units::kPermillePerPercent * rs.p.delta, "x10-3")}, {"xptar", rec(units::kMradPerRad * ae.p.xptar, units::kMradPerRad * rs.p.xptar, "mr")},
+               {"yptar", rec(units::kMradPerRad * ae.p.yptar, units::kMradPerRad * rs.p.yptar, "mr")}, {"ytar", rec(units::kMmPerCm * ae.p.ytar, units::kMmPerCm * rs.p.ytar, "mm")}}}};
 
     // limits tables (labels as hist2json writes them: white space collapsed)
     const reactions::Contrib& cb = t.contrib;

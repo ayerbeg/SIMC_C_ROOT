@@ -1,6 +1,7 @@
 // src/output/SummaryJson.cpp
 // Fortran: simc.f:report (l.644-1142) for the .hist layout, simc.f l.462-532 for the .geni.
 #include "simc/output/SummaryJson.h"
+#include "simc/core/Units.h"
 
 #include <cmath>
 #include <cstdio>
@@ -190,7 +191,7 @@ Json BuildSummaryJson(const RunSetup& s, const RunSummary& r) {
                     {"offset_yptar_mr", a.offset.yptar}};
     };
     j["kinematics"] = {{"Ebeam", p.Ebeam},
-                       {"dE_over_E", p.dEbeam / 100.0},
+                       {"dE_over_E", p.dEbeam / units::kPercent},
                        {"x_width", p.gen.xwid},
                        {"y_width", p.gen.ywid},
                        {"fr_pattern", p.targ.fr_pattern},
@@ -214,8 +215,8 @@ Json BuildSummaryJson(const RunSetup& s, const RunSummary& r) {
         auto edge = [](const SimcParameters::ArmEdge& a) {
             const double dmin = a.delta.min <= -100.0 ? -99.99 : a.delta.min;   // dbase.f:479-480
             return Json{{"delta", {dmin, a.delta.max}},
-                        {"yptar", {a.yptar.min / 1000., a.yptar.max / 1000.}},
-                        {"xptar", {a.xptar.min / 1000., a.xptar.max / 1000.}}};
+                        {"yptar", {a.yptar.min / units::kMradPerRad, a.yptar.max / units::kMradPerRad}},
+                        {"xptar", {a.xptar.min / units::kMradPerRad, a.xptar.max / units::kMradPerRad}}};
         };
         j["spedge"] = {{"e", edge(p.SPedge.e)}, {"p", edge(p.SPedge.p)}};
         if (!r.extra.contains("spedge"))
