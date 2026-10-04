@@ -1,4 +1,4 @@
-# SIMC++ driver (task P7.2)
+# SIMC++ driver (task P7.2, updated in P7.4)
 
 The driver is the C++ counterpart of the `simc.f` main program (l.1-623): set-up, central event, event loop,
 normalisation and outputs. It is built from the validated stage components (P2-P7.1) and does not change their
@@ -32,12 +32,12 @@ simc++ <file.inp | file.json> [-o OUTDIR] [--seed N] [--ngen N] [--pipeline over
 ## 2. Design
 
 ```
-SimcParameters ──BuildRunSetup──> RunSetup (const for the stages, init.f/dbase.f)
+SimcParameters ──BuildRunSetup(target model's ITargetLossProvider)──> RunSetup (const for the stages, init.f/dbase.f)
 PipelineConfig::Defaults(setup) ⊕ JSON "pipeline"
 SimcRun owns (unique_ptr, created by name through Registry<I>):
    IRandom rng · ITarget target · IRadiator radiator · IBeam beam · IReaction reaction · IPhysicsModel model
    MonteCarlo (owns the ISpectrometer arms) · IOutputSink sinks[]
-wiring (explicit): beam→target, reaction→target+radiator, montecarlo→target
+wiring: StageContext{setup, target, radiator} at init() — interfaces only, no casts
 calculate_central → CentralResult {central, vertex0}
 loop: EventState ev (ONE object for the run) ──> stages ──> RunTotals
 finish: Normalise → RunReport → RunSummary → sinks (endRun; IReportSink::writeReport)
@@ -58,8 +58,15 @@ finish: Normalise → RunReport → RunSummary → sinks (endRun; IReportSink::w
   `sigep` (H) / `deforest` (D, A), `simc_rad` (radc_init_ev runs for every event, even without radiation), the arms
   from `electron_arm`/`hadron_arm` (`MonteCarlo::DefaultArm`), `root_tree` only if `Nntu > 0`.
   `simc++ --print-pipeline` shows the resolved pipeline.
-* **Wiring.** Collaborators are set explicitly by `SimcRun::initialise`. New plug-ins that need the target or the
-  radiator implement `driver::INeedsTarget` / `driver::INeedsRadiator`; the P4 classes are wired by type.
+* **Wiring (P7.4).** `SimcRun::initialise` creates the stages by name, initialises the target and the radiator
+  first and passes them to the other stages in the `StageContext` of `init()` (beam, reaction: `ctx.target`,
+  `ctx.radiator`; the spectrometers get the context from `MonteCarlo`). What the driver reads back from the radiator
+  (central%rad, Egamma_used, rad_proton_this_ev) goes through `IRadiator::currentValues()`, `photonEnergies()` and
+  `hadronRadiates()`. The set-up's start-up losses (target_init, extreme_trip_thru_target) come from a dedicated
+  instance of the pipeline target through `ITargetLossProvider`. The driver never casts a stage to a concrete class.
+* **Arms.** Two arms with the same type and the same merged config share one spectrometer object (one Fortran COMMON
+  block of counters, e.g. HMS for both arms); otherwise each arm has its own object.
+* **Quiet.** `--quiet` adds `"verbose": false` to every stage config (stage messages only).
 * **Per-event state.** `EventState {main, vertex, orig, recon, success, pass_cuts, ntried}` is a single object
   passed to every stage on every try. This is deliberate: the Fortran keeps stale values in these structures across
   tries (orig after a failed generate_rad, main.SP/RECON/FP after an early montecarlo return, ...; D-024) and some of
@@ -77,7 +84,7 @@ finish: Normalise → RunReport → RunSummary → sinks (endRun; IReportSink::w
 | simc.f | C++ |
 |---|---|
 | l.53-101 min_max_init, dbase_read, radc_init, targetfac, luminosity | `BuildRunSetup` (P2) in `SimcRun::initialise` |
-| l.85 calculate_central (l.1143-1309) | `driver::calculateCentral` (Central.h); central%rad from the SimcRadiator state |
+| l.85 calculate_central (l.1143-1309) | `driver::calculateCentral` (Central.h); central%rad = `IRadiator::currentValues()` |
 | l.105-110 sgrnd(random_seed) | the `rng` stage (`mt64`, seeded with random_seed) |
 | l.169-352 loop | `SimcRun::step` (one try) |
 | l.203 generate | `reactions::generateEvent(beam, reaction, ...)` |

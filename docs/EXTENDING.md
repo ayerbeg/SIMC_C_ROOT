@@ -29,9 +29,9 @@ so a plug-in must be compiled into an **OBJECT library** that the executable lin
 `examples/CMakeLists.txt` does it:
 
 ```cmake
-add_library(simc_example_ideal_box OBJECT ideal_box/IdealBoxSpectrometer.cpp)
-target_link_libraries(simc_example_ideal_box PUBLIC simcfw)
-list(APPEND SIMC_EXAMPLE_PLUGINS simc_example_ideal_box)
+add_library(simcfw_example_ideal_box OBJECT ideal_box/IdealBoxSpectrometer.cpp)
+target_link_libraries(simcfw_example_ideal_box PUBLIC simcfw)
+list(APPEND SIMC_EXAMPLE_PLUGINS simcfw_example_ideal_box)
 set(SIMC_EXAMPLE_PLUGINS ${SIMC_EXAMPLE_PLUGINS} PARENT_SCOPE)
 ```
 
