@@ -6,7 +6,7 @@
 #   l1_mc_dist_shms_{nosmear,smear} : 1e6 Mt64 rays vs the RANLUX mc_distributions (pulls, chi2, KS, quantiles)
 add_executable(test_l1_shms test_l1_shms.cpp)
 # simcfw_hms: hms::pionCollAbsorb (hms/pion_coll_absorb.f, called by mc_shms_coll)
-target_link_libraries(test_l1_shms PRIVATE simc_l1runner simcfw_shms simcfw_hms simcfw_optics simcfw_material)
+target_link_libraries(test_l1_shms PRIVATE simcfw_l1runner simcfw_shms simcfw_hms simcfw_optics simcfw_material)
 target_compile_options(test_l1_shms PRIVATE -O2)
 
 set(_fns ${SIMC_REFERENCE_DIR}/functions)

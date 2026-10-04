@@ -5,7 +5,7 @@
 #   l1_mc_p12_check_hms        : hs* predictions of chk_p12.f (eep_h_elastic_norad_A events)
 #   l1_mc_dist_hms_{nosmear,smear} : 1e6 Mt64 rays vs the RANLUX mc_distributions (pulls, chi2, KS, quantiles)
 add_executable(test_l1_hms test_l1_hms.cpp)
-target_link_libraries(test_l1_hms PRIVATE simc_l1runner simcfw_hms simcfw_optics simcfw_material)
+target_link_libraries(test_l1_hms PRIVATE simcfw_l1runner simcfw_hms simcfw_optics simcfw_material)
 target_compile_options(test_l1_hms PRIVATE -O2)
 
 set(_fnh ${SIMC_REFERENCE_DIR}/functions)

@@ -2,7 +2,7 @@
 # complete_main; jacobians.f transform_to_cm) against the P4.F1 tables and capture runs
 # (reference/P4.F1_report.md). Included (OPTIONAL) by tests/l1/CMakeLists.txt. Tolerance 1e-12 (bitwise expected).
 add_executable(test_l1_reactions test_l1_reactions.cpp)
-target_link_libraries(test_l1_reactions PRIVATE simc_l1runner simcfw_reactions simcfw_radiation simcfw_setup
+target_link_libraries(test_l1_reactions PRIVATE simcfw_l1runner simcfw_reactions simcfw_radiation simcfw_setup
                       simcfw_material simcfw_kinematics simcfw_physics)
 
 set(_fne ${SIMC_REFERENCE_DIR}/functions)

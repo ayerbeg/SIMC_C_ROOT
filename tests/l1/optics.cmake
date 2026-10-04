@@ -3,7 +3,7 @@
 # The COSY files are the repository copies in data/matrices/simc_fortran/{hms,shms}/ (byte-identical to the Fortran ones,
 # checked by l1_optics_cosy_files).
 add_executable(test_l1_optics test_l1_optics.cpp)
-target_link_libraries(test_l1_optics PRIVATE simc_l1runner simcfw_optics simcfw_material)
+target_link_libraries(test_l1_optics PRIVATE simcfw_l1runner simcfw_optics simcfw_material)
 
 set(_fno ${SIMC_REFERENCE_DIR}/functions)
 set(_mat ${CMAKE_SOURCE_DIR}/data/matrices/simc_fortran)

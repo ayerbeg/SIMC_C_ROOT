@@ -2,7 +2,7 @@
 # trip_thru_target, target_init, extreme_trip_thru_target (+ real-RNG distributions).
 # Included (OPTIONAL) by tests/l1/CMakeLists.txt. Tolerance |rel| <= 1e-12 (D-010); RNG consumption exact.
 add_executable(test_l1_material test_l1_material.cpp)
-target_link_libraries(test_l1_material PRIVATE simc_l1runner simcfw_material ROOT::MathCore)
+target_link_libraries(test_l1_material PRIVATE simcfw_l1runner simcfw_material ROOT::MathCore)
 
 set(_fnm ${SIMC_REFERENCE_DIR}/functions)
 set(_l1mat_tests

@@ -2,7 +2,7 @@
 # tables (reference/functions/*, reference/P5.F1_report.md). Included (OPTIONAL) by tests/l1/CMakeLists.txt.
 # Deterministic tables: |rel| <= 1e-12 (D-010), NaN/Inf rows must match. Fixed-RNG tables: consumption counts exact.
 add_executable(test_l1_radiation test_l1_radiation.cpp)
-target_link_libraries(test_l1_radiation PRIVATE simc_l1runner simcfw_radiation simcfw_reactions simcfw_setup simcfw_material
+target_link_libraries(test_l1_radiation PRIVATE simcfw_l1runner simcfw_radiation simcfw_reactions simcfw_setup simcfw_material
                       simcfw_kinematics ROOT::MathCore)
 
 set(_fnr ${SIMC_REFERENCE_DIR}/functions)

@@ -2,15 +2,15 @@
 # linked) appended to SIMC_EXAMPLE_PLUGINS, which simc++ links.
 
 # ISpectrometer "ideal_box": perfect resolution, rectangular acceptance (examples/ideal_box/IdealBoxSpectrometer.cpp)
-add_library(simc_example_ideal_box OBJECT ideal_box/IdealBoxSpectrometer.cpp)
-target_link_libraries(simc_example_ideal_box PUBLIC simcfw)
-target_compile_options(simc_example_ideal_box PRIVATE -Wall -Wextra -pedantic)
-list(APPEND SIMC_EXAMPLE_PLUGINS simc_example_ideal_box)
+add_library(simcfw_example_ideal_box OBJECT ideal_box/IdealBoxSpectrometer.cpp)
+target_link_libraries(simcfw_example_ideal_box PUBLIC simcfw)
+target_compile_options(simcfw_example_ideal_box PRIVATE -Wall -Wextra -pedantic)
+list(APPEND SIMC_EXAMPLE_PLUGINS simcfw_example_ideal_box)
 set(SIMC_EXAMPLE_PLUGINS ${SIMC_EXAMPLE_PLUGINS} PARENT_SCOPE)
 
 # Test: the complete driver with ideal_box on the hadron arm, then on both arms (label "examples").
 add_executable(test_example_ideal_box ideal_box/test_ideal_box.cpp)
-target_link_libraries(test_example_ideal_box PRIVATE ${SIMC_DRIVER_LIBS} simc_example_ideal_box)
+target_link_libraries(test_example_ideal_box PRIVATE ${SIMC_DRIVER_LIBS} simcfw_example_ideal_box)
 target_compile_definitions(test_example_ideal_box PRIVATE SIMC_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 set(_inp ${SIMC_FORTRAN_DIR}/infiles/eep_h_elastic_rad_A.inp)
 foreach(_cfg hadron_arm both_arms)

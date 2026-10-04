@@ -61,3 +61,8 @@ foreach(r ${_hist_runs})
     set_tests_properties(hist2json_${r} PROPERTIES SKIP_RETURN_CODE 77)
 endforeach()
 include(${CMAKE_CURRENT_SOURCE_DIR}/setup.cmake OPTIONAL)   # P2.1 setup vs .hist
+
+# CTest labels (P7.4): every test of this directory is "unit"; the inp2json command line also "cli".
+get_property(_unit_tests DIRECTORY PROPERTY TESTS)
+set_property(TEST ${_unit_tests} APPEND PROPERTY LABELS unit)
+set_property(TEST inp2json_cli APPEND PROPERTY LABELS cli)

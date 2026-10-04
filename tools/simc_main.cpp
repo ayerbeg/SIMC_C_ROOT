@@ -12,6 +12,7 @@
 // <run>.hist and <run>.geni (simc.f report layout). <run> defaults to the input file stem (Fortran `base`).
 // Exit status: 0 ok, 1 usage, 2 input error, 3 run error (Fortran STOP, not-ported feature, I/O).
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -113,6 +114,7 @@ int main(int argc, char** argv) {
     opt.quiet_stages = quiet;
 
     try {
+        std::filesystem::create_directories(outdir);   // like the Fortran outfiles/, but created on demand
         driver::SimcRun run(params, pipeline, opt);
         run.initialise();
         if (printPipeline) std::cout << run.pipeline().toJson().dump(2) << "\n";

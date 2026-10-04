@@ -122,6 +122,15 @@ add_subdirectory(tests/regression)
 # ============================================================================
 # Installation
 # ============================================================================
-install(TARGETS simcpp inp2json hist2json RUNTIME DESTINATION bin)
-install(DIRECTORY include/simc DESTINATION include FILES_MATCHING PATTERN "*.h")
+# Programs, the public headers (core, stages, driver, io, plug-in classes; NOT the kernel/ headers, which are private
+# to their modules), the data files (COSY maps, tables, example configurations), the documentation and the examples.
+# The COSY map directory compiled into simc++ is the source tree's data/matrices/simc_fortran; an installed copy is
+# selected with the spectrometer JSON key "matrix_dir" (docs/EXTENDING.md).
+install(TARGETS simcpp inp2json hist2json simc_root_identity RUNTIME DESTINATION bin)
+install(DIRECTORY include/simc DESTINATION include
+        FILES_MATCHING PATTERN "*.h"
+        PATTERN "kernel" EXCLUDE)
 install(DIRECTORY data/ DESTINATION share/simc/data)
+install(DIRECTORY docs/ DESTINATION share/simc/docs)
+install(FILES README.md DESTINATION share/simc)
+install(DIRECTORY examples/ DESTINATION share/simc/examples)
