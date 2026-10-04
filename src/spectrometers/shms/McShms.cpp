@@ -106,6 +106,10 @@ void McShms::setLog(std::ostream* os) {
 }
 
 // Fortran: mc_shms.f:335-347 (first_time_here)
+// FORTRAN-BUG(D-025/D-032): original Fortran mc_shms.f:335-340: `if (first_time_here) then; if (spectr.eq.5) then ...
+// else; write(6,*) 'LSA tune no longer in use!'; stop` -- the check runs only on the first call; corrected because a
+// later call with another spectr would run on maps that were never loaded. Checked on every call (both modes; the
+// Fortran cannot run such a configuration at all, and the input already rejects the retired arm code).
 void McShms::ensureForward(int spectr) {
     if (spectr != 5) {
         if (log_) *log_ << " LSA tune no longer in use!\n";

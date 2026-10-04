@@ -5,10 +5,12 @@
 #include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <stdexcept>
 
 #include "simc/core/Json.h"
 #include "simc/core/Registry.h"
 #include "simc/core/SimcConstants.h"
+#include "simc/core/SpectrometerId.h"
 #include "simc/setup/KinematicsUtils.h"
 #include "simc/stages/IRandom.h"
 
@@ -20,26 +22,25 @@ constexpr double beta_electron = 1.;   // simc.f:1329
 constexpr double zero = 0.0e0;         // simc.f:1347
 }  // namespace
 
+// The default plug-in of an arm code, through the spectrometer table (D-032).
 MonteCarlo::ArmChoice MonteCarlo::DefaultArm(int code) {
+    const std::optional<SpectrometerId> id = SpectrometerFromCode(code);
+    if (!id) throw std::invalid_argument("montecarlo: " + ArmCodeError(code, "spectrometer"));
     ArmChoice c;
-    switch (code) {
-        case 1:
-            c.type = "hms";
+    switch (*id) {
+        case SpectrometerId::HMS:
+        case SpectrometerId::SHMS:
+            c.type = Key(*id);   // plug-ins "hms", "shms"
             break;
-        case 5:
-        case 6:   // 6 = SHMS LSA: mc_shms STOPs on the first call (FortranStop)
-            c.type = "shms";
-            c.config["spectr"] = code;
-            break;
-        case 2:
-        case 3:
-        case 4:
-            throw NotPorted("montecarlo: arm code " + std::to_string(code) + " (SOS/HRS) not yet ported (P14)");
-        case 7:
-        case 8:
-            throw NotPorted("montecarlo: arm code " + std::to_string(code) + " (mc_calo) not ported");
-        default:
-            throw NotPorted("montecarlo: unknown arm code " + std::to_string(code));
+        case SpectrometerId::SOS:
+        case SpectrometerId::HRSR:
+        case SpectrometerId::HRSL:
+            throw NotPorted(std::string("montecarlo: ") + Label(*id) + " (arm code " + std::to_string(code) +
+                            ") not yet ported (P14)");
+        case SpectrometerId::CALO_HMS_SIDE:
+        case SpectrometerId::CALO_SHMS_SIDE:
+            throw NotPorted(std::string("montecarlo: ") + Label(*id) + " (arm code " + std::to_string(code) +
+                            ", mc_calo) not ported");
     }
     return c;
 }

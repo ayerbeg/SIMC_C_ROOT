@@ -1,6 +1,7 @@
 // src/output/SummaryJson.cpp
 // Fortran: simc.f:report (l.644-1142) for the .hist layout, simc.f l.462-532 for the .geni.
 #include "simc/output/SummaryJson.h"
+#include "simc/core/SpectrometerId.h"
 #include "simc/core/Units.h"
 
 #include <cmath>
@@ -108,18 +109,10 @@ const std::vector<std::string>& StopCounterKeys(const std::string& spec) {
     return it == keys.end() ? none : it->second;
 }
 
+// Through the spectrometer table (D-032); "none" for a code that is not a spectrometer.
 std::string SpectrometerName(int arm) {
-    switch (arm) {
-        case 1: return "hms";
-        case 2: return "sos";
-        case 3: return "hrsr";
-        case 4: return "hrsl";
-        case 5:
-        case 6: return "shms";
-        case 7:
-        case 8: return "calo";
-        default: return "none";
-    }
+    const std::optional<SpectrometerId> id = SpectrometerFromCode(arm);
+    return id ? StopKey(*id) : "none";
 }
 
 // ------------------------------------------------------------------ C++ side

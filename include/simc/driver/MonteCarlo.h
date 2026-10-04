@@ -66,13 +66,14 @@ public:
         std::string type;               ///< "" = from the Fortran arm code (DefaultArm)
         Json config = Json::object();   ///< merged over the default config of the arm code
     };
-    /// The Fortran choice for an arm code (simc.f:montecarlo dispatch): 1 -> "hms", 5/6 -> "shms" {"spectr": code}.
-    /// Throws NotPorted for 2-4 (SOS/HRS, P14), 7/8 (mc_calo) and unknown codes.
+    /// The Fortran choice for an arm code (simc.f:montecarlo dispatch, core/SpectrometerId.h): HMS -> "hms",
+    /// SHMS -> "shms". Throws NotPorted for SOS/HRS (P14) and the calorimeters (mc_calo), std::invalid_argument for a
+    /// code that is not a spectrometer.
     static ArmChoice DefaultArm(int code);
 
     /// Creates (through Registry<ISpectrometer>) and initialises the arm spectrometers of setup.params
     /// (electron_arm, hadron_arm). `target` provides target_musc and trip_thru_target (correct_Eloss).
-    /// Throws NotPorted for arms other than 1 (HMS) and 5/6 (SHMS), or for using_tgt_field.
+    /// Throws NotPorted for arms other than HMS and SHMS, or for using_tgt_field.
     MonteCarlo(const RunSetup& setup, ITarget& target);
     /// P7.2 (additive): the same with the arm plug-ins chosen explicitly (e.g. from the JSON "pipeline").
     /// Arms with the same type and the same (merged) config share one object (one Fortran COMMON block of counters);

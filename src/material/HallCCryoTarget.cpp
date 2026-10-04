@@ -12,6 +12,7 @@
 #include "simc/core/RunSetup.h"
 #include "simc/core/SimcConstants.h"
 #include "simc/core/SimcParameters.h"
+#include "simc/core/SpectrometerId.h"
 #include "simc/material/FortranFormat.h"
 #include "simc/material/MaterialConstants.h"
 #include "simc/material/SimcMaterial.h"
@@ -171,36 +172,49 @@ void HallCCryoTarget::trip(int narm, double zpos, double energy, double theta, d
     }
 
     // 20: the scattered electron / 30: the scattered hadron (identical code, different arm and warning)
+    // Window materials per spectrometer (target.f:80-131 / 200-247), through the spectrometer table (D-032). The
+    // Fortran also lists the retired code 6 with the SHMS (target.f:97/217); the input rejects 6.
     const int arm = (narm == 2) ? electron_arm_ : hadron_arm_;
-    if (arm == 1) {                         // HMS
-        s_Al = 0.016 * inch_cm;
-        s_air = 15;
-        s_kevlar = 0.015 * inch_cm;
-        s_mylar = 0.005 * inch_cm;
-        forward_path = (targ.length / 2. - zpos) / std::fabs(std::cos(theta + targ.angle));
-    } else if (arm == 2) {                  // SOS
-        s_Al = 0.008 * inch_cm;
-        s_air = 15;
-        s_kevlar = 0.005 * inch_cm;
-        s_mylar = 0.003 * inch_cm;
-        forward_path = (targ.length / 2. - zpos) / std::fabs(std::cos(theta - targ.angle));
-    } else if (arm == 3 || arm == 4) {      // HRS-R, HRS-L
-        s_Al = 0.013 * inch_cm;
-        s_air = 15;
-        s_kevlar = 0. * inch_cm;
-        s_mylar = 0.010 * inch_cm;
-        forward_path = (targ.length / 2. - zpos) / std::fabs(std::cos(theta - targ.angle));
-    } else if (arm == 5 || arm == 6) {      // SHMS
-        s_Al = (0.02 + 0.01) * inch_cm;     // 20mil scattering chamber window + 10 mil entrance window
-        s_air = 57.27;
-        s_kevlar = 0.0;
-        s_mylar = 0.0;
-        forward_path = (targ.length / 2. - zpos) / std::fabs(std::cos(theta - targ.angle));
-    } else {
-        // FORTRAN-QUIRK(D-012 F4): arms 7/8 (calorimeter) and other codes leave s_air, s_kevlar, s_mylar
+    const std::optional<SpectrometerId> spec = SpectrometerFromCode(arm);
+    if (!spec || *spec == SpectrometerId::CALO_HMS_SIDE || *spec == SpectrometerId::CALO_SHMS_SIDE) {
+        // FORTRAN-QUIRK(D-012 F4): the calorimeter arms (7/8) and other codes leave s_air, s_kevlar, s_mylar
         // and forward_path at the previous call's values. Out of scope (P14).
         throw std::invalid_argument("hallc_cryo trip_thru_target: " + std::string(narm == 2 ? "electron" : "hadron") +
-                                    "_arm = " + std::to_string(arm) + " not supported (1-6 only)");
+                                    "_arm = " + std::to_string(arm) +
+                                    " not supported (HMS, SOS, HRS-R, HRS-L, SHMS only; calorimeter arms: P14)");
+    }
+    switch (*spec) {
+        case SpectrometerId::HMS:
+            s_Al = 0.016 * inch_cm;
+            s_air = 15;
+            s_kevlar = 0.015 * inch_cm;
+            s_mylar = 0.005 * inch_cm;
+            forward_path = (targ.length / 2. - zpos) / std::fabs(std::cos(theta + targ.angle));
+            break;
+        case SpectrometerId::SOS:
+            s_Al = 0.008 * inch_cm;
+            s_air = 15;
+            s_kevlar = 0.005 * inch_cm;
+            s_mylar = 0.003 * inch_cm;
+            forward_path = (targ.length / 2. - zpos) / std::fabs(std::cos(theta - targ.angle));
+            break;
+        case SpectrometerId::HRSR:
+        case SpectrometerId::HRSL:
+            s_Al = 0.013 * inch_cm;
+            s_air = 15;
+            s_kevlar = 0. * inch_cm;
+            s_mylar = 0.010 * inch_cm;
+            forward_path = (targ.length / 2. - zpos) / std::fabs(std::cos(theta - targ.angle));
+            break;
+        case SpectrometerId::SHMS:
+            s_Al = (0.02 + 0.01) * inch_cm;   // 20mil scattering chamber window + 10 mil entrance window
+            s_air = 57.27;
+            s_kevlar = 0.0;
+            s_mylar = 0.0;
+            forward_path = (targ.length / 2. - zpos) / std::fabs(std::cos(theta - targ.angle));
+            break;
+        default:
+            break;   // calorimeters: refused above
     }
     s_target = forward_path;
 

@@ -2,8 +2,11 @@
 // The ISpectrometer plug-in "shms" around the kernel shms::McShms, and its registration.
 #include "simc/spectrometers/shms/ShmsSpectrometer.h"
 
+#include <stdexcept>
+
 #include "simc/core/Registry.h"
 #include "simc/core/SimcParameters.h"
+#include "simc/core/SpectrometerId.h"
 #include "simc/spectrometers/shms/kernel/McShms.h"
 
 namespace simc {
@@ -17,7 +20,9 @@ void ShmsSpectrometer::configure(const Json& config, const SimcParameters& param
     ctau_ = params.ctau;
     if (!config.is_object()) return;
     if (config.contains("matrix_dir")) k_->setMatrixDir(config.at("matrix_dir").get<std::string>());
-    if (config.contains("spectr")) spectr_ = config.at("spectr").get<int>();
+    // D-032: the SHMS has one number (5). The former "spectr" key (5, or the retired LSA tune) is gone.
+    if (config.contains("spectr"))
+        throw std::invalid_argument("shms: the \"spectr\" key was removed (D-032: the SHMS is always spectrometer 5)");
     if (config.contains("using_SHMScoll")) usingColl_ = config.at("using_SHMScoll").get<bool>();
     if (config.contains("ctau")) ctau_ = config.at("ctau").get<double>();
     k_->setOptions(config.value("use_sieve", k_->useSieve()), config.value("use_2sieve", k_->use2Sieve()),
@@ -28,7 +33,7 @@ void ShmsSpectrometer::configure(const Json& config, const SimcParameters& param
     if (config.contains("verbose") && !config.at("verbose").get<bool>()) k_->setLog(nullptr);
 }
 
-void ShmsSpectrometer::init(const StageContext&) { k_->loadMaps(spectr_); }
+void ShmsSpectrometer::init(const StageContext&) { k_->loadMaps(Code(SpectrometerId::SHMS)); }
 
 const std::map<std::string, long>& ShmsSpectrometer::stopCounters() const {
     cntMap_.clear();
@@ -56,7 +61,7 @@ SpecResult ShmsSpectrometer::transport(const SpecInput& in, IRandom& rng) {
     a.decay_flag = decayOverride_ ? *decayOverride_ : in.decay_flag;
     a.fry = in.fry;
     a.pathlen = 0.0;
-    a.spectr = spectr_;
+    a.spectr = Code(SpectrometerId::SHMS);   // mc_shms spectr argument (D-032: the SHMS is 5)
     a.using_SHMScoll = usingColl_;
     a.ctau = ctau_;
     a.decdist = 0.0;

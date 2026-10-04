@@ -26,7 +26,7 @@ constexpr const char* kSummarySchemaName = "simc_run_summary";
 /// mc_hrsr.f, mc_hrsl.f, mc_calo.f.
 const std::vector<std::string>& StopCounterKeys(const std::string& spectrometer);
 
-/// Spectrometer name for a Fortran arm code (1 hms, 2 sos, 3 hrsr, 4 hrsl, 5/6 shms, 7/8 calo).
+/// Stop-counter key for an arm code (core/SpectrometerId.h StopKey: hms, sos, hrsr, hrsl, shms, calo; else "none").
 std::string SpectrometerName(int arm_code);
 
 /// C++ side: build the summary from the run setup and end-of-run numbers.

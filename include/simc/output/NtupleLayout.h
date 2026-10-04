@@ -34,8 +34,8 @@ constexpr int kEepNtupleSize = 46;
 const std::vector<NtupleColumn>& EepNtupleColumns();
 
 /// True when the electron arm is on the beam-right side (HMS, HRSR, calo on HMS side):
-/// results_write.f:64 (electron_arm = 1, 3, 7). Then the "hs*" columns carry the electron.
-/// For electron_arm = 2, 4, 5, 6, 8 (results_write.f:89) the "hs*" columns carry the hadron.
+/// results_write.f:64 (SpectrometerId::IsBeamRight). Then the "hs*" columns carry the electron.
+/// For the beam-left arms (SOS, HRSL, SHMS, calo on SHMS side; results_write.f:89) the "hs*" columns carry the hadron.
 /// "hs" = right-side spectrometer, "ss" = left-side spectrometer.
 enum class ArmSide { ElectronRight, ElectronLeft, Unknown };
 ArmSide ElectronArmSide(int electron_arm);

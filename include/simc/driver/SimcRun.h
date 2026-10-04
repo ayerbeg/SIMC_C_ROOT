@@ -55,6 +55,9 @@ struct RunOptions {
     long seed{0};
     std::ostream* log{nullptr};     ///< the Fortran unit-6 messages of the driver (nullptr = std::cout)
     bool quiet_stages{false};       ///< silence the stage warnings (write(6,*) inside the physics routines)
+    /// D-031: false (default) = clear Fortran bugs corrected; true = exact Fortran behaviour (--fortran-compat,
+    /// JSON "run": {"fortran_compat": true}). Passed to the set-up (RunSetup::fortran_compat).
+    bool fortran_compat{false};
 };
 
 class SimcRun {

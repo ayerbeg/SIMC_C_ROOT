@@ -1,6 +1,8 @@
 # tests/regression — before/after output identity of complete runs (task P7.4).
 # A refactor must not change a single number: the outputs of `simc++ <inp> --seed 4242` must equal the files that
 # the reference commit produced (SIMC_BASELINE_DIR/<commit>_<tag>_s4242/, see the README.txt there).
+# P7.5 (D-031): regression_identity_<tag> runs with --fortran-compat against the f9cea51 baselines (exact Fortran
+# behaviour, the outputs before the corrections existed).
 # Label "regression"; the tests are skipped (77) when the baseline is absent.
 add_executable(simc_root_identity root_identity.cpp)
 target_link_libraries(simc_root_identity PRIVATE ROOT::Core ROOT::RIO ROOT::Tree ROOT::Hist)
@@ -17,7 +19,7 @@ foreach(_p "rad;eep_h_elastic_rad_A" "norad;eep_h_elastic_norad_A" "phsp;acc_phs
              COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/output_identity.sh $<TARGET_FILE:simcpp> $<TARGET_FILE:simc_root_identity>
                      ${SIMC_FORTRAN_DIR}/infiles/${_inp}.inp 4242 dir_${_tag}_s4242
                      ${SIMC_BASELINE_DIR}/${SIMC_BASELINE_COMMIT}_${_tag}_s4242
-                     ${CMAKE_CURRENT_BINARY_DIR}/identity_${_tag})
+                     ${CMAKE_CURRENT_BINARY_DIR}/identity_${_tag} --fortran-compat)
     set_tests_properties(regression_identity_${_tag} PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 1200
                          LABELS regression)
 endforeach()

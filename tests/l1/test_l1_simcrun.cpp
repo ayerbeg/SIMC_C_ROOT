@@ -230,6 +230,7 @@ int replay(const std::string& capdir, const std::string& rundir, const std::stri
         return 1;
     }
     driver::RunOptions opt;
+    opt.fortran_compat = true;   // D-031: replay of a Fortran capture -> exact Fortran behaviour
     opt.run_name = run;
     opt.output_dir = outdir;
     opt.quiet_stages = true;

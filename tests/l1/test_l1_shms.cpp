@@ -332,14 +332,14 @@ int runSelftest() {
         McShmsArgs a;
         a.p_spec = 8000;
         a.m2 = kMe2;
-        a.spectr = 6;
+        a.spectr = 4;   // any value other than 5 (D-032: 5 is the only SHMS number)
         bool thr = false;
         try {
             sp.mcShms(a, rng);
         } catch (const simc::FortranStop&) {
             thr = true;
         }
-        expect(thr, "spectr = 6 (LSA) -> FortranStop");
+        expect(thr, "spectr != 5 -> FortranStop (mc_shms.f:335-340)");
     }
     {   // collimator (using_SHMScoll, pions): smoke test, no Fortran table yet
         McShms sp;

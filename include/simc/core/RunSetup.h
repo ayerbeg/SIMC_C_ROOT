@@ -117,7 +117,7 @@ struct SpecArm {
     double P{0};                      ///< [MeV/c]
     double theta{0};                  ///< [rad] dbase.f:239/242 abs(theta)/degrad
     double cos_th{0}, sin_th{0};
-    double phi{0};                    ///< [rad] dbase.f:247-262: 3pi/2 (arms 1,3,7) or pi/2 (2,4,5,6,8)
+    double phi{0};                    ///< [rad] dbase.f:247-262: 3pi/2 (beam-right arms, SpectrometerId::IsBeamRight) or pi/2
     SpecOffset offset;
 };
 
@@ -207,6 +207,11 @@ struct RunSetup {
     ReactionFlags flags;
     std::string run_name{"simc"};   ///< Fortran `base` (file stem)
     std::string output_dir{"."};    ///< Fortran 'outfiles/' and 'worksim/'
+    /// Run option `fortran_compat` (D-031, task P7.5). false (default) = the clear Fortran bugs listed in
+    /// docs/FORTRAN_DIFFERENCES.md are CORRECTED (code marked `FORTRAN-BUG(D-xxx)`); true = the exact Fortran
+    /// behaviour, used by the bitwise L1/replay/regression tests. Set once from SetupOptions::fortran_compat by
+    /// BuildRunSetup and read by every stage through StageContext::setup (no global).
+    bool fortran_compat{false};
 
     // dbase.f:239-244 (kept for the P1.4 sinks; identical to spec.e/p.theta, sin_th, cos_th)
     double e_theta{0}, e_sin_th{0}, e_cos_th{0};   ///< rad

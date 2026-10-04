@@ -14,6 +14,7 @@
 #include <sstream>
 
 #include "simc/core/SimcConstants.h"
+#include "simc/core/SpectrometerId.h"
 #include "simc/material/HallCCryoTarget.h"
 #include "simc/core/Units.h"
 
@@ -187,8 +188,13 @@ bool ReadMomentumDistribution(const std::string& path, MomentumDistribution& d) 
 RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITargetLossProvider* losses) {
     RunSetup s = RunSetup::FromParameters(p, opt.run_name);
     s.built = true;
+    s.fortran_compat = opt.fortran_compat;   // D-031 run option (docs/FORTRAN_DIFFERENCES.md)
     auto stop = [&](const std::string& why) { s.stops.push_back("STOP " + why); };
     auto msg = [&](const std::string& m) { s.messages.push_back(m); };
+    // D-032: a retired arm code (SHMS LSA tune) is an input error. The input readers reject it already; this covers
+    // parameters built in code. The Fortran STOPs at dbase.f:895-897/915-917.
+    for (const std::string& e : ValidateArmCodes(p)) stop(e);
+    if (!s.stops.empty()) return s;
     const int A = nint(p.targ.A);
     double mrec_guess = 0.0;   // dbase.f local 'Mrec_guess' (static zero under -fno-automatic)
 
@@ -255,10 +261,13 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
     };
     arm(p.spec.e, s.spec.e);
     arm(p.spec.p, s.spec.p);
+    // dbase.f:247-263 through the spectrometer table (D-032): beam-right arms (HMS, HRS-R, calo HMS side) get
+    // phi = 3pi/2, the others pi/2. (The Fortran lists the retired code 6 with pi/2; it is rejected above.)
     auto armPhi = [&](int code, double& phi, const char* which) {
-        if (code == 1 || code == 3 || code == 7) {
+        const std::optional<SpectrometerId> id = SpectrometerFromCode(code);
+        if (id && IsBeamRight(*id)) {
             phi = 3 * K::pi / 2.;
-        } else if (code == 2 || code == 4 || code == 5 || code == 6 || code == 8) {
+        } else if (id) {
             phi = K::pi / 2.;
         } else {
             stop(std::string("I dont know what phi should be for the ") + which + " arm");
@@ -543,14 +552,17 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
     Slops& slop = s.slop;
     struct SlopParam { double d, t, p; };
     // simulate.inc:17-36
+    // init.f:151-196 (the Fortran also lists the retired code 6 with the SHMS, init.f:176/199; rejected at input).
     auto slopFor = [](int arm_code, SlopParam& sp) {
-        switch (arm_code) {
-            case 1: sp = {0.5, 0.005, 0.005}; return true;          // HMS
-            case 2: sp = {1.0, 0.008, 0.008}; return true;          // SOS
-            case 3: sp = {0.5, 0.005, 0.005}; return true;          // HRSR
-            case 4: sp = {0.5, 0.005, 0.005}; return true;          // HRSL
-            case 5: case 6: sp = {0.5, 0.005, 0.005}; return true;  // SHMS
-            default: return false;                                  // 7/8 (calo): slop stays 0
+        const std::optional<SpectrometerId> id = SpectrometerFromCode(arm_code);
+        if (!id) return false;
+        switch (*id) {
+            case SpectrometerId::HMS: sp = {0.5, 0.005, 0.005}; return true;
+            case SpectrometerId::SOS: sp = {1.0, 0.008, 0.008}; return true;
+            case SpectrometerId::HRSR: sp = {0.5, 0.005, 0.005}; return true;
+            case SpectrometerId::HRSL: sp = {0.5, 0.005, 0.005}; return true;
+            case SpectrometerId::SHMS: sp = {0.5, 0.005, 0.005}; return true;
+            default: return false;   // calorimeters: slop stays 0
         }
     };
     SlopParam sp;
@@ -899,10 +911,8 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
         stop("I don't have ANY idea what we're doing!!!");
         return s;
     }
-    if (p.electron_arm == 6 || p.hadron_arm == 6) {   // dbase.f:895-897, 915-917
-        stop("This spectrometer option no longer available");
-        return s;
-    }
+    // dbase.f:895-897, 915-917 (retired arm code: "This spectrometer option no longer available" + STOP) is checked
+    // at the start of BuildRunSetup through ValidateArmCodes (D-032).
     if (ff.doing_phsp) msg("**WARNING: phsp option is not really implemented - buyer beware!!");
 
     // =========================================================================================

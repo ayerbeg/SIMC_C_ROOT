@@ -4,6 +4,8 @@
 // variables in the same order and with the same CTP names.
 #include "simc/core/SimcParameters.h"
 
+#include "simc/core/SpectrometerId.h"
+#include <stdexcept>
 #include <algorithm>
 #include <cctype>
 #include <cmath>
@@ -320,6 +322,9 @@ void FromJson(const Json& j, SimcParameters& p, std::vector<std::string>* warnin
         return;
     }
     walk(j, "", p, warnings);
+    // D-032: the retired arm code 6 (SHMS LSA tune) is an input error (simc/core/SpectrometerId.h).
+    const std::vector<std::string> errors = ValidateArmCodes(p);
+    if (!errors.empty()) throw std::invalid_argument("parameters: " + errors.front());
 }
 
 }  // namespace simc

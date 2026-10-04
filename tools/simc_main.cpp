@@ -1,12 +1,14 @@
 // tools/simc_main.cpp — the `simc++` command line (task P7.2).
 //
 //   simc++ <file.inp | file.json> [-o OUTDIR] [--seed N] [--ngen N] [--pipeline overrides.json]
-//          [--run-name NAME] [--data-dir DIR] [--infiles-dir DIR] [--quiet] [--print-pipeline]
+//          [--run-name NAME] [--data-dir DIR] [--infiles-dir DIR] [--quiet] [--print-pipeline] [--fortran-compat]
 //
 // Input:
 //   * a Fortran .inp (CTP syntax, + its extra_dbase_file), read exactly like dbase.f (InpReader), or
 //   * a SIMC++ JSON: {"parameters": {...} (inp2json output), "pipeline": {...} (optional, docs/DRIVER.md),
-//                     "run": {"name": ..., "output_dir": ...} (optional)}.
+//                     "run": {"name": ..., "output_dir": ..., "fortran_compat": false} (optional)}.
+// --fortran-compat (or "run": {"fortran_compat": true}) keeps the exact Fortran behaviour, including the clear Fortran
+// bugs that SIMC++ corrects by default (D-031, docs/FORTRAN_DIFFERENCES.md). It exists for the bitwise validation.
 // --pipeline FILE merges a pipeline JSON (either the section itself or {"pipeline": {...}}) over the input's.
 // Outputs in OUTDIR (default "."): <run>.root (tree h10, if Nntu > 0), <run>.summary.json/.txt, <run>.gen.root,
 // <run>.hist and <run>.geni (simc.f report layout). <run> defaults to the input file stem (Fortran `base`).
@@ -15,6 +17,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <stdexcept>
 #include <string>
 
 #include "simc/core/Json.h"
@@ -28,7 +31,8 @@ namespace {
 
 void usage() {
     std::cerr << "usage: simc++ <file.inp|file.json> [-o OUTDIR] [--seed N] [--ngen N] [--pipeline FILE]\n"
-                 "               [--run-name NAME] [--data-dir DIR] [--infiles-dir DIR] [--quiet] [--print-pipeline]\n";
+                 "               [--run-name NAME] [--data-dir DIR] [--infiles-dir DIR] [--quiet] [--print-pipeline]\n"
+                 "               [--fortran-compat]\n";
 }
 
 std::string stem(const std::string& path) {
@@ -57,7 +61,7 @@ bool readJson(const std::string& path, Json& j) {
 
 int main(int argc, char** argv) {
     std::string input, outdir = ".", pipelineFile, runName, dataDir, infilesDir;
-    bool quiet = false, printPipeline = false;
+    bool quiet = false, printPipeline = false, compatFlag = false;
     driver::RunOptions opt;
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
@@ -75,6 +79,7 @@ int main(int argc, char** argv) {
         else if (a == "--infiles-dir") next(infilesDir);
         else if (a == "--quiet") quiet = true;
         else if (a == "--print-pipeline") printPipeline = true;
+        else if (a == "--fortran-compat") compatFlag = true;
         else if (a == "-h" || a == "--help") { usage(); return 0; }
         else if (!a.empty() && a[0] == '-') { usage(); return 1; }
         else if (input.empty()) input = a;
@@ -88,18 +93,28 @@ int main(int argc, char** argv) {
         Json j;
         if (!readJson(input, j)) { std::cerr << "simc++: cannot read " << input << "\n"; return 2; }
         std::vector<std::string> warnings;
-        FromJson(j.contains("parameters") ? j["parameters"] : Json::object(), params, &warnings);
+        try {
+            FromJson(j.contains("parameters") ? j["parameters"] : Json::object(), params, &warnings);
+        } catch (const std::invalid_argument& e) {   // rejected input (D-032: arm code 6)
+            std::cerr << "simc++: input error: " << input << ": " << e.what() << "\n";
+            return 2;
+        }
         for (const auto& w : warnings) std::cerr << "simc++: warning: " << w << "\n";
         if (j.contains("pipeline")) pipeline = j["pipeline"];
         if (j.contains("run")) {
             if (runName.empty()) runName = j["run"].value("name", std::string());
             if (outdir == ".") outdir = j["run"].value("output_dir", outdir);
+            opt.fortran_compat = j["run"].value("fortran_compat", false);
         }
     } else {
         InpReader::Options ro;
         ro.infiles_dir = infilesDir;
         InpReader rd(params, ro);
-        if (!rd.loadRun(input)) { std::cerr << "simc++: cannot read " << input << "\n"; return 2; }
+        if (!rd.loadRun(input)) {
+            for (const auto& e : rd.errors()) std::cerr << "simc++: input error: " << input << ": " << e << "\n";
+            if (rd.errors().empty()) std::cerr << "simc++: cannot read " << input << "\n";
+            return 2;
+        }
         for (const auto& m : rd.messages()) std::cout << m.text << "\n";   // CTP messages, like the Fortran
     }
     if (!pipelineFile.empty()) {
@@ -112,6 +127,7 @@ int main(int argc, char** argv) {
     opt.output_dir = outdir;
     opt.data_dir = dataDir;
     opt.quiet_stages = quiet;
+    if (compatFlag) opt.fortran_compat = true;   // the CLI flag wins over the JSON
 
     try {
         std::filesystem::create_directories(outdir);   // like the Fortran outfiles/, but created on demand

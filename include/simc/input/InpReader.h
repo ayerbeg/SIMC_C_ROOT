@@ -52,8 +52,11 @@ public:
     explicit InpReader(SimcParameters& params) : p_(params) {}
     InpReader(SimcParameters& params, Options opt) : p_(params), opt_(std::move(opt)) {}
 
-    /// dbase.f:dbase_read: main file then the extra file. Returns false if a file cannot be opened.
+    /// dbase.f:dbase_read: main file then the extra file. Returns false if a file cannot be opened or if the input
+    /// is rejected (errors(): electron_arm/hadron_arm = 6, the retired SHMS LSA tune, D-032).
     bool loadRun(const std::string& main_file);
+    /// Input errors found by loadRun (D-032 arm-code validation). Empty when the input is accepted.
+    const std::vector<std::string>& errors() const { return errors_; }
 
     /// CTP thload + thbook of a single file.
     bool loadFile(const std::string& path);
@@ -96,6 +99,7 @@ private:
     std::map<std::string, std::string> unreg_lower_;   // lower-case name -> spelling
     std::map<std::string, std::vector<double>> unreg_values_;
     std::vector<InpMessage> messages_;
+    std::vector<std::string> errors_;
     std::vector<std::string> files_;
     std::map<std::string, std::string> provenance_;
 };

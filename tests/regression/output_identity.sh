@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # tests/regression/output_identity.sh — before/after output identity of a complete simc++ run (task P7.4).
 #
-# Usage: output_identity.sh SIMCPP ROOT_IDENTITY INPUT SEED RUN_NAME BASELINE_DIR WORK_DIR
+# Usage: output_identity.sh SIMCPP ROOT_IDENTITY INPUT SEED RUN_NAME BASELINE_DIR WORK_DIR [SIMCPP_ARGS...]
 #
-# Runs   SIMCPP INPUT --seed SEED --run-name RUN_NAME -o WORK_DIR --quiet
+# Runs   SIMCPP INPUT --seed SEED --run-name RUN_NAME -o WORK_DIR --quiet [SIMCPP_ARGS...]
+# (P7.5: SIMCPP_ARGS, e.g. --fortran-compat for the exact-Fortran baselines)
 # and requires every output file to be identical to the file of the same name in BASELINE_DIR:
 #   *.root                     bitwise identical trees (all branches, all entries) and histograms (ROOT_IDENTITY);
 #                              the TFile/TKey date stamps are ignored
@@ -13,12 +14,13 @@
 # and MD5SUMS there are ignored). Exit: 0 identical, 1 different, 77 (CTest SKIP) if the baseline or the input
 # is missing, 2 if simc++ fails.
 set -uo pipefail
-if [[ $# -ne 7 ]]; then sed -n '2,16p' "$0"; exit 2; fi
+if [[ $# -lt 7 ]]; then sed -n '2,17p' "$0"; exit 2; fi
 SIMCPP=$1; ROOTID=$2; INPUT=$3; SEED=$4; RUN=$5; BASE=$6; WORK=$7
+shift 7; EXTRA=("$@")
 
 if [[ ! -d "$BASE" || ! -f "$INPUT" ]]; then echo "SKIP: baseline $BASE or input $INPUT missing"; exit 77; fi
 rm -rf "$WORK"; mkdir -p "$WORK"
-if ! "$SIMCPP" "$INPUT" --seed "$SEED" --run-name "$RUN" -o "$WORK" --quiet > "$WORK/run.log" 2>&1; then
+if ! "$SIMCPP" "$INPUT" --seed "$SEED" --run-name "$RUN" -o "$WORK" --quiet "${EXTRA[@]}" > "$WORK/run.log" 2>&1; then
     echo "simc++ failed:"; tail -n 20 "$WORK/run.log"; exit 2
 fi
 

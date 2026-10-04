@@ -39,8 +39,10 @@
 //   * never incremented anywhere: targ_hor/vert/oct, BP_in/BP_out, cer1/cer2;
 //   * the hut's `spec` ntuple array is real*4 in mc_shms_hut but real*8 in mc_shms (type mismatch through the
 //     argument); it is never read or written out, so it has no observable effect and is not ported;
-//   * spectr = 6 (SHMS LSA) -> Fortran STOP, but the Fortran checks it only on the FIRST call; the port throws
-//     simc::FortranStop for spectr != 5 on every call (a later spectr = 6 call would use unloaded maps).
+//   * the spectr argument must be 5 (SHMS, the only SHMS number, D-032). The Fortran STOPs "LSA tune no longer in use!"
+//     for any other value, but only on the FIRST call (mc_shms.f:335-347); the port throws simc::FortranStop on every
+//     call (FORTRAN-BUG(D-025/D-032): a later call with another value would run on unloaded maps). The plug-in always
+//     passes 5 and the input rejects the retired arm code (core/SpectrometerId.h).
 #ifndef SIMC_SPECTROMETERS_SHMS_KERNEL_MCSHMS_H
 #define SIMC_SPECTROMETERS_SHMS_KERNEL_MCSHMS_H
 
@@ -134,7 +136,7 @@ struct McShmsArgs {
     double fry{0};       ///< in: xtar_init
     bool ok_spec{false};
     double pathlen{0};   ///< in/out
-    int spectr{5};       ///< 5 = SHMS (6 = LSA -> STOP)
+    int spectr{5};       ///< 5 = SHMS (any other value -> FortranStop, mc_shms.f:335-340)
     bool using_SHMScoll{false};
     double ctau{0}, decdist{0}, Mh2_final{0};   ///< COMMON (simulate.inc), see hms/kernel/McHms.h
 };
@@ -164,7 +166,7 @@ public:
 
     /// Fortran: mc_shms(...).
     McShmsDetail mcShms(McShmsArgs& a, IRandom& rng);
-    /// Load the COSY maps of spectrometer `spectr` now (5 = SHMS; 6 = LSA -> FortranStop, mc_shms.f:335-347).
+    /// Load the COSY maps of spectrometer `spectr` now (5 = SHMS; anything else -> FortranStop, mc_shms.f:335-347).
     void loadMaps(int spectr) {
         ensureForward(spectr);
         ensureRecon(spectr);

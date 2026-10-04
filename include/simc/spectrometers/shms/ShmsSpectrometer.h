@@ -7,7 +7,7 @@
 //
 // JSON config (all optional):
 //   "matrix_dir"     : holds shms/shms_forward.dat, shms/shms_recon.dat (default: the repository copies)
-//   "spectr"         : 5 (default) or 6 (LSA -> FortranStop), the hadron_arm / electron_arm code
+//   (the former "spectr" key is rejected: the SHMS is always spectrometer 5, D-032)
 //   "using_SHMScoll" : bool (default params.using_SHMScoll)
 //   "ctau"           : cm (default params.ctau)
 //   "ms_flag", "wcs_flag", "decay": bool, override the per-call SpecInput flags if present
@@ -40,7 +40,7 @@ public:
 
     std::string name() const override { return "shms"; }
     void configure(const Json& config, const SimcParameters& params) override;
-    /// Loads the COSY maps (spectr 6 -> FortranStop).
+    /// Loads the COSY maps (spectrometer 5).
     void init(const StageContext& ctx) override;
     SpecResult transport(const SpecInput& in, IRandom& rng) override;
     const std::map<std::string, long>& stopCounters() const override;
@@ -51,7 +51,6 @@ public:
 
 private:
     std::unique_ptr<McShms> k_;
-    int spectr_{5};
     bool usingColl_{false};
     double ctau_{0};
     std::optional<bool> msOverride_, wcsOverride_, decayOverride_;

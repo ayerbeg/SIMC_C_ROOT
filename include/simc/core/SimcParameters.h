@@ -48,7 +48,7 @@ struct SimcParameters {
     // dbase.f:984-992 ("RESTSW" section of regallvars)
     // ------------------------------------------------------------------
     bool mc_smear{false};            ///< Fortran: mc_smear (mc_smear_int) [flag] target/hut mult. scattering + DC smearing
-    int electron_arm{0};             ///< Fortran: electron_arm [code] 1=HMS 2=SOS 3=HRSR 4=HRSL 5=SHMS 6=(removed) 7/8=calo
+    int electron_arm{0};             ///< Fortran: electron_arm [code] simc::SpectrometerId (core/SpectrometerId.h); 6 rejected (D-032)
     int hadron_arm{0};               ///< Fortran: hadron_arm [code] same codes as electron_arm
     int use_first_cer{0};            ///< Fortran: use_first_cer [flag] registered, only printed in .hist
     double transparency{0.0};        ///< Fortran: transparency [dimensionless] A(e,e'p) Benhar SF weight factor
@@ -233,6 +233,7 @@ Json ToJson(const SimcParameters& p);
 /// Deserialise. Keys are matched case-insensitively against the Fortran names.
 /// Unknown keys and type problems are appended to `warnings` (never fatal).
 /// Missing keys keep the value already in `p` (default-constructed = Fortran default).
+/// Throws std::invalid_argument for a rejected input (electron_arm/hadron_arm = 6, the retired SHMS LSA tune; D-032).
 void FromJson(const Json& j, SimcParameters& p, std::vector<std::string>* warnings = nullptr);
 
 /// Value of one parameter rendered as text (for tables and tests).

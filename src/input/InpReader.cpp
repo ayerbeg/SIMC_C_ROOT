@@ -2,6 +2,7 @@
 // Fortran: dbase.f:dbase_read (l.66-122); CTP thLoad.c:getblock, thParm.c:thParmLineSet.
 #include "simc/input/InpReader.h"
 
+#include "simc/core/SpectrometerId.h"
 #include <algorithm>
 #include <cctype>
 #include <cstdlib>
@@ -183,7 +184,10 @@ bool InpReader::loadRun(const std::string& main_file) {
         const std::string path = dir + "/" + name;
         if (!loadFile(path)) return false;
     }
-    return true;
+    // D-032: the retired arm code 6 (SHMS LSA tune) is rejected when the input is read (simc/core/SpectrometerId.h).
+    errors_ = ValidateArmCodes(p_);
+    for (const auto& e : errors_) note(main_file, 0, "ERROR: " + e);
+    return errors_.empty();
 }
 
 // CTP thload (getblock) + thbook (thLoadParameters) for one file.

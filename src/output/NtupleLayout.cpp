@@ -1,6 +1,8 @@
 // src/output/NtupleLayout.cpp
 // Fortran: NtupleInit.f, results_write.f:results_ntu_write (l.1-271).
 #include "simc/output/NtupleLayout.h"
+
+#include "simc/core/SpectrometerId.h"
 #include "simc/core/Units.h"
 
 #include <cmath>
@@ -68,11 +70,12 @@ const std::vector<NtupleColumn>& EepNtupleColumns() {
     return cols;
 }
 
+// results_write.f:64/89 through the spectrometer table (D-032): beam-right arms (HMS, HRS-R, calo HMS side) put the
+// electron in the "hs" columns. results_write.f:90 also lists the retired code 6, which the input rejects.
 ArmSide ElectronArmSide(int electron_arm) {
-    if (electron_arm == 1 || electron_arm == 3 || electron_arm == 7) return ArmSide::ElectronRight;
-    if (electron_arm == 2 || electron_arm == 4 || electron_arm == 5 || electron_arm == 6 || electron_arm == 8)
-        return ArmSide::ElectronLeft;
-    return ArmSide::Unknown;
+    const std::optional<SpectrometerId> id = SpectrometerFromCode(electron_arm);
+    if (!id) return ArmSide::Unknown;
+    return IsBeamRight(*id) ? ArmSide::ElectronRight : ArmSide::ElectronLeft;
 }
 
 bool UsesEepLayout(const ReactionFlags& f) {

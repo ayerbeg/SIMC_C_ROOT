@@ -204,6 +204,7 @@ int replay(const std::string& capdir, const std::string& rundir, const std::stri
         return 1;
     }
     SetupOptions opt;
+    opt.fortran_compat = true;   // D-031: Fortran references -> exact Fortran behaviour
     opt.run_name = "p4f1_" + cfg + "_cap";
     opt.data_dir = fdir;
     RunSetup setup = BuildRunSetup(p, opt);

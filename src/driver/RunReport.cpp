@@ -10,6 +10,7 @@
 
 #include "simc/core/Errors.h"
 #include "simc/core/SimcConstants.h"
+#include "simc/core/SpectrometerId.h"
 #include "simc/driver/FortranWriter.h"
 #include "simc/core/Units.h"
 
@@ -361,7 +362,8 @@ std::string FormatHist(const RunSetup& s, const RunReport& r) {
     o.line(flags({{"using_E_arm_montecarlo", s.sw.using_E_arm_montecarlo},
                   {"using_P_arm_montecarlo", s.sw.using_P_arm_montecarlo},
                   {"use_benhar_sf", p.use_benhar_sf}}));
-    if (p.electron_arm == 5 || p.hadron_arm == 5 || p.electron_arm == 6 || p.hadron_arm == 6) {
+    // simc.f:907-909 (the Fortran also lists the retired code 6; rejected at input, D-032)
+    if (Is(p.electron_arm, SpectrometerId::SHMS) || Is(p.hadron_arm, SpectrometerId::SHMS)) {
         Record x;
         x.x(7).a("use_first_cer", 19).lit("=").l(p.use_first_cer != 0, 2);
         o.line(x);
@@ -590,7 +592,8 @@ std::string FormatGeni(const RunSetup& s, const RunReport& r) {
     };
     // The Fortran blocks (by arm code) are written for the Fortran spectrometers; an arm served by another ISpectrometer
     // plug-in (e.g. examples/ideal_box) gets a generic block at the end (P7.4).
-    if ((ea == 1 || ha == 1) && has(r, "hms")) {
+    auto uses = [&](SpectrometerId id) { return Is(ea, id) || Is(ha, id); };   // D-032 spectrometer table
+    if (uses(SpectrometerId::HMS) && has(r, "hms")) {
         row("HMS Trials:           ", "hms", {"trials"});
         row("Slit hor/vert/corners ", "hms", {"slit_hor", "slit_vert", "slit_oct"});
         row("Q1 entrance/mid/exit  ", "hms", {"Q1_in", "Q1_mid", "Q1_out"});
@@ -602,7 +605,7 @@ std::string FormatGeni(const RunSetup& s, const RunReport& r) {
         row("Successes             ", "hms", {"successes"});
         o.line("");
     }
-    if ((ea == 5 || ha == 5 || ea == 6 || ha == 6) && has(r, "shms")) {
+    if (uses(SpectrometerId::SHMS) && has(r, "shms")) {   // simc.f:510-511 also lists the retired code 6
         row("SHMS Trials:          ", "shms", {"trials"});
         row("HB phys entrance/mag entr/mag exit/phys exit  ", "shms", {"hb_in", "hb_men", "hb_mex", "hb_out"});
         row("Slit hor/vert/corners ", "shms", {"slit_hor", "slit_vert", "slit_oct"});

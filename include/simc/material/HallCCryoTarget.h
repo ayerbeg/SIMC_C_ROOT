@@ -20,7 +20,7 @@
 //     is used. Reproduced (member thCan_, initially 0).
 //   * FORTRAN-QUIRK(D-012 F4): electron_arm/hadron_arm 7/8 (calorimeter) leave s_air, s_kevlar,
 //     s_mylar and forward_path stale. Out of scope until P14: trip() throws std::invalid_argument
-//     for arm codes outside 1..6 (6 = SHMS as in the Fortran).
+//     for the calorimeter arms and for codes that are not spectrometers (core/SpectrometerId.h, D-032).
 //   * FORTRAN-QUIRK: `goto (10,20,30) narm` falls through to label 10 for narm outside 1..3,
 //     i.e. such a call is treated as the incoming beam. Reproduced.
 //   * FORTRAN-QUIRK (suspected bug): extreme_trip_thru_target, hadron, can 2/3 (target.f:501) uses

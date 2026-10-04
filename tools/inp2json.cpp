@@ -102,6 +102,7 @@ int main(int argc, char** argv) {
     if (!quiet)
         for (const auto& m : reader.messages()) std::cerr << m.text << "\n";
     if (!ok) {
+        for (const auto& e : reader.errors()) std::cerr << "inp2json: input error: " << e << "\n";
         std::cerr << "inp2json: could not read " << input << "\n";
         return 2;
     }

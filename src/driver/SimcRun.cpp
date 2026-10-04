@@ -65,6 +65,7 @@ void SimcRun::initialise() {
         SetupOptions so;
         so.run_name = opt_.run_name;
         so.data_dir = opt_.data_dir;
+        so.fortran_compat = opt_.fortran_compat;
         std::unique_ptr<ITarget> startupTarget = Registry<ITarget>::create(PipelineConfig::TargetType(pipelineJson_));
         setup_ = BuildRunSetup(params_, so, startupTarget.get());
     }
@@ -77,6 +78,8 @@ void SimcRun::initialise() {
     setup_.run_name = opt_.run_name;
     setup_.output_dir = opt_.output_dir;
     log(" Use random seed = " + std::to_string(params_.random_seed));
+    log(setup_.fortran_compat ? " SIMC++: fortran_compat = true (exact Fortran behaviour, known Fortran bugs kept)"
+                              : " SIMC++: fortran_compat = false (clear Fortran bugs corrected, docs/FORTRAN_DIFFERENCES.md)");
     if (!params_.random_state_file.empty() && params_.random_state_file.find_first_not_of(' ') != std::string::npos)
         log(" NOTE: random_state_file '" + params_.random_state_file +
             "' is not used by SIMC++ (the RANLUX state is not portable; D-002)");

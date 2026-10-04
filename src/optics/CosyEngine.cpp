@@ -284,7 +284,7 @@ std::string CosyEngine::defaultForwardFile(int spectr) {
 std::string CosyEngine::defaultReconFile(int spectr) {
     if (spectr == 1) return "hms/recon_cosy.dat";
     if (spectr == 5) return "shms/shms_recon.dat";
-    if (spectr == 6) throw FortranStop("mc_shms_recon: You are trying to use the LSA: no banana!");
+    // (mc_shms_recon.f also STOPs for the retired SHMS LSA tune; the input rejects that arm code, D-032.)
     throw FortranStop("recon for spectrometer " + std::to_string(spectr) + " not ported (HMS 1, SHMS 5 only)");
 }
 

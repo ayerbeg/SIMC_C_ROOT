@@ -259,6 +259,7 @@ int main(int argc, char** argv) {
         return 77;
     }
     SetupOptions opt;
+    opt.fortran_compat = true;   // D-031: Fortran references -> exact Fortran behaviour
     opt.data_dir = data_dir;
     const RunSetup s = BuildRunSetup(p, opt);   // default provider: material::HallCCryoTarget
     std::printf("setup vs .hist: %s\n  inp %s\n", histfile.c_str(), inp.c_str());

@@ -29,6 +29,9 @@ struct SetupOptions {
     /// Directory with the Fortran data files read at start-up (h2.theory, c12.theory, deut.dat,
     /// he3.dat, ...). The Fortran opens them in its working directory. Empty = current directory.
     std::string data_dir;
+    /// D-031: false = correct the clear Fortran bugs (default), true = exact Fortran behaviour (bitwise tests).
+    /// Copied into RunSetup::fortran_compat and ExtremeTripArgs::fortran_compat.
+    bool fortran_compat{false};
 };
 
 /// Build the run setup. `losses` = the target model's start-up losses (any ITarget; driver::SimcRun passes a dedicated

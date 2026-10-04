@@ -43,6 +43,7 @@ set(SIMC_FORTRAN_DIR "/home/ayerbe/NewDisk/simc_gfortran" CACHE PATH
 add_library(simcfw STATIC
     src/core/SimcParameters.cpp
     src/core/RunSetup.cpp
+    src/core/SpectrometerId.cpp
     src/input/InpReader.cpp
     src/input/EffectiveValues.cpp
     src/output/NtupleLayout.cpp
@@ -118,6 +119,7 @@ set_target_properties(simcpp PROPERTIES OUTPUT_NAME "simc++" RUNTIME_OUTPUT_DIRE
 add_subdirectory(tests/unit)
 add_subdirectory(tests/l1)
 add_subdirectory(tests/regression)
+add_subdirectory(tests/fortran_diff)   # P7.5: documented differences with the Fortran (D-031/D-032)
 
 # ============================================================================
 # Installation
