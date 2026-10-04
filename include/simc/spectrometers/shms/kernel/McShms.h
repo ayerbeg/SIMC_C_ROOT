@@ -28,7 +28,7 @@
 //     202 gauss1 for a success (and for a stop on the fitted-track calorimeter cut), 196 s2, 154 dc2, 84 dc1;
 //   * decay: grnd() in project/transp; collimator (using_SHMScoll, pions/muons): as mc_hms_coll.
 //
-// Reproduced FORTRAN-QUIRKs (see the .cpp for file:line):
+// Fortran behaviour (see the .cpp for file:line and the marker; docs/FORTRAN_DIFFERENCES.md):
 //   * the drifts use the hard-coded mc_shms.f lengths (39.47, 60.68, 307.95) that differ from the COSY drift
 //     classes (D-015 F5); the ray is projected to the Cherenkov entrance zd_fp + hcer_1_zentrance = 16.25 cm;
 //   * stop_id: reset to 0 on every call, set to 1..31 by the magnet apertures and 18..25 by the hut, NOT set by
@@ -189,6 +189,11 @@ public:
         skipHb_ = skip_hb;
     }
     bool useSieve() const { return useSieve_; }
+    /// D-031 run option, kept in the (possibly shared) COSY engine: true = keep the Fortran bugs of the transport
+    /// (truncated raddeg, transp.f:158 kaon decay mass, mc_hms_coll slit counters per step). Default false (corrected).
+    /// Call it after setEngine().
+    void setFortranCompat(bool b) { eng_->setFortranCompat(b); }
+    bool fortranCompat() const { return eng_->fortranCompat(); }
     bool use2Sieve() const { return use2Sieve_; }
     bool useColl() const { return useColl_; }
     bool skipHb() const { return skipHb_; }

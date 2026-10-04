@@ -65,11 +65,13 @@ inline void project(Track& t, double z_drift, double& pathlen, DecayState* decay
 }
 
 /// Fortran: shared/rotate_haxis.f:rotate_haxis(rotang,xp0,yp0). rotang in degrees; uses t.dxdzs, t.dydzs.
-void rotateHaxis(const Track& t, double rotang, double& xp0, double& yp0);
+/// `fortran_compat`: true = the truncated raddeg of the Fortran (kRotateRaddeg), false = pi/180 (FORTRAN-BUG D-015).
+void rotateHaxis(const Track& t, double rotang, double& xp0, double& yp0, bool fortran_compat);
 /// Fortran: shared/rotate_vaxis.f:rotate_vaxis(rotang,xp0,yp0).
-void rotateVaxis(const Track& t, double rotang, double& xp0, double& yp0);
+void rotateVaxis(const Track& t, double rotang, double& xp0, double& yp0, bool fortran_compat);
 
-/// Fortran rotate_*axis.f: parameter (raddeg=0.017453292) — truncated degree->radian factor (D-015 F9).
+/// Fortran rotate_*axis.f: parameter (raddeg=0.017453292) — truncated degree->radian factor (D-015 F9), used with
+/// fortran_compat only.
 constexpr double kRotateRaddeg = 0.017453292;
 
 class CosyEngine {
@@ -134,12 +136,17 @@ public:
 
     /// Where the Fortran write(6,*) warnings go (default std::cout; nullptr = silent).
     void setLog(std::ostream* os) { log_ = os; }
+    /// D-031 run option: true = keep the Fortran bugs of the transport code (transp.f:158 kaon decay mass, D-006;
+    /// truncated raddeg of rotate_*axis.f, D-015 F9, used by the chains). Default false (corrected).
+    void setFortranCompat(bool b) { fortranCompat_ = b; }
+    bool fortranCompat() const { return fortranCompat_; }
 
 private:
     std::map<int, std::vector<ForwardClass>> fwd_;
     std::map<int, std::vector<ReconTerm>> rec_;
     std::map<int, int> recMaxOrder_;
     std::ostream* log_;
+    bool fortranCompat_{false};
 };
 
 namespace detail {

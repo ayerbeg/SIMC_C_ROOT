@@ -274,7 +274,7 @@ int runExtreme(const std::string& dir) {
         Limits the{r["the_min"], r["the_max"]}, thp{r["thp_min"], r["thp_max"]};
         Limits pe{r["pe_min"], r["pe_max"]}, pp{r["pp_min"], r["pp_max"]};
         Limits z{-0.5 * t.length, 0.5 * t.length};   // init.f:243-244
-        T.extremeTripThruTarget(Ebeam, the, thp, pe, pp, z, Mh);
+        T.extremeTripThruTarget(Ebeam, the, thp, pe, pp, z, Mh, /*fortran_compat=*/true);   // Fortran table
         o["targ_length"] = t.length;
         o["X0_cm"] = t.X0_cm;
         for (int i = 0; i < 3; ++i) {

@@ -59,12 +59,12 @@ bool hmsChain(CosyEngine& eng, Track& t, double& pathlen, const ChainCallback& c
     project(t, eng.driftdist(spectr, 10), pathlen, decay);            // D1 IN
     xt = t.xs;
     yt = t.ys;
-    rotateHaxis(t, -6.0e0, xt, yt);
+    rotateHaxis(t, -6.0e0, xt, yt, eng.fortranCompat());
     if (!s.rec("d1_in", xt, yt)) return false;
     eng.transp(spectr, 11, t, 526.053e0, pathlen, decay);             // D1 OUT
     xt = t.xs;
     yt = t.ys;
-    rotateHaxis(t, 6.0e0, xt, yt);
+    rotateHaxis(t, 6.0e0, xt, yt, eng.fortranCompat());
     if (!s.rec("d1_out", xt, yt)) return false;
     project(t, z_dip1, pathlen, decay);
     if (!s.rec("pipe1")) return false;
@@ -85,7 +85,7 @@ bool shmsChain(CosyEngine& eng, Track& t, double& pathlen, const ChainCallback& 
     constexpr double zd_q2in = 25.55, zd_q2men = 39.1, zd_q2mid = 79.35, zd_q2mex = 79.35, zd_q2out = 39.1;
     constexpr double zd_q3in = 28.10, zd_q3men = 39.1, zd_q3mid = 79.35, zd_q3mex = 79.35, zd_q3out = 39.1;
     constexpr double zd_q3d1trans = 18.00, zd_d1flare = 30.10;
-    constexpr double zd_d1men = 39.47;   // FORTRAN-QUIRK (D-015 F5): COSY class 22 drift is 39.4715
+    constexpr double zd_d1men = 39.47;   // FORTRAN-DIFF-CANDIDATE(D-015 F5): COSY class 22 drift is 39.4715
     constexpr double zd_d1mid = 36.406263;
     constexpr double zd_d1mex = 36.406263;
     constexpr double zd_d1out = 60.68;   // COSY class 31: 60.68058
@@ -95,13 +95,13 @@ bool shmsChain(CosyEngine& eng, Track& t, double& pathlen, const ChainCallback& 
     auto vrot = [&](double ang, double yoff) {
         xt = t.xs;
         yt = t.ys;
-        rotateVaxis(t, ang, xt, yt);
+        rotateVaxis(t, ang, xt, yt, eng.fortranCompat());
         yt = yt + yoff;
     };
     auto hrot = [&](double ang, double xoff) {
         xt = t.xs;
         yt = t.ys;
-        rotateHaxis(t, ang, xt, yt);
+        rotateHaxis(t, ang, xt, yt, eng.fortranCompat());
         xt = xt + xoff;
     };
     // HB

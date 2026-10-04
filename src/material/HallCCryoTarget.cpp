@@ -177,8 +177,9 @@ void HallCCryoTarget::trip(int narm, double zpos, double energy, double theta, d
     const int arm = (narm == 2) ? electron_arm_ : hadron_arm_;
     const std::optional<SpectrometerId> spec = SpectrometerFromCode(arm);
     if (!spec || *spec == SpectrometerId::CALO_HMS_SIDE || *spec == SpectrometerId::CALO_SHMS_SIDE) {
-        // FORTRAN-QUIRK(D-012 F4): the calorimeter arms (7/8) and other codes leave s_air, s_kevlar, s_mylar
-        // and forward_path at the previous call's values. Out of scope (P14).
+        // FORTRAN-BUG(D-012 F4), path not ported: target.f:80-131/200-247 have no branch for the calorimeter arms (7/8),
+        // so s_air, s_kevlar, s_mylar and forward_path keep the previous call's values. SIMC++ refuses these arms here
+        // (both modes); the calorimeter port (P14) must give them their own windows.
         throw std::invalid_argument("hallc_cryo trip_thru_target: " + std::string(narm == 2 ? "electron" : "hadron") +
                                     "_arm = " + std::to_string(arm) +
                                     " not supported (HMS, SOS, HRS-R, HRS-L, SHMS only; calorimeter arms: P14)");
@@ -243,7 +244,8 @@ void HallCCryoTarget::trip(int narm, double zpos, double energy, double theta, d
             } else if (std::fabs(costmp - 1.) <= 0.000001) {
                 thCan_ = 0.;   // extreme_trip_thru_target can give z/R SLIGHTLY>1.0
             } else {
-                // FORTRAN-QUIRK(D-012 F4): th_can keeps its previous value.
+                // FORTRAN-DIFF-CANDIDATE(D-012 F4): target.f:236-244, th_can keeps its previous value (only a warning).
+                // Question: should the event be rejected, or th_can clamped?
                 if (log_) {
                     if (narm == 2)
                         *log_ << " z_can > can radius in target.f !!! " << fortran::listReal(z_can) << "\n";
@@ -286,7 +288,7 @@ void HallCCryoTarget::trip(int narm, double zpos, double energy, double theta, d
 
 // Fortran: target.f:extreme_trip_thru_target (l.310-544)
 void HallCCryoTarget::extremeTripThruTarget(double ebeam, const Limits& the, const Limits& thp, const Limits& pe,
-                                            const Limits& pp, const Limits& z, double m) {
+                                            const Limits& pp, const Limits& z, double m, bool fortran_compat) {
     NoRandom none;
     TargetInfo& targ = targ_;
     constexpr double zero = 0.0e0;
@@ -310,6 +312,8 @@ void HallCCryoTarget::extremeTripThruTarget(double ebeam, const Limits& the, con
         trip(2, z.min, energymax, the.max, targ.Eloss[1].max, targ.teff[1].max, Me, 3, none);
         trip(2, z.max, energymin, the.min, targ.Eloss[1].min, targ.teff[1].min, Me, 2, none);
     } else if (targ.can == 1) {   // beer can
+        // FORTRAN-DIFF-CANDIDATE(D-017): the corner uses a 1.25" can radius (target.f:368-376, 456-464) while
+        // trip_thru_target uses 1.325" (target.f:108, 228). Question: which radius is right?
         if (z.max >= targ.length / 2.) {
             th_corner_max = target_pi / 2.;
         } else {
@@ -412,8 +416,10 @@ void HallCCryoTarget::extremeTripThruTarget(double ebeam, const Limits& the, con
         trip(3, zz, energymax, th1, E1, t1, m, 2, none);
         targ.Eloss[2].min = std::min(targ.Eloss[2].min, E1);
     } else if (targ.can == 2 || targ.can == 3) {   // pudding can or cryo17
-        // FORTRAN-QUIRK (suspected bug, target.f:501): the ELECTRON angle the%min is used here.
-        zz = -(targ.length / 2.) / std::tan(the.min);
+        // FORTRAN-BUG(D-017): original Fortran target.f:501: `zz = -(targ%length/2.)/tan(the%min)` in the HADRON
+        // section; corrected because the hadron leaves the can at the hadron angle: the trip_thru_target calls below
+        // use thp%min (copy-paste of the electron section, target.f:408). fortran_compat keeps the%min.
+        zz = -(targ.length / 2.) / std::tan(fortran_compat ? the.min : thp.min);
         zz = std::max(zz, (-targ.length / 2.));
 
         trip(3, zz, energymin, thp.min, E1, t1, m, 3, none);
@@ -566,7 +572,8 @@ void HallCCryoTarget::extremeLosses(const ExtremeTripArgs& x, simc::TargetInfo& 
     setLog(nullptr);
     targ_ = t;   // the set-up target description (same type since P7.4)
     extremeTripThruTarget(x.Ebeam, Limits{x.the.min, x.the.max}, Limits{x.thp.min, x.thp.max},
-                          Limits{x.pe.min, x.pe.max}, Limits{x.pp.min, x.pp.max}, Limits{x.z.min, x.z.max}, x.m);
+                          Limits{x.pe.min, x.pe.max}, Limits{x.pp.min, x.pp.max}, Limits{x.z.min, x.z.max}, x.m,
+                          x.fortran_compat);
     for (int i = 0; i < 3; ++i) {
         t.Eloss[i].min = targ_.Eloss[i].min;
         t.Eloss[i].max = targ_.Eloss[i].max;

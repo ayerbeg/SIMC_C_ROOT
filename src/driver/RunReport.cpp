@@ -115,10 +115,16 @@ void reactionLines(Out& o, const RunSetup& s) {
         if (A == 1) o.list("              ****--------  H(e,e'rho)  --------****");
         else o.list("I am not set up for anything else yet!");
     } else if (f.doing_delta) {
-        // FORTRAN-QUIRK simc.f:726-734: the delta titles go to unit 6, not to the .hist
-        if (f.doing_hyddelta) std::cout << "  ****--------  H(e,e'p)pi  --------****\n";
-        else if (f.doing_deutdelta) std::cout << "  ****--------  D(e,e'p)pi  --------****\n";
-        else if (f.doing_hedelta) std::cout << "  ****--------  A(e,e'p)pi  --------****\n";
+        // FORTRAN-BUG(D-018): original Fortran simc.f:727-732: `write(6,*) ' ****--------  H(e,e''p)pi  --------****'`
+        // (and D, A); corrected because every other reaction title of report() goes to the report unit iun (the .hist),
+        // so the (e,e'p)pi title was missing from the .hist. fortran_compat keeps unit 6.
+        auto title = [&](const char* t) {
+            if (s.fortran_compat) std::cout << " " << t << "\n";
+            else o.list(t);
+        };
+        if (f.doing_hyddelta) title(" ****--------  H(e,e'p)pi  --------****");
+        else if (f.doing_deutdelta) title(" ****--------  D(e,e'p)pi  --------****");
+        else if (f.doing_hedelta) title(" ****--------  A(e,e'p)pi  --------****");
         else stop("I don't have ANY idea what (e,e'p)pi we're doing!!!");
     } else if (f.doing_pion) {
         if (f.doing_hydpi) {
@@ -290,9 +296,12 @@ std::string FormatHist(const RunSetup& s, const RunReport& r) {
     o.line(kin2("x offset", s.spec.e.offset.x, s.spec.p.offset.x, "cm"));
     o.line(kin2("y offset", s.spec.e.offset.y, s.spec.p.offset.y, "cm"));
     o.line(kin2("z offset", s.spec.e.offset.z, s.spec.p.offset.z, "cm"));
-    // FORTRAN-QUIRK (D-018): printed in rad under the label 'mr'
-    o.line(kin2("xptar offset", s.spec.e.offset.xptar, s.spec.p.offset.xptar, "mr"));
-    o.line(kin2("yptar offset", s.spec.e.offset.yptar, s.spec.p.offset.yptar, "mr"));
+    // FORTRAN-BUG(D-018): original Fortran simc.f:815-818: `write(iun,...) 'xptar offset', spec%e%offset%xptar,
+    // spec%p%offset%xptar, 'mr'` (and yptar) -- the values are in rad (dbase.f:472-475 divides the mrad input by 1000);
+    // corrected because the label says mr: the corrected .hist prints mrad (= the input values).
+    const double offFac = s.fortran_compat ? 1.0 : units::kMradPerRad;
+    o.line(kin2("xptar offset", s.spec.e.offset.xptar * offFac, s.spec.p.offset.xptar * offFac, "mr"));
+    o.line(kin2("yptar offset", s.spec.e.offset.yptar * offFac, s.spec.p.offset.yptar * offFac, "mr"));
 
     o.list("                      VALUES FOR \"CENTRAL\" EVENT:");
     o.line(kin2("delta", central.e.delta, central.p.delta, "%"));
@@ -356,8 +365,16 @@ std::string FormatHist(const RunSetup& s, const RunReport& r) {
         x.x(2).a("hadron_arm", 19).lit("=").i(p.hadron_arm, 2);
         o.line(x);
     }
-    // deForest_flag is an integer printed with L (gfortran: T if non-zero)
-    o.line(flags({{"using_Eloss", s.sw.using_Eloss}, {"using_Coulomb", s.sw.using_Coulomb}, {"deForest_flag", p.deForest_flag != 0}}));
+    // FORTRAN-BUG(D-018): original Fortran simc.f:897-898: `write(iun,'(5x,3(2x,a19,''='',l2)))' ... 'deForest_flag',
+    // deForest_flag` -- an integer (-1, 0, 1) written with the L edit descriptor (T if non-zero, so -1 and +1 look the
+    // same); corrected because the value is not a logical: printed with i2.
+    if (s.fortran_compat) {
+        o.line(flags({{"using_Eloss", s.sw.using_Eloss}, {"using_Coulomb", s.sw.using_Coulomb}, {"deForest_flag", p.deForest_flag != 0}}));
+    } else {
+        Record x = flags({{"using_Eloss", s.sw.using_Eloss}, {"using_Coulomb", s.sw.using_Coulomb}});
+        x.x(2).a("deForest_flag", 19).lit("=").i(p.deForest_flag, 2);
+        o.line(x);
+    }
     o.line(flags({{"correct_Eloss", s.sw.correct_Eloss}, {"correct_raster", p.correct_raster}, {"doing_decay", p.doing_decay}}));
     o.line(flags({{"using_E_arm_montecarlo", s.sw.using_E_arm_montecarlo},
                   {"using_P_arm_montecarlo", s.sw.using_P_arm_montecarlo},
@@ -365,7 +382,10 @@ std::string FormatHist(const RunSetup& s, const RunReport& r) {
     // simc.f:907-909 (the Fortran also lists the retired code 6; rejected at input, D-032)
     if (Is(p.electron_arm, SpectrometerId::SHMS) || Is(p.hadron_arm, SpectrometerId::SHMS)) {
         Record x;
-        x.x(7).a("use_first_cer", 19).lit("=").l(p.use_first_cer != 0, 2);
+        // FORTRAN-BUG(D-018): original Fortran simc.f:907: `write(iun,'(7x,a19,''='',l2)') 'use_first_cer',use_first_cer`
+        // -- an integer written with L; corrected: i2 (fortran_compat keeps L).
+        if (s.fortran_compat) x.x(7).a("use_first_cer", 19).lit("=").l(p.use_first_cer != 0, 2);
+        else x.x(7).a("use_first_cer", 19).lit("=").i(p.use_first_cer, 2);
         o.line(x);
     }
     { Record x; x.x(7).a("ctau", 11).lit("=").f(p.ctau, 10, 3).a("cm", 4); o.line(x); }
@@ -401,7 +421,10 @@ std::string FormatHist(const RunSetup& s, const RunReport& r) {
     } else {
         {
             Record x;
-            x.x(1).a("use_expon", 14).lit("=").l(p.use_expon != 0, 3);
+            // FORTRAN-BUG(D-018): original Fortran simc.f:927: `write(iun,'(4(x,a14,''='',l3))') 'use_expon',use_expon,...`
+            // -- an integer written with L; corrected: i3 (fortran_compat keeps L).
+            if (s.fortran_compat) x.x(1).a("use_expon", 14).lit("=").l(p.use_expon != 0, 3);
+            else x.x(1).a("use_expon", 14).lit("=").i(p.use_expon, 3);
             x.x(1).a("include_hard", 14).lit("=").l(s.sw.include_hard, 3);
             x.x(1).a("calc_spence", 14).lit("=").l(s.sw.calculate_spence, 3);
             o.line(x);
@@ -611,14 +634,18 @@ std::string FormatGeni(const RunSetup& s, const RunReport& r) {
         row("Slit hor/vert/corners ", "shms", {"slit_hor", "slit_vert", "slit_oct"});
         row("Q1 phys entrance/mag entr/mid/mag exit/phys exit  ", "shms", {"q1_in", "q1_men", "q1_mid", "q1_mex", "q1_out"});
         row("Q2 phys entrance/mag entr/mid/mag exit/phys exit  ", "shms", {"q2_in", "q2_men", "q2_mid", "q2_mex", "q2_out"});
-        // FORTRAN-QUIRK simc.f:519-520: the Q3 "mid" column prints shmsSTOP_q2_mid
-        row("Q3 phys entrance/mag entr/mid/mag exit/phys exit       ", "shms", {"q3_in", "q3_men", "q2_mid", "q3_mex", "q3_out"});
+        // FORTRAN-BUG(D-011): original Fortran simc.f:519-520: `write(7,*) 'Q3 phys entrance/mag entr/mid/mag exit/phys
+        // exit ',shmsSTOP_q3_in,shmsSTOP_q3_men,shmsSTOP_q2_mid,shmsSTOP_q3_mex,shmsSTOP_q3_out`; corrected because the
+        // Q3 "mid" column must show shmsSTOP_q3_mid (the Q2 value was printed twice and q3_mid never).
+        row("Q3 phys entrance/mag entr/mid/mag exit/phys exit       ", "shms",
+            {"q3_in", "q3_men", s.fortran_compat ? "q2_mid" : "q3_mid", "q3_mex", "q3_out"});
         row("D1 entrance/flare/mid 1-2   ", "shms", {"D1_in", "D1_flr", "D1_mid1", "D1_mid2"});
         row("D1 mid 3-5            ", "shms", {"D1_mid3", "D1_mid4", "D1_mid5"});
         row("D1 mid 6-7/mag exit/phys exit         ", "shms", {"D1_mid6", "D1_mid7", "D1_mex", "D1_out"});
         row("Events reaching hut   ", "shms", {"hut"});
-        // FORTRAN-QUIRK simc.f:526: label with four names, two values
-        row("DC1, DC2, Scin, Cal   ", "shms", {"dc1", "dc2"});
+        // FORTRAN-BUG(D-011): original Fortran simc.f:526: `write(7,*) 'DC1, DC2, Scin, Cal   ',shmsSTOP_dc1,shmsSTOP_dc2`;
+        // corrected because the label names four counters but two are printed (scin/cal are on the next line).
+        row(s.fortran_compat ? "DC1, DC2, Scin, Cal   " : "DC1, DC2              ", "shms", {"dc1", "dc2"});
         row("S1, S2, S3, Cal       ", "shms", {"s1", "s2", "s3", "cal"});
         row("Successes             ", "shms", {"successes"});
         o.line("");

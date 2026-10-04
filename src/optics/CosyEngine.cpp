@@ -53,8 +53,8 @@ std::string listReal(double v) {
 }
 
 // Decay kinematics shared by transp (both halves) and project. Fortran: transp.f:146-184 / 238-274,
-// project.f:75-116. m_final_kk: mass given to the 2-pion kaon mode (FORTRAN-QUIRK: Mk in the first half
-// of transp, transp.f:158; Mpi elsewhere, transp.f:251, project.f:88).
+// project.f:75-116. m_final_kk: mass given to the 2-pion kaon mode (FORTRAN-BUG D-006: Mk in the first half
+// of transp, transp.f:158, kept with fortran_compat; Mpi elsewhere, transp.f:251, project.f:88).
 struct DecayOut {
     double pxf, pyf, pzf, pf;
 };
@@ -232,9 +232,15 @@ void project(Track& t, double& x_new, double& y_new, double z_drift, double& pat
     }
 }
 
+// FORTRAN-BUG(D-015 F9): original Fortran shared/rotate_haxis.f:41 and rotate_vaxis.f:40:
+// `parameter (raddeg=0.017453292)`; corrected because the constant is pi/180 truncated to 8 significant digits
+// (relative error 1.1e-8 against pi/180 = 0.017453292519943295); it rotates the HMS dipole and SHMS aperture tests.
+// fortran_compat keeps the truncated value.
+static double rotateRaddeg(bool fortran_compat) { return fortran_compat ? kRotateRaddeg : constants::pi / 180.; }
+
 // Fortran: shared/rotate_haxis.f:rotate_haxis
-void rotateHaxis(const Track& t, double rotang, double& xp0, double& yp0) {
-    const double rotang_rad = rotang * kRotateRaddeg;   // FORTRAN-QUIRK(D-015): truncated raddeg
+void rotateHaxis(const Track& t, double rotang, double& xp0, double& yp0, bool fortran_compat) {
+    const double rotang_rad = rotang * rotateRaddeg(fortran_compat);   // FORTRAN-BUG(D-015 F9) above
     const double tan_th = std::tan(rotang_rad);
     const double sin_th = std::sin(rotang_rad);
     const double cos_th = std::cos(rotang_rad);
@@ -248,8 +254,8 @@ void rotateHaxis(const Track& t, double rotang, double& xp0, double& yp0) {
 }
 
 // Fortran: shared/rotate_vaxis.f:rotate_vaxis
-void rotateVaxis(const Track& t, double rotang, double& xp0, double& yp0) {
-    const double rotang_rad = rotang * kRotateRaddeg;   // FORTRAN-QUIRK(D-015): truncated raddeg
+void rotateVaxis(const Track& t, double rotang, double& xp0, double& yp0, bool fortran_compat) {
+    const double rotang_rad = rotang * rotateRaddeg(fortran_compat);   // FORTRAN-BUG(D-015 F9) above
     const double tan_th = std::tan(rotang_rad);
     const double sin_th = std::sin(rotang_rad);
     const double cos_th = std::cos(rotang_rad);
@@ -473,8 +479,11 @@ double CosyEngine::transp(int spectr, int cls, Track& t, double zd, double& path
         if (z_decay <= zd / 2) {   // decay in first half
             d.dflag = true;
             d.decdist = d.decdist + z_decay;
-            // FORTRAN-QUIRK (D-006 audit): 2-pion kaon decay gets m_final = Mk here (transp.f:158), Mpi elsewhere.
-            DecayOut o = decayProducts(d, constants::Mk, beta, gamma, t.dxdzs, t.dydzs, false);
+            // FORTRAN-BUG(D-006): original Fortran shared/transp.f:158: `m_final = Mk` for the K -> pi pi mode of a decay
+            // in the first half of an element; corrected because the decay product is a pion (pr uses Mpi, and the
+            // second half transp.f:251 and project.f:88 set m_final = Mpi). fortran_compat keeps Mk.
+            DecayOut o = decayProducts(d, fortranCompat_ ? constants::Mk : constants::Mpi, beta, gamma, t.dxdzs, t.dydzs,
+                                       false);
             t.dxdzs = o.pxf / o.pzf;
             t.dydzs = o.pyf / o.pzf;
             t.dpps = 100. * (o.pf / p_spec - 1.);

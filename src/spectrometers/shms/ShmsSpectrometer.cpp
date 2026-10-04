@@ -5,6 +5,7 @@
 #include <stdexcept>
 
 #include "simc/core/Registry.h"
+#include "simc/core/RunSetup.h"
 #include "simc/core/SimcParameters.h"
 #include "simc/core/SpectrometerId.h"
 #include "simc/spectrometers/shms/kernel/McShms.h"
@@ -33,7 +34,10 @@ void ShmsSpectrometer::configure(const Json& config, const SimcParameters& param
     if (config.contains("verbose") && !config.at("verbose").get<bool>()) k_->setLog(nullptr);
 }
 
-void ShmsSpectrometer::init(const StageContext&) { k_->loadMaps(Code(SpectrometerId::SHMS)); }
+void ShmsSpectrometer::init(const StageContext& ctx) {
+    k_->setFortranCompat(ctx.setup.fortran_compat);   // D-031 run option
+    k_->loadMaps(Code(SpectrometerId::SHMS));
+}
 
 const std::map<std::string, long>& ShmsSpectrometer::stopCounters() const {
     cntMap_.clear();

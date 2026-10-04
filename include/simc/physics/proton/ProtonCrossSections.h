@@ -41,6 +41,7 @@ struct DeForestState {
     double Mh2{0};            ///< hadron mass squared [MeV^2] (dbase.f:224: Mh*Mh, Mh = Mp for (e,e'p))
     long nevent{0};           ///< event counter printed in the warnings (simc.f nevent)
     std::ostream* log{nullptr};  ///< where WARNINGs go; nullptr = std::cout (Fortran unit 6)
+    bool fortran_compat{false};  ///< D-031: true = the cos_phi warning can never print, as in the Fortran (D-014)
 };
 
 /// Fortran: physics_proton.f:deForest (l.25-133). Off-shell e-N cross section

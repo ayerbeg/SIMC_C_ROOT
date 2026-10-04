@@ -63,6 +63,7 @@ int runDeforest(const std::string& dir, double tol) {
     std::ostringstream log;
     int rc = simcl1::run("deforest (" + dir + ")", dir, {{"deforest", tol}}, [&](const Row& r, Outputs& o) {
         proton::DeForestState st;
+        st.fortran_compat = true;   // D-031: Fortran table
         st.deForest_flag = static_cast<int>(std::lround(r["deForest_flag"]));   // driver uses nint
         st.Mh2 = kMh2;
         st.nevent = static_cast<long>(r.number());   // driver: nevent = row number
@@ -138,6 +139,7 @@ int runPlugins() {
         m->configure(c.cfg, params);
         m->beginEvent(7);
         proton::DeForestState st;
+        st.fortran_compat = true;   // D-031: Fortran table
         st.deForest_flag = c.expectFlag;
         st.Mh2 = kMh2;
         double ref = proton::deForest(ev, st);

@@ -7,7 +7,7 @@
 //   geni_*  every tried event, weight 1: vertex e/p delta, yptar, -xptar, Em, Pm
 //   gen_*   successful events, weight 1: vertex e/p delta, yptar, -xptar, Em   (no Pm, as the Fortran)
 //   recon_* successful events: main.RECON e/p delta, yptar, xptar (weight main.weight; NOTE: xptar
-//           NOT negated although the axis starts at -gen.xptar.max — FORTRAN-QUIRK simc.f:274,277),
+//           NOT negated although the axis starts at -gen.xptar.max — FORTRAN-DIFF-CANDIDATE simc.f:274,277),
 //           recon Em, Pm (weight 1)
 // Values outside the 50 bins are dropped (inc() has no under/overflow).
 //

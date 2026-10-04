@@ -76,12 +76,15 @@ void StandardBeam::generate(MainEvent& main, Event& vertex, IRandom& rng) {
                                 rng);
     main.target.Eloss[0] = tb.eloss;
     main.target.teff[0] = tb.radlen;
+    // FORTRAN-DIFF-CANDIDATE(D-024): trip_thru_target drew its gaussians above even with using_Eloss = 0 (event.f:193-205);
+    // harmless (random stream only), kept so that the Fortran replays stay aligned.
     if (!using_Eloss_) main.target.Eloss[0] = 0.0;
     if (using_Coulomb_)
         main.target.Coulomb = Coulomb_constant_;
     else
         main.target.Coulomb = 0.0;
-    // FORTRAN-QUIRK(D-024): the grnd is drawn even when dEbeam = 0.
+    // FORTRAN-DIFF-CANDIDATE(D-024): the grnd is drawn even when dEbeam = 0 (event.f:204). Harmless (random stream
+    // only); kept so that the replays of the Fortran captures stay aligned.
     vertex.Ein = Ebeam_ + (rng.uniform() - 0.5) * dEbeam_ + main.target.Coulomb - main.target.Eloss[0];
 
     main.Ein_shift = vertex.Ein - Ebeam_vertex_ave_;   // l.211-212

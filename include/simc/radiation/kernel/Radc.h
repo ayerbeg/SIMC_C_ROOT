@@ -17,7 +17,8 @@
 //   radcInitEv        init.f:655-728
 //   basicradInitEv    init.f:732-813
 //
-// FORTRAN-QUIRKs kept (D-019, P5.F1 report Q3-Q7), marked at the code:
+// Fortran behaviour kept (D-019, P5.F1 report Q3-Q7; FORTRAN-QUIRK = documented, FORTRAN-DIFF-CANDIDATE = open
+// question, docs/FORTRAN_DIFFERENCES.md), marked at the code:
 //   * gamma() is libm tgamma everywhere (std::tgamma).
 //   * radc_init_ev with intcor_mode = 0 uses the stale SAVEd dsoft_prime (RadcState::initev_dsoft_prime).
 //   * peaked_rad_weight: rad_flag = 0 result independent of Egamma; rad_flag = 1 & extrad_flag = 3 uses the stale

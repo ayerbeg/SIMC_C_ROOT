@@ -30,6 +30,22 @@ Json withVerbose(Json cfg, bool quiet) {
 
 }  // namespace
 
+// Fortran: simc.f l.226-238 (pass_cuts).
+// FORTRAN-BUG(D-006): original Fortran simc.f:237: `recon%p%delta .ge. (SPedge%e%delta%max-slop%MC%p%delta%used)`;
+// corrected because the hadron-arm delta must be tested against the hadron-arm limit SPedge%p%delta%max, like the
+// other five hadron-arm tests (copy-paste of l.231). fortran_compat keeps the electron-arm limit.
+bool PassCuts(const RunSetup& S, const Event& r) {
+    const auto& E = S.SPedge;
+    const auto& M = S.slop.MC;
+    const double p_delta_max = S.fortran_compat ? E.e.delta.max : E.p.delta.max;
+    return !(r.e.delta <= (E.e.delta.min + M.e.delta.used) || r.e.delta >= (E.e.delta.max - M.e.delta.used) ||
+             r.e.yptar <= (E.e.yptar.min + M.e.yptar.used) || r.e.yptar >= (E.e.yptar.max - M.e.yptar.used) ||
+             r.e.xptar <= (E.e.xptar.min + M.e.xptar.used) || r.e.xptar >= (E.e.xptar.max - M.e.xptar.used) ||
+             r.p.delta <= (E.p.delta.min + M.p.delta.used) || r.p.delta >= (p_delta_max - M.p.delta.used) ||
+             r.p.yptar <= (E.p.yptar.min + M.p.yptar.used) || r.p.yptar >= (E.p.yptar.max - M.p.yptar.used) ||
+             r.p.xptar <= (E.p.xptar.min + M.p.xptar.used) || r.p.xptar >= (E.p.xptar.max - M.p.xptar.used));
+}
+
 SimcRun::SimcRun(SimcParameters params, const Json& pipeline, RunOptions options)
     : params_(std::move(params)), pipelineJson_(pipeline), opt_(std::move(options)) {
     if (opt_.override_ngen) params_.ngen = static_cast<int>(opt_.ngen);
@@ -221,19 +237,8 @@ void SimcRun::step() {
     // l.224 complete_main
     if (success) success = reactions::completeMain(false, main, ev.vertex, central_.vertex0, ev.recon, *model_, ctx_);
 
-    // l.226-238 pass_cuts. FORTRAN-QUIRK(D-006, simc.f:234): the hadron delta upper bound uses SPedge%e%delta%max.
-    {
-        const auto& E = S.SPedge;
-        const auto& M = S.slop.MC;
-        const Event& r = ev.recon;
-        ev.pass_cuts = !(r.e.delta <= (E.e.delta.min + M.e.delta.used) || r.e.delta >= (E.e.delta.max - M.e.delta.used) ||
-                         r.e.yptar <= (E.e.yptar.min + M.e.yptar.used) || r.e.yptar >= (E.e.yptar.max - M.e.yptar.used) ||
-                         r.e.xptar <= (E.e.xptar.min + M.e.xptar.used) || r.e.xptar >= (E.e.xptar.max - M.e.xptar.used) ||
-                         r.p.delta <= (E.p.delta.min + M.p.delta.used) ||
-                         r.p.delta >= (E.e.delta.max - M.p.delta.used) ||   // FORTRAN-QUIRK(D-006)
-                         r.p.yptar <= (E.p.yptar.min + M.p.yptar.used) || r.p.yptar >= (E.p.yptar.max - M.p.yptar.used) ||
-                         r.p.xptar <= (E.p.xptar.min + M.p.xptar.used) || r.p.xptar >= (E.p.xptar.max - M.p.xptar.used));
-    }
+    // l.226-238 pass_cuts (PassCuts, top of this file; FORTRAN-BUG(D-006) there)
+    ev.pass_cuts = PassCuts(S, ev.recon);
     // l.240-243
     if (params_.hard_cuts) {
         if (!ev.pass_cuts) success = false;

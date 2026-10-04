@@ -268,7 +268,8 @@ bool MonteCarlo::run(const Event& orig, MainEvent& main, Event& recon, IRandom& 
         in.fry = xtar_init_E;
         info_.e_called = true;
         const SpecResult r = eArm_->transport(in, rng);
-        // FORTRAN-QUIRK: tmpfact is a SAVEd local, stale if the routine did not write it
+        // FORTRAN-DIFF-CANDIDATE(D-015): simc.f:1334 tmpfact is a SAVEd local; when the arm routine did not reach the hut
+        // it keeps the previous event's value, which is still added to ntup%resfac. Question: intended?
         if (r.resolution_factor) tmpfact_ = *r.resolution_factor;
         main.ntup.resfac = main.ntup.resfac + tmpfact_;
         info_.e_stop = r.stop_reason;

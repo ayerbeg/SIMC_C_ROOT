@@ -3,6 +3,7 @@
 #include "simc/spectrometers/hms/HmsSpectrometer.h"
 
 #include "simc/core/Registry.h"
+#include "simc/core/RunSetup.h"
 #include "simc/core/SimcParameters.h"
 #include "simc/spectrometers/hms/kernel/McHms.h"
 
@@ -26,7 +27,10 @@ void HmsSpectrometer::configure(const Json& config, const SimcParameters& params
     if (config.contains("verbose") && !config.at("verbose").get<bool>()) k_->setLog(nullptr);
 }
 
-void HmsSpectrometer::init(const StageContext&) { k_->loadMaps(); }
+void HmsSpectrometer::init(const StageContext& ctx) {
+    k_->setFortranCompat(ctx.setup.fortran_compat);   // D-031 run option
+    k_->loadMaps();
+}
 
 const std::map<std::string, long>& HmsSpectrometer::stopCounters() const {
     cntMap_.clear();

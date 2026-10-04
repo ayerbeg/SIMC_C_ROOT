@@ -21,7 +21,7 @@
 // (mc_calo), the polarized-target field (using_tgt_field: track_from_tgt / track_to_tgt). Arm code 6 (SHMS LSA)
 // reaches mc_shms, which STOPs (simc::FortranStop).
 //
-// FORTRAN-QUIRKs reproduced:
+// Fortran behaviour reproduced (docs/FORTRAN_DIFFERENCES.md):
 //   * the electron-arm resmult goes through the SAVEd local tmpfact (simc.f:1334): if the electron-arm MC stops
 //     before writing it (HMS before the hut), ntup%resfac gets the value of an EARLIER call; it is added before
 //     the ok check, so it also happens for failed electron arms;

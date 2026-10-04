@@ -59,6 +59,7 @@ bool loadEngine(CosyEngine& eng, const std::string& mdir, bool recon) {
 
 int runTransp(const std::string& mdir, const std::string& dir) {
     CosyEngine eng;
+    eng.setFortranCompat(true);   // D-031: Fortran tables -> exact Fortran behaviour
     std::ostringstream log;
     eng.setLog(&log);
     if (!loadEngine(eng, mdir, false)) return 1;
@@ -97,6 +98,7 @@ int runTransp(const std::string& mdir, const std::string& dir) {
 
 int runChain(const std::string& mdir, const std::string& dir) {
     CosyEngine eng;
+    eng.setFortranCompat(true);   // D-031: Fortran tables -> exact Fortran behaviour
     std::ostringstream log;
     eng.setLog(&log);
     if (!loadEngine(eng, mdir, false)) return 1;
@@ -145,6 +147,7 @@ int runChain(const std::string& mdir, const std::string& dir) {
 
 int runRecon(const std::string& mdir, const std::string& dir) {
     CosyEngine eng;
+    eng.setFortranCompat(true);   // D-031: Fortran tables -> exact Fortran behaviour
     if (!loadEngine(eng, mdir, true)) return 1;
     std::vector<ColumnSpec> c;
     for (const char* n : {"dpp_recon", "dph_recon", "dth_recon", "y_recon"}) c.push_back({n, g_tol, 0.0});
@@ -208,6 +211,7 @@ int runSelftest(const std::string& mdir) {
         expect(powi(2.0, -2) == 0.25, "powi negative exponent");
     }
     CosyEngine eng;
+    eng.setFortranCompat(true);   // D-031: Fortran tables -> exact Fortran behaviour
     std::ostringstream log;
     eng.setLog(&log);
     bool loaded = loadEngine(eng, mdir, true);

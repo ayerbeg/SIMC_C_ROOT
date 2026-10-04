@@ -106,10 +106,19 @@ double deForest(const Event& ev, const DeForestState& st) {
     if (sin_gamma != 0)
         cos_phi = (ev.uq.y * (ev.uq.y * ev.up.z - ev.uq.z * ev.up.y) - ev.uq.x * (ev.uq.z * ev.up.x - ev.uq.x * ev.up.z)) /
                   sin_gamma / std::sqrt(1. - ev.uq.z * ev.uq.z);
-    if (std::abs(cos_phi) > 1.) {
+    if (std::abs(cos_phi) > 1.) {   // set to +/-1, warn if > 1.e-10
+        // FORTRAN-BUG(D-014): original Fortran physics_proton.f:84-86: `cos_phi = sign(1.0,cos_phi)` followed by
+        // `if ( (abs(cos_phi)-1.) .gt. 1.e-10) write(6,*) 'WARNING: deForest give cos_phi = ',cos_phi,' at event',nevent`;
+        // corrected because the test runs on the clamped value, so the warning (meant for |cos_phi| - 1 > 1e-10) can never
+        // print. The correction tests (and prints) the value BEFORE the clamp; the cross section is unchanged.
+        const double cos_phi_in = cos_phi;
         cos_phi = std::copysign(1.0, cos_phi);   // sign(1.0,cos_phi)
-        // FORTRAN-QUIRK: physics_proton.f:84-85 tests (abs(cos_phi)-1.) > 1.e-10 AFTER cos_phi was
-        // reset to +/-1, so the 'deForest give cos_phi' warning can never print. Reproduced: no warning.
+        const double tested = st.fortran_compat ? cos_phi : cos_phi_in;
+        if ((std::abs(tested) - 1.) > 1.e-10) {
+            char buf[160];   // list-directed: ' WARNING: deForest give cos_phi = ', G25.17, ' at event', I11
+            std::snprintf(buf, sizeof buf, " WARNING: deForest give cos_phi = %25.17G at event%12ld", tested, st.nevent);
+            (st.log ? *st.log : std::cout) << buf << '\n';
+        }
     }
 
     double GE = 0, GM = 0;

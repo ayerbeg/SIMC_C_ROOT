@@ -5,6 +5,7 @@
 // assumed on either side (x86-64 baseline, no -march).
 #include "simc/setup/KinematicsUtils.h"
 
+#include <algorithm>
 #include <cmath>
 #include <iomanip>
 
@@ -44,8 +45,9 @@ void PhysicsAngles(double theta0, double phi0, double dx, double dy, double& the
 }
 
 // Fortran: event.f:spectrometer_angles (l.1618-1647)
-// FORTRAN-QUIRK(D-012 F1): dy = sqrt(1/c^2 - 1 - dx^2) is NaN or ~3e-9 when the true dy is 0.
-void SpectrometerAngles(double theta0, double phi0, double& dx, double& dy, double theta, double phi) {
+// FORTRAN-QUIRK(D-012 F1): dy = sqrt(1/c^2 - 1 - dx^2) is ~3e-9 instead of 0 when the true dy is 0 (kept).
+void SpectrometerAngles(double theta0, double phi0, double& dx, double& dy, double theta, double phi,
+                        bool fortran_compat) {
     const double x = std::sin(theta) * std::cos(phi);
     const double y = std::sin(theta) * std::sin(phi);
     const double z = std::cos(theta);
@@ -55,7 +57,13 @@ void SpectrometerAngles(double theta0, double phi0, double& dx, double& dy, doub
 
     const double cos_dtheta = x * x0 + y * y0 + z * z0;
     dx = x / cos_dtheta;
-    dy = std::sqrt(1 / (cos_dtheta * cos_dtheta) - 1. - dx * dx);
+    // FORTRAN-BUG(D-028 F2, D-012 F1): original Fortran event.f:1641: `dy = sqrt(1/cos_dtheta**2-1.-dx**2)`;
+    // corrected because for a true dy ~ 0 the argument is rounding noise and can be slightly negative, which gives
+    // dy = NaN: the event then carries NaN in every hadron-arm recon/focal-plane value, passes every aperture (NaN
+    // comparisons are false) and is counted with a finite weight (one such event in reference/runs/eep_h_K2_norad_A).
+    // The argument is clamped to >= 0 (dy = 0, the exact value). fortran_compat keeps the NaN.
+    const double dy2 = 1 / (cos_dtheta * cos_dtheta) - 1. - dx * dx;
+    dy = std::sqrt(fortran_compat ? dy2 : std::max(dy2, 0.0));
 
     const double y_event = y / cos_dtheta;   // projected to plane perp. to spectrometer.
     if (y_event < y0) dy = -dy;

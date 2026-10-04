@@ -62,10 +62,10 @@ void FortranHistSink::fill(const MainEvent& main, const Event& vertex, const Eve
     if (!success) return;
     Inc(RECON_.e.delta, main.RECON.e.delta, main.weight);
     Inc(RECON_.e.yptar, main.RECON.e.yptar, main.weight);
-    Inc(RECON_.e.xptar, main.RECON.e.xptar, main.weight);   // FORTRAN-QUIRK: not negated
+    Inc(RECON_.e.xptar, main.RECON.e.xptar, main.weight);   // FORTRAN-DIFF-CANDIDATE(D-011): not negated (simc.f:274)
     Inc(RECON_.p.delta, main.RECON.p.delta, main.weight);
     Inc(RECON_.p.yptar, main.RECON.p.yptar, main.weight);
-    Inc(RECON_.p.xptar, main.RECON.p.xptar, main.weight);   // FORTRAN-QUIRK: not negated
+    Inc(RECON_.p.xptar, main.RECON.p.xptar, main.weight);   // FORTRAN-DIFF-CANDIDATE(D-011): not negated (simc.f:277)
     Inc(RECON_.Em, recon.Em, one);
     Inc(RECON_.Pm, recon.Pm, one);
     Inc(gen_.e.delta, vertex.e.delta, one);

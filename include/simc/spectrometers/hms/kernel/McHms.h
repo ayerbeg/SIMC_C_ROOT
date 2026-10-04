@@ -29,14 +29,15 @@
 //   * decay: grnd() in project/transp (optics::project); collimator: 1 grnd per hit step for pions
 //     (pion_coll_absorb) + musc + enerloss_new gauss1(10).
 //
-// Reproduced FORTRAN-QUIRKs (see the .cpp for file:line):
+// Fortran behaviour (see the .cpp for file:line and the marker; docs/FORTRAN_DIFFERENCES.md):
 //   * the calorimeter aperture test is commented out (mc_hms_hut.f:582-588): hSTOP_cal is never incremented;
 //   * the second hodoscope planes are tested with the FIRST hodoscope limits/offsets (mc_hms_hut.f:537-551);
 //   * multiple scattering in the Cherenkov exit foil is applied twice (mc_hms_hut.f:523-529);
 //   * lfit ignores DC hits that are exactly 0.0 as float (see Lfit.h);
 //   * the focal-plane values are real*4 (lfit) converted back to real*8, and the recon runs on those;
-//   * mc_hms_coll increments hSTOP_slit_* for every 1/20 step that is outside the octagon (several counts per
-//     ray possible, even for rays that finally pass), and hSTOP_coll when the ray is absorbed / ranges out.
+//   * FORTRAN-BUG(D-021), corrected unless fortran_compat: mc_hms_coll increments hSTOP_slit_* for every 1/20 step
+//     outside the octagon (several counts per ray, even for rays that finally pass); corrected: at most once per ray
+//     and counter. hSTOP_coll counts the rays absorbed / ranged out (both modes).
 #ifndef SIMC_SPECTROMETERS_HMS_KERNEL_MCHMS_H
 #define SIMC_SPECTROMETERS_HMS_KERNEL_MCHMS_H
 
@@ -154,6 +155,11 @@ public:
     optics::CosyEngine& engine() { return *eng_; }
     void setMatrixDir(const std::string& d) { matrixDir_ = d; }
     void setUseSieve(bool b) { useSieve_ = b; }
+    /// D-031 run option, kept in the (possibly shared) COSY engine: true = keep the Fortran bugs of the transport
+    /// (truncated raddeg, transp.f:158 kaon decay mass, mc_hms_coll slit counters per step). Default false (corrected).
+    /// Call it after setEngine().
+    void setFortranCompat(bool b) { eng_->setFortranCompat(b); }
+    bool fortranCompat() const { return eng_->fortranCompat(); }
     /// Where the Fortran write(6,*) messages go (default std::cout; nullptr = silent). Also used by the
     /// owned material model and the engine.
     void setLog(std::ostream* os);

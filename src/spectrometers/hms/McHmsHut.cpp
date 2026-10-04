@@ -95,7 +95,8 @@ constexpr double hscin_1y_top = -60.25;
 constexpr double hscin_1y_bot = 60.25;
 constexpr double hscin_1y_offset = -1.3;
 // hscin_2* limits/offsets exist in the Fortran (2x_offset -0.60, 2y_offset -2.40) but are never used:
-// FORTRAN-QUIRK (mc_hms_hut.f:537-551) the second hodoscope is tested with the hscin_1* values.
+// FORTRAN-DIFF-CANDIDATE(D-015 F7): mc_hms_hut.f:537-551 test the second hodoscope with the hscin_1* values.
+// Question: copy-paste, or the same active area on purpose? (offsets differ: -0.60/-2.40 vs hodoscope 1)
 // Cherenkov position
 constexpr double hcer_zentrance = 110.000;
 constexpr double hcer_zmirror = 230.000;
@@ -301,8 +302,8 @@ int McHms::mcHmsHut(optics::DecayState& d, McHmsArgs& a, double zinit, IRandom& 
     radw = hcer_mir_thick / hcer_mir_radlen;
     musc(radw);
 
-    // FORTRAN-QUIRK (mc_hms_hut.f:523-529): the exit-foil scattering is applied before the drift from the
-    // mirror to the exit AND again after it.
+    // FORTRAN-DIFF-CANDIDATE(D-015 F7): mc_hms_hut.f:523-529 apply the exit-foil scattering before the drift from the
+    // mirror to the exit AND again after it. Question: double counting, or a second foil?
     drift = hcer_zexit - hcer_zmirror;
     radw = hcer_exit_thick / hcer_exit_radlen;
     musc(radw);
@@ -316,7 +317,7 @@ int McHms::mcHmsHut(optics::DecayState& d, McHmsArgs& a, double zinit, IRandom& 
     radw = drift / hair_radlen;
     project(drift);
     muscExt(radw, drift);
-    if (inHodo1(t)) scincount = scincount + 1;   // FORTRAN-QUIRK: hodoscope-1 limits (mc_hms_hut.f:537-540)
+    if (inHodo1(t)) scincount = scincount + 1;   // FORTRAN-DIFF-CANDIDATE(D-015 F7): hodoscope-1 limits (l.537-540)
     radw = hscin_2x_thick / hscin_radlen;
     musc(radw);
 
@@ -324,7 +325,7 @@ int McHms::mcHmsHut(optics::DecayState& d, McHmsArgs& a, double zinit, IRandom& 
     radw = drift / hair_radlen;
     project(drift);
     muscExt(radw, drift);
-    if (inHodo1(t)) scincount = scincount + 1;   // FORTRAN-QUIRK: hodoscope-1 limits (mc_hms_hut.f:548-551)
+    if (inHodo1(t)) scincount = scincount + 1;   // FORTRAN-DIFF-CANDIDATE(D-015 F7): hodoscope-1 limits (l.548-551)
     radw = hscin_2y_thick / hscin_radlen;
     musc(radw);
 

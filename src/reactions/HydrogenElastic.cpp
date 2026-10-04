@@ -82,6 +82,8 @@ bool HydrogenElastic::generate(MainEvent& main, Event& vertex, Event& orig, IRan
     main.Trec = vertex.Trec;
 
     // l.400-415
+    // FORTRAN-DIFF-CANDIDATE(D-024): when generate_rad fails, orig is not written and keeps the previous try's values
+    // (event.f:400-415); harmless for the results (the try is rejected), visible only in per-try outputs.
     if (s.sw.using_rad) {
         success = radiator_->radiate(main, vertex, orig, rng, completeEvFn());
     } else {
@@ -148,7 +150,7 @@ bool HydrogenElastic::completeEv(MainEvent& main, Event& vertex, IRandom& rng) {
         vertex.p.phi = std::atan2(vertex.up.y, vertex.up.x);
         if (vertex.p.phi < 0.) vertex.p.phi = vertex.p.phi + 2. * pi;
         SpectrometerAngles(s.spec.p.theta, s.spec.p.phi, vertex.p.xptar, vertex.p.yptar, vertex.p.theta,
-                           vertex.p.phi);
+                           vertex.p.phi, s.fortran_compat);   // FORTRAN-BUG(D-028 F2) corrected inside unless compat
         vertex.p.E = std::sqrt(sq(vertex.p.P) + Mh2);
         vertex.p.delta = (vertex.p.P - s.spec.p.P) * 100. / s.spec.p.P;
     } else if (f.doing_phsp) {   // l.709-716

@@ -243,6 +243,7 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
     sw.using_rad = p.using_rad;
     sw.rad_flag = p.rad_flag;
     sw.extrad_flag = p.extrad_flag;
+    // FORTRAN-OPEN(D-031 flag 1, D-009): only rad_flag is zeroed; using_rad stays on in acceptance (phsp) mode.
     if (p.doing_phsp) sw.rad_flag = 0;           // dbase.f:227-228
 
     // ---- dbase.f:238-263 kinematics_main
@@ -315,7 +316,8 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
     }
 
     // ---- dbase.f:290-439 struck / recoil masses and sign_hadron (post-phsp flags:
-    // FORTRAN-QUIRK(D-009): with doing_phsp no branch is taken, Mtar_struck = Mrec_struck = 0).
+    // FORTRAN-OPEN(D-031 flag 1, D-009/D-028): with doing_phsp no branch is taken, Mtar_struck = Mrec_struck = 0, which
+    // makes Egamma_tot_max one proton mass too low (init.f:411-413). Kept as the Fortran until the user decides).
     if (f.doing_eep) {
         t.Mtar_struck = K::Mp;
         t.Mrec_struck = 0.0;
@@ -607,6 +609,7 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
     ExtremeTripArgs xa;
     xa.electron_arm = p.electron_arm;
     xa.hadron_arm = p.hadron_arm;
+    xa.fortran_compat = s.fortran_compat;
     xa.Ebeam = s.Ebeam;
     {
         const ArmCuts& a = s.SPedge.e;
@@ -866,8 +869,9 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
             return s;
         }
     } else if (ff.doing_delta) {
-        // FORTRAN-QUIRK: dbase.f:780-788 tests doing_hyddelta, doing_deutpi, doing_hepi (not doing_deutdelta /
-        // doing_hedelta), so D(e,e'p)pi and A(e,e'p)pi runs STOP here.
+        // FORTRAN-BUG(D-018), path not ported (P11): original Fortran dbase.f:780-788 tests doing_hyddelta, doing_deutpi,
+        // doing_hepi (not doing_deutdelta / doing_hedelta), so valid D(e,e'p)pi and A(e,e'p)pi runs STOP here. Kept in
+        // both modes until the Delta reaction is ported; the port must test the delta flags.
         if (!(ff.doing_hyddelta || ff.doing_deutpi || ff.doing_hepi)) {
             stop("I don't have ANY idea what (e,e'p)pi we're doing!!!");
             return s;
@@ -881,8 +885,9 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
             stop("pizero_ngamma not set correctly(must be 1 or 2), stopping");
             return s;
         }
-        // dbase.f:823-826. FORTRAN-QUIRK: this also stops charged H(e,e'pi-)Delta++ (which_pion=3 without
-        // doing_pizero), although the message only talks about pi0 from a neutron.
+        // dbase.f:823-826. FORTRAN-BUG(D-018), path not ported (P9): this also stops charged H(e,e'pi-)Delta++
+        // (which_pion=3 without doing_pizero; fpi12_deltapp.inp), although the message only talks about pi0 from a neutron.
+        // Kept in both modes until the pion reaction is ported; the port must add the doing_pizero condition.
         if (p.which_pion == 3 && ff.doing_hydpi) {
             stop("Can't do Delta+ production from neutron for pi0");
             return s;

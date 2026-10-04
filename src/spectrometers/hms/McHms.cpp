@@ -234,14 +234,14 @@ int McHms::body(McHmsArgs& a, optics::DecayState& d, IRandom& rng, McHmsDetail& 
     optics::project(t, zdrift, pathlen, &d);
     xt = t.xs;
     yt = t.ys;
-    optics::rotateHaxis(t, -6.0e0, xt, yt);
+    optics::rotateHaxis(t, -6.0e0, xt, yt, fortranCompat());
     if (hitDipole(xt, yt)) return stop(kD1In);
 
     // Go to D1 OUT magnetic boundary.
     eng.transp(spectr, 11, t, 526.053e0, pathlen, &d);
     xt = t.xs;
     yt = t.ys;
-    optics::rotateHaxis(t, 6.0e0, xt, yt);
+    optics::rotateHaxis(t, 6.0e0, xt, yt, fortranCompat());
     if (hitDipole(xt, yt)) return stop(kD1Out);
 
     // Vacuum pipes following the dipole. First the odd piece interfacing with the dipole itself (mc_hms.f:363)

@@ -11,7 +11,8 @@
 //    prints a warning (two lines) and returns the (wrong) formula result.
 //  * spectrometer_angles is ill-conditioned for dy ~ 0: sqrt(1/c^2 - 1 - dx^2) of rounding noise gives
 //    NaN (negative argument) or ~3e-9 instead of 0, and it is not the inverse of physics_angles at
-//    theta0 = 90/120 deg or when the trajectory crosses the beam axis.
+//    theta0 = 90/120 deg or when the trajectory crosses the beam axis. The NaN is a FORTRAN-BUG (D-028 F2), corrected
+//    unless fortran_compat (the argument is clamped to 0); the ~3e-9 and the other limitations are kept.
 #ifndef SIMC_SETUP_KINEMATICSUTILS_H
 #define SIMC_SETUP_KINEMATICSUTILS_H
 
@@ -27,7 +28,10 @@ void PhysicsAngles(double theta0, double phi0, double dx, double dy, double& the
 
 /// Fortran: event.f:spectrometer_angles (l.1618-1647). NOTE: dx, dy are OUTPUTS.
 /// In: theta0, phi0, theta, phi. Out: dx = xptar, dy = yptar.
-void SpectrometerAngles(double theta0, double phi0, double& dx, double& dy, double theta, double phi);
+/// `fortran_compat` (D-031): true = sqrt of the (possibly rounding-negative) argument as in the Fortran (NaN dy);
+/// false = the argument is clamped to >= 0 (FORTRAN-BUG D-028 F2 / D-012 F1, see the .cpp).
+void SpectrometerAngles(double theta0, double phi0, double& dx, double& dy, double theta, double phi,
+                        bool fortran_compat);
 
 /// Result of loren (energy, momentum components and |p| in the boosted frame).
 struct LorenResult {

@@ -61,7 +61,7 @@ constexpr double zd_q3mex = 79.35;
 constexpr double zd_q3out = 39.1;
 constexpr double zd_q3d1trans = 18.00;
 constexpr double zd_d1flare = 30.10;
-constexpr double zd_d1men = 39.47;   // FORTRAN-QUIRK (D-015 F5): COSY class 22 drift is 39.4715
+constexpr double zd_d1men = 39.47;   // FORTRAN-DIFF-CANDIDATE(D-015 F5): COSY class 22 drift is 39.4715; use COSY?
 constexpr double zd_d1mid = 36.406263;   // zd_d1mid1..7
 constexpr double zd_d1mex = 36.406263;
 constexpr double zd_d1out = 60.68;   // COSY class 31: 60.68058
@@ -213,7 +213,7 @@ int McShms::body(McShmsArgs& a, optics::DecayState& d, IRandom& rng, McShmsDetai
         project(zdrift);
         xt = t.xs;
         yt = t.ys;
-        optics::rotateVaxis(t, 1.5, xt, yt);
+        optics::rotateVaxis(t, 1.5, xt, yt, fortranCompat());
         yt = yt + 1.51;
         tr.x[tHbIn] = xt;
         tr.y[tHbIn] = yt;
@@ -224,7 +224,7 @@ int McShms::body(McShmsArgs& a, optics::DecayState& d, IRandom& rng, McShmsDetai
         project(zdrift);
         xt = t.xs;
         yt = t.ys;
-        optics::rotateVaxis(t, 1.5, xt, yt);
+        optics::rotateVaxis(t, 1.5, xt, yt, fortranCompat());
         yt = yt + 0.98;
         tr.x[tHbMen] = xt;
         tr.y[tHbMen] = yt;
@@ -234,7 +234,7 @@ int McShms::body(McShmsArgs& a, optics::DecayState& d, IRandom& rng, McShmsDetai
         transp(3, zd_hbmex);
         xt = t.xs;
         yt = t.ys;
-        optics::rotateVaxis(t, -1.5, xt, yt);
+        optics::rotateVaxis(t, -1.5, xt, yt, fortranCompat());
         yt = yt + 0.98;
         tr.x[tHbMex] = xt;
         tr.y[tHbMex] = yt;
@@ -245,7 +245,7 @@ int McShms::body(McShmsArgs& a, optics::DecayState& d, IRandom& rng, McShmsDetai
         project(zdrift);
         xt = t.xs;
         yt = t.ys;
-        optics::rotateVaxis(t, -1.5, xt, yt);
+        optics::rotateVaxis(t, -1.5, xt, yt, fortranCompat());
         yt = yt + 1.51;
         tr.x[tHbOut] = xt;
         tr.y[tHbOut] = yt;
@@ -363,7 +363,7 @@ int McShms::body(McShmsArgs& a, optics::DecayState& d, IRandom& rng, McShmsDetai
     auto dip = [&](double ang, double off, int i) {
         xt = t.xs;
         yt = t.ys;
-        optics::rotateHaxis(t, ang, xt, yt);
+        optics::rotateHaxis(t, ang, xt, yt, fortranCompat());
         xt = xt + off;
         tr.x[i] = xt;
         tr.y[i] = yt;

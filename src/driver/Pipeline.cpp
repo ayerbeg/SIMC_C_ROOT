@@ -47,7 +47,8 @@ PipelineConfig PipelineConfig::Defaults(const RunSetup& s) {
     p.target.type = kDefaultTarget;
     p.target.config["Mh"] = s.Mh;
     p.beam.type = "standard";
-    // event.f dispatch: the reaction is chosen by the flags (D-009)
+    // event.f dispatch: the reaction is chosen by the flags. FORTRAN-OPEN(D-031 flag 1, D-009): H + doing_phsp keeps
+    // doing_hyd_elast, so complete_ev runs the elastic kinematics (event.f:546 before 709).
     if (f.doing_phsp)
         p.reaction.type = "phase_space";
     else if (f.doing_hyd_elast)

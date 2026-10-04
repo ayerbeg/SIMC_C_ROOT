@@ -60,6 +60,10 @@ struct RunOptions {
     bool fortran_compat{false};
 };
 
+/// Fortran: simc.f l.226-238, the SPedge test on the reconstructed event (`pass_cuts`). With setup.fortran_compat the
+/// hadron delta upper bound is the ELECTRON-arm limit as in simc.f:237 (FORTRAN-BUG D-006); otherwise the hadron one.
+bool PassCuts(const RunSetup& setup, const Event& recon);
+
 class SimcRun {
 public:
     SimcRun(SimcParameters params, const Json& pipeline, RunOptions options);

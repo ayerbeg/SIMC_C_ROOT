@@ -174,7 +174,7 @@ int McShms::mcShmsHut(optics::DecayState& d, McShmsArgs& a, double /*zinit (unus
     project(drift);
     muscExt(radw, drift);
     if (t.xs > (hscin_1y_bot + hscin_1x_offset) || t.xs < (hscin_1y_top + hscin_1x_offset)) {
-        if (use_det_cut) return hutStop(kS1, 21);   // FORTRAN-QUIRK: both S1 planes count in s1
+        if (use_det_cut) return hutStop(kS1, 21);   // FORTRAN-DIFF-CANDIDATE(D-015 F6): both S1 planes count in s1
     }
     radw = hscin_1y_thick / hscin_radlen;
     musc(radw);
@@ -210,7 +210,7 @@ int McShms::mcShmsHut(optics::DecayState& d, McShmsArgs& a, double /*zinit (unus
     project(drift);
     muscExt(radw, drift);
     if (t.ys > (hscin_2x_left + hscin_2y_offset) || t.ys < (hscin_2x_right + hscin_2y_offset)) {
-        if (use_det_cut) return hutStop(kS3, 22);   // FORTRAN-QUIRK: the 2x plane counts in s3
+        if (use_det_cut) return hutStop(kS3, 22);   // FORTRAN-DIFF-CANDIDATE(D-015 F6): the 2x plane counts in s3
     }
     radw = hscin_2x_thick / hscin_radlen;
     musc(radw);
@@ -219,7 +219,7 @@ int McShms::mcShmsHut(optics::DecayState& d, McShmsArgs& a, double /*zinit (unus
     project(drift);
     muscExt(radw, drift);
     if (t.xs > (hscin_2y_bot + hscin_2x_offset) || t.xs < (hscin_2y_top + hscin_2x_offset)) {
-        if (use_det_cut) return hutStop(kS2, 23);   // FORTRAN-QUIRK: the 2y plane counts in s2
+        if (use_det_cut) return hutStop(kS2, 23);   // FORTRAN-DIFF-CANDIDATE(D-015 F6): the 2y plane counts in s2
     }
     radw = hscin_2y_thick / hscin_radlen;
     musc(radw);
@@ -258,7 +258,8 @@ int McShms::mcShmsHut(optics::DecayState& d, McShmsArgs& a, double /*zinit (unus
     det.yfp4 = y0;
     det.dyfp4 = dy;
 
-    // FORTRAN-QUIRK: `cal` also counts the fiducial cut on the FITTED track 5 cm inside the calorimeter
+    // FORTRAN-DIFF-CANDIDATE(D-015 F6): `cal` also counts the fiducial cut on the FITTED track 5 cm inside the
+    // calorimeter (mc_shms_hut.f). Question: separate counter intended? (.geni diagnostics only)
     const double xcal = a.x_fp + a.dx_fp * hcal_4ta_zpos;
     const double ycal = a.y_fp + a.dy_fp * hcal_4ta_zpos;
     if (ycal > (hcal_left - 5.0) || ycal < (hcal_right + 5.0) || xcal > (hcal_bottom - 5.0) ||

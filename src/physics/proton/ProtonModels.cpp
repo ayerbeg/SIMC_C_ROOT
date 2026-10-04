@@ -13,6 +13,7 @@
 #include <string>
 
 #include "simc/core/Registry.h"
+#include "simc/core/RunSetup.h"
 #include "simc/core/SimcConstants.h"
 #include "simc/core/SimcParameters.h"
 #include "simc/physics/proton/ProtonCrossSections.h"
@@ -52,7 +53,7 @@ public:
         if (cfg.is_object() && cfg.contains("Mh")) Mh = cfg.at("Mh").get<double>();
         st_.Mh2 = Mh * Mh;
     }
-    void init(const StageContext&) override {}
+    void init(const StageContext& ctx) override { st_.fortran_compat = ctx.setup.fortran_compat; }
     void beginEvent(long nevent) override { st_.nevent = nevent; }
     double sigcc(const Event& vertex, const MainEvent&) override { return deForest(vertex, st_); }
     double sigccRecon(const Event& recon, const MainEvent&) override { return deForest(recon, st_); }

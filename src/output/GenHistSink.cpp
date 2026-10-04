@@ -81,10 +81,12 @@ void GenHistSink::fill(const MainEvent& main, const Event& vertex, const Event& 
     // simc.f:272-286
     inc("recon_e_delta", main.RECON.e.delta, main.weight);
     inc("recon_e_yptar", main.RECON.e.yptar, main.weight);
-    inc("recon_e_xptar", main.RECON.e.xptar, main.weight);   // FORTRAN-QUIRK: not negated
+    // FORTRAN-DIFF-CANDIDATE(D-011): simc.f:274/277 fill H%RECON xptar NOT negated, while H%gen/H%geni use -vertex%xptar
+    // (simc.f:256/262), so the .gen recon and generated xptar distributions are mirror images. Intended convention?
+    inc("recon_e_xptar", main.RECON.e.xptar, main.weight);
     inc("recon_p_delta", main.RECON.p.delta, main.weight);
     inc("recon_p_yptar", main.RECON.p.yptar, main.weight);
-    inc("recon_p_xptar", main.RECON.p.xptar, main.weight);   // FORTRAN-QUIRK: not negated
+    inc("recon_p_xptar", main.RECON.p.xptar, main.weight);   // FORTRAN-DIFF-CANDIDATE(D-011): not negated, see above
     inc("recon_Em", recon.Em, 1.0);
     inc("recon_Pm", recon.Pm, 1.0);
     inc("gen_e_delta", vertex.e.delta, 1.0);

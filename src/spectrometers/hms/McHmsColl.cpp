@@ -85,25 +85,37 @@ bool McHms::mcHmsColl(optics::DecayState& d, double p_spec, double& pathlen, IRa
     (void)coll_flag;
     (void)eloss_tot;
 
+    // FORTRAN-BUG(D-021): original Fortran hms/mc_hms_coll.f:83-104: `hSTOP_slit_hor = hSTOP_slit_hor + 1` (and _vert,
+    // _oct) inside the 20-step loop, for EVERY step outside the opening; corrected because these are per-ray stop
+    // counters (.geni "Slit hor/vert/corners"): a ray crossing the collimator material was counted up to 20 times per
+    // counter, even when it finally passed. The corrected code counts each kind at most once per ray, using the
+    // slit_h_flag/slit_v_flag/slit_o_flag flags that the Fortran sets but never reads. fortran_compat counts per step.
+    const bool perStep = fortranCompat();
+    bool slit_h_flag = false, slit_v_flag = false, slit_o_flag = false;
+    auto count = [&](int code, bool& flag) {
+        if (perStep || !flag) cnt_[code] = cnt_[code] + 1;
+        flag = true;
+    };
+
     // Now start stepping
     for (int n = 1; n <= nstep; ++n) {
         bool step_flag = false;
         if (std::fabs(t.ys - y_off) > h_step) {
             coll_flag = true;
             step_flag = true;
-            cnt_[kSlitHor] = cnt_[kSlitHor] + 1;
+            count(kSlitHor, slit_h_flag);
             thick_temp_ = step_size;
         }
         if (std::fabs(t.xs - x_off) > v_step) {
             coll_flag = true;
             step_flag = true;
-            cnt_[kSlitVert] = cnt_[kSlitVert] + 1;
+            count(kSlitVert, slit_v_flag);
             thick_temp_ = step_size;
         }
         if (std::fabs(t.xs - x_off) > (-v_step / h_step * std::fabs(t.ys - y_off) + 3 * v_step / 2)) {
             coll_flag = true;
             step_flag = true;
-            cnt_[kSlitOct] = cnt_[kSlitOct] + 1;
+            count(kSlitOct, slit_o_flag);
             thick_temp_ = step_size;
         }
         const double thick = thick_temp_;

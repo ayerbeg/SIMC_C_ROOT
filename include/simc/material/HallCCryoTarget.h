@@ -15,18 +15,20 @@
 //   * The energy losses go through an IMaterialModel (default: own SimcMaterial "simc_material"),
 //     which carries the enerloss_new static state (numerr, x). In SIMC only target.f calls
 //     enerloss_new, so one target instance reproduces the Fortran process state.
-//   * FORTRAN-QUIRK(D-012 F4): th_can of the pudding can (can 2) is a static local. When
+//   Markers (docs/FORTRAN_DIFFERENCES.md): FORTRAN-QUIRK = documented Fortran behaviour, FORTRAN-DIFF-CANDIDATE = kept,
+//   open question, FORTRAN-BUG = corrected unless fortran_compat.
+//   * FORTRAN-DIFF-CANDIDATE(D-012 F4): th_can of the pudding can (can 2) is a static local. When
 //     |z_can/R| > 1 + 1e-6 it is NOT updated (only a warning is printed) and the previous call's value
 //     is used. Reproduced (member thCan_, initially 0).
-//   * FORTRAN-QUIRK(D-012 F4): electron_arm/hadron_arm 7/8 (calorimeter) leave s_air, s_kevlar,
+//   * FORTRAN-BUG(D-012 F4), path not ported: electron_arm/hadron_arm 7/8 (calorimeter) leave s_air, s_kevlar,
 //     s_mylar and forward_path stale. Out of scope until P14: trip() throws std::invalid_argument
 //     for the calorimeter arms and for codes that are not spectrometers (core/SpectrometerId.h, D-032).
 //   * FORTRAN-QUIRK: `goto (10,20,30) narm` falls through to label 10 for narm outside 1..3,
 //     i.e. such a call is treated as the incoming beam. Reproduced.
-//   * FORTRAN-QUIRK (suspected bug): extreme_trip_thru_target, hadron, can 2/3 (target.f:501) uses
-//     the ELECTRON angle the%min to find zz. Reproduced.
-//   * FORTRAN-QUIRK: the beer-can corner in extreme_trip_thru_target uses a 1.25" radius
-//     (target.f:368,370,376,456,458,464), trip_thru_target uses 1.325" (l.108,228). Reproduced.
+//   * FORTRAN-BUG(D-017), corrected unless fortran_compat: extreme_trip_thru_target, hadron, can 2/3 (target.f:501) uses
+//     the ELECTRON angle the%min to find zz (the hadron angle thp%min in the corrected mode).
+//   * FORTRAN-DIFF-CANDIDATE(D-017): the beer-can corner in extreme_trip_thru_target uses a 1.25" radius
+//     (target.f:368,370,376,456,458,464), trip_thru_target uses 1.325" (l.108,228). Kept.
 #ifndef SIMC_MATERIAL_HALLCCRYOTARGET_H
 #define SIMC_MATERIAL_HALLCCRYOTARGET_H
 
@@ -89,8 +91,9 @@ public:
               int typeflag, IRandom& rng);
     /// Fortran: target.f:extreme_trip_thru_target(ebeam,the,thp,pe,pp,z,m). No RNG (typeflags 2/3).
     /// Writes targ().Eloss[i].min/max, teff[i].min/max, musc_max[i], musc_nsig_max.
+    /// `fortran_compat` (D-031): true keeps the Fortran bug of target.f:501 (FORTRAN-BUG D-017, see the .cpp).
     void extremeTripThruTarget(double ebeam, const Limits& the, const Limits& thp, const Limits& pe,
-                               const Limits& pp, const Limits& z, double m);
+                               const Limits& pp, const Limits& z, double m, bool fortran_compat);
     /// Fortran: target.f:target_musc(p,beta,teff,dangles)
     void targetMusc(double p, double beta, double teff, double dangles[2], IRandom& rng);
     /// Fortran: target.f:extreme_target_musc(p,beta,teff,dangle,r) (entry of target_musc)

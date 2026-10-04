@@ -39,7 +39,7 @@ struct SpecResult {
     /// Resolution factor of the track reconstruction (ntup%resfac; HMS/SHMS: 1 or 2 from the wire chambers), if the
     /// spectrometer determined one for this track (HMS/SHMS: the detector hut was reached). Empty otherwise: the
     /// driver then leaves ntup%resfac unchanged for the hadron arm and re-uses the previous value for the electron arm
-    /// (FORTRAN-QUIRK simc.f:1334, SAVEd tmpfact).
+    /// (FORTRAN-DIFF-CANDIDATE simc.f:1334, SAVEd tmpfact).
     std::optional<double> resolution_factor;
     double m2_final{0};              ///< particle mass squared after a possible decay (MeV^2)
     double decay_distance{0};        ///< decay distance (cm; Fortran COMMON decdist, 0 if no decay)

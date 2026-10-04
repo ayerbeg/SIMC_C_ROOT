@@ -47,6 +47,7 @@ struct ExtremeTripArgs {
     Cut pp;                ///< hadron momentum limits [MeV/c] (init.f:224-226)
     Cut z;                 ///< -/+ targ%length/2 [cm] (init.f:240-241)
     double m{0};           ///< Mh [MeV]
+    bool fortran_compat{false};   ///< D-031 run option (RunSetup::fortran_compat): keep the Fortran bugs
 };
 
 class ITargetLossProvider {

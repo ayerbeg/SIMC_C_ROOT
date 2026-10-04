@@ -13,7 +13,7 @@
 // (rotated/offset coordinates where the Fortran rotates, otherwise xs, ys). A step callback returning false
 // stops the chain (hook for the apertures of P6.2/P6.3).
 // The mc_* constants are copied verbatim (they also define the reference tables transp_{hms,shms}_chain).
-// FORTRAN-QUIRK (D-015 F5): the SHMS drifts use hard-coded lengths (39.47, 60.68, 307.95) that differ from the
+// FORTRAN-DIFF-CANDIDATE (D-015 F5): the SHMS drifts use hard-coded lengths (39.47, 60.68, 307.95) that differ from the
 // COSY drift classes (39.4715, 60.68058, 307.9514).
 #ifndef SIMC_OPTICS_FORWARDCHAINS_H
 #define SIMC_OPTICS_FORWARDCHAINS_H

@@ -58,7 +58,7 @@ ReactionFlags DeriveReactionFlags(const SimcParameters& p, std::vector<std::stri
     } else if (f.doing_rho) {
         f.doing_hydrho = A == 1;
         f.doing_deutrho = A == 2;
-        f.doing_herho = A == 3;   // FORTRAN-QUIRK: dbase.f uses .eq.3 here (not .ge.3)
+        f.doing_herho = A == 3;   // FORTRAN-DIFF-CANDIDATE(D-018): dbase.f:213 uses .eq.3 (other he* flags .ge.3). Intended? (rho: P13)
     } else {
         f.doing_eep = true;
         f.doing_hyd_elast = A == 1;

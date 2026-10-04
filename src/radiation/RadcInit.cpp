@@ -84,7 +84,10 @@ void radcInitEv(const RadcRun& run, RadcState& st, const MainEvent& main, const 
     st.etta = 1.0;   // l.682
     for (int i = 1; i <= 2; ++i) st.bt[i] = run.etatzai * main.target.teff[i - 1];   // l.686-688
 
-    // l.692-696. FORTRAN-QUIRK(D-019, Q7): doing_tail(3) is passed as doing_proton.
+    // l.692-696. FORTRAN-DIFF-CANDIDATE(D-019, Q7): doing_tail(3) is passed as doing_proton (init.f:693), so switching
+    // off tail 3 also removes the ep interference term from lambda(1:2). Question: intended?
+    // FORTRAN-DIFF-CANDIDATE(D-005): this overwrites the .inp/JSON input lambda(1:3) on every event (init.f:692-695), so
+    // that input has no effect. Question: remove the input, or use it when set?
     for (int i = 1; i <= 3; ++i)
         st.lambda[i] = lambdaDave(i, 1, run.doing_tail[3], vertex.Ein, vertex.e.E, vertex.p.E, vertex.p.P,
                                   vertex.e.theta, st.lambda_warned, log);
@@ -93,8 +96,10 @@ void radcInitEv(const RadcRun& run, RadcState& st, const MainEvent& main, const 
     // l.700-715
     const double Ecutoff = 450.;
     if (run.intcor_mode == 0) {
-        // FORTRAN-QUIRK(D-019, Q3): schwinger does not set dsoft_prime; the SAVEd value of an earlier brem/bremos
-        // call (0 in a SIMC run with intcor_mode = 0) is used for g(4) below.
+        // FORTRAN-DIFF-CANDIDATE(D-019, Q3): schwinger does not set dsoft_prime; the SAVEd value of an earlier
+        // brem/bremos call (0 in a SIMC run with intcor_mode = 0) is used for g(4) below (init.f:701-715), so g(4)
+        // loses its internal part (0.019443 vs 0.098637 at the P1.2 kinematics). Question: is intcor_mode = 0 meant to
+        // have a derivative term?
         r = schwinger(Ecutoff, vertex, true, run.targ_A, st.etta, run.use_expon, st.initev_dsoft, st.initev_dhard);
     } else {
         if (!run.use_offshell_rad) {

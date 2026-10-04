@@ -20,6 +20,7 @@
 #include "L1Runner.h"
 #include "SpecDistCompare.h"
 #include "simc/core/Registry.h"
+#include "simc/core/RunSetup.h"
 #include "simc/core/SimcParameters.h"
 #include "simc/core/random/Mt64Random.h"
 #include "simc/core/random/ScriptedRandom.h"
@@ -49,6 +50,7 @@ std::string codeName(int c) { return c == 0 ? "success" : shms::counterName(c); 
 int runMc(const std::string& dir, double tol) {
     ShmsSpectrometer plugin;
     McShms& sp = plugin.kernel();
+    sp.setFortranCompat(true);   // D-031: Fortran tables -> exact Fortran behaviour
     std::ostringstream log;
     sp.setLog(&log);
     ScriptedRandom rng(ScriptedRandom::GaussMode::Scripted);
@@ -177,6 +179,7 @@ int runP12(const std::string& dir, double tol) {
         return 77;
     }
     McShms sp;
+    sp.setFortranCompat(true);   // D-031: Fortran tables -> exact Fortran behaviour
     Mt64Random rng(12345);
     const char* cols[8] = {"ssdelta", "ssyptar", "ssxptar", "ssytar", "ssxfp", "ssxpfp", "ssyfp", "ssypfp"};
     std::vector<simcl1::ColumnResult> res(8);
@@ -249,6 +252,7 @@ int runDist(const std::string& refdir, const std::string& cfg, long nray, std::u
     const double p_spec = 8360.989, th = std::fabs(12.5) / kDegrad, m2 = kMe2;
     const double dlo = -12., dhi = 25., ax = 0.06, ay = 0.04, xw = 0.1, yw = 1.0;
     McShms sp;
+    sp.setFortranCompat(true);   // D-031: Fortran tables -> exact Fortran behaviour
     Mt64Random rng(seed);
     std::map<std::string, std::vector<double>> v;
     std::map<simcl1::dist::CodeKey, long> ncode;
@@ -310,6 +314,7 @@ int runSelftest() {
         expect(s && s->name() == "shms", "Registry<ISpectrometer>::create(\"shms\")");
         SimcParameters p;
         s->configure(Json{{"ms_flag", false}}, p);
+        { RunSetup rs; rs.fortran_compat = true; s->init(rs); }   // D-031: exact Fortran behaviour
         Mt64Random rng(7);
         SpecInput in;   // mc_shms table row 1 (x = fry = -0.5, electron)
         in.p_spec = 8360.989;
@@ -326,6 +331,7 @@ int runSelftest() {
     }
     {
         McShms sp;
+        sp.setFortranCompat(true);   // D-031: Fortran tables -> exact Fortran behaviour
         std::ostringstream log;
         sp.setLog(&log);
         Mt64Random rng(1);
@@ -343,6 +349,7 @@ int runSelftest() {
     }
     {   // collimator (using_SHMScoll, pions): smoke test, no Fortran table yet
         McShms sp;
+        sp.setFortranCompat(true);   // D-031: Fortran tables -> exact Fortran behaviour
         std::ostringstream log;
         sp.setLog(&log);
         Mt64Random rng(11);
@@ -365,6 +372,7 @@ int runSelftest() {
     }
     {
         McShms sp;
+        sp.setFortranCompat(true);   // D-031: Fortran tables -> exact Fortran behaviour
         Mt64Random rng(13);
         const double mpi2 = 139.57018 * 139.57018;
         long decayed = 0;

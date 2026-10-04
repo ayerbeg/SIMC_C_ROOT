@@ -63,7 +63,7 @@ int runSpectrometerAngles(const std::string& dir, double tol) {
     return simcl1::run("spectrometer_angles (" + dir + ")", dir, {{"dx", tol}, {"dy", tol}},
                        [&](const Row& r, Outputs& o) {
                            double dx = 0, dy = 0;
-                           SpectrometerAngles(r["theta0"], r["phi0"], dx, dy, r["theta"], r["phi"]);
+                           SpectrometerAngles(r["theta0"], r["phi0"], dx, dy, r["theta"], r["phi"], /*fortran_compat=*/true);
                            o["dx"] = dx;
                            o["dy"] = dy;
                        });

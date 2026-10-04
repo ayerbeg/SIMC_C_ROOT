@@ -86,8 +86,9 @@ double peakedRadWeight(const RadcRun& run, RadcState& st, const Event& vertex, d
     double dsoft_int_primemin = 0, dsoft_int_primemax = 0;
 
     // ... External (l.566-585)
-    // FORTRAN-QUIRK(D-019, Q4): phi_ext (rad_flag 0), dsoft_ext*, and the Friedrich terms are computed and
-    // never used in the returned weight.
+    // FORTRAN-DIFF-CANDIDATE(D-019, Q4): phi_ext (rad_flag 0), dsoft_ext*, and the Friedrich terms are computed and
+    // never used in the returned weight, so for rad_flag = 0 the weight does not depend on Egamma (radc.f:566-642).
+    // Question: is the rad_flag = 0 peaked weight meant to include the external (phi_ext) factor?
     double phi_ext = 1.0;
     if (run.extrad_flag <= 2) {
         phi_ext = extradPhi(run, st, 0, ein, eout, Egamma);
@@ -134,8 +135,9 @@ double peakedRadWeight(const RadcRun& run, RadcState& st, const Event& vertex, d
         }
         (void)r;
     } else {
-        // FORTRAN-QUIRK(D-019, Q4): dsoft_int / dsoft_int_prime are not used below; for rad_flag = 1 with
+        // FORTRAN-DIFF-CANDIDATE(D-019, Q4): dsoft_int / dsoft_int_prime are not used below; for rad_flag = 1 with
         // extrad_flag = 3 the weight uses the SAVEd dsoft_intmin/max of an earlier call (0 in a fresh process).
+        // Question: should this branch compute dsoft_intmin/max (radc.f:590-620)?
         const double dsoft_int = std::log(st.g_int / st.c_int[0] / std::pow(Egamma, st.g_int));
         const double dsoft_int_prime = -st.g_int / Egamma;
         (void)dsoft_int;
@@ -278,6 +280,9 @@ bool generateRad(const RadcRun& run, RadcState& st, MainEvent& main, Event& vert
     const bool force2 = false;   // the force2 block is commented out in the Fortran (l.223-226)
 
     // Which tail has to be radiated? (l.198-216)
+    // FORTRAN-DIFF-CANDIDATE(D-019, P5.F1 Q7): with one_tail != 0 ntail is still drawn from frac(1:3), which includes the
+    // disabled tails; a disabled tail is then skipped (doing_tail tests at l.234/358), the event passes with no photon
+    // and gen_weight = 1/hardcorfac. Question: should frac be restricted to the enabled tails?
     peaked_basis_flag = 1;
     if (run.rad_flag <= 1) {
         peaked_basis_flag = 0;
@@ -318,7 +323,8 @@ bool generateRad(const RadcRun& run, RadcState& st, MainEvent& main, Event& vert
             st.Egamma_max[1] = fmin2(st.Egamma_max[1], run.edge_Em.max);
         } else if (run.doing_deuterium) {   // CASE 3 (l.280-282)
             st.Egamma_max[1] = fmin2(run.Egamma1_max, run.gen_sumEgen.max - vertex.e.E);
-            // FORTRAN-QUIRK: for ntail = 0 Egamma_min(1) keeps its stale COMMON value.
+            // FORTRAN-DIFF-CANDIDATE(D-019): radc.f:283-286, for ntail = 0 Egamma_min(1) keeps its stale COMMON value.
+            // Question: should it be set for ntail = 0 too (D(e,e'p) only)?
             if (ntail != 0) st.Egamma_min[1] = run.gen_sumEgen.min - vertex.e.E;
         } else if (run.doing_pion || run.doing_kaon || run.doing_rho || run.doing_semi) {   // CASE 4 (l.288-293)
             st.Egamma_min[1] = 0.;
@@ -346,11 +352,13 @@ bool generateRad(const RadcRun& run, RadcState& st, MainEvent& main, Event& vert
         vertex.Ein = vertex.Ein - st.Egamma_used[1];
         const bool evsuccess = complete_ev(main, vertex, rng);
         if (!evsuccess) return false;
-        // FORTRAN-QUIRK(D-019, Q5): complete_ev -> radc_init_ev has just recomputed hardcorfac, frac, g, c for the
-        // reduced Ein; they are used from here on (peaked_rad_weight, tails 2/3, the final division).
+        // FORTRAN-DIFF-CANDIDATE(D-019, Q5): complete_ev -> radc_init_ev has just recomputed hardcorfac, frac, g, c for
+        // the reduced Ein; they are used from here on (peaked_rad_weight, tails 2/3, the final division radc.f:512).
+        // Question: is the post-radiation hardcorfac the intended normalisation?
         rad_weight = rad_weight * basicrad_weight;
         if (run.rad_flag <= 1) {
-            // FORTRAN-QUIRK(D-019, Q5): overwrites rad_weight instead of multiplying.
+            // FORTRAN-DIFF-CANDIDATE(D-019, Q5): radc.f:330-333 overwrites rad_weight (rad_weight*basicrad_weight is
+            // discarded) instead of multiplying. Question: intended (peaked_rad_weight already contains basicrad_weight)?
             rad_weight = peakedRadWeight(run, st, vertex, st.Egamma_used[1], st.Egamma_min[1], st.Egamma_max[1],
                                          basicrad_val_reciprocal, basicrad_weight, log);
         } else {
