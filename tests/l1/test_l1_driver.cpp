@@ -3,7 +3,7 @@
 // L1 test of simc::driver::MonteCarlo (task P7.1, simc.f:montecarlo) against the P4.F1 captures of the unmodified
 // SIMC program (reference/functions/event_capture/<cfg>/, reference/runs/p4f1_<cfg>_cap/):
 //
-//   replay <cap_dir> <run_dir> <cfg> <fortran_dir>
+//   replay <cap_dir> <run_dir> <cfg> <data_dir> [run_name]   (data_dir: the theory files of D/A(e,e'p) captures)
 //     * RunSetup from the run's .inp (InpReader + BuildRunSetup), checked against cap_final (spec, Mh2, SPedge);
 //     * every recorded montecarlo call, in order, with ONE persistent main/recon (as in SIMC, so the stale values
 //       of failed tries are reproduced): orig and main%target from cap_generate, the phase-2 random numbers of
@@ -189,9 +189,10 @@ int stopIndexShms(const std::string& s) {
 }
 
 // ------------------------------------------------------------------------------------------------ replay
-int replay(const std::string& capdir, const std::string& rundir, const std::string& cfg, const std::string& fdir) {
-    const std::string inp = rundir + "/p4f1_" + cfg + "_cap.inp";
-    const std::string bin = rundir + "/p4f1_" + cfg + "_cap.bin";
+int replay(const std::string& capdir, const std::string& rundir, const std::string& cfg, const std::string& fdir,
+           const std::string& runName) {
+    const std::string inp = rundir + "/" + runName + ".inp";
+    const std::string bin = rundir + "/" + runName + ".bin";
     if (!exists(inp) || !exists(capdir + "/cap_final.txt")) {
         std::printf("replay %s: SKIP (reference missing)\n", cfg.c_str());
         return 77;
@@ -205,7 +206,7 @@ int replay(const std::string& capdir, const std::string& rundir, const std::stri
     }
     SetupOptions opt;
     opt.fortran_compat = true;   // D-031: Fortran references -> exact Fortran behaviour
-    opt.run_name = "p4f1_" + cfg + "_cap";
+    opt.run_name = runName;
     opt.data_dir = fdir;
     RunSetup setup = BuildRunSetup(p, opt);
     if (!setup.ok()) {
@@ -484,7 +485,9 @@ int main(int argc, char** argv) {
         return 2;
     }
     try {
-        return replay(argv[2], argv[3], argv[4], argv[5]);
+        // optional argv[6]: the run name (default p4f1_<cfg>_cap; P8.2: p8f1_d_rad_cap, p8f1_fe56_rad_cap)
+        return replay(argv[2], argv[3], argv[4], argv[5],
+                      argc > 6 ? std::string(argv[6]) : "p4f1_" + std::string(argv[4]) + "_cap");
     } catch (const std::exception& e) {
         std::printf("exception: %s\n", e.what());
         return 1;

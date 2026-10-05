@@ -201,8 +201,8 @@ bool compareText(const char* what, const std::string& cpp, const std::string& re
     return bad == 0 && a.size() == b.size();
 }
 
-int replay(const std::string& capdir, const std::string& rundir, const std::string& cfg, const std::string& outdir) {
-    const std::string run = "p4f1_" + cfg + "_cap";
+int replay(const std::string& capdir, const std::string& rundir, const std::string& cfg, const std::string& outdir,
+           const std::string& run) {
     const std::string inp = rundir + "/" + run + ".inp";
     if (!exists(inp) || !exists(capdir + "/cap_final.txt")) {
         std::printf("replay %s: SKIP (reference missing)\n", cfg.c_str());
@@ -437,11 +437,13 @@ int replay(const std::string& capdir, const std::string& rundir, const std::stri
 
 int main(int argc, char** argv) {
     if (argc < 6 || std::string(argv[1]) != "replay") {
-        std::fprintf(stderr, "usage: %s replay <cap_dir> <run_dir> <cfg> <out_dir>\n", argv[0]);
+        std::fprintf(stderr, "usage: %s replay <cap_dir> <run_dir> <cfg> <out_dir> [run_name]\n", argv[0]);
         return 2;
     }
     try {
-        return replay(argv[2], argv[3], argv[4], argv[5]);
+        // optional argv[6]: the run name (default p4f1_<cfg>_cap; P8.2: p8f1_d_rad_cap, p8f1_fe56_rad_cap)
+        return replay(argv[2], argv[3], argv[4], argv[5],
+                      argc > 6 ? std::string(argv[6]) : "p4f1_" + std::string(argv[4]) + "_cap");
     } catch (const std::exception& e) {
         std::printf("exception: %s\n", e.what());
         return 1;

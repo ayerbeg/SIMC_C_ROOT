@@ -210,13 +210,14 @@ std::unique_ptr<Process> makeProcess(const std::string& inp, const std::string& 
     sc.radiator = &P->rad;
     P->beam.configure(Json::object(), P->params);
     P->beam.init(sc);
+    P->model = Registry<IPhysicsModel>::create("sigep");
+    P->model->configure(Json::object(), P->params);
+    P->model->init(P->setup);
+    sc.physics = P->model.get();
     P->reaction = std::make_unique<HydrogenElastic>(P->setup.flags.doing_phsp ? "phase_space" : "hydrogen_elastic");
     P->reaction->configure(Json::object(), P->params);
     P->reaction->setLog(nullptr);
     P->reaction->init(sc);
-    P->model = Registry<IPhysicsModel>::create("sigep");
-    P->model->configure(Json::object(), P->params);
-    P->model->init(P->setup);
     P->ctx = MainContext::FromSetup(P->setup);
     return P;
 }
@@ -388,7 +389,9 @@ int runTable(const std::string& name, const std::string& dir, double tol, const 
                 ctx.using_Coulomb = true;
                 ctx.Coulomb_ave = r["ov_coulomb_ave"];
             }
-            const bool ok = completeMain(iv(r, "force_sigcc") == 1, m, v, v0, rec, *P.model, ctx);
+            P.reaction->mainContext() = ctx;   // the harness override of the COMMON state for this row
+            const bool ok = P.reaction->completeMain(iv(r, "force_sigcc") == 1, m, v, v0, rec);
+            P.reaction->mainContext() = P.ctx;
             o["success"] = ok;
             o["SF_weight"] = m.SF_weight;
             o["sigcc"] = m.sigcc;
@@ -646,7 +649,7 @@ int runCapture(const std::string& capdir, const std::string& inp, double tol, co
             m.sigcc = r["in_sigcc"];
             m.weight = r["in_weight"];
             Outputs o;
-            o["success"] = completeMain(iv(r, "force_sigcc") == 1, m, v, v0, rec, *P->model, P->ctx);
+            o["success"] = P->reaction->completeMain(iv(r, "force_sigcc") == 1, m, v, v0, rec);
             o["SF_weight"] = m.SF_weight; o["sigcc"] = m.sigcc; o["sigcc_recon"] = m.sigcc_recon;
             o["jacobian"] = m.jacobian; o["gen_weight"] = m.gen_weight; o["weight"] = m.weight;
             const double prod = m.SF_weight * m.jacobian * m.gen_weight * m.sigcc;

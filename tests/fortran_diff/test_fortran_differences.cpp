@@ -25,6 +25,7 @@
 #include "simc/core/RunSetup.h"
 #include "simc/core/SimcConstants.h"
 #include "simc/core/SimcParameters.h"
+#include "simc/core/Registry.h"
 #include "simc/core/SpectrometerId.h"
 #include "simc/core/random/Mt64Random.h"
 #include "simc/core/random/ScriptedRandom.h"
@@ -34,6 +35,9 @@
 #include "simc/material/HallCCryoTarget.h"
 #include "simc/optics/CosyEngine.h"
 #include "simc/output/SummaryJson.h"
+#include "simc/physics/nuclear/SpectralFunctionTables.h"
+#include "simc/radiation/SimcRadiator.h"
+#include "simc/reactions/NuclearEep.h"
 #include "simc/physics/proton/ProtonCrossSections.h"
 #include "simc/setup/KinematicsUtils.h"
 #include "simc/setup/SetupBuilder.h"
@@ -517,6 +521,214 @@ int testReportFormats() {
     return 0;
 }
 
+
+// ------------------------------------------------------------------------------------------------ D-033 (P8.1/P8.2)
+std::string spectralDir() { return std::string(SIMC_SOURCE_DIR) + "/data/spectral"; }
+
+// F3, sf_lookup.f:93: SFd = SF/4/3.1415926535/(Pm*Pm)/5.0/20.0 (Fortran) vs the per-node differential spectral function
+// with the widths of the file (corrected).
+int testBenharSfDiff() {
+    const double pi = constants::pi;
+    for (const char* file : {"benharsf_56.dat", "benharsf_4.dat"}) {
+        nuclear::SfTable c, k;   // c = compat, k = corrected
+        std::string err;
+        if (!c.load(spectralDir() + "/" + file, true, nullptr, &err) || !k.load(spectralDir() + "/" + file, true, nullptr, &err)) {
+            std::printf("skip: %s\n", err.c_str());
+            return 77;
+        }
+        c.setFortranCompat(true);
+        k.setFortranCompat(false);
+        const std::string f = file;
+        // a node with strength
+        int iPm = 5, iEm = 3;
+        for (int j = 1; j <= c.numEm(); ++j)
+            if (c.sfval(j, iPm) > c.sfval(iEm, iPm)) iEm = j;
+        const double Pm = c.Pmval(iPm), Em = c.Emval(iEm);
+        const double fortran = c.sfval(iEm, iPm) / 4 / 3.1415926535 / (Pm * Pm) / 5.0 / 20.0;
+        expect(c.lookupDiff(Em, Pm) == fortran, f + " compat: SFd = SF/4/3.1415926535/Pm^2/5/20 at a node");
+        const double node = c.sfval(iEm, iPm) / (4. * pi * Pm * Pm * c.dPm(iPm) * c.dEm(iEm));
+        expect(std::abs(k.lookupDiff(Em, Pm) / node - 1) < 1e-14,
+               f + " corrected: SFd = sfval/(4 pi Pmval^2 dPm dEm) at a node, widths from the file (dPm " +
+                   std::to_string(c.dPm(iPm)) + ", dEm " + std::to_string(c.dEm(iEm)) + ")");
+        // Pm = 0: +Inf in the Fortran, finite (the first node's density) when corrected
+        const double c0 = c.lookupDiff(Em, 0.0), k0 = k.lookupDiff(Em, 0.0);
+        expect(std::isinf(c0) || std::isnan(c0), f + " compat: Pm = 0 gives Inf/NaN (" + std::to_string(c0) + ")");
+        expect(std::isfinite(k0) && k0 == k.lookupDiff(Em, c.Pmval(1)),
+               f + " corrected: Pm = 0 gives the first node's value (" + std::to_string(k0) + ")");
+        // no 1/Pm^2 divergence below the first node
+        expect(k.lookupDiff(Em, 0.5 * c.Pmval(1)) == k0 && c.lookupDiff(Em, 0.5 * c.Pmval(1)) > 3.9 * c.lookupDiff(Em, c.Pmval(1)),
+               f + " below the first node: compat grows as 1/Pm^2, corrected flat");
+        // normalisation of the corrected density over the nodes: sum S * 4 pi P^2 dP dE = sum of the (non-negative)
+        // bin probabilities = 1 (benharsf_4.dat has one negative node, -1.454e-6, set to 0 by the SF < 1e-20 test)
+        double sum = 0, pos = 0;
+        for (int i = 1; i <= k.numPm(); ++i)
+            for (int j = 1; j <= k.numEm(); ++j) {
+                sum += k.lookupDiff(k.Emval(j), k.Pmval(i)) * 4. * pi * k.Pmval(i) * k.Pmval(i) * k.dPm(i) * k.dEm(j);
+                pos += k.sfval(j, i) < 1e-20 ? 0. : k.sfval(j, i);
+            }
+        char buf[160];
+        std::snprintf(buf, sizeof buf, "%.15f (sum of the non-negative bin probabilities %.15f)", sum, pos);
+        expect(std::abs(sum / pos - 1) < 1e-12, f + " corrected density integrates over the table to " + buf);
+    }
+    return 0;
+}
+
+// F6, sf_lookup.f:160-184: Em == Emval(numEm) uses the SAVEd Em1/Em2/sf1/sf2 of the previous call (NaN on the first).
+int testSfLookupStale() {
+    nuclear::SfTable c, k;
+    std::string err;
+    if (!c.load(spectralDir() + "/benharsf_12.dat", true, nullptr, &err) ||
+        !k.load(spectralDir() + "/benharsf_12.dat", true, nullptr, &err))
+        return 77;
+    c.setFortranCompat(true);
+    k.setFortranCompat(false);
+    const int n = c.numEm(), iPm = 4;
+    const double Pm = c.Pmval(iPm), Elast = c.Emval(n);
+    expect(std::isnan(c.lookup(Elast, Pm)), "compat: first call at Em = Emval(numEm) is NaN (unset SAVEd locals)");
+    expect(k.lookup(Elast, Pm) == (c.sfval(n, iPm) < 1e-20 ? 0. : c.sfval(n, iPm)),
+           "corrected: Em = Emval(numEm) gives the table value of the last node");
+    // after a call in the first interval, the compat value is the extrapolation of THAT interval to Elast
+    const double E1 = 0.5 * (c.Emval(1) + c.Emval(2));
+    c.lookup(E1, Pm);
+    k.lookup(E1, Pm);
+    const double s1 = c.sfval(1, iPm), s2 = c.sfval(2, iPm);
+    double stale = s1 + (Elast - c.Emval(1)) * (s2 - s1) / (c.Emval(2) - c.Emval(1));
+    if (stale < 1e-20) stale = 0;
+    expect(c.lookup(Elast, Pm) == stale, "compat: a later call at Emval(numEm) reuses the previous interval");
+    expect(k.lookup(Elast, Pm) == (c.sfval(n, iPm) < 1e-20 ? 0. : c.sfval(n, iPm)),
+           "corrected: no state is carried between calls");
+    // the reference table (gen_src 6 rows) is reproduced in compat mode by l1_sf_lookup
+    return 0;
+}
+
+/// A D(e,e'p)/A(e,e'p) "process" (set-up, target, radiator, reaction) for one P8.F1 configuration input.
+struct EepProc {
+    SimcParameters p;
+    RunSetup s;
+    material::HallCCryoTarget target;
+    radiation::SimcRadiator rad;
+    std::unique_ptr<IPhysicsModel> model;
+    std::unique_ptr<reactions::NuclearEep> reaction;
+};
+std::unique_ptr<EepProc> eepProc(const std::string& inp, bool compat) {
+    auto P = std::make_unique<EepProc>();
+    InpReader rd(P->p);
+    if (!rd.loadRun(inp)) return nullptr;
+    SetupOptions so;
+    so.fortran_compat = compat;
+    so.data_dir = spectralDir();
+    P->s = BuildRunSetup(P->p, so);
+    P->target.setLog(nullptr);
+    P->target.configure(Json{{"Mh", P->s.Mh}}, P->p);
+    P->target.setLog(nullptr);
+    P->target.init(P->s);
+    P->rad.setLog(nullptr);
+    P->rad.init(P->s);
+    StageContext sc(P->s);
+    sc.target = &P->target;
+    sc.radiator = &P->rad;
+    P->model = Registry<IPhysicsModel>::create("deforest");
+    P->model->configure(Json{{"Mh", P->s.Mh}}, P->p);
+    P->model->init(sc);
+    sc.physics = P->model.get();
+    P->reaction = std::make_unique<reactions::NuclearEep>();
+    P->reaction->configure(Json{{"verbose", false}}, P->p);
+    P->reaction->setLog(nullptr);
+    P->reaction->init(sc);
+    return P;
+}
+
+/// complete_ev of one complete_ev_eepA input row in one mode.
+bool completeEvRow(EepProc& P, const simcl1::Row& r, Event& v, MainEvent& m) {
+    v = Event{};
+    m = MainEvent{};
+    v.Ein = r["Ein"];
+    v.e.xptar = r["e_xptar"];
+    v.e.yptar = r["e_yptar"];
+    v.e.theta = r["e_theta"];
+    v.e.phi = r["e_phi"];
+    v.e.E = r["e_E"];
+    v.e.P = r["e_P"];
+    v.e.delta = r["e_delta"];
+    v.p.xptar = r["p_xptar"];
+    v.p.yptar = r["p_yptar"];
+    v.p.theta = r["p_theta"];
+    v.p.phi = r["p_phi"];
+    v.p.E = r["p_E"];
+    v.p.P = r["p_P"];
+    v.p.delta = r["p_delta"];
+    v.Pm = r["in_v_Pm"];
+    if (std::lround(r["calc_angles"]) == 1) {
+        PhysicsAngles(P.s.spec.e.theta, P.s.spec.e.phi, v.e.xptar, v.e.yptar, v.e.theta, v.e.phi);
+        PhysicsAngles(P.s.spec.p.theta, P.s.spec.p.phi, v.p.xptar, v.p.yptar, v.p.theta, v.p.phi);
+    }
+    m.target.z = r["t_z"];
+    m.target.teff[0] = r["t_teff_1"];
+    std::vector<double> g;
+    for (int i = 1; i <= 12; ++i) g.push_back(r["g" + std::to_string(i)]);
+    ScriptedRandom rng;
+    rng.load(g, {});
+    return P.reaction->completeEv(m, v, rng);
+}
+
+const char* kEepInp[] = {"", "p8f1_d_rad_cap", "p8f1_fe56_rad_cap", "l1_d_norad", "l1_fe56_norad", "l1_c12_rad",
+                         "l1_au197_rad", "l1_he4_rad", "l1_fe56_bh_rad"};
+
+// F5 (event.f:926, PmPer from the previous try's Pm) and F7 (event.f:944, heavy Mrec without a guard), on the rows of
+// the complete_ev_eepA table: compat must equal the Fortran output, corrected must differ only as documented.
+int testCompleteEvEep(bool f5) {
+    const std::string dir = g_ref + "/functions/complete_ev_eepA";
+    simcl1::Table in, out;
+    std::string err;
+    if (!in.load(dir + "/input.txt", err) || !out.load(dir + "/output.txt", err)) return 77;
+    std::map<int, std::unique_ptr<EepProc>> pc, pk;
+    int nCompat = 0, nCorr = 0, nRows = 0;
+    for (std::size_t i = 0; i < in.rows.size(); ++i) {
+        simcl1::Row r(in, i), o(out, i);
+        const int cfg = static_cast<int>(std::lround(r["cfg"]));
+        if (cfg < 1 || cfg > 8) continue;
+        const bool fortranNaNEm = std::lround(o["success"]) == 1 && std::isnan(o["v_Em"]);
+        const bool stalePm = std::lround(o["success"]) == 1 && r["in_v_Pm"] != o["v_Pm"];
+        if (f5 ? !stalePm : !fortranNaNEm) continue;
+        if (f5 && nRows >= 50) continue;   // enough
+        ++nRows;
+        const std::string inp = g_ref + "/functions/eep_state/inp/" + kEepInp[cfg] + ".inp";
+        auto& C = pc[cfg];
+        auto& K = pk[cfg];
+        if (!C) C = eepProc(inp, true);
+        if (!K) K = eepProc(inp, false);
+        if (!C || !K) return 77;
+        Event vc, vk;
+        MainEvent mc, mk;
+        const bool okc = completeEvRow(*C, r, vc, mc);
+        const bool okk = completeEvRow(*K, r, vk, mk);
+        if (f5) {
+            const double fresh = std::sqrt(std::max(0., vk.Pm * vk.Pm - vk.PmPar * vk.PmPar - vk.PmOop * vk.PmOop));
+            const double stale = std::sqrt(std::max(0., r["in_v_Pm"] * r["in_v_Pm"] - vc.PmPar * vc.PmPar - vc.PmOop * vc.PmOop));
+            const double ref = o["v_PmPer"];
+            if (okc && std::memcmp(&vc.PmPer, &ref, 8) == 0 && vc.PmPer == stale) ++nCompat;
+            if (okk && vk.PmPer == fresh && vk.Pm == vc.Pm && vk.PmPar == vc.PmPar) ++nCorr;
+        } else {
+            if (okc && std::isnan(vc.Em) && std::isnan(vc.Mrec)) ++nCompat;
+            if (!okk) ++nCorr;
+        }
+    }
+    if (f5) {
+        expect(nRows > 0 && nCompat == nRows, "compat: PmPer from the stale in_v_Pm, equal to the Fortran (" +
+                                                  std::to_string(nCompat) + "/" + std::to_string(nRows) + " rows)");
+        expect(nRows > 0 && nCorr == nRows, "corrected: PmPer from this event's Pm (" + std::to_string(nCorr) + "/" +
+                                                std::to_string(nRows) + " rows)");
+    } else {
+        expect(nRows > 0 && nCompat == nRows, "compat: Emiss^2 < Pmiss^2 gives NaN Em/Mrec with success (" +
+                                                  std::to_string(nCompat) + "/" + std::to_string(nRows) + " rows)");
+        expect(nRows > 0 && nCorr == nRows, "corrected: the try fails (" + std::to_string(nCorr) + "/" +
+                                                std::to_string(nRows) + " rows)");
+    }
+    return 0;
+}
+int testPmPer() { return testCompleteEvEep(true); }
+int testMrecGuard() { return testCompleteEvEep(false); }
+
 const std::map<std::string, std::function<int()>>& items() {
     static const std::map<std::string, std::function<int()>> m = {
         {"D032_spectrometer_id", testSpectrometerId},
@@ -528,6 +740,10 @@ const std::map<std::string, std::function<int()>>& items() {
         {"D021_hms_coll_slit_counters", testHmsCollSlitCounters},
         {"D006_kaon_decay_mass", testKaonDecayMass},
         {"D011_D018_report_formats", testReportFormats},
+        {"D033_F3_benhar_sf_diff", testBenharSfDiff},
+        {"D033_F5_pmper_stale_pm", testPmPer},
+        {"D033_F6_sf_lookup_stale", testSfLookupStale},
+        {"D033_F7_heavy_mrec_guard", testMrecGuard},
     };
     return m;
 }

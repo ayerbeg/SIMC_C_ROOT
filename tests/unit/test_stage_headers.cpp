@@ -48,6 +48,7 @@ struct DummyReaction : IReaction {
     bool generate(MainEvent&, Event&, Event&, IRandom&) override { return true; }
     bool completeEv(MainEvent&, Event&, IRandom&) override { return true; }
     bool completeRecon(Event&) override { return true; }
+    bool completeMain(bool, MainEvent&, const Event&, const Event&, const Event&) override { return true; }
     double genVolume() const override { return 1.0; }
 };
 struct DummyModel : IPhysicsModel {

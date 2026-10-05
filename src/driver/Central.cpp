@@ -10,8 +10,7 @@
 namespace simc {
 namespace driver {
 
-CentralResult calculateCentral(const RunSetup& s, IReaction& reaction, IRadiator& radiator, IPhysicsModel& model,
-                               const reactions::MainContext& ctx) {
+CentralResult calculateCentral(const RunSetup& s, IReaction& reaction, IRadiator& radiator, IPhysicsModel& model) {
     CentralResult res;
     MainEvent& main0 = res.main0;   // SAVEd local: zero except what is set below
     Event& vertex0 = res.vertex0;
@@ -83,7 +82,7 @@ CentralResult calculateCentral(const RunSetup& s, IReaction& reaction, IRadiator
     // l.1288-1290: recon0 = vertex0; complete_main(.true., main0, vertex0, vertex0, recon0, success)
     const Event recon0 = vertex0;
     model.beginEvent(0);   // nevent = 0 before the loop
-    reactions::completeMain(true, main0, vertex0, vertex0, recon0, model, ctx);
+    reaction.completeMain(true, main0, vertex0, vertex0, recon0);
     central.sigcc = main0.sigcc;
     return res;
 }

@@ -985,7 +985,17 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
     // =========================================================================================
     // simc.f:94-101 target factor and luminosity
     // =========================================================================================
-    s.targetfac = t.mass_amu / 3.75914e+6 / (t.abundancy / 100.) * std::abs(std::cos(t.angle)) / (t.thick * 1000.);
+    // FORTRAN-QUIRK(P8.2): `3.75914d+6` is a DOUBLE PRECISION literal, which -fdefault-real-8 promotes to real*16, so
+    // the Fortran evaluates the whole expression in quad precision (objdump of simc.o: __divtf3/__multf3) and rounds
+    // the result to real*8. The double-precision evaluation differs by 1 ulp for the D(e,e'p) capture input.
+    {
+        __extension__ typedef __float128 quad;
+        quad q = static_cast<quad>(t.mass_amu) / static_cast<quad>(3.75914e+6);
+        q = q / static_cast<quad>(t.abundancy / 100.);
+        q = q * static_cast<quad>(std::abs(std::cos(t.angle)));
+        q = q / static_cast<quad>(1000. * t.thick);
+        s.targetfac = static_cast<double>(q);
+    }
     s.luminosity = p.EXPER.charge / s.targetfac;
     return s;
 }

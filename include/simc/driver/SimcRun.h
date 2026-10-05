@@ -48,7 +48,8 @@ namespace driver {
 struct RunOptions {
     std::string run_name{"simc"};   ///< Fortran `base`: output file stem
     std::string output_dir{"."};    ///< Fortran outfiles/ and worksim/
-    std::string data_dir;           ///< Fortran working directory files (h2.theory, ...); "" = current directory
+    std::string data_dir;           ///< Fortran working-directory data files (h2.theory, benharsf_*.dat, ...);
+                                    ///< "" = data/spectral of the source tree (SIMC_SPECTRAL_DATA_DIR)
     bool override_ngen{false};
     long ngen{0};
     bool override_seed{false};
@@ -115,7 +116,6 @@ private:
     std::unique_ptr<MonteCarlo> mc_;
     std::vector<std::unique_ptr<IOutputSink>> sinks_, extraSinks_;
 
-    reactions::MainContext ctx_;
     CentralResult central_;
     EventState ev_;
     RunReport report_;

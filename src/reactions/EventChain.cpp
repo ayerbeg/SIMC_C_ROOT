@@ -33,23 +33,15 @@ MainContext MainContext::FromSetup(const RunSetup& s) {
     return c;
 }
 
-// Fortran: event.f:complete_main (l.1363-1569)
-bool completeMain(bool force_sigcc, MainEvent& main, const Event& vertex, const Event& vertex0, const Event& recon,
-                  IPhysicsModel& model, const MainContext& ctx) {
+// Fortran: event.f:complete_main (l.1432-1563), after the SF weight (l.1397-1430, IReaction::completeMain)
+bool assembleWeight(bool force_sigcc, MainEvent& main, const Event& vertex, const Event& vertex0, const Event& recon,
+                    IPhysicsModel& model, const MainContext& ctx, double tgtweight) {
     (void)vertex0;   // used only by the semi-inclusive model (peepiX)
     const ReactionFlags& f = ctx.flags;
-
-    // The spectral function weighting (l.1397-1430)
-    if (f.doing_hyd_elast || f.doing_pion || f.doing_kaon || f.doing_delta || f.doing_phsp || f.doing_rho ||
-        f.doing_semi) {
-        main.SF_weight = 1.0;
-    } else {
-        throw NotPorted("complete_main: spectral-function weight for D/A(e,e'p) not ported (P4.1)");
-    }
-    if (main.SF_weight <= 0 && !force_sigcc) return false;   // l.1436
+    // ... if we have come up with weight<=0, quit now unless FORCE_SIGCC is on (l.1436). NaN passes, as in the Fortran.
+    if (main.SF_weight <= 0 && !force_sigcc) return false;
 
     // Cross section (l.1444-1529)
-    double tgtweight = 1.0;
     if (f.doing_phsp) {
         main.sigcc = 1.0;
         main.sigcc_recon = 1.0;
@@ -57,7 +49,7 @@ bool completeMain(bool force_sigcc, MainEvent& main, const Event& vertex, const 
         main.sigcc = model.sigcc(vertex, main);
         main.sigcc_recon = model.sigccRecon(recon, main);
     } else {
-        throw NotPorted("complete_main: pion/kaon/delta/rho/semi cross sections not ported (P4.1)");
+        throw NotPorted("complete_main: pion/kaon/delta/rho/semi cross sections not ported");
     }
 
     // Coulomb focusing factor (l.1533-1535)

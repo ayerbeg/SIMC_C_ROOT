@@ -49,8 +49,9 @@ struct CentralResult {
 
 /// Fortran: simc.f:calculate_central (l.1143-1309).
 /// Throws std::runtime_error with the Fortran STOP text if complete_recon_ev fails.
-CentralResult calculateCentral(const RunSetup& setup, IReaction& reaction, IRadiator& radiator, IPhysicsModel& model,
-                               const reactions::MainContext& ctx);
+/// complete_main is the reaction's (IReaction::completeMain, with the run's physics model); `model` only receives
+/// beginEvent(0) (nevent = 0 before the loop).
+CentralResult calculateCentral(const RunSetup& setup, IReaction& reaction, IRadiator& radiator, IPhysicsModel& model);
 
 }  // namespace driver
 }  // namespace simc

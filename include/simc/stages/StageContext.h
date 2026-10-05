@@ -4,7 +4,9 @@
 //
 //   * setup     the run set-up (dbase.f / init.f quantities), read-only;
 //   * target    the run's ITarget  (null when the stage being initialised IS the target);
-//   * radiator  the run's IRadiator (null for the target and the radiator themselves).
+//   * radiator  the run's IRadiator (null for the target and the radiator themselves);
+//   * physics   the run's IPhysicsModel (task P8.2: the reaction assembles the event weight with it, D-030; null for
+//               the stages created before it).
 //
 // The driver (driver::SimcRun) creates the stages through the Registry, initialises the target and the radiator first
 // and then hands them, through their INTERFACES, to the stages that need them (beam, reaction, ...). A stage that needs
@@ -25,6 +27,7 @@ namespace simc {
 
 class ITarget;
 class IRadiator;
+class IPhysicsModel;
 
 struct StageContext {
     StageContext(const RunSetup& s) : setup(s) {}   // NOLINT(google-explicit-constructor): see the header comment
@@ -32,6 +35,7 @@ struct StageContext {
     const RunSetup& setup;
     ITarget* target{nullptr};
     IRadiator* radiator{nullptr};
+    IPhysicsModel* physics{nullptr};
 
     ITarget& requireTarget(const std::string& who) const {
         if (!target) throw std::logic_error(who + ": no target in the StageContext");
@@ -40,6 +44,10 @@ struct StageContext {
     IRadiator& requireRadiator(const std::string& who) const {
         if (!radiator) throw std::logic_error(who + ": no radiator in the StageContext");
         return *radiator;
+    }
+    IPhysicsModel& requirePhysics(const std::string& who) const {
+        if (!physics) throw std::logic_error(who + ": no physics model in the StageContext");
+        return *physics;
     }
 };
 

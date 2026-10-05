@@ -80,8 +80,19 @@ void SimcRun::initialise() {
     {
         SetupOptions so;
         so.run_name = opt_.run_name;
-        so.data_dir = opt_.data_dir;
+        so.data_dir = opt_.data_dir.empty() ? std::string(SIMC_SPECTRAL_DATA_DIR) : opt_.data_dir;
         so.fortran_compat = opt_.fortran_compat;
+        // D/A(e,e'p): a spectral function named in the JSON (task P8.1, D-033 F1) reaches the set-up, which reads the
+        // theory file / chooses the Benhar file: "theory"/"benhar" set use_benhar_sf, "file" the file.
+        const PipelineConfig::SpectralFunctionSpec sf = PipelineConfig::SpectralFunction(pipelineJson_);
+        if (sf.type == "theory" || sf.type == "benhar") {
+            const bool benhar = sf.type == "benhar";
+            if (benhar != params_.use_benhar_sf)
+                log(std::string(" NOTE: pipeline.reaction.spectral_function.type = ") + sf.type + " sets use_benhar_sf = " +
+                    (benhar ? "T" : "F"));
+            params_.use_benhar_sf = benhar;
+        }
+        so.sf_file = sf.file;
         std::unique_ptr<ITarget> startupTarget = Registry<ITarget>::create(PipelineConfig::TargetType(pipelineJson_));
         setup_ = BuildRunSetup(params_, so, startupTarget.get());
     }
@@ -105,7 +116,7 @@ void SimcRun::initialise() {
     pipe_.apply(pipelineJson_);
     if (pipe_.reaction.type.empty())
         throw NotPorted("reaction '" + ReactionTitle(setup_.flags, params_) +
-                        "' is not ported yet (only H(e,e'p) and doing_phsp; P8+)");
+                        "' is not ported yet (only H/D/A(e,e'p) and doing_phsp; P9+)");
     const bool quiet = opt_.quiet_stages;
 
     // ---- the stages, created by name and wired through the StageContext (interfaces only)
@@ -136,13 +147,15 @@ void SimcRun::initialise() {
     beam_->configure(withVerbose(pipe_.beam.config, quiet), params_);
     beam_->init(ctx);
 
-    reaction_ = Registry<IReaction>::create(pipe_.reaction.type);
-    reaction_->configure(withVerbose(pipe_.reaction.config, quiet), params_);
-    reaction_->init(ctx);
-
+    // the physics model before the reaction: the reaction assembles the event weight with it (D-030, P8.2)
     model_ = Registry<IPhysicsModel>::create(pipe_.physics.type);
     model_->configure(withVerbose(pipe_.physics.config, quiet), params_);
     model_->init(ctx);
+    ctx.physics = model_.get();
+
+    reaction_ = Registry<IReaction>::create(pipe_.reaction.type);
+    reaction_->configure(withVerbose(pipe_.reaction.config, quiet), params_);
+    reaction_->init(ctx);
 
     MonteCarlo::ArmChoice hadron{pipe_.hadron_arm.type, quiet ? withVerbose(pipe_.hadron_arm.config, true)
                                                               : pipe_.hadron_arm.config};
@@ -160,10 +173,8 @@ void SimcRun::initialise() {
     for (auto& s : extraSinks_) sinks_.push_back(std::move(s));
     extraSinks_.clear();
 
-    ctx_ = reactions::MainContext::FromSetup(setup_);
-
     // ---- simc.f:85 calculate_central (after radc_init; central%rad from the radiator, simc.f:1268-1281)
-    central_ = calculateCentral(setup_, *reaction_, *radiator_, *model_, ctx_);
+    central_ = calculateCentral(setup_, *reaction_, *radiator_, *model_);
 
     // ---- report bookkeeping
     report_ = RunReport{};
@@ -228,6 +239,7 @@ void SimcRun::step() {
     }
 
     model_->beginEvent(T.nevent);
+    reaction_->beginTry(T.ntried);
     // l.203 generate
     bool success = reactions::generateEvent(*beam_, *reaction_, main, ev.vertex, ev.orig, rng);
     // l.211 montecarlo
@@ -235,7 +247,7 @@ void SimcRun::step() {
     // l.216-218 complete_recon_ev
     if (success) success = reaction_->completeRecon(ev.recon);
     // l.224 complete_main
-    if (success) success = reactions::completeMain(false, main, ev.vertex, central_.vertex0, ev.recon, *model_, ctx_);
+    if (success) success = reaction_->completeMain(false, main, ev.vertex, central_.vertex0, ev.recon);
 
     // l.226-238 pass_cuts (PassCuts, top of this file; FORTRAN-BUG(D-006) there)
     ev.pass_cuts = PassCuts(S, ev.recon);

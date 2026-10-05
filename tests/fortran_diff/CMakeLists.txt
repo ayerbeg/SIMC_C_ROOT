@@ -17,6 +17,10 @@ set(SIMC_FORTRAN_DIFF_ITEMS
     D021_hms_coll_slit_counters
     D028_spectrometer_angles_nan
     D032_spectrometer_id
+    D033_F3_benhar_sf_diff
+    D033_F5_pmper_stale_pm
+    D033_F6_sf_lookup_stale
+    D033_F7_heavy_mrec_guard
 )
 foreach(_item ${SIMC_FORTRAN_DIFF_ITEMS})
     add_test(NAME fortran_diff_${_item}

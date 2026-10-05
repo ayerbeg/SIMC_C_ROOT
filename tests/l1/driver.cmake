@@ -38,3 +38,20 @@ foreach(_p "norad;eep_h_elastic_norad_A;h_elastic_norad" "rad;eep_h_elastic_rad_
                      ${CMAKE_CURRENT_BINARY_DIR}/cli_json_vs_inp_${_tag} 2000)
     set_tests_properties(cli_json_vs_inp_${_tag} PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 600)
 endforeach()
+
+# task P8.2: the same montecarlo and full-run replays for the D(e,e'p) and Fe-56(e,e'p) captures of P8.F1
+# (reference/functions/event_capture_eepA/cap_{d,fe56}, reference/runs/p8f1_{d,fe56}_rad_cap)
+foreach(_c "d;p8f1_d_rad_cap" "fe56;p8f1_fe56_rad_cap")
+    list(GET _c 0 _tag)
+    list(GET _c 1 _run)
+    add_test(NAME l1_montecarlo_replay_eepA_${_tag} COMMAND test_l1_driver replay
+        ${SIMC_REFERENCE_DIR}/functions/event_capture_eepA/cap_${_tag} ${SIMC_REFERENCE_DIR}/runs/${_run} ${_tag}
+        ${CMAKE_SOURCE_DIR}/data/spectral ${_run})
+    set_tests_properties(l1_montecarlo_replay_eepA_${_tag} PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 600)
+    set(_out ${CMAKE_CURRENT_BINARY_DIR}/simcrun_replay_eepA_${_tag})
+    file(MAKE_DIRECTORY ${_out})
+    add_test(NAME l1_simcrun_replay_eepA_${_tag} COMMAND test_l1_simcrun replay
+        ${SIMC_REFERENCE_DIR}/functions/event_capture_eepA/cap_${_tag} ${SIMC_REFERENCE_DIR}/runs/${_run} ${_tag} ${_out}
+        ${_run})
+    set_tests_properties(l1_simcrun_replay_eepA_${_tag} PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 900)
+endforeach()

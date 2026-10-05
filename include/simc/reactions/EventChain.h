@@ -3,10 +3,10 @@
 // The event-level routines of event.f that are not a single stage (task P4.1):
 //   generateEvent   event.f:generate (l.126-428) = IBeam::generate (beam/vertex part, l.150-212) followed by
 //                   IReaction::generate (generated variables, complete_ev, generate_rad, l.214-428)
-//   completeMain    event.f:complete_main (l.1363-1569): spectral-function weight, sigcc/sigcc_recon from the
-//                   IPhysicsModel, the Coulomb focusing factor and the event weight. It is the weight assembly of
-//                   the driver's chain (docs/ARCHITECTURE.md §4 completeMain), kept here as a free function so the
-//                   driver (P7) calls it with its own model; only the H(e,e'p)/phsp spectral-function branch is ported.
+//   assembleWeight  event.f:complete_main (l.1432-1563), the reaction-independent part after the spectral-function
+//                   weight: the early return for SF_weight <= 0, sigcc/sigcc_recon from the IPhysicsModel, the Coulomb
+//                   focusing factor and the event weight. Since P8.2 (D-030) every reaction owns its weight
+//                   (IReaction::completeMain): it sets main%SF_weight and calls this kernel.
 //   limitsUpdate    event.f:limits_update / update_range / update_slop_range (l.1-125), with Contrib = contribtype
 //   transformToCm   jacobians.f:transform_to_cm (l.1-282) (pion/kaon/delta cross sections; not on the H path)
 #ifndef SIMC_REACTIONS_EVENTCHAIN_H
@@ -35,10 +35,12 @@ struct MainContext {
     static MainContext FromSetup(const RunSetup& s);
 };
 
-/// Fortran: event.f:complete_main(force_sigcc, main, vertex, vertex0, recon, success).
-/// Throws std::invalid_argument for reactions whose spectral-function branch is not ported (D(e,e'p), A(e,e'p)).
-bool completeMain(bool force_sigcc, MainEvent& main, const Event& vertex, const Event& vertex0, const Event& recon,
-                  IPhysicsModel& model, const MainContext& ctx);
+/// Fortran: event.f:complete_main (l.1432-1563) after main%SF_weight has been set by the reaction (l.1397-1430):
+/// returns false if SF_weight <= 0 and not force_sigcc (l.1436); main%sigcc/sigcc_recon (phsp: 1; H, D, A(e,e'p):
+/// the model), the Coulomb factor (l.1533-1535), main%weight (l.1557-1560, tgtweight = `tgtweight`).
+/// Throws NotPorted for the reactions whose cross-section branch is not ported (pion, kaon, Delta, rho, SIDIS).
+bool assembleWeight(bool force_sigcc, MainEvent& main, const Event& vertex, const Event& vertex0, const Event& recon,
+                    IPhysicsModel& model, const MainContext& ctx, double tgtweight = 1.0);
 
 /// Fortran: structures.inc rangetype (lo, hi); min_max_init starts lo = +1e10, hi = -1e10.
 struct Range {

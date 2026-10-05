@@ -39,6 +39,23 @@ std::string PipelineConfig::TargetType(const Json& section) {
     return t.type;
 }
 
+PipelineConfig::SpectralFunctionSpec PipelineConfig::SpectralFunction(const Json& section) {
+    SpectralFunctionSpec sf;
+    if (!section.is_object() || !section.contains("reaction")) return sf;
+    const Json& r = section.at("reaction");
+    if (!r.is_object() || !r.contains("spectral_function")) return sf;
+    const Json& c = r.at("spectral_function");
+    if (c.is_string()) {
+        sf.type = c.get<std::string>();
+    } else if (c.is_object()) {
+        sf.type = c.value("type", std::string());
+        sf.file = c.value("file", std::string());
+    } else {
+        throw std::invalid_argument("pipeline.reaction.spectral_function: expected a name or an object");
+    }
+    return sf;
+}
+
 PipelineConfig PipelineConfig::Defaults(const RunSetup& s) {
     PipelineConfig p;
     const ReactionFlags& f = s.flags;
@@ -53,6 +70,10 @@ PipelineConfig PipelineConfig::Defaults(const RunSetup& s) {
         p.reaction.type = "phase_space";
     else if (f.doing_hyd_elast)
         p.reaction.type = "hydrogen_elastic";
+    else if (f.doing_deuterium)   // after theory_init (init.f:889)
+        p.reaction.type = "deuterium_eep";
+    else if (f.doing_heavy)
+        p.reaction.type = "nucleus_eep";
     else
         p.reaction.type = "";   // not ported: SimcRun reports NotPorted with the reaction title
     // event.f:complete_main l.1444-1456
