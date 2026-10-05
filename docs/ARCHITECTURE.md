@@ -1,6 +1,6 @@
 # SIMC++ architecture (v2)
 
-Status: v2, task P7.4 (2026-10-04). It replaces v1 (P1.1). The driver itself is described in
+Status: v2, task P7.4 (2026-10-04); updated in P8.2 (reaction-owned weight, D/A(e,e'p), spectral functions). It replaces v1 (P1.1). The driver itself is described in
 [DRIVER.md](DRIVER.md), the output files in [OUTPUT_FORMAT.md](OUTPUT_FORMAT.md), the input mapping in
 [INP_JSON_MAPPING.md](INP_JSON_MAPPING.md), and how to add plug-ins in [EXTENDING.md](EXTENDING.md).
 
@@ -34,12 +34,14 @@ Status: v2, task P7.4 (2026-10-04). It replaces v1 (P1.1). The driver itself is 
  io           input/  InpReader (CTP .inp), EffectiveValues      output/  sinks, NtupleLayout, SummaryJson
  ───────────────────────────────────────────────────────────────────────────────────────────────────────────
  plug-ins     material/HallCCryoTarget, SimcMaterial   radiation/SimcRadiator   reactions/StandardBeam,
- (stages)     HydrogenElastic   physics/proton models   spectrometers/{hms,shms}/*Spectrometer   output sinks
+ (stages)     HydrogenElastic, NuclearEep (on EepReactionBase)   physics/proton models, physics/nuclear spectral
+              functions   spectrometers/{hms,shms}/*Spectrometer   output sinks
               examples/ideal_box
  ───────────────────────────────────────────────────────────────────────────────────────────────────────────
  kernels      radiation/kernel (radc.f, brem.f, init.f radc_*)   spectrometers/*/kernel (mc_hms.f, mc_shms.f ...)
               optics (COSY engine: transp.f, project.f, recon)   setup (dbase.f/init.f -> RunSetup)
-              reactions/EventChain (complete_main, limits_update, transform_to_cm)   physics/proton (sigep, deForest)
+              reactions/EventChain (assembleWeight, limits_update, transform_to_cm)   physics/proton (sigep, deForest)
+              physics/nuclear (sf_lookup.f SfTable, theory-file SF weight)
  ───────────────────────────────────────────────────────────────────────────────────────────────────────────
  stages       include/simc/stages: IStage, StageContext and the stage interfaces (§3)
  ───────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -66,15 +68,19 @@ Life cycle: `Registry<I>::create(name)` → `configure(json, params)` → `init(
 | `IRandom` | `uniform()` = grnd, `gauss1(nsig)` = gauss1.f | `mt64` (`ScriptedRandom` for replays) |
 | `ITarget` (+ `ITargetLossProvider`) | vertex z, `tripThruTarget` → {eloss, radlen}, `multipleScattering` → {dyptar, dxptar}; start-up `targetInit`, `extremeLosses` (target.f, init.f:target_init) | `hallc_cryo` |
 | `IBeam` | beam spread, raster, vertex position, incoming energy (event.f:generate l.150-212) | `standard` |
-| `IReaction` | `generate`, `completeEv`, `completeRecon`, `genVolume` (event.f) | `hydrogen_elastic`, `phase_space` |
+| `IReaction` | `generate`, `completeEv`, `completeRecon`, `completeMain` (the event weight), `genVolume` (event.f, simc.f) | `hydrogen_elastic`, `phase_space`, `deuterium_eep`, `nucleus_eep` |
+| `ISpectralFunction` | `weight(vertex)` = main%SF_weight (event.f:complete_main l.1397-1430); a component of the D/A(e,e'p) reactions | `theory` (init.f theory files), `benhar` (sf_lookup.f) |
 | `IRadiator` | `initEvent` (radc_init_ev), `radiate` (generate_rad); read-back `currentValues`, `photonEnergies`, `hadronRadiates` | `simc_rad` |
 | `IPhysicsModel` | `sigcc`, `sigccRecon` (physics_*.f, called by complete_main) | `sigep`, `deforest`, `deforest_cc1/cc2/cc1_onshell` |
 | `ISpectrometer` | `transport(SpecInput) → SpecResult`, `stopCounters()` (mc_*.f) | `hms`, `shms`, `ideal_box` (example) |
 | `IMaterialModel` | energy loss, musc, musc_ext (enerloss_new.f, musc*.f) | `simc_material` (inside `hallc_cryo`) |
 | `IOutputSink` | `beginRun`, `fill` (every try), `endRun` (+ optional `driver::IReportSink`) | `root_tree`, `run_summary`, `gen_hist`, `fortran_hist` |
 
-`StageContext` = {`const RunSetup& setup`, `ITarget* target`, `IRadiator* radiator`}. It is implicitly
-constructible from a `RunSetup`, so `stage.init(setup)` works for stages without collaborators.
+`StageContext` = {`const RunSetup& setup`, `ITarget* target`, `IRadiator* radiator`, `IPhysicsModel* physics`}. It is
+implicitly constructible from a `RunSetup`, so `stage.init(setup)` works for stages without collaborators. Since P8.2
+(D-030) the reaction owns the event weight: `IReaction::completeMain` sets main%SF_weight from its own spectral function
+and assembles the weight with the run's physics model (`StageContext::physics`) through the kernel
+`reactions::assembleWeight` (event.f:complete_main l.1432-1563).
 
 Errors (`core/Errors.h`): `simc::FortranStop` (a Fortran STOP reached), `simc::NotPorted` (a Fortran feature not
 ported yet), both derived from `simc::Error`. Misuse is `std::logic_error`, bad configuration `std::invalid_argument`.
@@ -106,6 +112,8 @@ from the target, arms from `electron_arm`/`hadron_arm`). `simc++ --print-pipelin
    target)` (dbase.f / init.f; the target supplies target_init and extreme_trip_thru_target);
 2. resolves the pipeline, creates `rng`, `target`, `radiator`, then `beam`, `reaction`, `physics` with
    `StageContext{setup, target, radiator}`, the `MonteCarlo` with its arm spectrometers, and the sinks;
+   The physics model is created before the reaction and handed to it (`StageContext::physics`); the D/A(e,e'p)
+   reaction creates its `ISpectralFunction` (JSON `reaction.spectral_function`) in its `init()`;
 3. computes the central event (`calculateCentral`, which also takes central%rad from `IRadiator::currentValues`).
 
 ## 5. Data flow per event (one try, `SimcRun::step` = simc.f l.169-352)
@@ -120,7 +128,8 @@ EventState ev {main, vertex, orig, recon}       ONE object for the whole run (Fo
                                                 ISpectrometer::transport → RECON/FP, recon kinematics,
                                                 most-probable energy-loss correction (tripThruTarget)
  IReaction::completeRecon(recon)                complete_recon_ev
- reactions::completeMain(...)                   weight: IPhysicsModel::sigcc/sigccRecon, jacobian, gen_weight
+ IReaction::completeMain(...)                   weight: ISpectralFunction (D/A), IPhysicsModel::sigcc/sigccRecon,
+                                                Coulomb factor, jacobian, gen_weight
  pass_cuts, hard_cuts                           simc.f:226-243
  IOutputSink::fill(main, vertex, orig, recon, success)   for every try
  totals, limitsUpdate (IRadiator::photonEnergies, hadronRadiates)
@@ -146,7 +155,7 @@ replays (§7) possible.
   and `FORTRAN-OPEN` the classes a, b, c. The `fortran_compat` flag is read once into `RunSetup` and reaches every stage
   through `StageContext::setup`; kernels get it explicitly (function argument, `ExtremeTripArgs`, `DeForestState`,
   `CosyEngine::setFortranCompat`). Persistent quirks (stale values) live in an object, never in a
-  global: `EventState` (stale event fields), `MonteCarlo::tmpfact_`, `HydrogenElastic::krel_`,
+  global: `EventState` (stale event fields), `MonteCarlo::tmpfact_`, `EepReactionBase::krel_`, `nuclear::SfTable` (the SAVEd sf_lookup locals),
   `HallCCryoTarget::thCan_`, the kernels' SAVEd members.
 
 ## 7. Validation and tests (CTest labels)
@@ -154,10 +163,10 @@ replays (§7) possible.
 | label | what | reference |
 |---|---|---|
 | `unit` | parameters, .inp reader, sinks, summary/hist2json, stage headers and registry | reference/runs .inp/.hist |
-| `l1` | routine tables, bitwise or with stated tolerance | reference/functions/<routine>/*.tsv |
-| `replay` | the complete MonteCarlo and SimcRun driven by a captured RANLUX stream: bitwise tree/.bin/.hist | reference/functions/event_capture, runs/p4f1_*_cap |
+| `l1` | routine tables, bitwise or with stated tolerance | reference/functions/<routine>/*.tsv (P8: theory_init, sf_lookup*, generate_em, eep_state, *_eepA) |
+| `replay` | the complete MonteCarlo and SimcRun driven by a captured RANLUX stream: bitwise tree/.bin/.hist | reference/functions/event_capture{,_eepA}, runs/p4f1_*_cap, runs/p8f1_{d,fe56}_rad_cap |
 | `cli` | `simc++` with .inp vs JSON inputs, `inp2json`, plug-in selection by `--pipeline` | — |
-| `regression` | before/after output identity (`tests/regression`): all h10 branches and entries bitwise, text outputs equal apart from time stamps | SIMC++_Project/baselines/f9cea51_{rad,norad,phsp}_s4242 (`--fortran-compat`), 08812e6_corrected_{rad,norad,phsp}_s4242 (default) |
+| `regression` | before/after output identity (`tests/regression`): all h10 branches and entries bitwise, text outputs equal apart from time stamps | SIMC++_Project/baselines/f9cea51_{rad,norad,phsp}_s4242 (`--fortran-compat`), 08812e6_corrected_{rad,norad,phsp}_s4242 (default); D/A(e,e'p): 508633a_[corrected_]eep_{d,fe56}_rad_n20k_s4242 (P8.2) |
 | `fortran_diff` | one test per corrected Fortran bug, both modes (`tests/fortran_diff`), and the D-032 arm-code checks | reference/functions, reference/runs |
 | `examples` | example plug-ins run through the full driver | — |
 | `slow` | long distribution tests | — |
@@ -182,9 +191,12 @@ data/                         COSY maps (byte copies of the Fortran files), tabl
 
 ## 9. Known limitations of the design (to be lifted with the ports that need them)
 
-* `reactions::completeMain` (event.f:complete_main) assembles the weight in the driver and has only the
-  H(e,e'p)/phase-space branch. When the other reactions are ported (P8+), the reaction-specific part should move
-  behind `IReaction`.
+* (lifted in P8.2, D-030) the event weight is assembled by the reaction (`IReaction::completeMain`); the cross-section
+  branches of the not yet ported reactions (pion, kaon, Delta, rho, SIDIS) throw `NotPorted` in
+  `reactions::assembleWeight`.
+* The spectral-function file of D/A(e,e'p) is chosen before the set-up (the set-up reads the theory file, which also
+  fixes the generation limits): `SimcRun` reads `pipeline.reaction.spectral_function` and passes it to
+  `BuildRunSetup` (`SetupOptions::sf_file`, `use_benhar_sf`).
 * The arm codes `electron_arm`/`hadron_arm` (one table, `core/SpectrometerId.h`, D-032) still drive Fortran logic outside the spectrometer: the window
   materials in `hallc_cryo`, the `.geni` blocks and the default plug-in choice.
 * The set-up (`BuildRunSetup`) is one large port of dbase.f/init.f with reaction-specific branches. It is not

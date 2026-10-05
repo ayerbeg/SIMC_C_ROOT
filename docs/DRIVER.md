@@ -55,7 +55,7 @@ finish: Normalise → RunReport → RunSummary → sinks (endRun; IReportSink::w
   ```
   `PipelineConfig::Defaults` reproduces the Fortran choices from the flags: `phase_space` if `doing_phsp`
   (D-009: on hydrogen it still runs the elastic kinematics with sigcc = 1), `hydrogen_elastic` for H(e,e'p),
-  `sigep` (H) / `deforest` (D, A), `simc_rad` (radc_init_ev runs for every event, even without radiation), the arms
+  `deuterium_eep` (D) / `nucleus_eep` (A > 2), `sigep` (H) / `deforest` (D, A), `simc_rad` (radc_init_ev runs for every event, even without radiation), the arms
   from `electron_arm`/`hadron_arm` (`MonteCarlo::DefaultArm`), `root_tree` only if `Nntu > 0`.
   `simc++ --print-pipeline` shows the resolved pipeline.
 * **Wiring (P7.4).** `SimcRun::initialise` creates the stages by name, initialises the target and the radiator
@@ -64,6 +64,12 @@ finish: Normalise → RunReport → RunSummary → sinks (endRun; IReportSink::w
   (central%rad, Egamma_used, rad_proton_this_ev) goes through `IRadiator::currentValues()`, `photonEnergies()` and
   `hadronRadiates()`. The set-up's start-up losses (target_init, extreme_trip_thru_target) come from a dedicated
   instance of the pipeline target through `ITargetLossProvider`. The driver never casts a stage to a concrete class.
+* **D/A(e,e'p) (P8.2).** `deuterium_eep` / `nucleus_eep` (NuclearEep) with a spectral-function component
+  (`reaction.spectral_function`: `theory` or `benhar`, optional `file`). The choice reaches the set-up before it is built
+  (`PipelineConfig::SpectralFunction`, `SetupOptions::sf_file`, `use_benhar_sf`) because the set-up reads the theory file
+  (init.f:theory_init) and uses it for the generation limits. Data files: `--data-dir DIR`, default the source tree's
+  `data/spectral` (compiled in as `SIMC_SPECTRAL_DATA_DIR`). The physics model is created before the reaction, which
+  assembles the event weight with it (`IReaction::completeMain`, D-030).
 * **Arms.** Two arms with the same type and the same merged config share one spectrometer object (one Fortran COMMON
   block of counters, e.g. HMS for both arms); otherwise each arm has its own object.
 * **Quiet.** `--quiet` adds `"verbose": false` to every stage config (stage messages only).
@@ -110,6 +116,6 @@ finish: Normalise → RunReport → RunSummary → sinks (endRun; IReportSink::w
 
 ## 5. Not supported yet
 
-Reactions other than H(e,e'p) and `doing_phsp` (D/A(e,e'p), pion, kaon, delta, rho, semi-inclusive: NotPorted at
+Reactions other than H/D/A(e,e'p) and `doing_phsp` (pion, kaon, delta, rho, semi-inclusive: NotPorted at
 initialise), SOS/HRS/calorimeter arms (codes 2-4, 7-8; P14), `using_tgt_field`, `random_state_file`, the pion/kaon
 and semi/rho ntuple layouts, the `.geni` blocks of SOS/HRS/calo.

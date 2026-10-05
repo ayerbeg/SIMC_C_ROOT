@@ -6,8 +6,8 @@ replay tests), and complete runs agree statistically with the Fortran (L2). Arou
 stage of the event chain (target, beam, reaction, radiation, cross section, spectrometers, outputs) is a plug-in
 chosen by name from a JSON pipeline.
 
-Current scope: H(e,e'p) elastic (with and without radiation) and phase-space (`doing_phsp`) runs, HMS and SHMS
-arms. Other reactions and the SOS/HRS/calorimeter arms are refused with a `NotPorted` error (later phases).
+Current scope: H(e,e'p) elastic, D(e,e'p) and A(e,e'p) (theory-file or Benhar spectral functions; task P8), with and
+without radiation, and phase-space (`doing_phsp`) runs, HMS and SHMS arms. Other reactions and the SOS/HRS/calorimeter arms are refused with a `NotPorted` error (later phases).
 
 Documentation (`docs/`):
 
@@ -100,5 +100,6 @@ examples/       example plug-ins (ideal_box spectrometer) and their tests
 tests/          unit/ l1/ regression/
 tools/          simc++ main, inp2json, hist2json, check_all.sh
 validation/     simc_compare (L2)
-data/           COSY maps (copies of the Fortran files), tables, data/config/*.json
+data/           COSY maps and spectral functions (copies of the Fortran files: matrices/simc_fortran, spectral),
+                tables, data/config/*.json
 ```

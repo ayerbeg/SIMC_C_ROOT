@@ -1,6 +1,6 @@
 # Extending SIMC++ with plug-ins
 
-Status: P7.4 (2026-10-01). This page shows how to add a spectrometer, reaction, physics model, target or output
+Status: P7.4 (2026-10-01), updated in P8.2 (reaction-owned weight, spectral functions). This page shows how to add a spectrometer, reaction, physics model, target or output
 sink without touching the driver. The worked example is `examples/ideal_box/`, a complete ISpectrometer plug-in
 with its test. Read [ARCHITECTURE.md](ARCHITECTURE.md) first for the layers and the per-event data flow.
 
@@ -127,7 +127,10 @@ class IReaction : public IStage {
     virtual bool generate(MainEvent& main, Event& vertex, Event& orig, IRandom& rng) = 0;   // event.f:generate
     virtual bool completeEv(MainEvent& main, Event& vertex, IRandom& rng) = 0;             // complete_ev
     virtual bool completeRecon(Event& recon) = 0;                                          // complete_recon_ev
+    virtual bool completeMain(bool force_sigcc, MainEvent& main, const Event& vertex,      // complete_main
+                              const Event& vertex0, const Event& recon) = 0;
     virtual double genVolume() const = 0;                                                  // simc.f:383-396
+    virtual void beginTry(long ntried) {}                                                  // optional (messages)
 };
 ```
 
@@ -137,16 +140,44 @@ class IReaction : public IStage {
   target pointers from `init(ctx)`.
 * `completeEv` must compute the target traversal of the outgoing particles with `ctx.target->tripThruTarget(...)`
   (`main.target.Eloss/teff[1..2]`) and call `radiator->initEvent(main, vertex)` at the end, like event.f:1045.
+* `completeMain` (task P8.2, D-030) owns the event weight: set `main.SF_weight` (the reaction's spectral function, 1 if
+  none), return false if the event cannot contribute (unless `force_sigcc`, the central event), and assemble
+  `main.sigcc`, `main.sigcc_recon` and `main.weight` with the run's physics model `ctx.physics`. The kernel
+  `reactions::assembleWeight(force_sigcc, main, vertex, vertex0, recon, model, MainContext::FromSetup(setup))` does the
+  Fortran part after the SF weight (cross section, Coulomb focusing factor, weight).
 * `genVolume()` is the generated phase-space volume used in the normalisation.
-* Select it with `"reaction": "my_reaction"`. The default comes from the run flags (`hydrogen_elastic` or
-  `phase_space`).
+* Select it with `"reaction": "my_reaction"`. The default comes from the run flags (`hydrogen_elastic`,
+  `phase_space`, `deuterium_eep`, `nucleus_eep`).
 
-Current limitation (to be lifted in P8): the event weight is assembled by `reactions::completeMain` (event.f:
-complete_main), which implements only the H(e,e'p)/phase-space spectral-function branch and throws `NotPorted`
-for the other Fortran reaction flags. A new reaction therefore runs on top of the H(e,e'p)/phsp flags of the input.
-The weight assembly will move behind the reaction interface when the other Fortran reactions are ported.
+The (e,e'p) plug-ins share `reactions::EepReactionBase` (complete_ev, complete_recon_ev, complete_main, genvol of
+event.f/simc.f); a new (e,e'p)-like reaction can derive from it and implement `generate()` and `spectralWeight()`.
+The cross sections of the Fortran reactions that are not ported yet (pion, kaon, Delta, rho, SIDIS) throw `NotPorted`
+in `assembleWeight`.
 
-Template: `include/simc/reactions/HydrogenElastic.h` / `src/reactions/HydrogenElastic.cpp`.
+Templates: `include/simc/reactions/HydrogenElastic.h`, `include/simc/reactions/NuclearEep.h`.
+
+### Spectral function (`ISpectralFunction`, component of the D/A(e,e'p) reactions)
+
+```cpp
+class ISpectralFunction : public IStage {
+    virtual double weight(const Event& vertex) = 0;   // main%SF_weight at the vertex (Em, Pm)
+    virtual std::string file() const = 0;
+};
+```
+
+Built in: `theory` (init.f theory files h2/c12/fe56/au197.theory, read by the set-up) and `benhar` (Benhar tables
+benharsf_*.dat, use_benhar_sf). Choose it in the reaction's JSON:
+
+```json
+{"pipeline": {"reaction": {"type": "nucleus_eep",
+                           "spectral_function": {"type": "benhar", "file": "benharsf_4.dat", "transparency": 0.36}}}}
+```
+
+The files are looked up in `--data-dir` (default `data/spectral`, byte-identical copies of the Fortran files). Without
+a `file` the Fortran choice for the target A is used; for an A without its own file (He-3, He-4, Ca-40, ...) that is
+the C-12 file, and SIMC++ prints a warning (D-033 F1). A new spectral-function plug-in registers with
+`SIMC_REGISTER(simc::ISpectralFunction, "name", Class)` and is selected with `"spectral_function": {"type": "name"}`;
+it receives the set-up (target, flags, `RunSetup::sf`) in `init(ctx)`.
 
 ## 5. Physics model (`IPhysicsModel`)
 

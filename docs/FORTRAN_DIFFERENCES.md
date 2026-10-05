@@ -1,6 +1,6 @@
 # Differences between SIMC++ and the Fortran SIMC
 
-Status: task P7.5 (decisions D-031 and D-032, 2026-10-04). This file lists every known place where SIMC++ behaves
+Status: task P7.5 (decisions D-031 and D-032, 2026-10-04); D/A(e,e'p) items added in P8.1/P8.2 (D-033). This file lists every known place where SIMC++ behaves
 differently from the Fortran SIMC (`simc_gfortran`), or where it keeps a Fortran behaviour that looks odd. Each item
 names the Fortran file and line, the C++ behaviour, the effect on outputs, and the test that covers it. The decisions
 (D-xxx) are in `project_control/DECISIONS.md`. The Fortran reports (`reference/P*_report.md`) give the details.
@@ -49,11 +49,15 @@ P7.F1 (K2–K4). §6 has the L2 numbers.
 | D-018 offsets | simc.f:815-818 | `xptar/yptar offset` printed in rad under the unit `mr` | printed in mr (×1000) | `.hist` text, only when a spectrometer angle offset is non-zero (0 in all validation runs). | same |
 | D-018 L format | simc.f:897-898, 907, 927 | the integers `deForest_flag`, `use_first_cer`, `use_expon` written with the L edit descriptor (T/F; −1 and +1 both "T") | written as integers (i2, i2, i3) | `.hist` text of every run (2 or 3 lines). D-018 quoted l.896/906/925; the lines are 898/907/927. | same |
 | D-018 delta title | simc.f:727-732 | the (e,e'p)π reaction title goes to unit 6, not to the report unit | written to the `.hist` | `.hist` text of Delta runs (P11). | same |
-| D-014 deForest | physics_proton.f:84-86 | the `cos_phi` warning is tested after `cos_phi` was clamped to ±1, so it never prints | tested (and printed) before the clamp | warning text only; the cross section is unchanged. D/A(e,e'p) (P8). | `fortran_diff_D014_deforest_cos_phi_warning` |
+| D-014 deForest | physics_proton.f:84-86 | the `cos_phi` warning is tested after `cos_phi` was clamped to ±1, so it never prints | tested (and printed) before the clamp | warning text only; the cross section is unchanged. D/A(e,e'p): printed for the central event of the A(e,e'p) inputs of P8.F1 (cos_phi = 1 + 3.5e-8). | `fortran_diff_D014_deforest_cos_phi_warning` |
 | D-015 F9 raddeg | shared/rotate_haxis.f:41, rotate_vaxis.f:40 | `raddeg = 0.017453292` (π/180 to 8 digits, rel. error 1.1e-8) | π/180 | the rotated aperture coordinates of the HMS dipole (±6°) and the SHMS apertures (±1.5°, …) move by ~1e-8 relative; the transported track is not changed. 0 aperture decisions changed in the 10 validation runs (trees bitwise identical, §7). | `fortran_diff_D015_rotate_raddeg` |
 | D-017 extreme trip | target.f:501 | hadron section, pudding can / cryo17: `zz` from the ELECTRON angle `the%min` | from `thp%min` | `targ%Eloss(3)%max`, `teff(3)%max` (→ hadron edge limits, .hist "Eloss/teff lo-hi"). Only for `targ%can` 2/3 AND an angle > 45° (otherwise z is clamped to −L/2 either way). Example: can 2, hadron at 52–60°: 1.3565 → 1.3591 MeV. All validation runs use the beer can (can 1): no effect. | `fortran_diff_D017_extreme_trip_hadron_angle` |
 | D-021 coll slits | hms/mc_hms_coll.f:83-104 | `hSTOP_slit_hor/vert/oct` incremented for each of the 20 steps outside the opening, also for rays that pass | at most once per ray and counter (the Fortran's unused `slit_*_flag` flags) | `.geni` HMS slit counters with `using_HMScoll` and pions/muons (P9). Example (2000 pions): 9746/3955/10944 → 637/263/713. Transport, RNG and acceptance unchanged. | `fortran_diff_D021_hms_coll_slit_counters` |
 | D-028 F2 NaN | event.f:1641 | `dy = sqrt(1/cos_dtheta**2-1.-dx**2)` of a rounding-negative argument → NaN | argument clamped to ≥ 0 (dy = 0) | H elastic: the hadron yptar of a try can be NaN; such an event carries NaN in every hadron-arm recon/fp value but a finite weight (Fortran K2 norad: 1 of 200000 events). With seed 4242: 1 failed try in P1.2 rad and 1 in K3 rad (`.gen.root` geni_p_yptar +1 entry in the bin at 0), 0 accepted events in all 10 runs (the C++ K2 norad has no NaN event with this seed). | `fortran_diff_D028_spectrometer_angles_nan` (110 NaN rows of the L1 table) |
+| D-033 F3 Benhar SF | sf_lookup.f:93 (`sf_lookup_diff`) | `SFd = SF/4/3.1415926535/(Pm*Pm)/5.0/20.0`: the interpolated BIN probability divided by the event's own Pm² and by fixed 5 MeV × 20 MeV/c widths: +Inf/NaN at Pm = 0, a 1/Pm² divergence below the first node (Pm < 9.9-10 MeV/c), widths wrong for benharsf_3mod/4 (dPm 19.733, dEm 1/5/10) | the differential SF of every node, sfval/(4π Pmval² dPm dEm) with the node's widths from the file, interpolated with the same bilinear scheme (`nuclear::SfTable::lookupDiff`) | A(e,e'p) with `use_benhar_sf` only: main%SF_weight, hence Weight and wtcontr. §8 has the measured effect (eep_fe56_bh_rad_A). | `fortran_diff_D033_F3_benhar_sf_diff` |
+| D-033 F5 PmPer | event.f:926 | `vertex%PmPer = sqrt(max(0, vertex%Pm**2 - PmPar**2 - PmOop**2))` is computed before vertex%Pm is assigned (l.940/943), i.e. with the previous try's Pm | recomputed with this event's Pm after l.940/943 (`EepReactionBase::completeEv`) | D/A(e,e'p): vertex%PmPer only. It is not written to the ntuple (the tree has the recon PmPer) nor used by the weight: no effect on the outputs. | `fortran_diff_D033_F5_pmper_stale_pm` |
+| D-033 F6 sf_lookup state | sf_lookup.f:160-184 | for Em == Emval(numEm) (and NaN Em) no branch assigns Em1/Em2/sf1/sf2: the SAVEd values of the previous call are used (NaN on the first call of a process) | Em == Emval(numEm) uses the last interval; no state is kept between calls; NaN Em gives 0 | Benhar SF (A(e,e'p) `use_benhar_sf`; A(e,e'π/K) generate_em, not ported yet): only events with Em exactly on the last node (measure zero with continuous Em). | `fortran_diff_D033_F6_sf_lookup_stale` |
+| D-033 F7 heavy Mrec | event.f:944 | `vertex%Mrec = sqrt(vertex%Emiss**2-vertex%Pmiss**2)` without a guard: NaN Mrec/Em/Trec and success = .true. (a NaN Em even passes the VERTEXedge tests, comparisons with NaN being false) | complete_ev fails (success = false) when Emiss² − Pmiss² < 0 or NaN | A(e,e'p) at extreme edges only (He-4/C-12 table rows with ν → 0 or E_p = Ein); 0 events in the L2 runs (§8). | `fortran_diff_D033_F7_heavy_mrec_guard` |
 | D-025/D-032 SHMS spectr | shms/mc_shms.f:335-347 | the "LSA tune" STOP is tested on the first call only | tested on every call (both modes) | none in valid runs. | `l1_shms_selftest` ("spectr != 5 → FortranStop") |
 | D-032 arm code 6 | dbase.f:895-897/915-917 (STOP), but dbase.f:250/259, init.f:176/199, target.f:97/217, results_write.f:90, simc.f:510-511/905-906 still treat 6 as SHMS | 6 = retired SHMS LSA tune, the run STOPs in dbase | rejected when the input is read (InpReader, JSON `FromJson`, `BuildRunSetup`), both modes: "electron_arm = 6 was the retired SHMS LSA tune; use 5 = SHMS"; exit status 2. One spectrometer table (`core/SpectrometerId.h`) is used everywhere; no other code knows 6. The shms plug-in key `"spectr"` was removed. | none for valid inputs. | `fortran_diff_D032_spectrometer_id`, `cli_arm_code_6_rejected` |
 
@@ -79,6 +83,8 @@ P7.F1 (K2–K4). §6 has the L2 numbers.
 
 | id | Fortran | behaviour (kept) | question | effect |
 |---|---|---|---|---|
+| D-033 F4 D jacobian | event.f:1020-1024 | D(e,e'p): the hadron 1/cos³(θ−θ0) jacobian is applied only for doing_heavy/pion/kaon/delta/semi, not for D, although the proton angles are generated in xptar/yptar and genvol contains dΩp (simc.f:388) | is the missing jacobian for D intended? | D(e,e'p) weights: the factor would be 1/cos³ ≈ 1 − 1.5(xptar²+yptar²), i.e. 0 at the centre to −1.5 % at the corners of the generated hadron solid angle (±60 × ±80 mr) |
+| D-033 F1 SF fallback | init.f:839-851, dbase.f:598-616 | every A other than 2/12/56/197 silently uses c12.theory (benharsf_12.dat with use_benhar_sf): He-3, He-4, Ca-40 get the C-12 spectral function. SIMC++ keeps the default but prints a WARNING and lets the input name the file (`pipeline.reaction.spectral_function.file`) | which spectral function for He-3/He-4 (theory files exist only for 2/12/56/197)? | eep_he4_rad_A is "He-4 kinematics with the C-12 SF" |
 | D-015 F7 HMS hodo 2 | hms/mc_hms_hut.f:537-551 | hodoscope-2 planes tested with the hodoscope-1 limits/offsets | copy-paste or the same active area on purpose? | HMS acceptance at the hut (scin trigger) |
 | D-015 F7 HMS Cherenkov | hms/mc_hms_hut.f:523-529 | multiple scattering in the Cherenkov exit foil applied twice | double counting or a second foil? | HMS fp smearing (`mc_smear`) |
 | D-015 F5 SHMS drifts | shms/mc_shms.f (zd_d1men 39.47, zd_d1out 60.68, zd_fp 307.95) | hard-coded drift lengths differ from the COSY classes (39.4715, 60.68058, 307.9514) | use the COSY values? | SHMS fp ≤ 2.2e-4 cm, path −0.0035 cm |
@@ -131,6 +137,12 @@ P7.F1 (K2–K4). §6 has the L2 numbers.
 | P4.F1 Q6 | event.f:1060-1140 | complete_recon_ev: W with Mp, phi_pq with acos (complete_ev: atan2), recon Ein assigned twice | definitions |
 | D-005 .hist limits | init.f:209-216 | "Input Spectrometer Limits" printed after the slop widening | output definition |
 | D-005 tree | make_root_tree.f | every branch Float_t; ≤ 1e7 events | output format |
+| D-033 F6 logsf | sf_lookup.f:184 | the variable is called `logsf` but the Em interpolation is linear (no log is taken); SF < 1e-20 (also negative extrapolations, and one negative node of benharsf_4.dat) is set to 0 | the coded algorithm |
+| D-033 F8 krel | event.f:977 | `ntup%krel` is written from the SAVEd local krel, never assigned on the (e,e'p) branches (0) | not an output of (e,e'p) |
+| D-033 F8/F9 Benhar limits | init.f:335, dbase.f:592-621 | with use_benhar_sf, theory_init is not called: E_Fermi = 0 (VERTEXedge%Em%min = 0) and VERTEXedge%Pm%max = 790 MeV/c for every file (He-3/He-4 tables go to 976.8); the neutron columns of benharsf_4/12/56/197 normalise like the proton ones | definitions of the input files |
+| D-033 F12 D warning | event.f:588-593 | the "two solutions" warning of D(e,e'p) is printed only for ntried ≤ 5000 (`IReaction::beginTry`) | message only |
+| D-033 doing_deuterium | init.f:889 | theory_init overwrites doing_deuterium = (nrhoPm = 1 and E_Fermi < 1) from the file contents | definition |
+| P8.2 targetfac | simc.f:94-95 | `3.75914d+6` is DOUBLE PRECISION, promoted to real*16 by -fdefault-real-8: targetfac is evaluated in quad precision (objdump: __divtf3/__multf3) and rounded to real*8; SIMC++ does the same (`__float128`); the double evaluation differs by 1 ulp for the D capture input | bitwise numerics |
 | D-015 HMS cal | hms/mc_hms_hut.f:582-588 | calorimeter cut commented out: hSTOP_cal never incremented | deliberate in the Fortran |
 | D-015 SHMS counters | shms/mc_shms*.f | 7 counters never incremented; 5 stop reasons unreachable; stop_id reused / 0 for slit stops | diagnostics |
 | P6.F1 F8, F10-F12 | mc_shms(_hut).f, transp.f | `spec` real*4/real*8 mismatch (unused), unit 1 closed, TOF terms dropped, pathlen to the back of the calorimeter | no effect / definitions |
@@ -149,7 +161,8 @@ P7.F1 (K2–K4). §6 has the L2 numbers.
 | D-005 STOP | `STOP` exits with status 0 | `simc::FortranStop`, exit status 3; rejected inputs exit 2 |
 | D-003 input | CTP .inp, `%` names only (obsolete `.` names silently ignored) | .inp (same CTP semantics, unknown names reported like CTP) or JSON; `inp2json` |
 | D-032 | arm codes as raw integers, 6 half-supported | one `SpectrometerId` table; 6 rejected (see §2) |
-| not ported | D/A(e,e'p), pion, kaon, Delta, rho, SIDIS, SOS/HRS/calorimeter arms, target field | `simc::NotPorted` at start-up (P8–P14) |
+| not ported | pion, kaon, Delta, rho, SIDIS, SOS/HRS/calorimeter arms, target field | `simc::NotPorted` at start-up (P9–P14) |
+| D-033 F1 | the spectral-function file follows from nint(A) only | also selectable in the JSON (`pipeline.reaction.spectral_function`: type and file); a warning when the Fortran C-12 fallback is used |
 | outputs | .hist/.geni/.gen, .bin, .root | the same text files, `.root` (h10, same 46 branches), plus `.summary.json/.txt` and `.gen.root`; no `.bin` |
 
 ## 7. Validation of the corrected default against the Fortran (L2, seed 4242, task P7.5)
@@ -170,3 +183,31 @@ P7.F1 (K2–K4). §6 has the L2 numbers.
 | eep_h_K3_rad_A | PASS 0/219 | 2.1e-2 | 1.88 | bitwise identical | wtcontr −0.230 %, resolutions (722 events); geni_p_yptar +1 (D-028) |
 | eep_h_K4_norad_A | PASS 0/215 | 2.5e-2 | 2.23 | bitwise identical | format lines |
 | eep_h_K4_rad_A | PASS 1/221 | 7.1e-3 | 2.69 | bitwise identical | format lines |
+
+## 8. D/A(e,e'p): L2 in both modes and the measured effect of the corrections (task P8.2)
+
+`simc_compare` (default config) of simc++ seed 4242, 200000 events, against the P8.F1 Fortran runs
+`reference/runs/eep_<tag>_A` (and `_B` for D and C-12). Run folders `SIMC++_Project/simc_runs/2026100{4,5}_*_P8.2_L2_{compat,corrected}_<tag>/`
+(`compare_vs_A/`, `compare_vs_B/`: summary.txt, summary.json, compare.pdf; `mode_diff_vs_compat.txt` in the corrected
+folders: event-by-event comparison with the compat run, `validation/compare/mode_diff.cpp`).
+
+| run | compat vs A: verdict (F/N), worst p | corrected vs A: verdict (F/N), worst p, wtcontr pull | corrected vs compat (same seed) |
+|---|---|---|---|
+| eep_d_rad | PASS 4/230, 4.0e-3 (vs B: PASS 1/229) | PASS 4/230, 4.0e-3, 0.74 (vs B: PASS 1/229) | trees identical; .hist wtcontr −0.504 % |
+| eep_d_norad | PASS 1/227, 7.0e-3 | PASS 1/227, 7.0e-3, 1.43 | trees identical; wtcontr −0.607 % |
+| eep_c12_rad | PASS 1/226, 7.1e-3 (vs B: PASS 0/226) | PASS 1/226, 7.1e-3, −0.09 (vs B: PASS 0/226) | trees identical; wtcontr −1.995 % |
+| eep_fe56_rad | PASS 1/227, 4.7e-3 | PASS 1/227, 4.7e-3, 2.34 | trees identical; wtcontr −2.245 % |
+| eep_fe56_norad | PASS 0/223, 2.0e-2 | PASS 0/223, 2.0e-2, 0.94 | trees identical; wtcontr −0.578 % |
+| eep_au197_rad | PASS 3/226, 4.1e-4 | PASS 3/226, 4.1e-4, 1.94 | trees identical; wtcontr −2.468 % |
+| eep_he4_rad (C-12 SF) | PASS 3/230, 2.5e-4 (hms.scin binomial, pull −3.7) | PASS 3/230, 2.5e-4, −0.14 | trees identical; wtcontr −1.789 % |
+| eep_fe56_bh_rad | PASS 0/226, 1.2e-2 | PASS 0/226, 1.1e-2 (wtcontr), 2.55 | only Weight differs (199992 of 200000 events, ΣWeight −0.079 %); wtcontr −2.795 % |
+
+* The corrected trees equal the compat trees bit for bit except the Benhar Weight: F5 (vertex PmPer) is not an output, F7
+  and F6 occur in 0 events (same Ntried, same events), D-028 F2 in 0 events.
+* The wtcontr difference is the pass_cuts correction (D-006, simc.f:237): the Fortran counts hadron recon δ up to the
+  electron-arm limit (22 %) instead of 10 %. The compat/corrected ratios (+0.51, +0.61, +2.04, +2.30, +0.58, +2.53, +1.82,
+  +2.80 %) equal the effect measured on the Fortran trees in P8.F1 (+0.52, +0.60, +2.0, +2.2, +0.53, +2.5, +2.1, +2.8 %),
+  the remaining small differences being the statistics of the window 10-22 %. The corrected-vs-Fortran wtcontr pulls are
+  therefore shifted by ≈ effect/relerr: up to 2.3-2.6 σ for Fe and Fe-Benhar, still below the p < 0.01 test threshold.
+* Benhar (F3): the corrected weight is the per-node density interpolated (no 1/Pm² of the event); per recon-Pm bin the
+  corrected/compat ratio is 0.960 (Pm < 50 MeV/c), 0.99 (50-150), 1.005-1.012 (150-350), 1.002 above; in total −0.08 %.

@@ -33,6 +33,11 @@ target_link_libraries(simc_compare PRIVATE simcval ROOT::Core ROOT::RIO ROOT::Tr
                       ROOT::Gpad ROOT::Graf ROOT::MathCore)
 target_compile_options(simc_compare PRIVATE -Wall -Wextra)
 
+# P8.2: event-by-event difference of two same-seed SIMC++ runs (fortran_compat vs corrected)
+add_executable(simc_mode_diff compare/mode_diff.cpp)
+target_link_libraries(simc_mode_diff PRIVATE ROOT::Core ROOT::RIO ROOT::Tree)
+target_compile_options(simc_mode_diff PRIVATE -Wall -Wextra)
+
 # ---------------------------------------------------------------- self-tests
 enable_testing()
 set(SIMC_REFERENCE_DIR "/home/ayerbe/NewDisk/reference" CACHE PATH "Fortran reference data")

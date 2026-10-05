@@ -38,3 +38,22 @@ foreach(_p "rad;eep_h_elastic_rad_A" "norad;eep_h_elastic_norad_A" "phsp;acc_phs
     set_tests_properties(regression_corrected_${_tag} PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 1200
                          LABELS regression)
 endforeach()
+
+# P8.2: D(e,e'p) and Fe-56(e,e'p) (rad, seed 4242, 20000 events) against the baselines of commit 508633a, in both modes
+# (SIMC_BASELINE_DIR/508633a_[corrected_]eep_<tag>_n20k_s4242/). Inputs: the P8.F1 L2 inputs in reference/runs.
+set(SIMC_EEP_BASELINE_COMMIT "508633a" CACHE STRING "Commit whose D/A(e,e'p) outputs are the identity baseline")
+foreach(_tag d_rad fe56_rad)
+    set(_inp ${SIMC_REFERENCE_DIR}/runs/eep_${_tag}_A/eep_${_tag}_A.inp)
+    add_test(NAME regression_identity_eep_${_tag}
+             COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/output_identity.sh $<TARGET_FILE:simcpp> $<TARGET_FILE:simc_root_identity>
+                     ${_inp} 4242 dir_eep_${_tag}_s4242
+                     ${SIMC_BASELINE_DIR}/${SIMC_EEP_BASELINE_COMMIT}_eep_${_tag}_n20k_s4242
+                     ${CMAKE_CURRENT_BINARY_DIR}/identity_eep_${_tag} --fortran-compat --ngen 20000)
+    add_test(NAME regression_corrected_eep_${_tag}
+             COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/output_identity.sh $<TARGET_FILE:simcpp> $<TARGET_FILE:simc_root_identity>
+                     ${_inp} 4242 dir_eep_${_tag}_s4242
+                     ${SIMC_BASELINE_DIR}/${SIMC_EEP_BASELINE_COMMIT}_corrected_eep_${_tag}_n20k_s4242
+                     ${CMAKE_CURRENT_BINARY_DIR}/corrected_eep_${_tag} --ngen 20000)
+    set_tests_properties(regression_identity_eep_${_tag} regression_corrected_eep_${_tag} PROPERTIES
+                         SKIP_RETURN_CODE 77 TIMEOUT 1200 LABELS regression)
+endforeach()
