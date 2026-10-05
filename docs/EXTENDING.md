@@ -114,8 +114,8 @@ does the same through `simc++ --pipeline`.
 
 Notes:
 
-* The arm **codes** of the input (`electron_arm`, `hadron_arm`) still select the default plug-in (1 → `hms`,
-  5/6 → `shms`). They also select the Fortran target-window materials in `hallc_cryo` (trip_thru_target) and the
+* The arm **codes** of the input (`electron_arm`, `hadron_arm`) still select the default plug-in (through the single
+  table `core/SpectrometerId.h`, D-032: 1 → `hms`, 5 → `shms`; 6 is rejected at input). They also select the Fortran target-window materials in `hallc_cryo` (trip_thru_target) and the
   Fortran `.geni` blocks. A plug-in replaces the single-arm Monte Carlo only.
 * To reuse the HMS/SHMS optics in a new spectrometer, use the COSY engine `optics::CosyEngine`
   (`include/simc/optics/`; transp, project, recon with the Fortran map files).

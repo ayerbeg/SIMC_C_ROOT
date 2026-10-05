@@ -90,7 +90,7 @@ finish: Normalise → RunReport → RunSummary → sinks (endRun; IReportSink::w
 | l.203 generate | `reactions::generateEvent(beam, reaction, ...)` |
 | l.211 montecarlo | `MonteCarlo::run` |
 | l.216 complete_recon_ev, l.224 complete_main | `IReaction::completeRecon`, `reactions::completeMain` |
-| l.226-243 pass_cuts, hard_cuts | `SimcRun::step` (FORTRAN-QUIRK D-006 kept) |
+| l.226-243 pass_cuts, hard_cuts | `driver::PassCuts`, `SimcRun::step` (FORTRAN-BUG D-006 corrected unless fortran_compat) |
 | l.250-287 inc() histograms, l.335 results_ntu_write | the sinks' `fill` (`gen_hist`, `fortran_hist`, `root_tree`) |
 | l.295-333 ncontribute, sums, limits_update | `SimcRun::step`, `reactions::limitsUpdate` |
 | l.341-347 nevent (ngen < 0 counts tries) | `SimcRun::step` |

@@ -12,6 +12,7 @@
 #include <cstdio>
 #include <fstream>
 #include <functional>
+#include <iostream>
 #include <limits>
 #include <map>
 #include <sstream>
@@ -488,6 +489,23 @@ int testReportFormats() {
     expect(line(hist[1], "use_expon").find("use_expon=  F") != std::string::npos &&
                line(hist[0], "use_expon").find("use_expon=  0") != std::string::npos,
            "use_expon: compat 'F', corrected '0'");
+    // simc.f:727-732: the (e,e'p)pi title goes to unit 6 in the Fortran, to the .hist when corrected
+    for (int compat = 0; compat < 2; ++compat) {
+        SetupOptions so;
+        so.fortran_compat = compat == 1;
+        so.data_dir = g_fortran;
+        RunSetup s = BuildRunSetup(p, so);
+        s.flags.doing_eep = s.flags.doing_hyd_elast = false;
+        s.flags.doing_delta = s.flags.doing_hyddelta = true;
+        std::ostringstream cap;
+        std::streambuf* old = std::cout.rdbuf(cap.rdbuf());
+        const std::string h = driver::FormatHist(s, r);
+        std::cout.rdbuf(old);
+        const bool inHist = h.find("H(e,e'p)pi") != std::string::npos;
+        const bool onStdout = cap.str().find("H(e,e'p)pi") != std::string::npos;
+        expect(compat ? (!inHist && onStdout) : (inHist && !onStdout),
+               std::string("(e,e'p)pi title: ") + (compat ? "compat on unit 6 only" : "corrected in the .hist only"));
+    }
     // everything else identical (the lines that differ are only the ones above)
     std::istringstream a(hist[1]), b(hist[0]);
     std::string la, lb;

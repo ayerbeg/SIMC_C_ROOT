@@ -26,8 +26,9 @@ Each sink accepts an optional JSON config `{"file": "..."}`.
   (NtupleInit.f l.101-295) will come with those reactions. Until then `beginRun` throws for them.
 - **Arm assignment** (results_write.f:64 and 89): `hs*` = the spectrometer on the beam **right** (HMS, HRSR) and `ss*` = the
   one on the **left** (SOS, HRSL, SHMS).
-  - `electron_arm` = 1, 3, 7: the electron is on the right, so `hs*` holds the electron and `ss*` the hadron.
-  - `electron_arm` = 2, 4, 5, 6, 8: `hs*` holds the hadron and `ss*` the electron.
+  - `electron_arm` = 1, 3, 7 (beam-right spectrometers, `core/SpectrometerId.h`): `hs*` holds the electron, `ss*` the hadron.
+  - `electron_arm` = 2, 4, 5, 8: `hs*` holds the hadron and `ss*` the electron. (The Fortran also lists 6, the retired SHMS
+    LSA tune; SIMC++ rejects 6 at input, D-032.)
   - Any other value: columns 1-24 keep the previous event's values. This matches the static Fortran array, which the Fortran
     reports as "results_write not yet set up".
   - In the table, R and L are the right-side and left-side particle: `e` or `p` depending on the case above.
@@ -147,12 +148,14 @@ These names are shared with the P1.5 reader. `trials` and `successes` are always
 | hrsr, hrsl | trials, slit_hor, slit_vert, Q1_…, Q2_…, D1_in, D1_out, Q3_…, hut, dc1, dc2, s1, s2, cal, successes | rSTOP_*, lSTOP_* |
 | calo | trials, slit_hor, slit_vert, successes | caloSTOP_* |
 
-FORTRAN-QUIRKs in the `.geni` (simc.f):
-- **l.519-520**: the SHMS "Q3 … mid" column prints `shmsSTOP_q2_mid`. It is stored as `q2_mid_dup`; the C++ also writes
-  `q2_mid_dup = q2_mid` so that both sides carry it. `q3_mid` is never printed by the Fortran.
+Fortran `.geni` label bugs (simc.f; docs/FORTRAN_DIFFERENCES.md D-011):
+- **l.519-520**: the SHMS "Q3 … mid" column prints `shmsSTOP_q2_mid`. It is stored as `q2_mid_dup`; the C++ summary also
+  writes `q2_mid_dup = q2_mid` so that both sides carry it (for simc_compare). The C++ `.geni` prints `q3_mid` in that column
+  by default and `q2_mid` with `--fortran-compat`.
 - **l.477, 489, 501**: the SOS "Slit hor/vert/corners" line and the HRS "Slit hor/vert" line print `slit_vert` first. The
-  counters are stored under their physical keys.
-- **l.526**: SHMS "DC1, DC2, Scin, Cal" prints only dc1 and dc2.
+  counters are stored under their physical keys (the C++ does not write SOS/HRS blocks yet, P14).
+- **l.526**: SHMS "DC1, DC2, Scin, Cal" prints only dc1 and dc2. The C++ label is "DC1, DC2" by default, the Fortran one
+  with `--fortran-compat`.
 
 ## 3. Diagnostic histograms (GenHistSink)
 
@@ -165,7 +168,7 @@ FORTRAN-QUIRKs in the `.geni` (simc.f):
 | set | when | values, weight | Fortran |
 |---|---|---|---|
 | geni | every tried event | vertex e/p delta, yptar, **−xptar**, Em, Pm; weight 1 | simc.f:254-261 |
-| recon | successes | main.RECON e/p delta, yptar, xptar (**not** negated: FORTRAN-QUIRK) with weight main.weight; recon Em, Pm with weight 1 | simc.f:272-279 |
+| recon | successes | main.RECON e/p delta, yptar, xptar (**not** negated: FORTRAN-DIFF-CANDIDATE) with weight main.weight; recon Em, Pm with weight 1 | simc.f:272-279 |
 | gen | successes | vertex e/p delta, yptar, −xptar, Em; weight 1 (**gen_Pm is never filled**) | simc.f:280-286 |
 
 The Fortran `.gen` text print-out has its own quirks, recorded here for the comparison tool:

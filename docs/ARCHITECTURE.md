@@ -8,9 +8,12 @@ Status: v2, task P7.4 (2026-10-04). It replaces v1 (P1.1). The driver itself is 
 
 1. **The Fortran is the specification of the physics** (D-001). Every ported routine reproduces the algorithm, the
    operation order (bitwise results) and the random-number calls of the Fortran routine it replaces, and cites it:
-   `// Fortran: event.f:complete_ev (l.432-1055)`. Fortran behaviour that looks wrong is reproduced, marked
-   `// FORTRAN-QUIRK(D-xxx)` and recorded in project_control/DECISIONS.md (D-026: the default is always the Fortran
-   behaviour; a corrected behaviour may later become an opt-in).
+   `// Fortran: event.f:complete_ev (l.432-1055)`. Since D-031 (P7.5) clear Fortran bugs are CORRECTED by default and
+   marked `// FORTRAN-BUG(D-xxx): original <file:line>: <code>; corrected because ...`; the run option `fortran_compat`
+   (`--fortran-compat`, JSON `"run": {"fortran_compat": true}`, `RunSetup::fortran_compat`) restores the exact Fortran
+   behaviour for the bitwise L1/replay/regression tests. Ambiguous cases keep the Fortran behaviour and are marked
+   `FORTRAN-DIFF-CANDIDATE(D-xxx)` with the question; the open acceptance-mode items `FORTRAN-OPEN(D-031 flag 1)`;
+   documented faithful oddities `FORTRAN-QUIRK(D-xxx)`. Every item is listed in [FORTRAN_DIFFERENCES.md](FORTRAN_DIFFERENCES.md).
 2. **A modern, object-oriented framework around faithful kernels** (D-026). The Fortran-faithful code ("kernels")
    is the numerical core. The rest — stage interfaces, plug-ins, driver, I/O — is ordinary C++17: explicit inputs
    and outputs, RAII and `unique_ptr` ownership, value types for events, const-correct interfaces, no global state.
@@ -139,7 +142,10 @@ replays (§7) possible.
 * The stage interfaces carry the physics content of the Fortran argument lists, without the Fortran-isms: return
   values instead of output arguments, `std::optional` for "written or not" (`SpecResult::resolution_factor`),
   0-based tails (`RadiationValues`, `photonEnergies`).
-* `FORTRAN-QUIRK` marks reproduced odd behaviour. Persistent quirks (stale values) live in an object, never in a
+* `FORTRAN-QUIRK` marks reproduced odd behaviour (FORTRAN_DIFFERENCES.md class d); `FORTRAN-BUG`, `FORTRAN-DIFF-CANDIDATE`
+  and `FORTRAN-OPEN` the classes a, b, c. The `fortran_compat` flag is read once into `RunSetup` and reaches every stage
+  through `StageContext::setup`; kernels get it explicitly (function argument, `ExtremeTripArgs`, `DeForestState`,
+  `CosyEngine::setFortranCompat`). Persistent quirks (stale values) live in an object, never in a
   global: `EventState` (stale event fields), `MonteCarlo::tmpfact_`, `HydrogenElastic::krel_`,
   `HallCCryoTarget::thCan_`, the kernels' SAVEd members.
 
@@ -151,7 +157,8 @@ replays (§7) possible.
 | `l1` | routine tables, bitwise or with stated tolerance | reference/functions/<routine>/*.tsv |
 | `replay` | the complete MonteCarlo and SimcRun driven by a captured RANLUX stream: bitwise tree/.bin/.hist | reference/functions/event_capture, runs/p4f1_*_cap |
 | `cli` | `simc++` with .inp vs JSON inputs, `inp2json`, plug-in selection by `--pipeline` | — |
-| `regression` | before/after output identity (`tests/regression`): all h10 branches and entries bitwise, text outputs equal apart from time stamps | SIMC++_Project/baselines/f9cea51_{rad,norad,phsp}_s4242 |
+| `regression` | before/after output identity (`tests/regression`): all h10 branches and entries bitwise, text outputs equal apart from time stamps | SIMC++_Project/baselines/f9cea51_{rad,norad,phsp}_s4242 (`--fortran-compat`), 08812e6_corrected_{rad,norad,phsp}_s4242 (default) |
+| `fortran_diff` | one test per corrected Fortran bug, both modes (`tests/fortran_diff`), and the D-032 arm-code checks | reference/functions, reference/runs |
 | `examples` | example plug-ins run through the full driver | — |
 | `slow` | long distribution tests | — |
 
@@ -178,7 +185,7 @@ data/                         COSY maps (byte copies of the Fortran files), tabl
 * `reactions::completeMain` (event.f:complete_main) assembles the weight in the driver and has only the
   H(e,e'p)/phase-space branch. When the other reactions are ported (P8+), the reaction-specific part should move
   behind `IReaction`.
-* The arm codes `electron_arm`/`hadron_arm` still drive Fortran logic outside the spectrometer: the window
+* The arm codes `electron_arm`/`hadron_arm` (one table, `core/SpectrometerId.h`, D-032) still drive Fortran logic outside the spectrometer: the window
   materials in `hallc_cryo`, the `.geni` blocks and the default plug-in choice.
 * The set-up (`BuildRunSetup`) is one large port of dbase.f/init.f with reaction-specific branches. It is not
   split per stage.
