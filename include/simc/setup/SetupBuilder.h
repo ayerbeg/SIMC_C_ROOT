@@ -11,7 +11,8 @@
 //     dbase.f:688-958 announcement STOPs
 //   init.f:radc_init (l.576-654)
 //   simc.f:94-101 targetfac, luminosity
-// Not ported here: sf_lookup_init (Benhar spectral function, needed for A>2 pion/kaon limits),
+//     dbase.f:592-621 spectral-function choice (the Benhar table itself is read by the "benhar" ISpectralFunction)
+// Not ported here: sf_lookup_init for A>2 pion/kaon (Emval(numEm) limit),
 // the kaon model tables (they belong to the kaon cross-section model) and calculate_central (P2.3).
 #ifndef SIMC_SETUP_SETUPBUILDER_H
 #define SIMC_SETUP_SETUPBUILDER_H
@@ -32,6 +33,10 @@ struct SetupOptions {
     /// D-031: false = correct the clear Fortran bugs (default), true = exact Fortran behaviour (bitwise tests).
     /// Copied into RunSetup::fortran_compat and ExtremeTripArgs::fortran_compat.
     bool fortran_compat{false};
+    /// D(e,e'p)/A(e,e'p): the spectral-function file named explicitly (JSON pipeline.reaction.spectral_function.file;
+    /// task P8.1, D-033 F1). Empty = the Fortran choice from nint(A) (init.f:839-851, dbase.f:598-616), with a warning
+    /// when it falls back to the C-12 file.
+    std::string sf_file;
 };
 
 /// Build the run setup. `losses` = the target model's start-up losses (any ITarget; driver::SimcRun passes a dedicated

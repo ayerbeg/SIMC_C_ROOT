@@ -71,12 +71,15 @@ add_library(simcfw_root OBJECT
 target_link_libraries(simcfw_root PUBLIC simcfw ROOT::Core ROOT::RIO ROOT::Tree ROOT::Hist)
 target_compile_options(simcfw_root PRIVATE -Wall -Wextra -pedantic)
 
-# Physics-model plug-ins (ROOT-free). OBJECT library so the SIMC_REGISTER registrations are linked.
+# Physics-model plug-ins (ROOT-free). OBJECT library so the SIMC_REGISTER registrations are linked. Consumers must also
+# link simcfw_material and simcfw_random (OBJECT/STATIC dependencies of the nuclear spectral functions, P8.1).
 add_library(simcfw_physics OBJECT
     src/physics/proton/ProtonCrossSections.cpp
     src/physics/proton/ProtonModels.cpp
+    src/physics/nuclear/SpectralFunctionTables.cpp   # sf_lookup.f, complete_main SF weight (P8.1)
+    src/physics/nuclear/SpectralFunctions.cpp        # ISpectralFunction "theory", "benhar" (P8.1)
 )
-target_link_libraries(simcfw_physics PUBLIC simcfw)
+target_link_libraries(simcfw_physics PUBLIC simcfw simcfw_material)
 target_compile_options(simcfw_physics PRIVATE -Wall -Wextra -pedantic)
 
 # IRandom implementations and gauss1 (src/core/random; P3.1, own target since P2.2). STATIC: Mt64Random.cpp has a

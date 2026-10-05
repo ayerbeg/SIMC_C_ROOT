@@ -189,6 +189,17 @@ struct TheoryData {
     std::vector<std::vector<double>> theory;                 ///< theory(m, n) (0-based both)
 };
 
+/// The spectral function of D(e,e'p) / A(e,e'p) (task P8.1): which kind and which file, as chosen at start-up
+/// (dbase.f:555-558 theory_init, dbase.f:592-621 sf_lookup_init), possibly named explicitly in the JSON
+/// (pipeline.reaction.spectral_function, SetupOptions::sf_file).
+struct SpectralFunctionChoice {
+    std::string type;        ///< "theory" (init.f:theory_init), "benhar" (sf_lookup_init), "" = none (H, phsp, ...)
+    std::string file;        ///< file name, looked up in RunSetup::data_dir
+    bool fallback{false};    ///< D-033 F1: the Fortran default file for an A without its own file (C-12)
+    bool explicit_file{false};   ///< the file was named in the input (no fallback warning)
+    bool proton{true};       ///< Benhar: proton column SFp (Mtar_struck = Mp) or neutron SFn (dbase.f:610-620)
+};
+
 /// Fortran: dbase.f:571-596 momentum distribution (pval, mprob, nump) for deut/he pion/kaon/semi.
 struct MomentumDistribution {
     std::string file;
@@ -237,6 +248,8 @@ struct RunSetup {
     RunSwitches sw;
     RadSetup rad;
     TheoryData theory;                    ///< only for doing_deuterium / doing_heavy (no Benhar SF)
+    SpectralFunctionChoice sf;            ///< D(e,e'p) / A(e,e'p) spectral function (type, file)
+    std::string data_dir;                 ///< SetupOptions::data_dir: the Fortran working-directory data files
     MomentumDistribution pdist;           ///< only for deut/he pion, kaon, semi
     double targetfac{0};                  ///< simc.f:94-95
     double luminosity{0};                 ///< [ub^-1] simc.f:101 EXPER%charge/targetfac

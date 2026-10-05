@@ -500,17 +500,30 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
         losses->targetInit(a, t, s.messages);
     }
 
+    s.data_dir = opt.data_dir;
     // ---- dbase.f:555-558 theory_init
     if (f.doing_deuterium || (f.doing_heavy && !p.use_benhar_sf)) {
+        // init.f:839-851. D-033 F1: every A other than 2/12/56/197 silently gets c12.theory in the Fortran. SIMC++ keeps
+        // that default but says so, and lets the input name the file (SetupOptions::sf_file).
         std::string file;
-        if (A == 2) file = "h2.theory";
+        SpectralFunctionChoice& sf = s.sf;
+        sf.type = "theory";
+        if (!opt.sf_file.empty()) {
+            file = opt.sf_file;
+            sf.explicit_file = true;
+        } else if (A == 2) file = "h2.theory";
         else if (A == 12) file = "c12.theory";
         else if (A == 56) file = "fe56.theory";
         else if (A == 197) file = "au197.theory";
         else {
             msg("No Theory File (spectral function) for A = " + std::to_string(t.A) + ", defaulting to c12.theory");
+            msg("WARNING: the spectral function of this target is the C-12 one (c12.theory: 6 protons in the C-12 shells, "
+                "E_Fermi 15.96 MeV), as in the Fortran (init.f:839-851). Name the file explicitly with "
+                "pipeline.reaction.spectral_function.file to make this choice deliberate.");
             file = "c12.theory";
+            sf.fallback = true;
         }
+        sf.file = file;
         const bool okT = ReadTheoryFile(joinPath(opt.data_dir, file), f.doing_heavy, s.theory, &s.messages);
         s.theory.file = file;
         if (!okT) {
@@ -541,9 +554,39 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
         s.pdist.file = file;
     }
 
-    // ---- dbase.f:594-621 spectral function (sf_lookup_init): not ported in P2.1
-    if (f.doing_hepi || f.doing_hekaon || (f.doing_heavy && p.use_benhar_sf))
-        s.not_ported.push_back("sf_lookup_init (dbase.f:594-621): Benhar spectral function; Emval(numEm) for the "
+    // ---- dbase.f:592-621 spectral function (sf_lookup_init). For A(e,e'p) with use_benhar_sf the choice of the file and
+    // of the proton/neutron column is made here; the table is read by the "benhar" ISpectralFunction (sf_lookup_init).
+    if (f.doing_heavy && p.use_benhar_sf) {
+        SpectralFunctionChoice& sf = s.sf;
+        sf.type = "benhar";
+        if (!opt.sf_file.empty()) {
+            sf.file = opt.sf_file;
+            sf.explicit_file = true;
+        } else if (A == 3) {
+            msg("Using the mod version of 3He S.F. rather than Paris.");
+            sf.file = "benharsf_3mod.dat";
+        } else if (A == 4) sf.file = "benharsf_4.dat";
+        else if (A == 12) sf.file = "benharsf_12.dat";
+        else if (A == 56) sf.file = "benharsf_56.dat";
+        else if (A == 197) sf.file = "benharsf_197.dat";
+        else {
+            msg("No spectral function for A = " + std::to_string(t.A) + ", Defaulting to Carbon S.F.");
+            msg("WARNING: the spectral function of this target is the C-12 Benhar one (benharsf_12.dat), as in the "
+                "Fortran (dbase.f:611-614). Name the file explicitly with pipeline.reaction.spectral_function.file.");
+            sf.file = "benharsf_12.dat";
+            sf.fallback = true;
+        }
+        if (std::abs(t.Mtar_struck - K::Mp) <= 1.e-6) {
+            sf.proton = true;
+        } else if (std::abs(t.Mtar_struck - K::Mn) <= 1.e-6) {
+            sf.proton = false;
+        } else {
+            msg("targ%Mtar_struck not equal to Mp or Mn: DEFAULTING TO PROTON SPECTRAL FUNCTION!!!");
+            sf.proton = true;
+        }
+    }
+    if (f.doing_hepi || f.doing_hekaon)
+        s.not_ported.push_back("sf_lookup_init (dbase.f:594-621) for A>2 pion/kaon: Emval(numEm) for the "
                                "VERTEXedge%Em%max of A>2 pion/kaon/delta/rho is left at its min_max_init value");
     // ---- dbase.f:624-681 kaon model tables: they belong to the kaon cross-section model
     if (f.doing_kaon) s.not_ported.push_back("kaon model tables weightc/weightd/saghai (dbase.f:624-681)");

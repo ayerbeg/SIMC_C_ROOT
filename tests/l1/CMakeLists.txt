@@ -12,7 +12,7 @@ add_test(NAME l1_runner_selftest COMMAND test_l1_runner ${CMAKE_CURRENT_BINARY_D
 
 # physics_proton.f: sigMott, fofa_best_fit, sigep, deForest (D-010: |rel| <= 1e-12)
 add_executable(test_l1_physics_proton test_l1_physics_proton.cpp)
-target_link_libraries(test_l1_physics_proton PRIVATE simcfw_l1runner simcfw_physics)
+target_link_libraries(test_l1_physics_proton PRIVATE simcfw_l1runner simcfw_physics simcfw_material simcfw_random)
 set(_fn ${SIMC_REFERENCE_DIR}/functions)
 foreach(r sigmott fofa_best_fit sigep deforest)
     add_test(NAME l1_${r} COMMAND test_l1_physics_proton ${r} ${_fn}/${r} 1e-12)
@@ -29,6 +29,7 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/shms.cmake OPTIONAL)
 include(${CMAKE_CURRENT_SOURCE_DIR}/radiation.cmake OPTIONAL)
 include(${CMAKE_CURRENT_SOURCE_DIR}/reactions.cmake OPTIONAL)
 include(${CMAKE_CURRENT_SOURCE_DIR}/driver.cmake OPTIONAL)
+include(${CMAKE_CURRENT_SOURCE_DIR}/eep.cmake OPTIONAL)
 
 # CTest labels (P7.4): every test of this directory is "l1"; the bitwise replays of the Fortran captures are also
 # "replay", the simc++ command-line comparisons "cli" (and the long distribution tests keep "slow").
