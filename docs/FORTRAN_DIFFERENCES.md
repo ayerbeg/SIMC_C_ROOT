@@ -42,7 +42,7 @@ P7.F1 (K2–K4). §6 has the L2 numbers.
 
 | id | Fortran | original behaviour | C++ default | effect (outputs, size, configs) | test |
 |---|---|---|---|---|---|
-| D-006 pass_cuts | simc.f:237 | the hadron delta upper cut uses `SPedge%e%delta%max` | `SPedge%p%delta%max` (`driver::PassCuts`) | `pass_cuts` → npasscuts, `wtcontribute` (.hist wtcontr), resolution sums; with `hard_cuts` also the accepted events. Only events with recon hadron delta between the two limits are affected: 0 events in P1.2 and K2–K4 (no hadron recon delta in [10, 22) %; K2 hadron max 5.98 %). | `fortran_diff_D006_pass_cuts` |
+| D-006 pass_cuts | simc.f:237 | the hadron delta upper cut uses `SPedge%e%delta%max` | `SPedge%p%delta%max` (`driver::PassCuts`) | `pass_cuts` → npasscuts, `wtcontribute` (.hist wtcontr), resolution sums; with `hard_cuts` also the accepted events. Only events with recon hadron delta between the two limits are affected. K3 (HMS hadron at 423 MeV/c, limits 10 % vs 22 %): 42 of 200000 accepted events (norad) and 722 of 200000 (rad) no longer pass, .hist wtcontr −0.013 % / −0.230 % and the RECON SUMMARY resolutions change in the 4th digit (the Fortran trees give the same fractions: 27 and 755 events). P1.2, K2, K4: 0 events (no hadron recon delta in the window; in K2 the hadron limit is the larger one). | `fortran_diff_D006_pass_cuts` |
 | D-006 kaon decay | shared/transp.f:158 | K → ππ decay in the first half of an element gives the product the kaon mass (`m_final = Mk`) | `Mpi`, as transp.f:251 and project.f:88 | kaons with `doing_decay` only (P10): mass and momentum of the decay product. No effect on H(e,e'p). | `fortran_diff_D006_kaon_decay_mass` |
 | D-011 .geni Q3 | simc.f:519-520 | the SHMS "Q3 … mid" column prints `shmsSTOP_q2_mid` | prints `shmsSTOP_q3_mid` | `.geni` text only (the summary JSON keeps `q2_mid_dup` for the comparison with Fortran .geni files). 0 = 0 in the P1.2 runs. | `fortran_diff_D011_D018_report_formats` |
 | D-011 .geni DC | simc.f:526 | label "DC1, DC2, Scin, Cal" with two values | label "DC1, DC2" | `.geni` text only (every SHMS run). | same |
@@ -50,10 +50,10 @@ P7.F1 (K2–K4). §6 has the L2 numbers.
 | D-018 L format | simc.f:897-898, 907, 927 | the integers `deForest_flag`, `use_first_cer`, `use_expon` written with the L edit descriptor (T/F; −1 and +1 both "T") | written as integers (i2, i2, i3) | `.hist` text of every run (2 or 3 lines). D-018 quoted l.896/906/925; the lines are 898/907/927. | same |
 | D-018 delta title | simc.f:727-732 | the (e,e'p)π reaction title goes to unit 6, not to the report unit | written to the `.hist` | `.hist` text of Delta runs (P11). | same |
 | D-014 deForest | physics_proton.f:84-86 | the `cos_phi` warning is tested after `cos_phi` was clamped to ±1, so it never prints | tested (and printed) before the clamp | warning text only; the cross section is unchanged. D/A(e,e'p) (P8). | `fortran_diff_D014_deforest_cos_phi_warning` |
-| D-015 F9 raddeg | shared/rotate_haxis.f:41, rotate_vaxis.f:40 | `raddeg = 0.017453292` (π/180 to 8 digits, rel. error 1.1e-8) | π/180 | the rotated aperture coordinates of the HMS dipole (±6°) and the SHMS apertures (±1.5°, …) move by ~1e-8 relative; the transported track is not changed. 0 aperture decisions changed in the 9 validation runs (trees bitwise identical, §6). | `fortran_diff_D015_rotate_raddeg` |
+| D-015 F9 raddeg | shared/rotate_haxis.f:41, rotate_vaxis.f:40 | `raddeg = 0.017453292` (π/180 to 8 digits, rel. error 1.1e-8) | π/180 | the rotated aperture coordinates of the HMS dipole (±6°) and the SHMS apertures (±1.5°, …) move by ~1e-8 relative; the transported track is not changed. 0 aperture decisions changed in the 10 validation runs (trees bitwise identical, §7). | `fortran_diff_D015_rotate_raddeg` |
 | D-017 extreme trip | target.f:501 | hadron section, pudding can / cryo17: `zz` from the ELECTRON angle `the%min` | from `thp%min` | `targ%Eloss(3)%max`, `teff(3)%max` (→ hadron edge limits, .hist "Eloss/teff lo-hi"). Only for `targ%can` 2/3 AND an angle > 45° (otherwise z is clamped to −L/2 either way). Example: can 2, hadron at 52–60°: 1.3565 → 1.3591 MeV. All validation runs use the beer can (can 1): no effect. | `fortran_diff_D017_extreme_trip_hadron_angle` |
 | D-021 coll slits | hms/mc_hms_coll.f:83-104 | `hSTOP_slit_hor/vert/oct` incremented for each of the 20 steps outside the opening, also for rays that pass | at most once per ray and counter (the Fortran's unused `slit_*_flag` flags) | `.geni` HMS slit counters with `using_HMScoll` and pions/muons (P9). Example (2000 pions): 9746/3955/10944 → 637/263/713. Transport, RNG and acceptance unchanged. | `fortran_diff_D021_hms_coll_slit_counters` |
-| D-028 F2 NaN | event.f:1641 | `dy = sqrt(1/cos_dtheta**2-1.-dx**2)` of a rounding-negative argument → NaN | argument clamped to ≥ 0 (dy = 0) | H elastic: the hadron yptar of a try can be NaN; such an event carries NaN in every hadron-arm recon/fp value but a finite weight (Fortran K2 norad: 1 of 200000 events). With seed 4242: 1 failed try in P1.2 rad (`.gen.root` geni_p_yptar +1 entry in bin 26), 0 accepted events in all 9 runs. | `fortran_diff_D028_spectrometer_angles_nan` (110 NaN rows of the L1 table) |
+| D-028 F2 NaN | event.f:1641 | `dy = sqrt(1/cos_dtheta**2-1.-dx**2)` of a rounding-negative argument → NaN | argument clamped to ≥ 0 (dy = 0) | H elastic: the hadron yptar of a try can be NaN; such an event carries NaN in every hadron-arm recon/fp value but a finite weight (Fortran K2 norad: 1 of 200000 events). With seed 4242: 1 failed try in P1.2 rad and 1 in K3 rad (`.gen.root` geni_p_yptar +1 entry in the bin at 0), 0 accepted events in all 10 runs (the C++ K2 norad has no NaN event with this seed). | `fortran_diff_D028_spectrometer_angles_nan` (110 NaN rows of the L1 table) |
 | D-025/D-032 SHMS spectr | shms/mc_shms.f:335-347 | the "LSA tune" STOP is tested on the first call only | tested on every call (both modes) | none in valid runs. | `l1_shms_selftest` ("spectr != 5 → FortranStop") |
 | D-032 arm code 6 | dbase.f:895-897/915-917 (STOP), but dbase.f:250/259, init.f:176/199, target.f:97/217, results_write.f:90, simc.f:510-511/905-906 still treat 6 as SHMS | 6 = retired SHMS LSA tune, the run STOPs in dbase | rejected when the input is read (InpReader, JSON `FromJson`, `BuildRunSetup`), both modes: "electron_arm = 6 was the retired SHMS LSA tune; use 5 = SHMS"; exit status 2. One spectrometer table (`core/SpectrometerId.h`) is used everywhere; no other code knows 6. The shms plug-in key `"spectr"` was removed. | none for valid inputs. | `fortran_diff_D032_spectrometer_id`, `cli_arm_code_6_rejected` |
 
@@ -154,7 +154,19 @@ P7.F1 (K2–K4). §6 has the L2 numbers.
 
 ## 7. Validation of the corrected default against the Fortran (L2, seed 4242, task P7.5)
 
-`simc_compare` (D-011 verdict) of the default (corrected) mode against the Fortran references `reference/runs/<run>`;
-outputs in `reference/comparisons/CPP_vs_F/P7.5_corrected_<run>/`. See the P7.5 report for the numbers; the corrected
-and compat trees of these runs are bitwise identical (no corrected bug fires on an accepted event), so the verdicts are
-those of the exact-Fortran mode.
+`simc_compare` (D-011 verdict) of the default (corrected) mode against the Fortran references `reference/runs/<run>`
+(A runs); outputs in `reference/comparisons/CPP_vs_F/P7.5_corrected_<run>/` (summary.txt, summary.json, compare.pdf).
+"vs compat" compares the corrected run with the exact-Fortran-mode run of the same seed (baselines f9cea51_*).
+
+| run | verdict (failed/N) | worst p | max \|pull\| | tree vs compat | text/histogram differences vs compat |
+|---|---|---|---|---|---|
+| eep_h_elastic_norad_A | PASS 1/206 | 1.3e-3 (phipq ks_w) | 1.03 | bitwise identical | .hist 2 format lines, .geni DC label |
+| eep_h_elastic_rad_A | PASS 0/214 | 6.2e-2 | 1.71 | bitwise identical | format lines; geni_p_yptar +1 entry (NaN try, D-028) |
+| acc_phsp_hms_shms_A | PASS 1/208 | 3.0e-3 (Pmx ks_w) | 1.23 | bitwise identical | format lines |
+| eep_h_K2_norad_A | PASS 0/210 | 6.8e-2 | 1.82 | bitwise identical | format lines |
+| eep_h_K2_rad_A | PASS 2/219 | 6.9e-3 | 2.15 | bitwise identical | format lines |
+| acc_phsp_K2_A | PASS 0/12 (0 events in both, D-028 F1) | — | — | identical (empty) | format lines |
+| eep_h_K3_norad_A | PASS 0/209 | 3.0e-2 | 1.74 | bitwise identical | wtcontr −0.013 %, resolutions (D-006 pass_cuts: 42 events) |
+| eep_h_K3_rad_A | PASS 0/219 | 2.1e-2 | 1.88 | bitwise identical | wtcontr −0.230 %, resolutions (722 events); geni_p_yptar +1 (D-028) |
+| eep_h_K4_norad_A | PASS 0/215 | 2.5e-2 | 2.23 | bitwise identical | format lines |
+| eep_h_K4_rad_A | PASS 1/221 | 7.1e-3 | 2.69 | bitwise identical | format lines |
