@@ -30,6 +30,7 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/radiation.cmake OPTIONAL)
 include(${CMAKE_CURRENT_SOURCE_DIR}/reactions.cmake OPTIONAL)
 include(${CMAKE_CURRENT_SOURCE_DIR}/driver.cmake OPTIONAL)
 include(${CMAKE_CURRENT_SOURCE_DIR}/eep.cmake OPTIONAL)
+include(${CMAKE_CURRENT_SOURCE_DIR}/colldecay.cmake OPTIONAL)
 
 # CTest labels (P7.4): every test of this directory is "l1"; the bitwise replays of the Fortran captures are also
 # "replay", the simc++ command-line comparisons "cli" (and the long distribution tests keep "slow").

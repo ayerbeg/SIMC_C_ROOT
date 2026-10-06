@@ -10,6 +10,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
+#include <stdexcept>
 #include <fstream>
 #include <sstream>
 
@@ -232,6 +234,21 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
     }
     s.Mh2 = s.Mh * s.Mh;                         // dbase.f:224-225
     s.Mh2_final = s.Mh2;
+    // FORTRAN-BUG(D-037 F9): original Fortran dbase.f:1147 reads doing_decay without tying it to the reaction, and the
+    // decay of a hadron that is neither a pion nor a kaon executes a bare `stop` in project.f:87-91 / transp.f:160-165,
+    // 253-258 (exit status 0, no output; with the default ctau = 0 at the first project call). Corrected: such a
+    // configuration is rejected here with a clear message (and project/transp never check a non-pi/K particle for
+    // decay). fortran_compat keeps the Fortran (simc::FortranStop at the first decay).
+    // (the same pi/K test as optics::decaysInFlight and project.f:78-79)
+    const bool hadronDecays = std::fabs(std::sqrt(s.Mh2) - K::Mpi) < 2 || std::fabs(std::sqrt(s.Mh2) - K::Mk) < 2;
+    if (p.doing_decay && !s.fortran_compat && !hadronDecays) {
+        char b[320];
+        std::snprintf(b, sizeof b,
+                      "doing_decay = 1, but the hadron (mass %.5f MeV) is neither a pion nor a kaon: only pi and K "
+                      "decay in flight (the Fortran stops at the first decay, project.f:87-91). Set doing_decay = 0.",
+                      s.Mh);
+        throw std::invalid_argument(b);
+    }
     const ReactionFlags& f = s.flags;            // post-phsp flags from here on
 
     // ---- switches that later code needs (convert_to_logical values)

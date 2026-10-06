@@ -21,6 +21,11 @@ set(SIMC_FORTRAN_DIFF_ITEMS
     D033_F5_pmper_stale_pm
     D033_F6_sf_lookup_stale
     D033_F7_heavy_mrec_guard
+    D037_F1_shms_coll_slit_counters
+    D037_F2_coll_stops_geni
+    D037_F4_coll_ranged_out
+    D037_F7_project_decay_drift
+    D037_F9_decay_non_pi_k
 )
 foreach(_item ${SIMC_FORTRAN_DIFF_ITEMS})
     add_test(NAME fortran_diff_${_item}
@@ -32,3 +37,9 @@ add_test(NAME cli_arm_code_6_rejected
          COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/cli_arm_code_rejected.sh $<TARGET_FILE:simcpp> $<TARGET_FILE:inp2json>
                  ${CMAKE_CURRENT_BINARY_DIR}/cli_arm_code_rejected)
 set_tests_properties(cli_arm_code_6_rejected PROPERTIES LABELS "fortran_diff;cli")
+
+# D-037 F9 (P6.4): doing_decay with a non-pi/K hadron: corrected = rejected at start-up (exit 2), compat = FortranStop (3)
+add_test(NAME cli_decay_non_pik
+         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/cli_decay_non_pik.sh $<TARGET_FILE:simcpp> ${SIMC_REFERENCE_DIR}
+                 ${CMAKE_CURRENT_BINARY_DIR}/cli_decay_non_pik)
+set_tests_properties(cli_decay_non_pik PROPERTIES LABELS "fortran_diff;cli" SKIP_RETURN_CODE 77)

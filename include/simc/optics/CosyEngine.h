@@ -25,6 +25,7 @@
 #include <string>
 #include <vector>
 #include "simc/core/Errors.h"
+#include "simc/optics/TransportTrace.h"
 
 namespace simc {
 
@@ -51,7 +52,15 @@ struct DecayState {
     double decdist{0};        ///< Fortran COMMON decdist (cm), accumulated
     double Mh2_final{0};      ///< Fortran COMMON Mh2_final (MeV^2), set on decay
     IRandom* rng{nullptr};    ///< grnd() source (required if decay_flag)
+    /// D-031 run option for project() (transp() uses CosyEngine::fortranCompat()): true = the Fortran behaviour,
+    /// false = the D-037 corrections (F7: project.f:113 drift remainder with the pre-decay slopes; F9: only pi/K decay).
+    bool fortran_compat{false};
+    TransportTrace* trace{nullptr};   ///< optional diagnostics (TransportTrace.h); no effect on the numerics
 };
+
+/// D-037 F9: the particles project/transp can decay (|sqrt(m2) - Mpi| < 2 or |sqrt(m2) - Mk| < 2, the tests of
+/// project.f:78-79 / transp.f:152-153 / 245-246).
+bool decaysInFlight(double m2);
 
 /// Fortran real**integer (libgcc __powidf2, used by gfortran for x**n with a variable integer n).
 double powi(double x, int m);

@@ -136,6 +136,9 @@ int main(int argc, char** argv) {
         if (printPipeline) std::cout << run.pipeline().toJson().dump(2) << "\n";
         while (!run.done()) run.step();
         run.finish();
+    } catch (const std::invalid_argument& e) {   // a configuration rejected at start-up (e.g. D-037 F9)
+        std::cerr << "simc++: configuration error: " << e.what() << "\n";
+        return 2;
     } catch (const std::exception& e) {
         std::cerr << "simc++: " << e.what() << "\n";
         return 3;

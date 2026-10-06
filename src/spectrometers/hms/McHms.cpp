@@ -114,6 +114,10 @@ McHmsDetail McHms::mcHms(McHmsArgs& a, IRandom& rng) {
     d.decdist = a.decdist;
     d.Mh2_final = a.Mh2_final;
     d.rng = &rng;
+    d.fortran_compat = fortranCompat();   // D-037 F7/F9 (project.f)
+    d.trace = transportTrace_;
+    if (transportTrace_) transportTrace_->reset();
+    if (collTrace_) collTrace_->reset();
     cnt_[kTrials] = cnt_[kTrials] + 1;
     det.stop_code = body(a, d, rng, det);
     // label 500: copy back the COMMON / argument variables the Fortran modifies in place
@@ -168,7 +172,7 @@ int McHms::body(McHmsArgs& a, optics::DecayState& d, IRandom& rng, McHmsDetail& 
     if (a.using_HMScoll && (d.m2 > 100.0 * 100.0) && (d.m2 < 200.0 * 200.0)) {   // pions/muons
         const bool Hcollsuccess = mcHmsColl(d, a.p_spec, pathlen, rng);
         if (!Hcollsuccess) {
-            // save_Hcollsuccess = 1.5 (COMMON /save_coll/, not read anywhere in SIMC)
+            saveCollSuccess_ = 1.5;   // COMMON /save_coll/, never read in SIMC (D-037 F10)
             return stop(kColl);
         }
     } else {   // just apertures at front and back

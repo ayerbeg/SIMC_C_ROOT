@@ -156,15 +156,16 @@ replays (§7) possible.
   through `StageContext::setup`; kernels get it explicitly (function argument, `ExtremeTripArgs`, `DeForestState`,
   `CosyEngine::setFortranCompat`). Persistent quirks (stale values) live in an object, never in a
   global: `EventState` (stale event fields), `MonteCarlo::tmpfact_`, `EepReactionBase::krel_`, `nuclear::SfTable` (the SAVEd sf_lookup locals),
-  `HallCCryoTarget::thCan_`, the kernels' SAVEd members.
+  `HallCCryoTarget::thCan_`, the kernels' SAVEd members. Optional diagnostics of the transport kernels (`optics/TransportTrace.h`:
+  every project/transp step, the decay record, the collimator calls) are attached by the L1 tests and never change the numerics.
 
 ## 7. Validation and tests (CTest labels)
 
 | label | what | reference |
 |---|---|---|
 | `unit` | parameters, .inp reader, sinks, summary/hist2json, stage headers and registry | reference/runs .inp/.hist |
-| `l1` | routine tables, bitwise or with stated tolerance | reference/functions/<routine>/*.tsv (P8: theory_init, sf_lookup*, generate_em, eep_state, *_eepA) |
-| `replay` | the complete MonteCarlo and SimcRun driven by a captured RANLUX stream: bitwise tree/.bin/.hist | reference/functions/event_capture{,_eepA}, runs/p4f1_*_cap, runs/p8f1_{d,fe56}_rad_cap |
+| `l1` | routine tables, bitwise or with stated tolerance | reference/functions/<routine>/*.tsv (P8: theory_init, sf_lookup*, generate_em, eep_state, *_eepA; P6.4: mc_{hms,shms}_{coll,decay}, transp_decay_*, project_decay, pion_coll_absorb, bitwise incl. steps.txt.xz / coll_calls.txt) |
+| `replay` | the complete MonteCarlo and SimcRun driven by a captured RANLUX stream: bitwise tree/.bin/.hist; every mc_hms/mc_shms call of the P6.F2 pion captures (9464 calls, `l1_replay_p6f2_pi_*_cap`) | reference/functions/event_capture{,_eepA}, runs/p4f1_*_cap, runs/p8f1_{d,fe56}_rad_cap, runs/p6f2_pi_{hms,shms}_cap (call files in fortran_harness/spectrometers_coll_decay/work) |
 | `cli` | `simc++` with .inp vs JSON inputs, `inp2json`, plug-in selection by `--pipeline` | — |
 | `regression` | before/after output identity (`tests/regression`): all h10 branches and entries bitwise, text outputs equal apart from time stamps | SIMC++_Project/baselines/f9cea51_{rad,norad,phsp}_s4242 (`--fortran-compat`), 08812e6_corrected_{rad,norad,phsp}_s4242 (default); D/A(e,e'p): 508633a_[corrected_]eep_{d,fe56}_rad_n20k_s4242 (P8.2) |
 | `fortran_diff` | one test per corrected Fortran bug, both modes (`tests/fortran_diff`), and the D-032 arm-code checks | reference/functions, reference/runs |

@@ -42,6 +42,7 @@
 #include "simc/setup/KinematicsUtils.h"
 #include "simc/setup/SetupBuilder.h"
 #include "simc/spectrometers/hms/kernel/McHms.h"
+#include "simc/spectrometers/shms/kernel/McShms.h"
 
 using namespace simc;
 
@@ -729,6 +730,336 @@ int testCompleteEvEep(bool f5) {
 int testPmPer() { return testCompleteEvEep(true); }
 int testMrecGuard() { return testCompleteEvEep(false); }
 
+// ------------------------------------------------------------------------------------------------ D-037 (P6.4)
+// F1 for the SHMS: mc_shms_coll.f:79/86/93 count slit_* per 1/20 step (Fortran) vs once per ray (corrected), as D-021.
+int testShmsCollSlitCounters() {
+    const double mpi2 = constants::Mpi * constants::Mpi;
+    long counts[2][3] = {{0}};
+    long ok[2] = {0, 0}, maxPerRay[2] = {0, 0};
+    std::vector<int> stops[2];
+    for (int compat = 0; compat < 2; ++compat) {
+        shms::McShms sh;
+        sh.setFortranCompat(compat == 1);
+        std::ostringstream log;
+        sh.setLog(&log);
+        Mt64Random rng(2026);
+        Mt64Random geo(11);
+        for (long i = 0; i < 2000; ++i) {
+            shms::McShmsArgs a;
+            a.p_spec = 2500.;
+            a.dxdz = (geo.uniform() - 0.5) * 0.10;
+            a.dydz = (geo.uniform() - 0.5) * 0.08;
+            a.m2 = mpi2;
+            a.using_SHMScoll = true;
+            a.ms_flag = true;
+            const shms::ShmsCounters before = sh.counters();
+            const shms::McShmsDetail d = sh.mcShms(a, rng);
+            stops[compat].push_back(d.stop_code);
+            if (a.ok_spec) ++ok[compat];
+            for (int k = 0; k < 3; ++k)
+                maxPerRay[compat] = std::max(maxPerRay[compat], sh.counters()[shms::kSlitHor + k] - before[shms::kSlitHor + k]);
+        }
+        for (int k = 0; k < 3; ++k) counts[compat][k] = sh.counters()[shms::kSlitHor + k];
+    }
+    std::printf("  SHMS slit hor/vert/oct: compat %ld %ld %ld, corrected %ld %ld %ld; successes %ld / %ld\n",
+                counts[1][0], counts[1][1], counts[1][2], counts[0][0], counts[0][1], counts[0][2], ok[1], ok[0]);
+    expect(stops[0] == stops[1] && ok[0] == ok[1], "the transport (stop reasons, successes, RNG use) is identical");
+    expect(maxPerRay[1] > 1, "compat: some ray is counted more than once per counter (max " +
+                                 std::to_string(maxPerRay[1]) + ", as mc_shms_coll.f)");
+    expect(maxPerRay[0] == 1, "corrected: at most one count per ray and counter");
+    return 0;
+}
+
+// F2: hSTOP_coll / sSTOP_coll are written nowhere (Fortran) vs a .geni line "Collimator stops (pi/mu)" (corrected).
+int testCollStopsGeni() {
+    const std::string inp = g_ref + "/runs/eep_h_elastic_norad_A/eep_h_elastic_norad_A.inp";
+    if (!std::ifstream(inp)) {
+        std::printf("SKIP: %s missing\n", inp.c_str());
+        return 77;
+    }
+    SimcParameters p;
+    InpReader rd(p);
+    rd.loadRun(inp);   // SHMS electron arm, HMS hadron arm
+    driver::RunReport r;
+    for (const char* spec : {"hms", "shms"}) {
+        StopCounters sc;
+        sc.spectrometer = spec;
+        sc.role = std::string(spec) == "hms" ? "hadron" : "electron";
+        const std::string sp(spec);
+        const std::vector<std::string>& keys = StopCounterKeys(sp);
+        for (const std::string& k : keys) sc.counts[k] = 0;
+        sc.counts["trials"] = 3932;
+        sc.counts["coll"] = std::string(spec) == "hms" ? 1253 : 258;
+        r.stops.push_back(sc);
+    }
+    for (int on = 0; on < 2; ++on) {
+        p.using_HMScoll = p.using_SHMScoll = (on == 1);
+        std::string geni[2];
+        for (int compat = 0; compat < 2; ++compat) {
+            SetupOptions so;
+            so.fortran_compat = compat == 1;
+            so.data_dir = g_fortran;
+            geni[compat] = driver::FormatGeni(BuildRunSetup(p, so), r);
+        }
+        expect(geni[1].find("Collimator") == std::string::npos,
+               std::string("compat: no collimator line in the .geni (simc.f:462-532), using_*coll=") + (on ? "1" : "0"));
+        const auto i = geni[0].find("Collimator stops (pi/mu)");
+        const auto j = i == std::string::npos ? i : geni[0].find("Collimator stops (pi/mu)", i + 1);
+        const std::string l1 = i == std::string::npos ? "" : geni[0].substr(i, geni[0].find('\n', i) - i);
+        const std::string l2 = j == std::string::npos ? "" : geni[0].substr(j, geni[0].find('\n', j) - j);
+        expect(l1.find("1253") != std::string::npos && l2.find("258") != std::string::npos,
+               "corrected: HMS and SHMS collimator stops written: '" + l1 + "' / '" + l2 + "'");
+        // the corrected .geni parses back (summary/hist2json reader) with the coll counters
+        std::vector<std::string> warn;
+        const Json parsed = ParseFortranGeni(geni[0], &warn);
+        const long hc = parsed.contains("hms") ? parsed["hms"].value("coll", -1L) : -1L;
+        const long sc = parsed.contains("shms") ? parsed["shms"].value("coll", -1L) : -1L;
+        long collWarn = 0;
+        for (const std::string& w : warn) {
+            std::printf("  parser warning: %s\n", w.c_str());
+            if (w.find("Collimator") != std::string::npos) ++collWarn;
+        }
+        expect(hc == 1253 && sc == 258 && collWarn == 0, "the corrected .geni parses back (coll 1253 / 258)");
+    }
+    return 0;
+}
+
+// Runs one row of an mc_hms P6.F2 table through McHms with the row's scripted random numbers.
+struct HmsRowRun {
+    hms::McHmsArgs a;
+    hms::McHmsDetail det;
+    optics::CollTrace ct;
+    long dcoll{0};
+};
+HmsRowRun runHmsRow(const simcl1::Row& r, hms::McHms& h) {
+    HmsRowRun o;
+    h.setCollTrace(&o.ct);
+    const long coll0 = h.counters()[hms::kColl];
+    ScriptedRandom rng;
+    std::vector<double> g, u;
+    for (int k = 1; r.has("g" + std::to_string(k)); ++k) g.push_back(r["g" + std::to_string(k)]);
+    for (int k = 1; r.has("u" + std::to_string(k)); ++k) u.push_back(r["u" + std::to_string(k)]);
+    rng.load(g, u);
+    hms::McHmsArgs& a = o.a;
+    a.p_spec = r["p_spec"];
+    a.th_spec = r["th_spec"];
+    a.dpp = r["dpp"];
+    a.x = r["x"];
+    a.y = r["y"];
+    a.z = r["z"];
+    a.dxdz = r["dxdz"];
+    a.dydz = r["dydz"];
+    a.m2 = r["m2"];
+    a.fry = r["fry"];
+    a.ms_flag = r["ms_flag"] != 0;
+    a.wcs_flag = r["wcs_flag"] != 0;
+    a.decay_flag = r["decay_flag"] != 0;
+    a.using_HMScoll = r["using_coll"] != 0;
+    a.ctau = r["ctau"];
+    a.decdist = r["decdist_in"];
+    a.Mh2_final = r["Mh2_final_in"];
+    a.resmult = r["resmult_in"];
+    a.x_fp = a.dx_fp = a.y_fp = a.dy_fp = -999999.;
+    o.det = h.mcHms(a, rng);
+    o.dcoll = h.counters()[hms::kColl] - coll0;
+    h.setCollTrace(nullptr);
+    return o;
+}
+
+// F4: a particle that ranges out in the collimator continues with p ~ 5e-3 MeV/c (Fortran, enerloss_new clamps the
+// loss) vs stops in the collimator (corrected). Rows of reference/functions/mc_hms_decay (e.g. row 720: a backward
+// muon from a kaon decay).
+int testCollRangedOut() {
+    const std::string dir = g_ref + "/functions/mc_hms_decay";
+    simcl1::Table in, out;
+    std::string err;
+    if (!in.load(dir + "/input.txt", err) || !out.load(dir + "/output.txt", err)) {
+        std::printf("SKIP: %s\n", err.c_str());
+        return 77;
+    }
+    long nRanged = 0, compatOk = 0, corrOk = 0, otherSame = 0, other = 0;
+    hms::McHms hc, hd;   // one Fortran-mode and one corrected kernel, as one process each
+    hc.setFortranCompat(true);
+    hd.setFortranCompat(false);
+    std::ostringstream log;
+    hc.setLog(&log);
+    hd.setLog(&log);
+    for (std::size_t i = 0; i < in.rows.size(); ++i) {
+        const simcl1::Row r(in, i), ref(out, i);
+        const HmsRowRun c = runHmsRow(r, hc), d = runHmsRow(r, hd);
+        if (!d.ct.ranged_out) {
+            if (ref["decayed"] != 0) continue;   // decays also change with F7 (D037_F7_project_decay_drift)
+            ++other;
+            if (d.det.stop_code == c.det.stop_code && d.dcoll == c.dcoll) ++otherSame;
+            continue;
+        }
+        ++nRanged;
+        const bool cm = c.det.stop_code == std::lround(ref["stop_code"]) && sameBits(c.a.pathlen, ref["pathlen"]) &&
+                        c.dcoll == 0;
+        const bool co = d.det.stop_code == hms::kColl && d.dcoll == 1 && !d.a.ok_spec;
+        compatOk += cm;
+        corrOk += co;
+        std::printf("  row %zu: Fortran/compat stop %s, pathlen %.6g cm (ref %.6g); corrected stop %s after %ld "
+                    "collimator energy-loss steps\n",
+                    i + 1, c.det.stop_code ? hms::counterName(c.det.stop_code) : "success", c.a.pathlen,
+                    ref["pathlen"], d.det.stop_code ? hms::counterName(d.det.stop_code) : "success",
+                    d.ct.n_eloss_calls);
+    }
+    expect(nRanged >= 1, "rows of mc_hms_decay that range out in the collimator: " + std::to_string(nRanged));
+    expect(compatOk == nRanged, "compat: those rows continue as in the Fortran table (stop reason, pathlen bitwise)");
+    expect(corrOk == nRanged, "corrected: they stop in the collimator (hSTOP_coll + 1)");
+    expect(otherSame == other, "no other row changes its stop reason or coll count (" + std::to_string(otherSame) +
+                                   "/" + std::to_string(other) + ")");
+    return 0;
+}
+
+// F7: project.f:113 finishes the drift with the post-decay slopes (Fortran) vs ends the track at z_drift (corrected).
+// All decaying rows of reference/functions/project_decay.
+int testProjectDecayDrift() {
+    const std::string dir = g_ref + "/functions/project_decay";
+    simcl1::Table in, out;
+    std::string err;
+    if (!in.load(dir + "/input.txt", err) || !out.load(dir + "/output.txt", err)) {
+        std::printf("SKIP: %s\n", err.c_str());
+        return 77;
+    }
+    long n = 0, compatBit = 0, corrExact = 0;
+    double maxDx[2] = {0, 0}, maxDpath[2] = {0, 0};   // [synthetic, capture]
+    for (std::size_t i = 0; i < in.rows.size(); ++i) {
+        const simcl1::Row r(in, i), ref(out, i);
+        if (ref["decayed"] == 0 || std::lround(r["routine"]) != 1) continue;
+        double xo[2], yo[2], po[2], zdec = 0, xdec = 0, s_after = 0, norm_old = 0;
+        for (int compat = 0; compat < 2; ++compat) {
+            ScriptedRandom rng;
+            std::vector<double> u;
+            for (int k = 1; k <= 4; ++k) u.push_back(r["u" + std::to_string(k)]);
+            rng.load({}, u);
+            optics::Track t;
+            t.xs = r["xs"];
+            t.dxdzs = r["dxdzs"];
+            t.ys = r["ys"];
+            t.dydzs = r["dydzs"];
+            t.dpps = r["dpps"];
+            optics::DecayState d;
+            d.decay_flag = true;
+            d.m2 = r["m2"];
+            d.ph = r["ph"];
+            d.ctau = r["ctau"];
+            d.decdist = r["decdist_in"];
+            d.Mh2_final = r["Mh2_final_in"];
+            d.rng = &rng;
+            d.fortran_compat = compat == 1;
+            optics::TransportTrace tt;
+            d.trace = &tt;
+            double path = r["pathlen_in"];
+            optics::project(t, r["zd"], path, &d);
+            xo[compat] = t.xs;
+            yo[compat] = t.ys;
+            po[compat] = path;
+            zdec = tt.dec.z_decay;
+            xdec = tt.dec.x;
+            s_after = tt.dec.dxdz_after;
+            norm_old = std::sqrt(1 + r["dxdzs"] * r["dxdzs"] + r["dydzs"] * r["dydzs"]);
+        }
+        ++n;
+        if (sameBits(xo[1], ref["xs_out"]) && sameBits(yo[1], ref["ys_out"]) && sameBits(po[1], ref["pathlen_out"]))
+            ++compatBit;
+        // corrected: the remaining z is z_drift - z_decay/sqrt(1+s_parent**2), so the track ends at z_drift
+        if (sameBits(xo[0], xdec + s_after * (r["zd"] - zdec / norm_old))) ++corrExact;
+        const int k = r["gen_src"] == 1 ? 1 : 0;
+        maxDx[k] = std::max(maxDx[k], std::max(std::fabs(xo[0] - xo[1]), std::fabs(yo[0] - yo[1])));
+        maxDpath[k] = std::max(maxDpath[k], std::fabs(po[0] - po[1]));
+    }
+    std::printf("  %ld decaying project rows; corrected - Fortran: max |dx|,|dy| %.4g cm (synthetic) %.4g cm (capture "
+                "steps), max |dpathlen| %.4g / %.4g cm\n",
+                n, maxDx[0], maxDx[1], maxDpath[0], maxDpath[1]);
+    expect(n > 0 && compatBit == n, "compat reproduces project_decay bitwise (" + std::to_string(compatBit) + "/" +
+                                        std::to_string(n) + ")");
+    expect(corrExact == n, "corrected: the drift after the decay ends at z_drift (" + std::to_string(corrExact) + "/" +
+                               std::to_string(n) + ")");
+    expect(maxDx[0] > 0, "the two modes differ");
+    return 0;
+}
+
+// F9: a decay of a particle that is neither a pion nor a kaon executes a bare STOP (Fortran) vs is never checked for
+// (corrected) and the configuration doing_decay + such a hadron is rejected at start-up.
+int testDecayNonPiK() {
+    // kernel: a proton with decay_flag and ctau = 0 decays at once in the Fortran (z_decay = -0)
+    for (int compat = 0; compat < 2; ++compat) {
+        ScriptedRandom rng;
+        rng.load({}, {0.3, 0.2, 0.1});
+        optics::Track t;
+        t.dxdzs = 0.01;
+        optics::DecayState d;
+        d.decay_flag = true;
+        d.m2 = constants::Mp * constants::Mp;
+        d.ph = 2000.;
+        d.ctau = 0.;
+        d.rng = &rng;
+        d.fortran_compat = compat == 1;
+        double path = 0;
+        bool stopped = false;
+        std::string what;
+        try {
+            optics::project(t, 100., path, &d);
+        } catch (const FortranStop& e) {
+            stopped = true;
+            what = e.what();
+        }
+        if (compat)
+            expect(stopped && what.find("cannot decay particle with mass=  938.27") != std::string::npos,
+                   "compat: FortranStop '" + what + "' (project.f:87-91)");
+        else
+            expect(!stopped && rng.nUniform() == 0 && !d.dflag && sameBits(t.xs, 0.01 * 100.),
+                   "corrected: no decay check (no random number), plain drift");
+    }
+    // set-up: doing_decay = 1 with the proton hadron of H(e,e'p)
+    const std::string inp = g_ref + "/runs/eep_h_elastic_norad_A/eep_h_elastic_norad_A.inp";
+    if (!std::ifstream(inp)) {
+        std::printf("SKIP: %s missing\n", inp.c_str());
+        return 77;
+    }
+    SimcParameters p;
+    InpReader rd(p);
+    rd.loadRun(inp);
+    p.doing_decay = true;
+    for (int compat = 0; compat < 2; ++compat) {
+        SetupOptions so;
+        so.fortran_compat = compat == 1;
+        so.data_dir = g_fortran;
+        bool rejected = false;
+        std::string what;
+        try {
+            BuildRunSetup(p, so);
+        } catch (const std::invalid_argument& e) {
+            rejected = true;
+            what = e.what();
+        }
+        if (compat)
+            expect(!rejected, "compat: the set-up accepts doing_decay with a proton (dbase.f)");
+        else
+            expect(rejected && what.find("neither a pion nor a kaon") != std::string::npos,
+                   "corrected: rejected at start-up: '" + what + "'");
+    }
+    // a pion hadron is accepted in both modes
+    for (int compat = 0; compat < 2; ++compat) {
+        SimcParameters q = p;
+        q.doing_pion = true;
+        SetupOptions so;
+        so.fortran_compat = compat == 1;
+        so.data_dir = g_fortran;
+        bool rejected = false;
+        try {
+            BuildRunSetup(q, so);
+        } catch (const std::invalid_argument&) {
+            rejected = true;
+        } catch (const std::exception&) {
+        }
+        expect(!rejected, std::string("doing_decay with a pion hadron is accepted, compat=") + (compat ? "1" : "0"));
+    }
+    return 0;
+}
+
 const std::map<std::string, std::function<int()>>& items() {
     static const std::map<std::string, std::function<int()>> m = {
         {"D032_spectrometer_id", testSpectrometerId},
@@ -744,6 +1075,11 @@ const std::map<std::string, std::function<int()>>& items() {
         {"D033_F5_pmper_stale_pm", testPmPer},
         {"D033_F6_sf_lookup_stale", testSfLookupStale},
         {"D033_F7_heavy_mrec_guard", testMrecGuard},
+        {"D037_F1_shms_coll_slit_counters", testShmsCollSlitCounters},
+        {"D037_F2_coll_stops_geni", testCollStopsGeni},
+        {"D037_F4_coll_ranged_out", testCollRangedOut},
+        {"D037_F7_project_decay_drift", testProjectDecayDrift},
+        {"D037_F9_decay_non_pi_k", testDecayNonPiK},
     };
     return m;
 }

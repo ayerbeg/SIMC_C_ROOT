@@ -38,6 +38,12 @@
 //   * FORTRAN-BUG(D-021), corrected unless fortran_compat: mc_hms_coll increments hSTOP_slit_* for every 1/20 step
 //     outside the octagon (several counts per ray, even for rays that finally pass); corrected: at most once per ray
 //     and counter. hSTOP_coll counts the rays absorbed / ranged out (both modes).
+//   * FORTRAN-BUG(D-037 F4), corrected unless fortran_compat: a particle whose energy loss in a collimator step is
+//     clamped by enerloss_new (it ranges out) stops in the collimator (hSTOP_coll); the Fortran lets it continue.
+//   * FORTRAN-BUG(D-037 F7, F9) in project/transp (CosyEngine.cpp): drift remainder after a decay; only pi/K decay.
+//   * FORTRAN-DIFF-CANDIDATE(D-037 F3, F5): collimator musc/eloss regardless of ms_flag; pion_coll_absorb parameters.
+//   * Validated bitwise (fortran_compat) against reference/functions/mc_hms_coll, mc_hms_decay, pion_coll_absorb and
+//     the replay of every recorded mc call of runs/p6f2_pi_{hms,shms}_cap (task P6.4, tests/l1/colldecay.cmake).
 #ifndef SIMC_SPECTROMETERS_HMS_KERNEL_MCHMS_H
 #define SIMC_SPECTROMETERS_HMS_KERNEL_MCHMS_H
 
@@ -126,6 +132,11 @@ struct McHmsDetail {
 /// Fortran: hms/pion_coll_absorb.f:pion_coll_absorb(ppi,thick,transmission) — returns transmission.
 double pionCollAbsorb(double ppi, double thick);
 
+/// CollTrace bookkeeping of one pion_coll_absorb call / one enerloss_new call in the collimator stepping (shared with
+/// the SHMS collimator).
+void traceAbsorb(optics::CollTrace& c, double p, double thick, double trans, double u);
+void traceEloss(optics::CollTrace& c, double len, double epart, double mpart, double eloss);
+
 /// Fortran: hms/mc_hms.f:hit_dipole(x,y) (l.445-492): true if (x,y) is OUTSIDE the dipole aperture.
 bool hitDipole(double x, double y);
 
@@ -163,6 +174,13 @@ public:
     /// Where the Fortran write(6,*) messages go (default std::cout; nullptr = silent). Also used by the
     /// owned material model and the engine.
     void setLog(std::ostream* os);
+    /// Optional diagnostics (optics/TransportTrace.h), reset at the start of every call; nullptr = off (default).
+    void setTransportTrace(optics::TransportTrace* t) { transportTrace_ = t; }
+    void setCollTrace(optics::CollTrace* t) { collTrace_ = t; }
+    /// COMMON /save_coll/ save_Hcollsuccess: set to 1.5 by a collimator stop (mc_hms.f), never reset or read in SIMC
+    /// (D-037 F10: dead state, mirrored only for the L1 tables).
+    double saveCollSuccess() const { return saveCollSuccess_; }
+    void setSaveCollSuccess(double v) { saveCollSuccess_ = v; }
     material::SimcMaterial& materialModel() { return mat_; }
 
 private:
@@ -184,6 +202,9 @@ private:
     std::string matrixDir_;
     std::ostream* log_;
     bool useSieve_{false};
+    optics::TransportTrace* transportTrace_{nullptr};
+    optics::CollTrace* collTrace_{nullptr};
+    double saveCollSuccess_{0};
     double thick_temp_{0};   ///< mc_hms_coll.f local thick_temp (static under -fno-automatic)
 };
 

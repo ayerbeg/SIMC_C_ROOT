@@ -619,6 +619,13 @@ std::string FormatGeni(const RunSetup& s, const RunReport& r) {
     if (uses(SpectrometerId::HMS) && has(r, "hms")) {
         row("HMS Trials:           ", "hms", {"trials"});
         row("Slit hor/vert/corners ", "hms", {"slit_hor", "slit_vert", "slit_oct"});
+        // FORTRAN-BUG(D-037 F2): original Fortran simc.f:462-532: hSTOP_coll (mc_hms.f:218) and sSTOP_coll
+        // (mc_shms.f:518) are written to no output, so with the collimator simulation the .geni stop counts do not add
+        // up to the trials (1253 of 3932 HMS pions in reference/runs/p6f2_pi_hms_cap). Corrected: an extra line with
+        // the collimator stops (absorbed or ranged out) whenever the collimator simulation is on. fortran_compat writes
+        // the Fortran .geni.
+        if (!s.fortran_compat && (s.params.using_HMScoll || cnt(r, "hms", "coll") != 0))
+            row("Collimator stops (pi/mu)", "hms", {"coll"});
         row("Q1 entrance/mid/exit  ", "hms", {"Q1_in", "Q1_mid", "Q1_out"});
         row("Q2 entrance/mid/exit  ", "hms", {"Q2_in", "Q2_mid", "Q2_out"});
         row("Q3 entrance/mid/exit  ", "hms", {"Q3_in", "Q3_mid", "Q3_out"});
@@ -632,6 +639,8 @@ std::string FormatGeni(const RunSetup& s, const RunReport& r) {
         row("SHMS Trials:          ", "shms", {"trials"});
         row("HB phys entrance/mag entr/mag exit/phys exit  ", "shms", {"hb_in", "hb_men", "hb_mex", "hb_out"});
         row("Slit hor/vert/corners ", "shms", {"slit_hor", "slit_vert", "slit_oct"});
+        if (!s.fortran_compat && (s.params.using_SHMScoll || cnt(r, "shms", "coll") != 0))   // FORTRAN-BUG(D-037 F2)
+            row("Collimator stops (pi/mu)", "shms", {"coll"});
         row("Q1 phys entrance/mag entr/mid/mag exit/phys exit  ", "shms", {"q1_in", "q1_men", "q1_mid", "q1_mex", "q1_out"});
         row("Q2 phys entrance/mag entr/mid/mag exit/phys exit  ", "shms", {"q2_in", "q2_men", "q2_mid", "q2_mex", "q2_out"});
         // FORTRAN-BUG(D-011): original Fortran simc.f:519-520: `write(7,*) 'Q3 phys entrance/mag entr/mid/mag exit/phys

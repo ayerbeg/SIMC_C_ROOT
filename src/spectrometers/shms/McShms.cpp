@@ -140,6 +140,10 @@ McShmsDetail McShms::mcShms(McShmsArgs& a, IRandom& rng) {
     d.decdist = a.decdist;
     d.Mh2_final = a.Mh2_final;
     d.rng = &rng;
+    d.fortran_compat = fortranCompat();   // D-037 F7/F9 (project.f)
+    d.trace = transportTrace_;
+    if (transportTrace_) transportTrace_->reset();
+    if (collTrace_) collTrace_->reset();
     cnt_[kTrials] = cnt_[kTrials] + 1;
     det.stop_code = body(a, d, rng, det);
     det.stop_id = static_cast<int>(cnt_[kStopIdSlot]);
@@ -258,7 +262,7 @@ int McShms::body(McShmsArgs& a, optics::DecayState& d, IRandom& rng, McShmsDetai
         project(zdrift);
         const bool Scollsuccess = mcShmsColl(d, a.p_spec, pathlen, rng);
         if (!Scollsuccess) {
-            // save_Scollsuccess = 1.5 (COMMON /save_coll/, never read)
+            saveCollSuccess_ = 1.5;   // COMMON /save_coll/, never read in SIMC (D-037 F10)
             return stop(kColl);   // stop_id stays 0
         }
     } else {

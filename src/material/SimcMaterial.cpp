@@ -77,6 +77,7 @@ double SimcMaterial::energyLoss(double len, double dens, double zeff, double aef
         Eloss = lambda * chsi + Eloss_mp;
     }
 
+    lastClamped_ = Eloss > (epart - mpart);
     if (Eloss > (epart - mpart)) {
         Eloss = (epart - mpart) - 0.0000001;
         ++numerr_;

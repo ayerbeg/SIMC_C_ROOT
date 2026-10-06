@@ -57,11 +57,15 @@ public:
     int numerr() const { return numerr_; }
     double lastX() const { return x_; }
     void resetStaticState() { numerr_ = 0; x_ = 0.0; }
+    /// True if the last energyLoss call clamped the loss to the kinetic energy (enerloss_new.f:75-77: the particle
+    /// ranged out in the layer). Used by the corrected collimator stepping (D-037 F4).
+    bool lastEnergyLossClamped() const { return lastClamped_; }
 
 private:
     std::ostream* log_;
     int numerr_{0};   ///< enerloss_new.f: integer numerr; data numerr /0/
     double x_{0.0};   ///< enerloss_new.f: local x (static under -fno-automatic, zero-initialised)
+    bool lastClamped_{false};   ///< diagnostic, not a Fortran variable
 };
 
 }  // namespace material

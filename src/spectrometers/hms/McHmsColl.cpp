@@ -10,7 +10,24 @@
 namespace simc {
 namespace hms {
 
-// Fortran: hms/pion_coll_absorb.f (l.1-95). Reaction cross sections (DG + TH extension > 2 GeV).
+namespace {
+// FORTRAN-QUIRK(P6.4): `sigA = sigA*1.d-27` (pion_coll_absorb.f:76, 82): 1.d-27 is a DOUBLE PRECISION literal, which
+// -fdefault-real-8 promotes to real*16, so the product is formed in quad precision with the quad value of 1e-27 and
+// rounded to real*8 (objdump of pion_coll_absorb.o: __extenddftf2, __multf3, __trunctfdf2). The double product differs
+// by 1 ulp for 7 of the 788 rows of reference/functions/pion_coll_absorb. 1e-27 = 1/(5**27 * 2**27): 5**27 fits in 64
+// bits, so the quad denominator is exact and the quotient is the correctly rounded quad 1e-27, as the compiler's.
+double timesQuad1em27(double x) {
+    __extension__ typedef __float128 quad;
+    const quad e27 = static_cast<quad>(1) / (static_cast<quad>(7450580596923828125ULL) * static_cast<quad>(134217728));
+    return static_cast<double>(static_cast<quad>(x) * e27);
+}
+}  // namespace
+
+// Fortran: hms/pion_coll_absorb.f (l.1-92). Reaction cross sections (DG + TH extension > 2 GeV).
+// FORTRAN-DIFF-CANDIDATE(D-037 F5): the routine uses its own mpi = 139.56995 (constants.inc Mpi = 139.57018), a
+// transmission that jumps from 1 (Tpi <= 85 MeV, sigA = 0) to 0.938 per 0.315 cm at the first node, the unused mate_t,
+// and the HMS collimator material (17 g/cm3, A = 171.57) also for the SHMS collimator. Question: intended parameters
+// (and should Tpi <= 85 MeV extrapolate)? Kept in both modes.
 double pionCollAbsorb(double ppi, double thick) {
     constexpr double Navagadro = 6.0221367e+23;
     constexpr double mpi = 139.56995;
@@ -41,19 +58,35 @@ double pionCollAbsorb(double ppi, double thick) {
             const double sigAhi = sighi * std::pow(mate_A, qhi);
             const double sigAlo = siglo * std::pow(mate_A, qlo);
             sigA = (sigAlo * (Thi - Tpi) + sigAhi * (Tpi - Tlo)) / (Thi - Tlo);
-            sigA = sigA * 1.e-27;   // convert to cm^2
+            sigA = timesQuad1em27(sigA);   // convert to cm^2 (FORTRAN-QUIRK above)
         }
     }
     // GH: if pion kinetic energy is greater than T(14)=4159 MeV, then use T(14) parameters
     if (Tpi > T[13]) {
         sigA = sigreac[13] * std::pow(mate_A, qreac[13]);
-        sigA = sigA * 1.e-27;
+        sigA = timesQuad1em27(sigA);
     }
 
     double sum = 0.0;
     const double lambdai = mate_dens * Navagadro * sigA / mate_A;
     sum = sum + thick * lambdai;
     return std::exp(-sum);
+}
+
+void traceAbsorb(optics::CollTrace& c, double p, double thick, double trans, double u) {
+    ++c.n_absorb_calls;
+    c.ab_p_last = p;
+    c.ab_thick_last = thick;
+    c.ab_trans_last = trans;
+    c.ab_u_last = u;
+    if (u > trans) c.absorbed = true;
+    if (c.calls) c.calls->push_back({1, {p, thick, trans, u, u > trans ? 1. : 0.}});
+}
+
+void traceEloss(optics::CollTrace& c, double len, double epart, double mpart, double eloss) {
+    ++c.n_eloss_calls;
+    c.eloss_sum = c.eloss_sum + eloss;
+    if (c.calls) c.calls->push_back({2, {len, epart, mpart, eloss, 0.}});
 }
 
 // Fortran: hms/mc_hms_coll.f:mc_hms_coll(m2,p,p_spec,decay_flag,dflag,success,coll_flag,pathlen)
@@ -125,15 +158,30 @@ bool McHms::mcHmsColl(optics::DecayState& d, double p_spec, double& pathlen, IRa
             if (m2 > 12000. && m2 < 20000.) {   // pion - if muon, don't check for hadronic interaction
                 const double trans = pionCollAbsorb(p, thick);
                 const double rantemp = rng.uniform();
+                if (collTrace_) traceAbsorb(*collTrace_, p, thick, trans, rantemp);
                 if (rantemp > trans) return false;
             }
+            // FORTRAN-DIFF-CANDIDATE(D-037 F3): hms/mc_hms_coll.f:115-118: musc (2 gauss1) and the Landau-sampled enerloss_new
+            // (typeflag 1, 1 gauss1) are called whatever ms_flag / mc_smear say, so the collimator scatters and
+            // straggles even with mc_smear = 0. Question: is the collimator scattering intended physics (it is the
+            // purpose of the stepping) or should it follow ms_flag? Kept in both modes.
             const double coll_radw = thick / coll_radl;
             mat_.musc(m2, p, coll_radw, t.dydzs, t.dxdzs, rng);
             epart = std::sqrt(p * p + m2);
             eloss = mat_.energyLoss(thick, coll_dens, zcoll, acoll, epart, std::sqrt(m2), 1, rng);
+            if (collTrace_) traceEloss(*collTrace_, thick, epart, std::sqrt(m2), eloss);
             epart = epart - eloss;
             eloss_tot = eloss_tot + eloss;
             if (epart < std::sqrt(m2)) return false;
+            // FORTRAN-BUG(D-037 F4): original Fortran hms/mc_hms_coll.f:121-124: `if(epart.lt.sqrt(m2)) goto 500` is
+            // never true, because enerloss_new (enerloss_new.f:75-77) clamps the loss to (E-m)-1e-7: a particle that
+            // ranges out in the collimator continues with p = sqrt((m+1e-7)**2-m**2) ~ 5e-3 MeV/c (up to a path of
+            // 4.65e9 cm in the P6.F2 tables). Corrected: a clamped loss stops the particle (counted in hSTOP_coll), as
+            // the branch intends. fortran_compat keeps the Fortran.
+            if (!fortranCompat() && mat_.lastEnergyLossClamped()) {
+                if (collTrace_) collTrace_->ranged_out = true;
+                return false;
+            }
             p = std::sqrt(epart * epart - m2);
             t.dpps = 100. * (p / p_spec - 1.);
         }

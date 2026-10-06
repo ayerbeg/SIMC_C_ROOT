@@ -53,13 +53,14 @@ std::string listReal(double v) {
 }
 
 // Decay kinematics shared by transp (both halves) and project. Fortran: transp.f:146-184 / 238-274,
-// project.f:75-116. m_final_kk: mass given to the 2-pion kaon mode (FORTRAN-BUG D-006: Mk in the first half
-// of transp, transp.f:158, kept with fortran_compat; Mpi elsewhere, transp.f:251, project.f:88).
+// project.f:72-109. m_final_kk: mass given to the 2-pion kaon mode (FORTRAN-BUG D-006: Mk in the first half
+// of transp, transp.f:158, kept with fortran_compat; Mpi elsewhere, transp.f:251, project.f:84).
+// `rec` (optional) receives the loren inputs and outputs.
 struct DecayOut {
     double pxf, pyf, pzf, pf;
 };
 DecayOut decayProducts(DecayState& d, double m_final_kk, double beta, double gamma, double dxdzs, double dydzs,
-                       bool m2BeforeBoost) {
+                       bool m2BeforeBoost, DecayRecord* rec) {
     using namespace constants;
     IRandom& rng = *d.rng;
     const double rph = rng.uniform() * 2. * pi;
@@ -78,6 +79,10 @@ DecayOut decayProducts(DecayState& d, double m_final_kk, double beta, double gam
         }
     }
     if (pr == 0.) {
+        // FORTRAN-BUG(D-037 F9): original Fortran shared/project.f:87-91, transp.f:161-165, 254-258: a bare `stop` (exit
+        // status 0, no output) for the decay of a particle that is neither a pion nor a kaon. Corrected (default mode)
+        // by never checking such a particle for decay (decaysInFlight) and by rejecting doing_decay with a hadron that
+        // does not decay at start-up (BuildRunSetup); with fortran_compat the run ends here (simc::FortranStop).
         char b[96];
         std::snprintf(b, sizeof b, "error, cannot decay particle with mass=%8.2f", std::sqrt(d.m2));
         throw FortranStop(b);
@@ -86,7 +91,7 @@ DecayOut decayProducts(DecayState& d, double m_final_kk, double beta, double gam
     const double pxr = pr * std::sin(rth) * std::cos(rph);
     const double pyr = pr * std::sin(rth) * std::sin(rph);
     const double pzr = pr * std::cos(rth);
-    if (m2BeforeBoost) {   // project.f:95-96
+    if (m2BeforeBoost) {   // project.f:96-97
         d.m2 = m_final * m_final;
         d.Mh2_final = d.m2;
     }
@@ -101,7 +106,114 @@ DecayOut decayProducts(DecayState& d, double m_final_kk, double beta, double gam
         d.m2 = m_final * m_final;
         d.Mh2_final = d.m2;
     }
+    if (rec) {
+        rec->gamma = gamma;
+        rec->bx = bx;
+        rec->by = by;
+        rec->bz = bz;
+        rec->er = er;
+        rec->pxr = pxr;
+        rec->pyr = pyr;
+        rec->pzr = pzr;
+        rec->ef = ef;
+        rec->pxf = o.pxf;
+        rec->pyf = o.pyf;
+        rec->pzf = o.pzf;
+        rec->pf = o.pf;
+    }
     return o;
+}
+
+StepState stepState(const Track& t, const DecayState& d, double pathlen) {
+    StepState s;
+    s.xs = t.xs;
+    s.ys = t.ys;
+    s.dxdzs = t.dxdzs;
+    s.dydzs = t.dydzs;
+    s.dpps = t.dpps;
+    s.m2 = d.m2;
+    s.ph = d.ph;
+    s.pathlen = pathlen;
+    s.decdist = d.decdist;
+    return s;
+}
+
+// Diagnostics of one step (TransportTrace); inactive unless decay->trace is set.
+class StepTracer {
+public:
+    StepTracer(int kind, int cls, double zd, const Track& t, DecayState* d, const double& pathlen, bool check)
+        : t_(t), d_(d), pathlen_(pathlen), tr_(d ? d->trace : nullptr) {
+        if (!tr_) return;
+        ++tr_->n_steps;
+        if (check) ++tr_->n_decay_checks;
+        if (tr_->steps) {
+            rec_.kind = kind;
+            rec_.cls = cls;
+            rec_.zd = zd;
+            rec_.decay_check = check;
+            rec_.dflag_in = d->dflag;
+            rec_.in = stepState(t, *d, pathlen);
+        }
+    }
+    StepTracer(const StepTracer&) = delete;
+    StepTracer& operator=(const StepTracer&) = delete;
+    /// The record of a decay in this step (nullptr if not tracing).
+    DecayRecord* decay() {
+        if (!tr_) return nullptr;
+        tr_->decayed = true;
+        tr_->dec_check = tr_->n_decay_checks;
+        tr_->dec_step = tr_->n_steps;
+        decayed_ = true;
+        return &tr_->dec;
+    }
+    ~StepTracer() {
+        if (!tr_) return;
+        if (decayed_) {
+            tr_->dec.dpp_after = t_.dpps;
+            tr_->dec.m2_after = d_->m2;
+            tr_->dec.p_after = d_->ph;
+        }
+        if (tr_->steps) {
+            rec_.dflag_out = d_->dflag;
+            rec_.out = stepState(t_, *d_, pathlen_);
+            tr_->steps->push_back(rec_);
+        }
+    }
+
+private:
+    const Track& t_;
+    DecayState* d_;
+    const double& pathlen_;
+    TransportTrace* tr_;
+    StepRecord rec_;
+    bool decayed_{false};
+};
+
+void recordBefore(DecayRecord* r, int kind, int cls, double step_len, const Track& t, const DecayState& d) {
+    if (!r) return;
+    r->kind = kind;
+    r->cls = cls;
+    r->step_len = step_len;
+    r->dxdz_before = t.dxdzs;
+    r->dydz_before = t.dydzs;
+    r->dpp_before = t.dpps;
+    r->p_before = d.ph;
+    r->m2_before = d.m2;
+}
+
+void recordAt(DecayRecord* r, const Track& t, const DecayState& d, double pathlen, double z_decay) {
+    if (!r) return;
+    r->z_decay = z_decay;
+    r->x = t.xs;
+    r->y = t.ys;
+    r->pathlen_at = pathlen;
+    r->decdist_at = d.decdist;
+}
+
+void recordAfter(DecayRecord* r, const Track& t) {
+    if (!r) return;
+    r->dxdz_after = t.dxdzs;
+    r->dydz_after = t.dydzs;
 }
 
 std::string pad132(std::string s) {
@@ -191,9 +303,17 @@ int readFortranInt(const std::string& field) {
 // ---------------------------------------------------------------------------------------------
 // project / rotate
 
-// Fortran: shared/project.f:project (l.1-127)
+bool decaysInFlight(double m2) {
+    return std::fabs(std::sqrt(m2) - constants::Mpi) < 2 || std::fabs(std::sqrt(m2) - constants::Mk) < 2;
+}
+
+// Fortran: shared/project.f:project (l.1-122)
 void project(Track& t, double& x_new, double& y_new, double z_drift, double& pathlen, DecayState* decay) {
-    if (decay == nullptr || !decay->decay_flag || decay->dflag) {   // just drift
+    // FORTRAN-BUG(D-037 F9) (see decayProducts): corrected mode checks only pions and kaons for decay.
+    const bool check = decay != nullptr && decay->decay_flag && !decay->dflag &&
+                       (decay->fortran_compat || decaysInFlight(decay->m2));
+    StepTracer tracer(1, 0, z_drift, t, decay, pathlen, check);
+    if (!check) {   // particle has already decayed (or no decay), just drift
         pathlen = pathlen + z_drift * std::sqrt(1 + t.dxdzs * t.dxdzs + t.dydzs * t.dydzs);
         x_new = x_new + t.dxdzs * z_drift;
         y_new = y_new + t.dydzs * z_drift;
@@ -214,18 +334,30 @@ void project(Track& t, double& x_new, double& y_new, double z_drift, double& pat
         x_new = x_new + t.dxdzs * z_drift;
         y_new = y_new + t.dydzs * z_drift;
     } else {   // DECAY
+        DecayRecord* rec = tracer.decay();
+        recordBefore(rec, 1, 0, z_drift, t, d);
         d.dflag = true;
         d.decdist = d.decdist + z_decay;
         pathlen = pathlen + z_decay;
+        const double norm_parent = std::sqrt(1 + t.dxdzs * t.dxdzs + t.dydzs * t.dydzs);
         x_new = x_new + t.dxdzs * z_decay / std::sqrt(1 + t.dxdzs * t.dxdzs + t.dydzs * t.dydzs);
         y_new = y_new + t.dydzs * z_decay / std::sqrt(1 + t.dxdzs * t.dxdzs + t.dydzs * t.dydzs);
-        DecayOut o = decayProducts(d, constants::Mpi, beta, gamma, t.dxdzs, t.dydzs, true);
+        recordAt(rec, t, d, pathlen, z_decay);
+        DecayOut o = decayProducts(d, constants::Mpi, beta, gamma, t.dxdzs, t.dydzs, true, rec);
         t.dxdzs = o.pxf / o.pzf;
         t.dydzs = o.pyf / o.pzf;
         t.dpps = 100. * (o.pf / p_spec - 1.);
         d.ph = o.pf;
-        // We've already drifted z_decay/sqrt(1+dxdzs**2+dydzs**2) - now do the rest (with the new slopes).
-        const double tmpdrift = z_drift - z_decay / std::sqrt(1 + t.dxdzs * t.dxdzs + t.dydzs * t.dydzs);
+        recordAfter(rec, t);
+        // We've already drifted z_decay/sqrt(1+dxdzs**2+dydzs**2) - now do the rest.
+        // FORTRAN-BUG(D-037 F7): original Fortran shared/project.f:113:
+        // `tmpdrift = z_drift - z_decay/sqrt(1+dxdzs**2+dydzs**2)` evaluated with the slopes AFTER the decay; corrected
+        // because the z already covered is z_decay/sqrt(1+s**2) with the PARENT slopes s (project.f:68-69): with the
+        // daughter slopes the track ends at z_drift + z_decay*(1/sqrt(1+s_old**2) - 1/sqrt(1+s_new**2)) instead of
+        // z_drift (up to 0.28 cm in the P6.F2 captures, 18.9 cm in extreme rows). fortran_compat keeps the Fortran.
+        const double tmpdrift = d.fortran_compat
+                                    ? z_drift - z_decay / std::sqrt(1 + t.dxdzs * t.dxdzs + t.dydzs * t.dydzs)
+                                    : z_drift - z_decay / norm_parent;
         pathlen = pathlen + tmpdrift * std::sqrt(1 + t.dxdzs * t.dxdzs + t.dydzs * t.dydzs);
         x_new = x_new + t.dxdzs * tmpdrift;
         y_new = y_new + t.dydzs * tmpdrift;
@@ -465,7 +597,11 @@ double CosyEngine::transp(int spectr, int cls, Track& t, double zd, double& path
     }
 
     // Check for decay (first half of the element).
-    const bool check = decay != nullptr && decay->decay_flag && !decay->dflag;
+    // FORTRAN-BUG(D-037 F9) (see decayProducts): corrected mode checks only pions and kaons for decay.
+    const bool check = decay != nullptr && decay->decay_flag && !decay->dflag &&
+                       (fortranCompat_ || decaysInFlight(decay->m2));
+    StepTracer tracer(2, cls, zd, t, decay, pathlen, check);
+    DecayRecord* rec = nullptr;
     double p_spec = 0, beta = 0, gamma = 0, z_decay = 0;
     if (check) {
         DecayState& d = *decay;
@@ -477,17 +613,25 @@ double CosyEngine::transp(int spectr, int cls, Track& t, double zd, double& path
         if (zd <= 0 && log_) *log_ << " transp distance<0:  automatic decay! BAD!\n";
         z_decay = -1. * dlen * std::log(1 - d.rng->uniform());
         if (z_decay <= zd / 2) {   // decay in first half
+            // FORTRAN-DIFF-CANDIDATE(D-037 F8): the first-half decay is applied at the element ENTRANCE (position
+            // unchanged, then the COSY map transports the daughter) and the second-half decay at the element EXIT
+            // with the parent's beta/gamma; decdist gets z_decay while pathlen always gets zd+delta_z. Question: is
+            // this approximation intended (the map cannot be split)? Kept in both modes.
+            rec = tracer.decay();
+            recordBefore(rec, 2, cls, zd, t, d);
             d.dflag = true;
             d.decdist = d.decdist + z_decay;
+            recordAt(rec, t, d, pathlen, z_decay);
             // FORTRAN-BUG(D-006): original Fortran shared/transp.f:158: `m_final = Mk` for the K -> pi pi mode of a decay
             // in the first half of an element; corrected because the decay product is a pion (pr uses Mpi, and the
-            // second half transp.f:251 and project.f:88 set m_final = Mpi). fortran_compat keeps Mk.
+            // second half transp.f:251 and project.f:84 set m_final = Mpi). fortran_compat keeps Mk.
             DecayOut o = decayProducts(d, fortranCompat_ ? constants::Mk : constants::Mpi, beta, gamma, t.dxdzs, t.dydzs,
-                                       false);
+                                       false, rec);
             t.dxdzs = o.pxf / o.pzf;
             t.dydzs = o.pyf / o.pzf;
             t.dpps = 100. * (o.pf / p_spec - 1.);
             d.ph = o.pf;
+            recordAfter(rec, t);
         }
     }
 
@@ -519,13 +663,17 @@ double CosyEngine::transp(int spectr, int cls, Track& t, double zd, double& path
         if (z_decay > zd + delta_z) {   // don't decay within magnet.
             d.decdist = d.decdist + (zd + delta_z);
         } else {                        // apply decay at end/magnet.
+            rec = tracer.decay();
+            recordBefore(rec, 3, cls, zd, t, d);
             d.dflag = true;
             d.decdist = d.decdist + z_decay;
-            DecayOut o = decayProducts(d, constants::Mpi, beta, gamma, t.dxdzs, t.dydzs, false);
+            recordAt(rec, t, d, pathlen, z_decay);
+            DecayOut o = decayProducts(d, constants::Mpi, beta, gamma, t.dxdzs, t.dydzs, false, rec);
             t.dxdzs = o.pxf / o.pzf;
             t.dydzs = o.pyf / o.pzf;
             t.dpps = 100. * (o.pf / p_spec - 1.);
             d.ph = o.pf;
+            recordAfter(rec, t);
         }
     }
 

@@ -142,8 +142,8 @@ These names are shared with the P1.5 reader. `trials` and `successes` are always
 
 | spectrometer | keys (in `.geni` order) | Fortran counters |
 |---|---|---|
-| hms | trials, slit_hor, slit_vert, slit_oct, Q1_in, Q1_mid, Q1_out, Q2_in, Q2_mid, Q2_out, Q3_in, Q3_mid, Q3_out, D1_in, D1_out, hut, dc1, dc2, scin, cal, successes (+ `coll`, not printed) | hSTOP_* (hms/mc_hms.f, struct_hms.inc) |
-| shms | trials, hb_in, hb_men, hb_mex, hb_out, slit_hor, slit_vert, slit_oct, q1_in, q1_men, q1_mid, q1_mex, q1_out, q2_in, q2_men, q2_mid, q2_mex, q2_out, q3_in, q3_men, **q2_mid_dup**, q3_mex, q3_out, D1_in, D1_flr, D1_mid1…D1_mid7, D1_mex, D1_out, hut, dc1, dc2, s1, s2, s3, cal, successes (+ q3_mid, D1_men, targ_hor/vert/oct, cer1, cer2, BP_in, BP_out, coll: not printed) | shmsSTOP_* (shms/mc_shms.f, struct_shms.inc) |
+| hms | trials, slit_hor, slit_vert, slit_oct, Q1_in, Q1_mid, Q1_out, Q2_in, Q2_mid, Q2_out, Q3_in, Q3_mid, Q3_out, D1_in, D1_out, hut, dc1, dc2, scin, cal, successes (+ `coll`: not printed by the Fortran; the corrected SIMC++ .geni prints it as "Collimator stops (pi/mu)" when using_HMScoll is on, D-037 F2) | hSTOP_* (hms/mc_hms.f, struct_hms.inc) |
+| shms | trials, hb_in, hb_men, hb_mex, hb_out, slit_hor, slit_vert, slit_oct, q1_in, q1_men, q1_mid, q1_mex, q1_out, q2_in, q2_men, q2_mid, q2_mex, q2_out, q3_in, q3_men, **q2_mid_dup**, q3_mex, q3_out, D1_in, D1_flr, D1_mid1…D1_mid7, D1_mex, D1_out, hut, dc1, dc2, s1, s2, s3, cal, successes (+ q3_mid, D1_men, targ_hor/vert/oct, cer1, cer2, BP_in, BP_out: not printed; coll: printed only by the corrected SIMC++ .geni ("Collimator stops (pi/mu)", using_SHMScoll, D-037 F2)) | shmsSTOP_* (shms/mc_shms.f, struct_shms.inc) |
 | sos | trials, slit_hor, slit_vert, slit_oct, quad_in/mid/out, bm01_in/out, bm02_in/out, exit, hut, dc1, dc2, scin, cal, successes | sSTOP_* |
 | hrsr, hrsl | trials, slit_hor, slit_vert, Q1_…, Q2_…, D1_in, D1_out, Q3_…, hut, dc1, dc2, s1, s2, cal, successes | rSTOP_*, lSTOP_* |
 | calo | trials, slit_hor, slit_vert, successes | caloSTOP_* |

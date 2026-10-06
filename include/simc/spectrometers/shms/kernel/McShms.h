@@ -43,6 +43,10 @@
 //     for any other value, but only on the FIRST call (mc_shms.f:335-347); the port throws simc::FortranStop on every
 //     call (FORTRAN-BUG(D-025/D-032): a later call with another value would run on unloaded maps). The plug-in always
 //     passes 5 and the input rejects the retired arm code (core/SpectrometerId.h).
+//   * FORTRAN-BUG(D-021/D-037 F1, F4), corrected unless fortran_compat: mc_shms_coll counts slit_* once per ray (the
+//     Fortran per 1/20 step) and stops a particle that ranges out in the collimator (sSTOP_coll).
+//   * Validated bitwise (fortran_compat) against reference/functions/mc_shms_coll, mc_shms_decay and the capture
+//     replays (task P6.4).
 #ifndef SIMC_SPECTROMETERS_SHMS_KERNEL_MCSHMS_H
 #define SIMC_SPECTROMETERS_SHMS_KERNEL_MCSHMS_H
 
@@ -198,6 +202,13 @@ public:
     bool useColl() const { return useColl_; }
     bool skipHb() const { return skipHb_; }
     void setLog(std::ostream* os);
+    /// Optional diagnostics (optics/TransportTrace.h), reset at the start of every call; nullptr = off (default).
+    void setTransportTrace(optics::TransportTrace* t) { transportTrace_ = t; }
+    void setCollTrace(optics::CollTrace* t) { collTrace_ = t; }
+    /// COMMON /save_coll/ save_Scollsuccess: set to 1.5 by a collimator stop (mc_shms.f), never reset or read in SIMC
+    /// (D-037 F10: dead state, mirrored only for the L1 tables).
+    double saveCollSuccess() const { return saveCollSuccess_; }
+    void setSaveCollSuccess(double v) { saveCollSuccess_ = v; }
     material::SimcMaterial& materialModel() { return mat_; }
 
 private:
@@ -227,6 +238,9 @@ private:
     bool useSieve_{false}, use2Sieve_{false}, useColl_{true}, skipHb_{false};
     // COMMON /hutflag/ cer_flag, vac_flag: mc_shms.f:257-258 sets .true./.false. on every call.
     bool cerFlag_{true}, vacFlag_{false};
+    optics::TransportTrace* transportTrace_{nullptr};
+    optics::CollTrace* collTrace_{nullptr};
+    double saveCollSuccess_{0};
     double thick_temp_{0};   ///< mc_shms_coll.f local thick_temp (static)
 };
 

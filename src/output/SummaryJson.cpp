@@ -271,6 +271,7 @@ Json ParseFortranGeni(const std::string& geni, std::vector<std::string>* warning
         std::vector<std::string> keys;
         if (cur == "hms") {
             if (starts("Slit hor/vert/corners")) keys = {"slit_hor", "slit_vert", "slit_oct"};
+            else if (starts("Collimator stops")) keys = {"coll"};   // SIMC++ corrected .geni (D-037 F2)
             else if (starts("Q1 entrance")) keys = {"Q1_in", "Q1_mid", "Q1_out"};
             else if (starts("Q2 entrance")) keys = {"Q2_in", "Q2_mid", "Q2_out"};
             else if (starts("Q3 entrance")) keys = {"Q3_in", "Q3_mid", "Q3_out"};
@@ -281,6 +282,7 @@ Json ParseFortranGeni(const std::string& geni, std::vector<std::string>* warning
         } else if (cur == "shms") {
             if (starts("HB phys")) keys = {"hb_in", "hb_men", "hb_mex", "hb_out"};
             else if (starts("Slit hor/vert/corners")) keys = {"slit_hor", "slit_vert", "slit_oct"};
+            else if (starts("Collimator stops")) keys = {"coll"};   // SIMC++ corrected .geni (D-037 F2)
             else if (starts("Q1 phys")) keys = {"q1_in", "q1_men", "q1_mid", "q1_mex", "q1_out"};
             else if (starts("Q2 phys")) keys = {"q2_in", "q2_men", "q2_mid", "q2_mex", "q2_out"};
             // FORTRAN-QUIRK simc.f:519-520: the Q3 "mid" column prints shmsSTOP_q2_mid -> "q2_mid_dup".
