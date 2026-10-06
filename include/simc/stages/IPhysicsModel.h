@@ -15,6 +15,10 @@ public:
     virtual double sigcc(const Event& vertex, const MainEvent& main) = 0;
     /// main%sigcc_recon for the reconstructed event (1.0 where the Fortran does not compute it).
     virtual double sigccRecon(const Event& recon, const MainEvent& main) = 0;
+    /// main%sigcc for the vertex event, for the models that also WRITE event_main fields, as the Fortran function does
+    /// (task P9.1: physics_pion.f:peepi sets main%thetacm, phicm, pcm, davejac, johnjac, wcm and ntup%sigcm1/sigcm2/
+    /// sigcm). complete_main should call this one. Default: sigcc(vertex, main), nothing written.
+    virtual double sigccMain(const Event& vertex, MainEvent& main) { return sigcc(vertex, main); }
     /// Called by the driver before each event with the Fortran `nevent` counter (simc.f:165-349).
     /// Models only use it in WARNING messages (e.g. deForest, physics_proton.f:75). Default: ignore.
     virtual void beginEvent(long nevent) { (void)nevent; }

@@ -60,6 +60,7 @@ P7.F1 (K2–K4). §6 has the L2 numbers.
 | D-033 F7 heavy Mrec | event.f:944 | `vertex%Mrec = sqrt(vertex%Emiss**2-vertex%Pmiss**2)` without a guard: NaN Mrec/Em/Trec and success = .true. (a NaN Em even passes the VERTEXedge tests, comparisons with NaN being false) | complete_ev fails (success = false) when Emiss² − Pmiss² < 0 or NaN | A(e,e'p) at extreme edges only (He-4/C-12 table rows with ν → 0 or E_p = Ein); 0 events in the L2 runs (§8). | `fortran_diff_D033_F7_heavy_mrec_guard` |
 | D-025/D-032 SHMS spectr | shms/mc_shms.f:335-347 | the "LSA tune" STOP is tested on the first call only | tested on every call (both modes) | none in valid runs. | `l1_shms_selftest` ("spectr != 5 → FortranStop") |
 | D-032 arm code 6 | dbase.f:895-897/915-917 (STOP), but dbase.f:250/259, init.f:176/199, target.f:97/217, results_write.f:90, simc.f:510-511/905-906 still treat 6 as SHMS | 6 = retired SHMS LSA tune, the run STOPs in dbase | rejected when the input is read (InpReader, JSON `FromJson`, `BuildRunSetup`), both modes: "electron_arm = 6 was the retired SHMS LSA tune; use 5 = SHMS"; exit status 2. One spectrometer table (`core/SpectrometerId.h`) is used everywhere; no other code knows 6. The shms plug-in key `"spectr"` was removed. | none for valid inputs. | `fortran_diff_D032_spectrometer_id`, `cli_arm_code_6_rejected` |
+| D-038 F10 sigcm2 | physics_pion.f:133-154 | `ntup%sigcm2` (the MAID cross section) is assigned only for W < 2 GeV; for W ≥ 2 GeV it keeps the value of an earlier event (or of the central event) | `ntup%sigcm2 = 0` for W ≥ 2 GeV (MAID not evaluated) in `pion::peepi` (`main.ntup.sigcm2`) | pion runs only (P9): `ntup%sigcm2` is not a column of the pion ntuple (results_write.f:131-186 writes it only for kaons), and the cross section (`ntup%sigcm`, `main%sigcc`) is the same in both modes. L1 peepi table: 3139 of 5047 rows have W ≥ 2 GeV, 1137 of them with a non-zero stale value. | `fortran_diff_D038_F10_sigcm2_stale` |
 
 ### Class a-np: clear bugs in paths that are not ported yet (fix when porting)
 
@@ -111,6 +112,8 @@ P7.F1 (K2–K4). §6 has the L2 numbers.
 | D-024 ngen<0 | simc.f:169-199, 341-350 | with ngen < 0 the .hist wtcontr and AVERAGE.sigcc are divided by tries | intended? | .hist with ngen < 0 |
 | D-018 herho | dbase.f:213 | `doing_herho = A.eq.3` (the other he* flags use .ge.3) | intended? | rho on A > 3 (P13) |
 | D-005 sigc_nbin | semi_physics.f:173 | default `sigc_nbin = 0` → division by zero | required input? | SIDIS (P12) |
+| D-038 F4 coherent model | physics_pion.f:807-854 (exclfit), event.f:1496-1500 | coherent pion production (which_pion 10/11) uses the nucleon fit with Mtar_struck = M_A (W = √s photon-nucleus 4–13 GeV); exclfit keeps `mtar_gev = 0.938` (l.812); tgtweight = Z or N ("OK for coherent???"); sig_param_2021 is negative in 210 of 4564 table rows (no clamping) | is a nucleon model meant for coherent production, and should negative cross sections be clamped? | coherent pion weights (P9) |
+| D-038 F12 sig_multipole | physics_pion.f:197-398 (dead code: the call in peepi is commented out, l.157-163) | COMPLEX*8 (single-precision) amplitudes although the build is -fdefault-real-8; at exact (Q², ν) nodes or outside the table the amplitudes of the PREVIOUS call are used; the argument `nu` is overwritten (≥ 500 → 499.9); 197.327/mh fixed at the first call. SIMC++ reproduces all of it (`pion::SigMultipole`, `std::complex<float>` storage, Fortran kind rules per operation, SAVEd members) | single precision and the previous-call amplitudes intended? | none (not called by SIMC); L1 sig_multipole 612/612 rows bitwise |
 
 ## 5. Class d: faithful Fortran behaviour, not a bug (kept, `FORTRAN-QUIRK`)
 
@@ -152,6 +155,9 @@ P7.F1 (K2–K4). §6 has the L2 numbers.
 | calculate_central | simc.f:1268-1281 | `main0` is SAVEd: unset fields are 0 | definition |
 | montecarlo | simc.f:1800-1842 | RECON z not written with the arm MC off; recon e E not Coulomb-corrected | definition |
 | P1.6 | physics_proton.f | real(16) ABI of real*8 functions; fofa for timelike Q²; deForest at θpq = 0 by rounding | no effect / numerics |
+| D-038 F13 | physics_pion.f:467-516 (sig_param04, not called) | pole at \|t\| = 0.02 GeV² (Inf/NaN), `alog` on a real*8 argument (= double log with -fdefault-real-8) | the routine's formula; dead code |
+| D-038 F14 | physics_pion.f:659-669 (sigmaid) | nearest (lower) bin in Q², W and cos θ*, no interpolation; only θ rows 1-6 of the 23 stored per (Q², W) are reachable; σ_T divided by max(0.2, Q²) and by (W−1.132)/0.1 above 1.232 GeV | the coded model (MAID2007 tables of P. Bosted) |
+| D-038 pi0 decay | pizero_decay.f:1-94 | 2 grnd per call (φ* then cos θ*); on `Mh/2 < Mgamma` (impossible, Mgamma = 0) the photons are not written | `pion::pizeroDecay` returns `success = false` and the caller keeps its values |
 
 ## 6. Deliberate design deviations (class dev)
 
@@ -164,6 +170,8 @@ P7.F1 (K2–K4). §6 has the L2 numbers.
 | not ported | pion, kaon, Delta, rho, SIDIS, SOS/HRS/calorimeter arms, target field | `simc::NotPorted` at start-up (P9–P14) |
 | D-033 F1 | the spectral-function file follows from nint(A) only | also selectable in the JSON (`pipeline.reaction.spectral_function`: type and file); a warning when the Fortran C-12 fallback is used |
 | outputs | .hist/.geni/.gen, .bin, .root | the same text files, `.root` (h10, same 46 branches), plus `.summary.json/.txt` and `.gen.root`; no `.bin` |
+| P9.1 MAID files | sigmaid reads maid*.dat from the working directory at its first call (W < 2 GeV), sig_multipole MULTIPOL.file | the "pion" model reads the copies in `data/pion` (md5-checked, `l1_pion_data_files`; JSON `physics.data_dir`) when it is initialised: a missing file is an error at start-up, not in the middle of a run |
+| P9.1 peepi writes main | peepi(vertex, main) writes main%thetacm, phicm, pcm, davejac, johnjac, wcm and ntup%sigcm* | `IPhysicsModel::sigccMain(vertex, main&)` does the same; `sigcc(vertex, const main&)` evaluates on a copy. COMMON /pfermi/ is `MainEvent::pfermi`, ntup%sigcm1/2 are `NtupVars::sigcm1/2` |
 
 ## 7. Validation of the corrected default against the Fortran (L2, seed 4242, task P7.5)
 

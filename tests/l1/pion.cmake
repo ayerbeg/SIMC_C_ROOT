@@ -1,0 +1,29 @@
+# tests/l1/pion.cmake — task P9.1: exclusive pion cross sections (physics_pion.f), transform_to_cm on pion kinematics
+# (jacobians.f) and pizero_decay.f against the P9.F1 tables (reference/P9.F1_report.md). Included (OPTIONAL) by
+# tests/l1/CMakeLists.txt AFTER its label loop, so the labels are set here. fortran_compat mode, |rel| <= 1e-12 (the
+# reports give the bitwise counts). The MAID tables and MULTIPOL.file are the repository copies in data/pion
+# (byte-identical to the Fortran files, checked by l1_pion_data_files).
+add_executable(test_l1_pion test_l1_pion.cpp)
+target_link_libraries(test_l1_pion PRIVATE simcfw_l1runner simcfw_pion ${SIMC_DRIVER_LIBS})
+
+set(_pfn ${SIMC_REFERENCE_DIR}/functions)
+set(_pdata ${CMAKE_SOURCE_DIR}/data/pion)
+set(_ptol 1e-12)
+add_test(NAME l1_pion_data_files COMMAND test_l1_pion files ${_pdata} ${SIMC_FORTRAN_DIR})
+foreach(_r sig_blok sig_param04 sig_param_3000 sig_param_2021 exclfit)
+    add_test(NAME l1_${_r} COMMAND test_l1_pion ${_r} ${_pfn}/${_r} ${_ptol})
+endforeach()
+add_test(NAME l1_sigmaid COMMAND test_l1_pion sigmaid ${_pfn}/sigmaid ${_pdata} ${_ptol})
+add_test(NAME l1_sig_multipole COMMAND test_l1_pion sig_multipole ${_pfn}/sig_multipole ${_pdata} ${_ptol})
+add_test(NAME l1_transform_to_cm_pion COMMAND test_l1_pion transform_to_cm ${_pfn}/transform_to_cm_pion ${_ptol})
+add_test(NAME l1_peepi COMMAND test_l1_pion peepi ${_pfn}/peepi ${_pfn}/pion_state ${_pdata} ${_ptol})
+add_test(NAME l1_pizero_decay_fixedrng COMMAND test_l1_pion pizero_decay ${_pfn}/pizero_decay_fixedrng ${_ptol})
+add_test(NAME l1_pion_plugin COMMAND test_l1_pion plugin ${_pfn}/peepi ${_pfn}/pion_state ${_pdata})
+set(_pion_l1 l1_pion_data_files l1_sig_blok l1_sig_param04 l1_sig_param_3000 l1_sig_param_2021 l1_exclfit l1_sigmaid
+    l1_sig_multipole l1_transform_to_cm_pion l1_peepi l1_pizero_decay_fixedrng l1_pion_plugin)
+set_tests_properties(${_pion_l1} PROPERTIES SKIP_RETURN_CODE 77 LABELS l1)
+
+# D-038 F10 (FORTRAN-BUG, corrected by default): both modes on the peepi table rows (docs/FORTRAN_DIFFERENCES.md)
+add_test(NAME fortran_diff_D038_F10_sigcm2_stale
+         COMMAND test_l1_pion fortran_diff_D038_F10 ${_pfn}/peepi ${_pfn}/pion_state ${_pdata})
+set_tests_properties(fortran_diff_D038_F10_sigcm2_stale PROPERTIES SKIP_RETURN_CODE 77 LABELS "fortran_diff;unit")

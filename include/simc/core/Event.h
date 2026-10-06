@@ -76,6 +76,16 @@ struct NtupVars {
     double mm{0}, mmA{0}, t{0};
     double decdist{0};   ///< decay distance (cm), Fortran decdist
     double Mh2_final{0}; ///< hadron mass^2 after decay (MeV^2)
+    double sigcm1{0};    ///< pion/kaon: first model cross section (physics_pion.f:126 sig_param_2021) [ub/MeV^2/rad]
+    double sigcm2{0};    ///< pion/kaon: second model (physics_pion.f:148 MAID, W < 2 GeV only) [ub/MeV^2/rad]
+};
+
+/// Fortran: COMMON /pfermi/ efer, pfer, pferx, pfery, pferz (simulate.inc l.212-217): the Fermi motion of the struck
+/// nucleon of this event (event.f:generate l.330-371). pfer [MeV/c], (pferx, pfery, pferz) its unit vector (lab),
+/// efer [MeV] its energy (targ%Mtar_struck without Fermi motion). Read by the pion/kaon cross sections
+/// (physics_pion.f:peepi, jacobians.f:transform_to_cm) and the pion ntuple (results_write.f:141-149).
+struct FermiMomentum {
+    double pfer{0}, pferx{0}, pfery{0}, pferz{0}, efer{0};
 };
 
 /// Fortran: type event_main
@@ -92,6 +102,7 @@ struct MainEvent {
     DoubleArmFP FP;
     double Trec{0};
     NtupVars ntup;   ///< COMMON /ntuple_variables/ values for this event
+    FermiMomentum pfermi;   ///< COMMON /pfermi/ of this event (task P9.1)
 };
 
 }  // namespace simc
