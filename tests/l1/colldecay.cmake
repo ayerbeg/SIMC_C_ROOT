@@ -26,3 +26,7 @@ add_test(NAME l1_replay_p6f2_pi_shms_cap COMMAND test_l1_coll_decay replay ${_ca
 set_tests_properties(l1_mc_hms_coll l1_mc_hms_decay l1_mc_shms_coll l1_mc_shms_decay l1_transp_decay_hms
     l1_transp_decay_shms l1_project_decay l1_pion_coll_absorb l1_replay_p6f2_pi_hms_cap l1_replay_p6f2_pi_shms_cap
     PROPERTIES SKIP_RETURN_CODE 77)
+# task P9.2: the P9.F1 decay tables (pion production path): one project/transp call, and mc_hms/mc_shms with decay
+add_test(NAME l1_decay_fixedrng COMMAND test_l1_coll_decay pdecay ${_fcd}/decay_fixedrng)
+add_test(NAME l1_mc_decay_fixedrng COMMAND test_l1_coll_decay mcdecay ${_fcd}/mc_decay_fixedrng)
+set_tests_properties(l1_decay_fixedrng l1_mc_decay_fixedrng PROPERTIES SKIP_RETURN_CODE 77)

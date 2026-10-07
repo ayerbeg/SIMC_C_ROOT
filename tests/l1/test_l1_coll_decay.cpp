@@ -616,6 +616,150 @@ int runTp(const std::string& dir) {
     return rc;
 }
 
+// ------------------------------------------------------------------------------------------------ P9.F1 decay tables
+// decay_fixedrng (task P9.2): one project (mode 1) or transp (mode 2) call with decay, the P9.F1 column names.
+int runPionDecayStep(const std::string& dir) {
+    auto eng = std::make_shared<optics::CosyEngine>();
+    std::ostringstream log;
+    eng->setLog(&log);
+    eng->setFortranCompat(true);
+    const std::string mdir = hms::McHms::defaultMatrixDir();
+    eng->initForward(1, mdir);
+    eng->initForward(5, mdir);
+    ScriptedRandom rng(ScriptedRandom::GaussMode::Scripted);
+    std::vector<ColumnSpec> c;
+    for (const char* n : {"xs_out", "dxdzs_out", "ys_out", "dydzs_out", "dpps_out", "dflag_out", "m2_out", "ph_out",
+                          "pathlen_out", "decdist_out", "Mh2_final_out", "n_unif", "rng_err"})
+        c.push_back({n, 0.0, 0.0});
+    long stops = 0;
+    int rc = simcl1::run("decay_fixedrng project/transp (" + dir + ")", dir, c, [&](const Row& r, Outputs& o) {
+        loadQueues(r, rng);
+        optics::Track t;
+        t.xs = r["xs"];
+        t.dxdzs = r["dxdzs"];
+        t.ys = r["ys"];
+        t.dydzs = r["dydzs"];
+        t.dpps = r["dpps"];
+        optics::DecayState d;
+        d.decay_flag = std::lround(r["decay_flag"]) != 0;
+        d.dflag = std::lround(r["dflag_in"]) != 0;
+        d.m2 = r["m2_in"];
+        d.ph = r["ph_in"];
+        d.ctau = r["ctau"];
+        d.decdist = r["decdist_in"];
+        d.Mh2_final = r["Mh2_final_in"];
+        d.rng = &rng;
+        d.fortran_compat = true;
+        double pathlen = r["pathlen_in"];
+        try {
+            if (std::lround(r["mode"]) == 1)
+                optics::project(t, r["zd"], pathlen, &d);
+            else
+                eng->transp(static_cast<int>(std::lround(r["spectr"])), static_cast<int>(std::lround(r["class"])), t,
+                            r["zd"], pathlen, &d);
+        } catch (const FortranStop&) {
+            ++stops;
+        }
+        o["xs_out"] = t.xs;
+        o["dxdzs_out"] = t.dxdzs;
+        o["ys_out"] = t.ys;
+        o["dydzs_out"] = t.dydzs;
+        o["dpps_out"] = t.dpps;
+        o["dflag_out"] = d.dflag ? 1. : 0.;
+        o["m2_out"] = d.m2;
+        o["ph_out"] = d.ph;
+        o["pathlen_out"] = pathlen;
+        o["decdist_out"] = d.decdist;
+        o["Mh2_final_out"] = d.Mh2_final;
+        o["n_unif"] = static_cast<double>(rng.nUniform());
+        o["rng_err"] = rng.error() ? 1. : 0.;
+    });
+    if (stops) {
+        std::printf("  unexpected FortranStop in %ld rows\n", stops);
+        return 1;
+    }
+    return rc;
+}
+
+// mc_decay_fixedrng (task P9.2): mc_hms / mc_shms with decay for a pion (decdist = 0, Mh2_final = m2 per ray, as
+// simc.f:174-177), the call counts of the harness wrappers (n_calls, n_project, n_transp, decay_call/kind/class/zd).
+int runPionMcDecay(const std::string& dir) {
+    Arm hmsArm(true, true), shmsArm(false, true);
+    std::vector<optics::StepRecord> stepsH, stepsS;
+    ScriptedRandom rng(ScriptedRandom::GaussMode::Scripted);
+    std::vector<ColumnSpec> c;
+    for (const char* n : {"ok", "stop_code", "stop_id", "reached_hut", "x_fp", "dx_fp", "y_fp", "dy_fp", "dpp_out",
+                          "dxdz_out", "dydz_out", "y_out", "pathlen", "m2_out", "resmult", "xs_end", "ys_end",
+                          "dxdzs_end", "dydzs_end", "dpps_end", "n_gauss", "n_unif", "rng_err", "nsig_last", "decdist",
+                          "Mh2_final", "n_calls", "n_project", "n_transp", "decay_call", "decay_kind", "decay_class",
+                          "decay_zd"})
+        c.push_back({n, 0.0, 0.0});
+    return simcl1::run("mc_decay_fixedrng (" + dir + ")", dir, c, [&](const Row& r, Outputs& o) {
+        loadQueues(r, rng);
+        const int spectr = static_cast<int>(std::lround(r["spectr"]));
+        Arm& arm = spectr == 1 ? hmsArm : shmsArm;
+        CallIn in;
+        in.spectr = spectr;
+        in.p_spec = r["p_spec"];
+        in.th_spec = r["th_spec"];
+        in.dpp = r["dpp"];
+        in.x = r["x"];
+        in.y = r["y"];
+        in.z = r["z"];
+        in.dxdz = r["dxdz"];
+        in.dydz = r["dydz"];
+        in.m2 = r["m2"];
+        in.fry = r["fry"];
+        in.ms = std::lround(r["ms_flag"]) != 0;
+        in.wcs = std::lround(r["wcs_flag"]) != 0;
+        in.decay = std::lround(r["decay_flag"]) != 0;
+        in.coll = std::lround(r["using_coll"]) != 0;
+        in.ctau = r["ctau"];
+        in.decdist = 0.;
+        in.Mh2_final = in.m2;
+        in.resmult = kUnset;
+        in.pathlen = 0.;
+        const CallOut x = arm.call(in, rng);
+        arm.takeLog();
+        o["ok"] = x.ok ? 1. : 0.;
+        o["stop_code"] = x.stop_code;
+        o["stop_id"] = x.stop_id;
+        o["reached_hut"] = x.reached_hut ? 1. : 0.;
+        o["x_fp"] = x.x_fp;
+        o["dx_fp"] = x.dx_fp;
+        o["y_fp"] = x.y_fp;
+        o["dy_fp"] = x.dy_fp;
+        o["dpp_out"] = x.dpp;
+        o["dxdz_out"] = x.dxdz;
+        o["dydz_out"] = x.dydz;
+        o["y_out"] = x.y;
+        o["pathlen"] = x.pathlen;
+        o["m2_out"] = x.m2;
+        o["resmult"] = x.resmult;
+        o["xs_end"] = x.t.xs;
+        o["ys_end"] = x.t.ys;
+        o["dxdzs_end"] = x.t.dxdzs;
+        o["dydzs_end"] = x.t.dydzs;
+        o["dpps_end"] = x.t.dpps;
+        o["n_gauss"] = static_cast<double>(rng.nGauss());
+        o["n_unif"] = static_cast<double>(rng.nUniform());
+        o["rng_err"] = rng.error() ? 1. : 0.;
+        o["nsig_last"] = rng.lastNsig();
+        o["decdist"] = x.decdist;
+        o["Mh2_final"] = x.Mh2_final;
+        const optics::TransportTrace& tt = arm.tt();
+        long np = 0, nt = 0;
+        for (const auto& st : arm.steps()) (st.kind == 1 ? np : nt)++;
+        o["n_calls"] = static_cast<double>(tt.n_steps);
+        o["n_project"] = static_cast<double>(np);
+        o["n_transp"] = static_cast<double>(nt);
+        o["decay_call"] = tt.decayed ? static_cast<double>(tt.dec_step) : 0.;
+        o["decay_kind"] = tt.decayed ? (tt.dec.kind == 1 ? 1. : 2.) : 0.;
+        o["decay_class"] = tt.decayed ? tt.dec.cls : 0.;
+        o["decay_zd"] = tt.decayed ? tt.dec.step_len : 0.;
+    });
+}
+
 // ------------------------------------------------------------------------------------------------ pion_coll_absorb
 int runPca(const std::string& dir) {
     std::vector<ColumnSpec> c = {{"transmission", 0.0, 0.0}, {"row", 0.0, 0.0}};
@@ -874,6 +1018,8 @@ int main(int argc, char** argv) {
         if (mode == "mc" && argc >= 4) return runMc(dir, std::string(argv[3]) == "hms");
         if (mode == "tp") return runTp(dir);
         if (mode == "pca") return runPca(dir);
+        if (mode == "pdecay") return runPionDecayStep(dir);   // P9.2: decay_fixedrng
+        if (mode == "mcdecay") return runPionMcDecay(dir);    // P9.2: mc_decay_fixedrng
         if (mode == "replay") return runReplay(dir, argc >= 4 && std::string(argv[3]) == "corrected");
     } catch (const std::exception& e) {
         std::printf("exception: %s\n", e.what());
