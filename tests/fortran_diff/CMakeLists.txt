@@ -26,6 +26,10 @@ set(SIMC_FORTRAN_DIFF_ITEMS
     D037_F4_coll_ranged_out
     D037_F7_project_decay_drift
     D037_F9_decay_non_pi_k
+    D038_F1_delta_pp_stop
+    D038_F2_pi0_neutron_on_h
+    D038_F5_central_sigcc
+    D038_F15_hist_which_pion_11
 )
 foreach(_item ${SIMC_FORTRAN_DIFF_ITEMS})
     add_test(NAME fortran_diff_${_item}

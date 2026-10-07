@@ -29,6 +29,7 @@
 #include "simc/core/SpectrometerId.h"
 #include "simc/core/random/Mt64Random.h"
 #include "simc/core/random/ScriptedRandom.h"
+#include "simc/driver/FortranWriter.h"
 #include "simc/driver/RunReport.h"
 #include "simc/driver/SimcRun.h"
 #include "simc/input/InpReader.h"
@@ -1060,6 +1061,147 @@ int testDecayNonPiK() {
     return 0;
 }
 
+// ------------------------------------------------------------------------------------------------ D-038 (P9.2, pion)
+std::string pionInp(const std::string& name) { return g_ref + "/functions/pion_state/inp/" + name + ".inp"; }
+bool loadPionInp(const std::string& name, SimcParameters& p) {
+    const std::string inp = pionInp(name);
+    if (!std::ifstream(inp)) {
+        std::printf("SKIP: %s missing\n", inp.c_str());
+        return false;
+    }
+    InpReader rd(p);
+    return rd.loadRun(inp);
+}
+std::string specDir() { return std::string(SIMC_SOURCE_DIR) + "/data/spectral"; }
+
+// D-038 F1: dbase.f:823-826 stops charged H(e,e'pi-)Delta++ (which_pion = 3 without doing_pizero) too.
+int testDeltaPPStop() {
+    SimcParameters p, q;
+    if (!loadPionInp("l1s_h_delta3", p) || !loadPionInp("l1s_h_pi0delta3", q)) return 77;
+    for (int compat = 0; compat < 2; ++compat) {
+        SetupOptions so;
+        so.fortran_compat = compat == 1;
+        so.data_dir = specDir();
+        const RunSetup s = BuildRunSetup(p, so);
+        const RunSetup s0 = BuildRunSetup(q, so);
+        const bool stopped = !s.ok() && s.stops.front() == "STOP Can't do Delta+ production from neutron for pi0";
+        const bool stopped0 = !s0.ok() && s0.stops.front() == "STOP Can't do Delta+ production from neutron for pi0";
+        if (compat)
+            expect(stopped, "compat: charged H(e,e'pi-)Delta++ (which_pion = 3) STOPs as the Fortran (dbase.f:823-826)");
+        else
+            expect(!stopped && s.ok() && s.targ.Mtar_struck == constants::Mp && s.targ.Mrec_struck == constants::MDelta,
+                   "corrected: charged H(e,e'pi-)Delta++ is set up (Mtar_struck = Mp, Mrec_struck = MDelta)");
+        expect(stopped0, std::string("pi0 Delta0 from the neutron on H STOPs in both modes, compat=") +
+                             (compat ? "1" : "0"));
+    }
+    // corrected: the configuration runs (50 events) and the weight carries the 0.55 factor of event.f:1479-1484
+    driver::RunOptions opt;
+    opt.quiet_stages = true;
+    opt.override_ngen = true;
+    opt.ngen = 50;
+    opt.run_name = "d038_f1";
+    opt.data_dir = specDir();
+    std::ostringstream log;
+    opt.log = &log;
+    driver::SimcRun run(p, Json{{"sinks", Json::array()}}, opt);
+    bool ran = false;
+    std::string what;
+    try {
+        run.run();
+        ran = run.totals().nevent == 50 && run.totals().wtcontribute > 0;
+    } catch (const std::exception& e) {
+        what = e.what();
+    }
+    expect(ran, "corrected: H(e,e'pi-)Delta++ runs 50 events" + (what.empty() ? "" : " (" + what + ")"));
+    return 0;
+}
+
+// D-038 F2: pi0 'from the neutron' (which_pion = 1, doing_pizero) accepted on hydrogen by dbase.f:141-142.
+int testPi0NeutronOnH() {
+    SimcParameters p;
+    if (!loadPionInp("l1_h_k2_pi0n", p)) return 77;
+    for (int compat = 0; compat < 2; ++compat) {
+        SetupOptions so;
+        so.fortran_compat = compat == 1;
+        so.data_dir = specDir();
+        bool rejected = false;
+        std::string what;
+        RunSetup s;
+        try {
+            s = BuildRunSetup(p, so);
+        } catch (const std::invalid_argument& e) {
+            rejected = true;
+            what = e.what();
+        }
+        if (compat)
+            expect(!rejected && s.ok() && s.targ.Mtar_struck == constants::Mn,
+                   "compat: accepted, Mtar_struck = Mn on a proton target (dbase.f:141-142, 333)");
+        else
+            expect(rejected && what.find("hydrogen has no neutron") != std::string::npos,
+                   "corrected: rejected at start-up: '" + what + "'");
+    }
+    return 0;
+}
+
+// D-038 F5: CENTRAL.sigcc of pion runs computed with main0%epsilon = t = phi_pq = 0 (simc.f:1236-1290).
+int testCentralSigcc() {
+    SimcParameters p;
+    if (!loadPionInp("p9f1_pip_h_dec1_cap", p)) return 77;
+    double sig[2] = {0, 0};
+    MainEvent m0[2];
+    Event v0[2];
+    for (int compat = 0; compat < 2; ++compat) {
+        driver::RunOptions opt;
+        opt.quiet_stages = true;
+        opt.fortran_compat = compat == 1;
+        opt.data_dir = specDir();
+        std::ostringstream log;
+        opt.log = &log;
+        driver::SimcRun run(p, Json{{"sinks", Json::array()}}, opt);
+        run.initialise();
+        sig[compat] = run.central().central.sigcc;
+        m0[compat] = run.central().main0;
+        v0[compat] = run.central().vertex0;
+    }
+    // the Fortran value (reference/functions/pion_state cfg 1 c_sigcc; .hist CENTRAL.sigcc 0.839106E-06)
+    expect(sameBits(sig[1], 8.3910606773484538e-07) || std::fabs(sig[1] / 0.839106e-6 - 1) < 1e-6,
+           "compat: CENTRAL.sigcc = " + fortran::E(sig[1], 13, 6) + " (Fortran 0.839106E-06)");
+    expect(m0[1].epsilon == 0 && m0[1].t == 0 && m0[1].phi_pq == 0, "compat: main0 epsilon, t, phi_pq stay 0");
+    const Event& v = v0[0];
+    const double tt = v.Q2 - constants::Mpi * constants::Mpi + 2 * v.nu * v.p.E -
+                      2 * v.p.P * v.q * std::cos(m0[0].theta_pq);
+    expect(sameBits(m0[0].epsilon, 1. / (1. + 2. * (1 + v.nu * v.nu / v.Q2) * std::pow(std::tan(v.e.theta / 2.), 2))) ||
+               std::fabs(m0[0].epsilon - v.epsilon) < 1e-12,
+           "corrected: main0 epsilon = the central epsilon (" + std::to_string(m0[0].epsilon) + ")");
+    expect(std::fabs(m0[0].t - tt) <= 1e-9 * std::fabs(tt) && m0[0].t > 0,   // SIMC t = -t_Mandelstam
+           "corrected: main0 t = the central t (" + std::to_string(m0[0].t / 1e6) + " GeV^2)");
+    char b[160];
+    std::snprintf(b, sizeof b, "corrected CENTRAL.sigcc %.6E differs from the Fortran %.6E (ratio %.4f)", sig[0], sig[1],
+                  sig[0] / sig[1]);
+    expect(sig[0] != sig[1] && sig[0] > 0, b);
+    return 0;
+}
+
+// D-038 F15: the .hist final-state line is missing for which_pion = 11 (simc.f:750-755).
+int testHistWhichPion11() {
+    SimcParameters p;
+    if (!loadPionInp("l1_c12coh_k2_pim", p)) return 77;
+    driver::RunReport r;
+    for (int compat = 0; compat < 2; ++compat) {
+        SetupOptions so;
+        so.fortran_compat = compat == 1;
+        so.data_dir = specDir();
+        const RunSetup s = BuildRunSetup(p, so);
+        const std::string h = driver::FormatHist(s, r);
+        const bool has = h.find("Final State is A + pi") != std::string::npos;
+        if (compat)
+            expect(!has, "compat: no final-state line for which_pion = 11 (simc.f:750-755)");
+        else
+            expect(has, "corrected: '****----  Final State is A + pi ----****' for which_pion = 11");
+    }
+    return 0;
+}
+
 const std::map<std::string, std::function<int()>>& items() {
     static const std::map<std::string, std::function<int()>> m = {
         {"D032_spectrometer_id", testSpectrometerId},
@@ -1080,6 +1222,10 @@ const std::map<std::string, std::function<int()>>& items() {
         {"D037_F4_coll_ranged_out", testCollRangedOut},
         {"D037_F7_project_decay_drift", testProjectDecayDrift},
         {"D037_F9_decay_non_pi_k", testDecayNonPiK},
+        {"D038_F1_delta_pp_stop", testDeltaPPStop},
+        {"D038_F2_pi0_neutron_on_h", testPi0NeutronOnH},
+        {"D038_F5_central_sigcc", testCentralSigcc},
+        {"D038_F15_hist_which_pion_11", testHistWhichPion11},
     };
     return m;
 }
