@@ -240,3 +240,36 @@ folders: event-by-event comparison with the compat run, `validation/compare/mode
   therefore shifted by ≈ effect/relerr: up to 2.3-2.6 σ for Fe and Fe-Benhar, still below the p < 0.01 test threshold.
 * Benhar (F3): the corrected weight is the per-node density interpolated (no 1/Pm² of the event); per recon-Pm bin the
   corrected/compat ratio is 0.960 (Pm < 50 MeV/c), 0.99 (50-150), 1.005-1.012 (150-350), 1.002 above; in total −0.08 %.
+
+## 9. Exclusive pion production: L2 in both modes (task P9.2)
+
+`simc_compare` (default config) of simc++ seed 4242, 200000 successes, against the P9.F1 Fortran runs
+`reference/runs/pion_<tag>_A` (and `_B` for h_k1_rad_dec0). Run folders
+`SIMC++_Project/simc_runs/20261007_*_P9.2_L2_{compat,corrected}_<tag>/` (`compare_vs_A/`, `compare_vs_B/`: summary.txt,
+summary.json, compare.pdf; `mode_diff_vs_compat.txt` in the corrected folders: event-by-event comparison with the compat
+run of the same seed). Binary: commit 3b27d5c.
+
+| run | compat vs A: verdict (F/N), worst p | corrected vs A: verdict (F/N), failing tests | corrected vs compat (same seed) |
+|---|---|---|---|
+| h_k1_rad_dec0 | PASS 1/257, 9.4e-3 (vs B: PASS 1/257) | FAIL 2/257: CENTRAL.sigcc (F5) + 1 statistical | trees identical; wtcontr identical |
+| h_k1_rad_dec1 (π decay) | PASS 2/273, 8.7e-3 | FAIL 3/273: CENTRAL.sigcc (F5) + 2 statistical | 2915 of 200000 events differ in the SHMS recon only (D-037 F7 decay drift); same events, Weight identical |
+| h_k1_norad_dec0 | PASS 0/246, 2.2e-2 | FAIL 1/246: CENTRAL.sigcc (F5) | trees identical |
+| d_k1_pim_rad_dec1 | PASS 6/279, 7.3e-4 (Q2 ks_w) | FAIL 7/279: CENTRAL.sigcc (F5) + 6 statistical | 2778 events differ in the SHMS recon (F7); Weight identical |
+| h_k2_rad_dec1 | PASS 1/253, 6.4e-3 | FAIL 3/253: CENTRAL.sigcc (F5), wtcontr (D-006, pull 43.8) + 1 | wtcontr −13.12 %; sequences diverge after an F7 acceptance change (ΣWeight +0.0009 %) |
+| d_k2_pim_rad_dec1 | PASS 5/259, 2.9e-3 | FAIL 7/259: CENTRAL.sigcc, wtcontr (pull 42.6) + 5 | wtcontr −13.59 %; ΣWeight −0.0016 % |
+| he3coh_k2_rad_dec1 | PASS 4/253, 6.2e-3 | FAIL 6/253: CENTRAL.sigcc, wtcontr (pull 40.8) + 4 | wtcontr −12.53 %; ΣWeight +0.0013 % |
+
+* **compat**: every run PASSes. The D(e,e'π−) K1 run has the largest count (6 of 279, Q2/q/Q2i/hsyptari, worst p 7.3e-4);
+  two more C++ seeds (4243: 3/279, 4244: 0/279, all four variables p > 0.07) show it is a fluctuation of seed 4242.
+* **corrected**: the only failures beyond the compat statistics are the two expected deterministic effects:
+  * CENTRAL.sigcc (D-038 F5): the central cross section at the real central ε, t, φ: K1 H 0.839106E-06 → 0.925379E-05,
+    K1 H norad 0.838925E-06 → 0.922498E-05, K1 D 0.385660E-06 → 0.654696E-05, K2 H 0.449334E-05 → 0.605319E-04, K2 D
+    0.822758E-06 → 0.475557E-04, He-3 coh 0.800815E-07 → 0.146748E-05 (a `.hist` number only).
+  * K2 wtcontr (D-006, simc.f:237): the hadron (HMS) δ upper cut becomes 10 % instead of the SHMS 22 %. Fortran/corrected
+    = +15.42 % (H), +15.69 % (D), +14.30 % (He-3); compat/corrected at the same seed +15.10 %, +15.72 %, +14.33 %; P9.F1
+    measured +14.8, +15.6, +14.1 % on the Fortran trees (passcuts_l2.py). Corrected × that factor reproduces the Fortran
+    wtcontr within 0.8 σ.
+  * Without these two tests the corrected runs count 1/256, 2/272, 0/245, 6/278, 1/251, 5/257, 4/251 failures.
+* D-037 F7 (decay drift) moves the recon of ~1.4 % of the K1 events (π decays in the SHMS) by ≤ 1e-2 % δ; in K2 (HMS) it
+  changes an acceptance decision early in the run, after which the random sequences diverge: the distributions stay equal
+  (ΣWeight within 2e-5).
