@@ -252,6 +252,8 @@ int replay(const std::string& capdir, const std::string& rundir, const std::stri
     }
     bool okSetup = report("setup vs cap_final:", cs);
 
+    const bool pion = setup.flags.doing_pion;   // P9.2: pion captures (decay in the hadron arm)
+    const bool hadronIsHms = p.hadron_arm == 1;
     // ---- indices
     std::map<long, std::size_t> genRow, recRow;
     for (std::size_t i = 0; i < gen.rows.size(); ++i) genRow[std::lround(gen.rows[i][gen.col("ntried")])] = i;
@@ -260,7 +262,9 @@ int replay(const std::string& capdir, const std::string& rundir, const std::stri
     {
         const int it = rng.col("ntried"), ip = rng.col("phase"), ik = rng.col("kind"), iv = rng.col("value");
         for (const auto& r : rng.rows) {
-            if (std::lround(r[ip]) != 2) continue;
+            const long ph = std::lround(r[ip]);
+            // montecarlo phase 2; P9.2 pion captures: also 7/8 = the decay draws of project/transp (in call order)
+            if (ph != 2 && !(pion && (ph == 7 || ph == 8))) continue;
             auto& s = stream[std::lround(r[it])];
             (std::lround(r[ik]) == 2 ? s.first : s.second).push_back(r[iv]);
         }
@@ -271,6 +275,7 @@ int replay(const std::string& capdir, const std::string& rundir, const std::stri
     MainEvent main;
     Event recon;
     auto* shmsArm = dynamic_cast<shms::ShmsSpectrometer*>(&mc.electronArm());
+    if (!shmsArm) shmsArm = dynamic_cast<shms::ShmsSpectrometer*>(&mc.hadronArm());
     std::map<std::string, Counter> c;
     std::map<long, std::pair<MainEvent, Event>> atSuccess;   // ntried -> state after montecarlo (for the .bin)
     long nOk = 0, nFailP = 0, nFailE = 0, nRngErr = 0;
@@ -302,6 +307,8 @@ int replay(const std::string& capdir, const std::string& rundir, const std::stri
         main.target.teff = {g("t_teff_1"), g("t_teff_2"), g("t_teff_3")};
         main.target.Coulomb = g("t_Coulomb");
         main.ntup.resfac = 0.0;   // simc.f:178
+        main.ntup.decdist = 0.0;  // simc.f:177
+        main.ntup.Mh2_final = setup.Mh2;
         auto s = stream[nt];
         srng.load(s.first, s.second);
 
@@ -311,11 +318,23 @@ int replay(const std::string& capdir, const std::string& rundir, const std::stri
         ok ? ++nOk : (I.fail_arm == 1 ? ++nFailP : ++nFailE);
 
         check(c, "mc_ok", ok ? 1. : 0., m("mc_ok"), nt);
-        check(c, "fail_arm", ok ? 0. : I.fail_arm, ok ? 0. : m("fail_arm"), nt);
-        check(c, "hms_stop", I.p_called ? stopIndexHms(I.p_stop) : -9., m("hms_stop"), nt);
-        check(c, "shms_stop", I.e_called ? stopIndexShms(I.e_stop) : -9., m("shms_stop"), nt);
+        // fail_arm of the capture: 1 = the HMS failed, 2 = the SHMS (the C++ 1 = hadron arm, 2 = electron arm)
+        const double failSpec = (hadronIsHms || I.fail_arm == 0) ? I.fail_arm : 3 - I.fail_arm;
+        check(c, "fail_arm", ok ? 0. : failSpec, ok ? 0. : m("fail_arm"), nt);
+        if (hadronIsHms) {
+            check(c, "hms_stop", I.p_called ? stopIndexHms(I.p_stop) : -9., m("hms_stop"), nt);
+            check(c, "shms_stop", I.e_called ? stopIndexShms(I.e_stop) : -9., m("shms_stop"), nt);
+        } else {   // hadron in the SHMS, electron in the HMS (pion K1 captures)
+            check(c, "shms_stop", I.p_called ? stopIndexShms(I.p_stop) : -9., m("shms_stop"), nt);
+            check(c, "hms_stop", I.e_called ? stopIndexHms(I.e_stop) : -9., m("hms_stop"), nt);
+        }
+        if (pion) {
+            check(c, "decdist", main.ntup.decdist, m("decdist"), nt);
+            check(c, "Mh2_final", main.ntup.Mh2_final, m("Mh2_final"), nt);
+        }
         check(c, "shms_stop_id", shmsArm ? shmsArm->kernel().stopId() : 0., m("shms_stop_id"), nt);
-        check(c, "n_unif", static_cast<double>(srng.nUniform()), m("n_unif"), nt);
+        // n_unif of the capture counts phase 2 only; the decay draws (phases 7/8) are n_dec_unif (pion captures)
+        check(c, "n_unif", static_cast<double>(srng.nUniform()), m("n_unif") + (pion ? m("n_dec_unif") : 0.), nt);
         check(c, "n_gauss", static_cast<double>(srng.nGauss()), m("n_gauss"), nt);
         const double sp[8] = {main.SP.e.delta, main.SP.e.yptar, main.SP.e.xptar, main.SP.e.z,
                               main.SP.p.delta, main.SP.p.yptar, main.SP.p.xptar, main.SP.p.z};
@@ -374,7 +393,9 @@ int replay(const std::string& capdir, const std::string& rundir, const std::stri
     // ---- .bin
     bool okBin = true;
     std::vector<std::string> recs;
-    if (!readRecords(bin, recs) || recs.empty()) {
+    if (pion) {
+        std::printf("  .bin: the 53 pion columns are checked by the full-run replay (l1_simcrun_replay_pion_*)\n");
+    } else if (!readRecords(bin, recs) || recs.empty()) {
         std::printf("  .bin: cannot read %s\n", bin.c_str());
         okBin = false;
     } else {

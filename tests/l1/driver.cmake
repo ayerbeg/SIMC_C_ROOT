@@ -69,3 +69,12 @@ foreach(_c "pip_h;p9f1_pip_h_dec1_cap" "pim_d;p9f1_pim_d_dec1_cap")
         ${_run})
     set_tests_properties(l1_simcrun_replay_pion_${_tag} PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 900)
 endforeach()
+# ... and every montecarlo call of the two pion captures (decay draws, decdist, Mh2_final; P9.2)
+foreach(_c "pip_h;p9f1_pip_h_dec1_cap" "pim_d;p9f1_pim_d_dec1_cap")
+    list(GET _c 0 _tag)
+    list(GET _c 1 _run)
+    add_test(NAME l1_montecarlo_replay_pion_${_tag} COMMAND test_l1_driver replay
+        ${SIMC_REFERENCE_DIR}/functions/event_capture_pion/cap_${_tag} ${SIMC_REFERENCE_DIR}/runs/${_run} ${_tag}
+        ${CMAKE_SOURCE_DIR}/data/spectral ${_run})
+    set_tests_properties(l1_montecarlo_replay_pion_${_tag} PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 600)
+endforeach()
