@@ -57,3 +57,23 @@ foreach(_tag d_rad fe56_rad)
     set_tests_properties(regression_identity_eep_${_tag} regression_corrected_eep_${_tag} PROPERTIES
                          SKIP_RETURN_CODE 77 TIMEOUT 1200 LABELS regression)
 endforeach()
+
+# P9.2: exclusive pion production (pi+ H with decay in flight, pi- D; K1, rad, seed 4242, 20000 events) against the
+# baselines of commit 3b27d5c, in both modes (SIMC_BASELINE_DIR/3b27d5c_[corrected_]pion_<tag>_n20k_s4242/). Inputs: the
+# P9.F1 L2 inputs in reference/runs.
+set(SIMC_PION_BASELINE_COMMIT "3b27d5c" CACHE STRING "Commit whose pion outputs are the identity baseline")
+foreach(_tag h_k1_rad_dec1 d_k1_pim_rad_dec1)
+    set(_inp ${SIMC_REFERENCE_DIR}/runs/pion_${_tag}_A/pion_${_tag}_A.inp)
+    add_test(NAME regression_identity_pion_${_tag}
+             COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/output_identity.sh $<TARGET_FILE:simcpp> $<TARGET_FILE:simc_root_identity>
+                     ${_inp} 4242 dir_pion_${_tag}_s4242
+                     ${SIMC_BASELINE_DIR}/${SIMC_PION_BASELINE_COMMIT}_pion_${_tag}_n20k_s4242
+                     ${CMAKE_CURRENT_BINARY_DIR}/identity_pion_${_tag} --fortran-compat --ngen 20000)
+    add_test(NAME regression_corrected_pion_${_tag}
+             COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/output_identity.sh $<TARGET_FILE:simcpp> $<TARGET_FILE:simc_root_identity>
+                     ${_inp} 4242 dir_pion_${_tag}_s4242
+                     ${SIMC_BASELINE_DIR}/${SIMC_PION_BASELINE_COMMIT}_corrected_pion_${_tag}_n20k_s4242
+                     ${CMAKE_CURRENT_BINARY_DIR}/corrected_pion_${_tag} --ngen 20000)
+    set_tests_properties(regression_identity_pion_${_tag} regression_corrected_pion_${_tag} PROPERTIES
+                         SKIP_RETURN_CODE 77 TIMEOUT 1200 LABELS regression)
+endforeach()
