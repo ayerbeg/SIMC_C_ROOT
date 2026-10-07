@@ -27,3 +27,29 @@ set_tests_properties(${_pion_l1} PROPERTIES SKIP_RETURN_CODE 77 LABELS l1)
 add_test(NAME fortran_diff_D038_F10_sigcm2_stale
          COMMAND test_l1_pion fortran_diff_D038_F10 ${_pfn}/peepi ${_pfn}/pion_state ${_pdata})
 set_tests_properties(fortran_diff_D038_F10_sigcm2_stale PROPERTIES SKIP_RETURN_CODE 77 LABELS "fortran_diff;unit")
+
+# task P9.2: the pion reaction (reactions::PionProduction) against the P9.F1 event tables, fortran_compat, bitwise
+add_executable(test_l1_pion_event test_l1_pion_event.cpp)
+target_link_libraries(test_l1_pion_event PRIVATE simcfw_l1runner ${SIMC_DRIVER_LIBS})
+target_compile_options(test_l1_pion_event PRIVATE -O2)
+set(_pinp ${_pfn}/pion_state/inp)
+set(_psp ${CMAKE_SOURCE_DIR}/data/spectral)
+add_test(NAME l1_pion_state COMMAND test_l1_pion_event pion_state ${_pfn}/pion_state ${_pinp} ${_psp} ${_pdata} 0)
+add_test(NAME l1_generate_pion_fixedrng
+         COMMAND test_l1_pion_event generate ${_pfn}/generate_pion_fixedrng ${_pinp} ${_psp} ${_pdata} 0)
+add_test(NAME l1_complete_ev_pion COMMAND test_l1_pion_event complete_ev ${_pfn}/complete_ev_pion ${_pinp} ${_psp} ${_pdata} 0)
+add_test(NAME l1_complete_recon_ev_pion
+         COMMAND test_l1_pion_event complete_recon_ev ${_pfn}/complete_recon_ev_pion ${_pinp} ${_psp} ${_pdata} 0)
+add_test(NAME l1_complete_main_pion
+         COMMAND test_l1_pion_event complete_main ${_pfn}/complete_main_pion ${_pinp} ${_psp} ${_pdata} 0)
+set(_pion_ev l1_pion_state l1_generate_pion_fixedrng l1_complete_ev_pion l1_complete_recon_ev_pion l1_complete_main_pion)
+foreach(_c "pip_h;p9f1_pip_h_dec1_cap" "pim_d;p9f1_pim_d_dec1_cap")
+    list(GET _c 0 _tag)
+    list(GET _c 1 _run)
+    add_test(NAME l1_replay_event_capture_pion_${_tag}
+             COMMAND test_l1_pion_event capture ${_pfn}/event_capture_pion/cap_${_tag}
+                     ${SIMC_REFERENCE_DIR}/runs/${_run}/${_run}.inp ${_psp} ${_pdata} 0)
+    list(APPEND _pion_ev l1_replay_event_capture_pion_${_tag})
+endforeach()
+set_tests_properties(${_pion_ev} PROPERTIES SKIP_RETURN_CODE 77 LABELS l1 TIMEOUT 900)
+set_tests_properties(l1_replay_event_capture_pion_pip_h l1_replay_event_capture_pion_pim_d PROPERTIES LABELS "l1;replay")
