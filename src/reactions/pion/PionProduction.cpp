@@ -481,6 +481,12 @@ void PionProduction::prepareCentral(MainEvent& main0, const Event& vertex0) {
     pionMainKinematics(main0, vertex0);
 }
 
+// simc.f:844 (report): the COMMON targ%Mrec_struck as complete_ev left it (FORTRAN-DIFF-CANDIDATE D-038 F9).
+void PionProduction::finalTargetState(TargetInfo& targ) const {
+    const int w = setup().params.which_pion;
+    if (w == 2 || w == 3) targ.Mrec_struck = mrecStruck_;
+}
+
 SIMC_REGISTER(IReaction, "pion_production", PionProduction)
 
 }  // namespace reactions

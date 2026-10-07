@@ -351,10 +351,14 @@ void SimcRun::finish() {
         log(" ngen = 0: no output (simc.f:446)");
         return;
     }
-    const RunSummary summary = MakeRunSummary(setup_, report_);
+    // The report prints the COMMON state as it is at the end of the run (simc.f:844 targ%Mrec_struck, overwritten per
+    // event for the pion Delta final states): the reaction may update its part of it (IReaction::finalTargetState).
+    RunSetup reportSetup = setup_;
+    reaction_->finalTargetState(reportSetup.targ);
+    const RunSummary summary = MakeRunSummary(reportSetup, report_);
     for (auto& s : sinks_) {
         s->endRun(summary);
-        if (auto* rs = dynamic_cast<IReportSink*>(s.get())) rs->writeReport(setup_, report_);
+        if (auto* rs = dynamic_cast<IReportSink*>(s.get())) rs->writeReport(reportSetup, report_);
     }
     log(" Come back soon!");
 }

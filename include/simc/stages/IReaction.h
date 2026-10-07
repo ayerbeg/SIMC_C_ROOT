@@ -5,6 +5,7 @@
 #ifndef SIMC_STAGES_IREACTION_H
 #define SIMC_STAGES_IREACTION_H
 
+#include "simc/core/RunSetup.h"
 #include "simc/stages/IStage.h"
 
 namespace simc {
@@ -36,6 +37,10 @@ public:
         (void)main0;
         (void)vertex0;
     }
+    /// Called once at the end of the run, before the reports: the reaction writes the target COMMON values it changed
+    /// during the run, as the Fortran report prints them (task P9.2: targ%Mrec_struck = the last Breit-Wigner Delta
+    /// mass of the pion Delta final states, simc.f:844). Default: nothing.
+    virtual void finalTargetState(TargetInfo& targ) const { (void)targ; }
     /// The Fortran try counter `ntried` of the coming try (simc.f:190), before generate(). Only used in messages
     /// (event.f:591, 'two solutions' warning for ntried <= 5000). Default: ignored.
     virtual void beginTry(long ntried) { (void)ntried; }

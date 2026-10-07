@@ -79,6 +79,8 @@ public:
                       const Event& recon) override;
     void prepareCentral(MainEvent& main0, const Event& vertex0) override;
     double spectralWeight(const Event&) override { return 1.0; }   // event.f:1397-1398
+    /// simc.f:844 prints targ%Mrec_struck at the end of the run: the last Delta mass for which_pion 2/3.
+    void finalTargetState(TargetInfo& targ) const override;
 
     /// COMMON targ%Mrec_struck as complete_ev leaves it (Breit-Wigner Delta mass for which_pion 2/3).
     double mrecStruck() const { return mrecStruck_; }
