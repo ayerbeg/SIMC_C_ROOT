@@ -25,3 +25,12 @@ simc++ looks for these files in --data-dir DIR (default: this directory, compile
 File formats: theory files = init.f:855-886 (nrhoPm absorption E_Fermi / per shell nprot Em Emsig bs_norm /
 (Pm, rho) points, a shell ends when Pm decreases); Benhar files = sf_lookup.f:26-30 (numPm numEm / numPm*numEm lines
 Pm Em SFp SFn dPm dEm).
+
+Momentum distributions of the struck nucleon for quasifree pion/kaon/SIDIS production on D and A > 2 (task P9.2;
+dbase.f:563-587: pval [MeV/c], mprob read list-directed, mprob normalised to mprob(nump)):
+  deut.dat       doing_deutpi / doing_deutkaon / doing_deutsemi                        A = 2
+  he3.dat        doing_hepi / doing_hekaon                                             A = 3
+  he4.dat        "                                                                     A = 4
+  c12.dat        "                                                                     A = 12 (and the Fortran default)
+For A > 2 quasifree production the Benhar table of the same A (benharsf_*.dat) is also read: VERTEXedge%Em%max =
+Emval(numEm) (init.f:356) and the missing energy of each event (sf_lookup.f:generate_em).

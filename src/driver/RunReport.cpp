@@ -138,7 +138,11 @@ void reactionLines(Out& o, const RunSetup& s) {
             stop("I don't have ANY idea what (e,e'pi) we're doing!!!");
         }
         if (p.which_pion == 0 || p.which_pion == 1) o.list("              ****----  Default Final State ----****");
-        else if (p.which_pion == 10) o.list("              ****----  Final State is A + pi ----****");
+        // FORTRAN-BUG(D-038 F15): original Fortran simc.f:752: `else if (which_pion .eq. 10) then` prints the final-state
+        // line for coherent pi+ only: for which_pion = 11 (coherent pi-) the .hist has no final-state line; corrected
+        // because 11 is the same A + pi final state. fortran_compat prints nothing for 11.
+        else if (p.which_pion == 10 || (p.which_pion == 11 && !s.fortran_compat))
+            o.list("              ****----  Final State is A + pi ----****");
         else if (p.which_pion == 2 || p.which_pion == 3) o.list("              ****----  Final State is pi + Delta ----****");
     } else if (f.doing_kaon) {
         if (f.doing_hydkaon) {

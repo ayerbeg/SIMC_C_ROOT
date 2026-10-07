@@ -29,6 +29,13 @@ public:
                               const Event& recon) = 0;
     /// Generated phase-space volume factor entering normfac (simc.f:383-396).
     virtual double genVolume() const = 0;
+    /// Called by calculate_central (simc.f:1143-1300) after complete_recon_ev(vertex0) and before
+    /// complete_main(.true., main0, ...): lets a reaction set the central main0 quantities its cross section reads
+    /// (task P9.2: the pion reaction fills main0%epsilon, t, phi_pq in corrected mode, D-038 F5). Default: nothing.
+    virtual void prepareCentral(MainEvent& main0, const Event& vertex0) {
+        (void)main0;
+        (void)vertex0;
+    }
     /// The Fortran try counter `ntried` of the coming try (simc.f:190), before generate(). Only used in messages
     /// (event.f:591, 'two solutions' warning for ntried <= 5000). Default: ignored.
     virtual void beginTry(long ntried) { (void)ntried; }

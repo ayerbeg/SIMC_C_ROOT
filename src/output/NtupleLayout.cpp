@@ -5,7 +5,9 @@
 #include "simc/core/SpectrometerId.h"
 #include "simc/core/Units.h"
 
+#include <algorithm>
 #include <cmath>
+#include <stdexcept>
 
 namespace simc {
 
@@ -83,6 +85,153 @@ bool UsesEepLayout(const ReactionFlags& f) {
     if (f.doing_pion || f.doing_kaon || f.doing_delta) return false;
     if (f.doing_semi || f.doing_rho) return false;
     return f.doing_hyd_elast || f.doing_deuterium || f.doing_heavy;
+}
+
+namespace {
+/// results_write.f:64-117: columns 1-24 (right-side "hs", left-side "ss" arm). Unknown arm: untouched.
+ArmSide FillArms(const RunSetup& s, const MainEvent& main, const Event& orig, const Event& recon, double* ntu) {
+    const ArmSide side = ElectronArmSide(s.params.electron_arm);
+    auto fillArm = [&](int off, const ArmFull& r, const ArmFP& fp, const ArmFull& o, double ytari) {
+        ntu[off + 0] = r.delta;
+        ntu[off + 1] = r.yptar;
+        ntu[off + 2] = r.xptar;
+        ntu[off + 3] = r.z;
+        ntu[off + 4] = fp.x;
+        ntu[off + 5] = fp.dx;
+        ntu[off + 6] = fp.y;
+        ntu[off + 7] = fp.dy;
+        ntu[off + 8] = o.delta;
+        ntu[off + 9] = o.yptar;
+        ntu[off + 10] = o.xptar;
+        ntu[off + 11] = ytari;
+    };
+    if (side == ArmSide::ElectronRight) {          // results_write.f:64-88
+        fillArm(0, recon.e, main.FP.e, orig.e, main.target.z * s.e_sin_th);
+        fillArm(12, recon.p, main.FP.p, orig.p, -main.target.z * s.p_sin_th);
+    } else if (side == ArmSide::ElectronLeft) {    // results_write.f:89-117
+        fillArm(0, recon.p, main.FP.p, orig.p, main.target.z * s.p_sin_th);
+        fillArm(12, recon.e, main.FP.e, orig.e, -main.target.z * s.e_sin_th);
+    }
+    // results_write.f:121-129
+    ntu[24] = recon.q / units::kMeVPerGeV;
+    ntu[25] = recon.nu / units::kMeVPerGeV;
+    ntu[26] = recon.Q2 / 1.e6;
+    ntu[27] = recon.W / units::kMeVPerGeV;
+    ntu[28] = recon.epsilon;
+    ntu[29] = recon.Em / units::kMeVPerGeV;
+    ntu[30] = recon.Pm / units::kMeVPerGeV;
+    ntu[31] = recon.theta_pq;
+    ntu[32] = recon.phi_pq;
+    return side;
+}
+}  // namespace
+
+const std::vector<NtupleColumn>& PionNtupleColumns(bool pizero) {
+    static const std::vector<NtupleColumn> pion = [] {
+        std::vector<NtupleColumn> c(EepNtupleColumns().begin(), EepNtupleColumns().begin() + 33);
+        const std::vector<NtupleColumn> tail = {
+            {"missmass", "main.ntup.mm/1000 (complete_recon_ev: sqrt|Em^2-Pm^2| with sign)", "GeV", "results_write.f:134"},
+            {"mmnuc", "main.ntup.mmA/1000 (missing mass on the nucleus)", "GeV", "results_write.f:135"},
+            {"phad", "recon.p.P/1000", "GeV/c", "results_write.f:136"},
+            {"t", "main.ntup.t/1e6 (recon)", "GeV^2", "results_write.f:137"},
+            {"pmpar", "recon.PmPar/1000", "GeV/c", "results_write.f:138"},
+            {"pmper", "recon.PmPer/1000", "GeV/c", "results_write.f:139"},
+            {"pmoop", "recon.PmOop/1000", "GeV/c", "results_write.f:140"},
+            {"fry", "-main.target.rastery", "cm", "results_write.f:141"},
+            {"radphot", "main.ntup.radphot/1000", "GeV", "results_write.f:142"},
+            {"pfermi", "pfer/1000*sign(pfermi_hat.uq) (vertex uq)", "GeV/c", "results_write.f:143-145"},
+            {"siglab", "main.sigcc", "ub/MeV/sr^2", "results_write.f:146"},
+            {"sigcm", "main.ntup.sigcm", "ub/MeV^2/rad", "results_write.f:147"},
+            {"Weight", "main.weight", "", "results_write.f:148"},
+            {"decdist", "main.ntup.decdist", "cm", "results_write.f:149"},
+            {"Mhadron", "sqrt(main.ntup.Mh2_final)", "MeV", "results_write.f:150"},
+            {"pdotqhat", "pfer/1000*(pfermi_hat.uq)", "GeV/c", "results_write.f:151"},
+            {"Q2i", "vertex.Q2/1e6", "GeV^2", "results_write.f:152"},
+            {"Wi", "main.w/1000", "GeV", "results_write.f:153"},
+            {"ti", "main.t/1e6", "GeV^2", "results_write.f:154"},
+            {"phipqi", "main.phi_pq", "rad", "results_write.f:155"},
+        };
+        c.insert(c.end(), tail.begin(), tail.end());
+        return c;
+    }();
+    static const std::vector<NtupleColumn> pi0 = [] {
+        std::vector<NtupleColumn> c = pion;
+        const std::vector<NtupleColumn> tail = {
+            {"xcal_gamma1", "main.ntup.xcal_gamma1 (calorimeter only; 0 with HMS/SHMS)", "cm", "results_write.f:174"},
+            {"ycal_gamma1", "main.ntup.ycal_gamma1", "cm", "results_write.f:175"},
+            {"Egamma1", "main.ntup.gamma1[0]", "MeV", "results_write.f:176"},
+            {"Pgamma1x", "main.ntup.gamma1[1]", "MeV/c", "results_write.f:177"},
+            {"Pgamma1y", "main.ntup.gamma1[2]", "MeV/c", "results_write.f:178"},
+            {"Pgamma1z", "main.ntup.gamma1[3]", "MeV/c", "results_write.f:179"},
+            {"xcal_gamma2", "main.ntup.xcal_gamma2", "cm", "results_write.f:180"},
+            {"ycal_gamma2", "main.ntup.ycal_gamma2", "cm", "results_write.f:181"},
+            {"Egamma2", "main.ntup.gamma2[0]", "MeV", "results_write.f:182"},
+            {"Pgamma2x", "main.ntup.gamma2[1]", "MeV/c", "results_write.f:183"},
+            {"Pgamma2y", "main.ntup.gamma2[2]", "MeV/c", "results_write.f:184"},
+            {"Pgamma2z", "main.ntup.gamma2[3]", "MeV/c", "results_write.f:185"},
+        };
+        c.insert(c.end(), tail.begin(), tail.end());
+        return c;
+    }();
+    return pizero ? pi0 : pion;
+}
+
+bool UsesPionLayout(const ReactionFlags& f) { return f.doing_pion; }
+
+// Fortran: results_write.f:131-186 (doing_pion; no target field)
+bool FillPionNtuple(const RunSetup& s, const MainEvent& main, const Event& vertex, const Event& orig,
+                    const Event& recon, std::vector<double>& ntu) {
+    const ArmSide side = FillArms(s, main, orig, recon, ntu.data());
+    const FermiMomentum& F = main.pfermi;
+    ntu[33] = main.ntup.mm / 1000.;
+    ntu[34] = main.ntup.mmA / 1000.;
+    ntu[35] = recon.p.P / 1000.;
+    ntu[36] = main.ntup.t / 1.e6;
+    ntu[37] = recon.PmPar / 1000.;
+    ntu[38] = recon.PmPer / 1000.;
+    ntu[39] = recon.PmOop / 1000.;
+    ntu[40] = -main.target.rastery;
+    ntu[41] = main.ntup.radphot / 1000.;
+    double dummy = F.pferx * vertex.uq.x + F.pfery * vertex.uq.y + F.pferz * vertex.uq.z;
+    if (dummy == 0) dummy = 1.e-20;
+    ntu[42] = F.pfer / 1000. * std::fabs(dummy) / dummy;
+    ntu[43] = main.sigcc;
+    ntu[44] = main.ntup.sigcm;
+    ntu[45] = main.weight;
+    ntu[46] = main.ntup.decdist;
+    ntu[47] = std::sqrt(main.ntup.Mh2_final);
+    ntu[48] = F.pfer / 1000. * dummy;
+    ntu[49] = vertex.Q2 / 1.e6;
+    ntu[50] = main.w / 1.e3;
+    ntu[51] = main.t / 1.e6;
+    ntu[52] = main.phi_pq;
+    if (s.flags.doing_pizero && ntu.size() >= static_cast<std::size_t>(kPionPizeroNtupleSize)) {   // l.172-185
+        ntu[53] = main.ntup.xcal_gamma1;
+        ntu[54] = main.ntup.ycal_gamma1;
+        for (int i = 0; i < 4; ++i) ntu[static_cast<std::size_t>(55 + i)] = main.ntup.gamma1[static_cast<std::size_t>(i)];
+        ntu[59] = main.ntup.xcal_gamma2;
+        ntu[60] = main.ntup.ycal_gamma2;
+        for (int i = 0; i < 4; ++i) ntu[static_cast<std::size_t>(61 + i)] = main.ntup.gamma2[static_cast<std::size_t>(i)];
+    }
+    return side != ArmSide::Unknown;
+}
+
+const std::vector<NtupleColumn>& NtupleColumnsFor(const RunSetup& s) {
+    if (s.flags.doing_pion && !s.flags.using_tgt_field && !s.params.using_tgt_field)
+        return PionNtupleColumns(s.flags.doing_pizero);
+    if (UsesEepLayout(s.flags)) return EepNtupleColumns();
+    throw std::runtime_error("ntuple: only the (e,e'p)/phase-space (NtupleInit.f:296-321) and the exclusive pion "
+                             "(NtupleInit.f:101-190, no target field) layouts are implemented so far");
+}
+
+bool FillNtuple(const RunSetup& s, const MainEvent& main, const Event& vertex, const Event& orig, const Event& recon,
+                std::vector<double>& ntu) {
+    if (s.flags.doing_pion) return FillPionNtuple(s, main, vertex, orig, recon, ntu);
+    std::array<double, kEepNtupleSize> a{};
+    std::copy(ntu.begin(), ntu.begin() + std::min<std::size_t>(ntu.size(), kEepNtupleSize), a.begin());
+    const bool ok = FillEepNtuple(s, main, vertex, orig, recon, a);
+    ntu.assign(a.begin(), a.end());
+    return ok;
 }
 
 bool FillEepNtuple(const RunSetup& s, const MainEvent& main, const Event& /*vertex*/, const Event& orig,

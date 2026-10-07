@@ -161,6 +161,25 @@ bool ReadTheoryFile(const std::string& path, bool doing_heavy, TheoryData& t, st
 }
 
 // =============================================================================================
+// Fortran: sf_lookup.f:sf_lookup_init (l.22-49), the part the set-up needs: Emval(numEm), the Em of the last line of
+// the first Pm block (iPm = 1). The table itself is read by nuclear::SfTable (physics library) for the reaction.
+// =============================================================================================
+bool ReadBenharEmMax(const std::string& path, double& emmax) {
+    std::ifstream f(path);
+    if (!f) return false;
+    ListReader rd(f);
+    std::vector<double> v;
+    if (rd.read(v, 2) != ListReader::kOk) return false;
+    const int numEm = static_cast<int>(v[1]);
+    if (numEm < 1) return false;
+    for (int iEm = 1; iEm <= numEm; ++iEm) {
+        if (rd.read(v, 6) != ListReader::kOk) return false;
+        emmax = v[1];   // Emval(iEm) = tmpEm (iPm = 1)
+    }
+    return true;
+}
+
+// =============================================================================================
 // Fortran: dbase.f:578-586 (momentum distribution pval/mprob)
 // =============================================================================================
 bool ReadMomentumDistribution(const std::string& path, MomentumDistribution& d) {
@@ -573,7 +592,9 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
 
     // ---- dbase.f:592-621 spectral function (sf_lookup_init). For A(e,e'p) with use_benhar_sf the choice of the file and
     // of the proton/neutron column is made here; the table is read by the "benhar" ISpectralFunction (sf_lookup_init).
-    if (f.doing_heavy && p.use_benhar_sf) {
+    // (also for A > 2 quasifree pion/kaon production, doing_hepi/doing_hekaon: the table of generate_em, P9.2)
+    double benharEmMax = 0.0;   // Emval(numEm)
+    if ((f.doing_heavy && p.use_benhar_sf) || f.doing_hepi || f.doing_hekaon) {
         SpectralFunctionChoice& sf = s.sf;
         sf.type = "benhar";
         if (!opt.sf_file.empty()) {
@@ -602,9 +623,12 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
             sf.proton = true;
         }
     }
-    if (f.doing_hepi || f.doing_hekaon)
-        s.not_ported.push_back("sf_lookup_init (dbase.f:594-621) for A>2 pion/kaon: Emval(numEm) for the "
-                               "VERTEXedge%Em%max of A>2 pion/kaon/delta/rho is left at its min_max_init value");
+    if (f.doing_hepi || f.doing_hekaon) {   // sf_lookup_init: Emval(numEm) for VERTEXedge%Em%max (init.f:356)
+        if (!ReadBenharEmMax(joinPath(opt.data_dir, s.sf.file), benharEmMax)) {
+            stop("cannot read spectral function " + s.sf.file);
+            return s;
+        }
+    }
     // ---- dbase.f:624-681 kaon model tables: they belong to the kaon cross-section model
     if (f.doing_kaon) s.not_ported.push_back("kaon model tables weightc/weightd/saghai (dbase.f:624-681)");
 
@@ -775,7 +799,7 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
         V.Pm.max = pdistMax();
     } else if (f.doing_hepi || f.doing_hekaon || f.doing_hedelta || f.doing_herho) {
         V.Em.min = t.Mtar_struck + t.Mrec - t.M;
-        // V.Em.max = Emval(numEm): sf_lookup_init not ported (see not_ported); keeps +1e10
+        V.Em.max = benharEmMax;   // Emval(numEm) (sf_lookup_init, dbase.f:594-621)
         V.Pm.min = 0.0;
         V.Pm.max = pdistMax();
     } else if (f.doing_semi) {
@@ -945,10 +969,22 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
             stop("pizero_ngamma not set correctly(must be 1 or 2), stopping");
             return s;
         }
-        // dbase.f:823-826. FORTRAN-BUG(D-018), path not ported (P9): this also stops charged H(e,e'pi-)Delta++
-        // (which_pion=3 without doing_pizero; fpi12_deltapp.inp), although the message only talks about pi0 from a neutron.
-        // Kept in both modes until the pion reaction is ported; the port must add the doing_pizero condition.
-        if (p.which_pion == 3 && ff.doing_hydpi) {
+        // FORTRAN-BUG(D-038 F2): original Fortran dbase.f:141-142 stops pi- production from hydrogen
+        // (`nint(targ%A).eq.1 .and. which_pion.eq.1 .and. .not. doing_pizero`) but accepts pi0 "from the neutron"
+        // (which_pion = 1 with doing_pizero) on hydrogen, which then runs with Mtar_struck = Mn on a proton target;
+        // corrected because hydrogen has no neutron: the configuration is rejected at start-up (std::invalid_argument,
+        // exit status 2). fortran_compat keeps the Fortran (the run proceeds).
+        if (!s.fortran_compat && ff.doing_pizero && A == 1 && p.which_pion == 1)
+            throw std::invalid_argument("doing_pizero = 1 with which_pion = 1 (pi0 production from a NEUTRON) on a hydrogen "
+                                        "target (A = 1): hydrogen has no neutron (the Fortran accepts it and uses "
+                                        "Mtar_struck = Mn, dbase.f:141-142, D-038 F2). Use which_pion = 0 (pi0 from the "
+                                        "proton).");
+        // FORTRAN-BUG(D-038 F1, D-018): original Fortran dbase.f:823-826:
+        // `if(doing_hydpi .and. which_pion.eq.3) stop 'Can''t do Delta+ production from neutron for pi0'` does not test
+        // doing_pizero, so charged H(e,e'pi-)Delta++ (set up at dbase.f:361-364, weighted 0.55 at event.f:1479-1484;
+        // infiles/fpi12_deltapp.inp) can never run; corrected because the message and the physics only exclude the pi0
+        // (gamma* n -> pi0 Delta0 needs a neutron): the STOP is limited to doing_pizero. fortran_compat keeps the STOP.
+        if (p.which_pion == 3 && ff.doing_hydpi && (s.fortran_compat || ff.doing_pizero)) {
             stop("Can't do Delta+ production from neutron for pi0");
             return s;
         }

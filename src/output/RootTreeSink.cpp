@@ -28,14 +28,13 @@ void RootTreeSink::init(const StageContext&) {}
 
 void RootTreeSink::beginRun(const RunSetup& setup) {
     setup_ = setup;
-    if (!UsesEepLayout(setup.flags))
-        throw std::runtime_error("RootTreeSink: only the (e,e'p)/phase-space ntuple layout (NtupleInit.f:296-321) "
-                                 "is implemented so far");
+    const auto& cols = NtupleColumnsFor(setup);   // throws for the layouts not implemented yet
     if (file_.empty()) file_ = setup.output_dir + "/" + setup.run_name + ".root";
     tfile_.reset(TFile::Open(file_.c_str(), "RECREATE"));
     if (!tfile_ || tfile_->IsZombie()) throw std::runtime_error("RootTreeSink: cannot create " + file_);
     tree_ = new TTree(tree_name_.c_str(), tree_name_.c_str());   // froot.c: new TTree("h10","h10")
-    const auto& cols = EepNtupleColumns();
+    ntu_.assign(cols.size(), 0.0);
+    out_.assign(cols.size(), 0.0f);
     for (size_t i = 0; i < cols.size(); ++i) tree_->Branch(cols[i].name, &out_[i], cols[i].name);
     entries_ = 0;
 }
@@ -43,7 +42,7 @@ void RootTreeSink::beginRun(const RunSetup& setup) {
 void RootTreeSink::fill(const MainEvent& main, const Event& vertex, const Event& orig, const Event& recon,
                         bool success) {
     if (!success || !tree_) return;   // results_write.f:34
-    FillEepNtuple(setup_, main, vertex, orig, recon, ntu_);
+    FillNtuple(setup_, main, vertex, orig, recon, ntu_);
     for (size_t i = 0; i < ntu_.size(); ++i) out_[i] = static_cast<float>(ntu_[i]);   // make_root_tree real*4
     tree_->Fill();
     ++entries_;

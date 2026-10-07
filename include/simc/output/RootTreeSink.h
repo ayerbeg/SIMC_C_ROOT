@@ -14,6 +14,7 @@
 #include <array>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "simc/core/RunSetup.h"
 #include "simc/output/NtupleLayout.h"
@@ -44,8 +45,8 @@ private:
     RunSetup setup_;
     std::unique_ptr<TFile> tfile_;
     TTree* tree_{nullptr};                                  // owned by tfile_
-    std::array<double, kEepNtupleSize> ntu_{};              // static like the Fortran array
-    std::array<float, kEepNtupleSize> out_{};               // make_root_tree: real*4 ntup_out
+    std::vector<double> ntu_;                               // static like the Fortran array (layout size)
+    std::vector<float> out_;                                // make_root_tree: real*4 ntup_out
     long entries_{0};
 };
 

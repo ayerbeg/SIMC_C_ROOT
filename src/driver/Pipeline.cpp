@@ -74,12 +74,16 @@ PipelineConfig PipelineConfig::Defaults(const RunSetup& s) {
         p.reaction.type = "deuterium_eep";
     else if (f.doing_heavy)
         p.reaction.type = "nucleus_eep";
+    else if (f.doing_pion)   // which_pion 0/1/2/3/10/11, pi+/pi-/pi0 (P9.2)
+        p.reaction.type = "pion_production";
     else
         p.reaction.type = "";   // not ported: SimcRun reports NotPorted with the reaction title
     // event.f:complete_main l.1444-1456
     if (f.doing_deuterium || f.doing_heavy) {
         p.physics.type = "deforest";
         p.physics.config["Mh"] = s.Mh;
+    } else if (f.doing_pion && !f.doing_phsp) {
+        p.physics.type = "pion";   // physics_pion.f:peepi (l.1459)
     } else {
         p.physics.type = "sigep";
     }

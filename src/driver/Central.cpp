@@ -46,9 +46,17 @@ CentralResult calculateCentral(const RunSetup& s, IReaction& reaction, IRadiator
     vertex0.p.P = s.spec.p.P * (1. + vertex0.p.delta / 100.);
     vertex0.p.E = std::sqrt(vertex0.p.P * vertex0.p.P + s.Mh2);
 
-    // l.1197-1204: /pfermi/ = 0, efer = M - Mrec. The reactions own their /pfermi/ copy and reset it in generate;
-    // complete_recon_ev does not read it, so only vertex0%Em is set here.
+    // l.1197-1204: /pfermi/ = 0, efer = M - sqrt(m_spec**2 + pfer**2) (= M - Mrec). COMMON /pfermi/ is
+    // MainEvent::pfermi; the central peepi call (pion reaction) reads it.
+    main0.pfermi.pfer = 0.0;
+    main0.pfermi.pferx = 0.0;
+    main0.pfermi.pfery = 0.0;
+    main0.pfermi.pferz = 0.0;
     vertex0.Em = s.targ.Mtar_struck + s.targ.Mrec - s.targ.M;
+    {
+        const double m_spec = s.targ.M - s.targ.Mtar_struck + vertex0.Em;   // =targ.Mrec
+        main0.pfermi.efer = s.targ.M - std::sqrt(m_spec * m_spec + main0.pfermi.pfer * main0.pfermi.pfer);
+    }
 
     // l.1240-1242
     if (!reaction.completeRecon(vertex0)) throw FortranStop("COMPLETE_EV failed trying to complete a CENTRAL event! (simc.f:1240-1242)");
@@ -81,6 +89,7 @@ CentralResult calculateCentral(const RunSetup& s, IReaction& reaction, IRadiator
 
     // l.1288-1290: recon0 = vertex0; complete_main(.true., main0, vertex0, vertex0, recon0, success)
     const Event recon0 = vertex0;
+    reaction.prepareCentral(main0, vertex0);   // P9.2 hook (pion: D-038 F5 in corrected mode); no-op otherwise
     model.beginEvent(0);   // nevent = 0 before the loop
     reaction.completeMain(true, main0, vertex0, vertex0, recon0);
     central.sigcc = main0.sigcc;

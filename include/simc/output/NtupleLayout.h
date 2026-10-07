@@ -6,9 +6,9 @@
 // Fortran: NtupleInit.f (tags, l.36-321), results_write.f:results_ntu_write (l.1-271),
 //          make_root_tree.f + froot.c (one Float_t branch per tag, tree "h10").
 //
-// Implemented layout: the (e,e'p) family, i.e. doing_hyd_elast / doing_deuterium /
-// doing_heavy (this includes doing_phsp, which keeps doing_hyd_elast & co.): 46 columns.
-// The pion/kaon/delta, semi/rho layouts will be added with those reactions.
+// Implemented layouts: the (e,e'p) family, i.e. doing_hyd_elast / doing_deuterium /
+// doing_heavy (this includes doing_phsp, which keeps doing_hyd_elast & co.): 46 columns; exclusive pion production
+// (doing_pion, task P9.2): 53 columns (65 with doing_pizero). Kaon/delta and semi/rho come with those reactions.
 #ifndef SIMC_OUTPUT_NTUPLELAYOUT_H
 #define SIMC_OUTPUT_NTUPLELAYOUT_H
 
@@ -48,6 +48,28 @@ bool FillEepNtuple(const RunSetup& setup, const MainEvent& main, const Event& ve
 
 /// True if the reaction flags select the (e,e'p) ntuple layout (NtupleInit.f:296).
 bool UsesEepLayout(const ReactionFlags& f);
+
+// ------------------------------------------------------------------------------------------- pion layout (P9.2)
+constexpr int kPionNtupleSize = 53;        ///< NtupleInit.f:101-141 (doing_pion, no target field, no pi0)
+constexpr int kPionPizeroNtupleSize = 65;  ///< + 12 pi0 photon columns (NtupleInit.f:165-190)
+
+/// The pion/kaon/delta columns in Fortran order (53, or 65 with doing_pizero). Columns 1-33 are those of the (e,e'p)
+/// layout.
+const std::vector<NtupleColumn>& PionNtupleColumns(bool pizero);
+
+/// True if the reaction flags select the pion layout (NtupleInit.f:101: doing_pion; kaon/delta are not ported).
+bool UsesPionLayout(const ReactionFlags& f);
+
+/// results_ntu_write for doing_pion (results_write.f:64-186). `ntu` must have PionNtupleColumns(pizero).size()
+/// elements; columns 1-24 keep their previous content for an unknown electron arm (as FillEepNtuple).
+bool FillPionNtuple(const RunSetup& setup, const MainEvent& main, const Event& vertex, const Event& orig,
+                    const Event& recon, std::vector<double>& ntu);
+
+/// The layout of a run: the columns and the filler (FillEepNtuple or FillPionNtuple). Throws std::runtime_error for
+/// the layouts that are not implemented (semi/rho, kaon, delta, target field).
+const std::vector<NtupleColumn>& NtupleColumnsFor(const RunSetup& setup);
+bool FillNtuple(const RunSetup& setup, const MainEvent& main, const Event& vertex, const Event& orig,
+                const Event& recon, std::vector<double>& ntu);
 
 }  // namespace simc
 

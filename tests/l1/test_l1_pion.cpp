@@ -138,8 +138,8 @@ int runFiles(const std::string& dataDir, const std::string& fortranDir) {
         std::printf("  %-16s md5 %s %s, %s\n", name.c_str(), got.c_str(), okmd5 ? "ok" : "MISMATCH", cmp.c_str());
         if (!okmd5 || !okF) ++bad;
     }
-    std::printf("pion data files: %d listed, %d bad -> %s\n", n, bad, bad || n != 5 ? "FAIL" : "PASS");
-    return (bad || n != 5) ? 1 : 0;
+    std::printf("pion data files: %d listed, %d bad -> %s\n", n, bad, bad || n != 6 ? "FAIL" : "PASS");   // 5 (P9.1) + delta_relativistic_bw.inp (P9.2)
+    return (bad || n != 6) ? 1 : 0;
 }
 
 // ------------------------------------------------------------------------------------------------- simple fits

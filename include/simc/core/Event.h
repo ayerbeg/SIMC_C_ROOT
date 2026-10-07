@@ -78,6 +78,10 @@ struct NtupVars {
     double Mh2_final{0}; ///< hadron mass^2 after decay (MeV^2)
     double sigcm1{0};    ///< pion/kaon: first model cross section (physics_pion.f:126 sig_param_2021) [ub/MeV^2/rad]
     double sigcm2{0};    ///< pion/kaon: second model (physics_pion.f:148 MAID, W < 2 GeV only) [ub/MeV^2/rad]
+    /// pi0 photons (pizero_decay.f, event.f:899-901): (E, px, py, pz) in the lab [MeV] (task P9.2)
+    std::array<double, 4> gamma1{}, gamma2{};
+    /// pi0 photon positions at the calorimeter [cm] (simc.f:1500-1560, mc_calo only; never written with HMS/SHMS)
+    double xcal_gamma1{0}, ycal_gamma1{0}, xcal_gamma2{0}, ycal_gamma2{0};
 };
 
 /// Fortran: COMMON /pfermi/ efer, pfer, pferx, pfery, pferz (simulate.inc l.212-217): the Fermi motion of the struck

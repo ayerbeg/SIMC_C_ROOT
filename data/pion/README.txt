@@ -21,3 +21,6 @@ simc++ looks for these files in the "pion" physics model's JSON key "data_dir" (
 as SIMC_PION_DATA_DIR):
   "pipeline": {"physics": {"type": "pion", "data_dir": "/path/to/dir"}}
 maidpi0pborn.dat (also in simc_gfortran) is not read by any Fortran routine and is not copied.
+  delta_relativistic_bw.inp  event.f:complete_ev (l.478-496): the relativistic Breit-Wigner shape of the Delta(1232)
+                 mass (1000 records (f8.3,f12.5) = W [GeV], probability), read for which_pion = 2/3 (pi Delta final
+                 states; task P9.2, reactions::PionProduction).

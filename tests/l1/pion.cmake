@@ -4,7 +4,7 @@
 # reports give the bitwise counts). The MAID tables and MULTIPOL.file are the repository copies in data/pion
 # (byte-identical to the Fortran files, checked by l1_pion_data_files).
 add_executable(test_l1_pion test_l1_pion.cpp)
-target_link_libraries(test_l1_pion PRIVATE simcfw_l1runner simcfw_pion ${SIMC_DRIVER_LIBS})
+target_link_libraries(test_l1_pion PRIVATE simcfw_l1runner ${SIMC_DRIVER_LIBS})
 
 set(_pfn ${SIMC_REFERENCE_DIR}/functions)
 set(_pdata ${CMAKE_SOURCE_DIR}/data/pion)
