@@ -268,7 +268,7 @@ run of the same seed). Binary: commit 3b27d5c.
   * K2 wtcontr (D-006, simc.f:237): the hadron (HMS) δ upper cut becomes 10 % instead of the SHMS 22 %. Fortran/corrected
     = +15.42 % (H), +15.69 % (D), +14.30 % (He-3); compat/corrected at the same seed +15.10 %, +15.72 %, +14.33 %; P9.F1
     measured +14.8, +15.6, +14.1 % on the Fortran trees (passcuts_l2.py). Corrected × that factor reproduces the Fortran
-    wtcontr within 0.8 σ.
+    wtcontr within 1.7 σ (H), 0.2 σ (D), 0.6 σ (He-3).
   * Without these two tests the corrected runs count 1/256, 2/272, 0/245, 6/278, 1/251, 5/257, 4/251 failures.
 * D-037 F7 (decay drift) moves the recon of ~1.4 % of the K1 events (π decays in the SHMS) by ≤ 1e-2 % δ; in K2 (HMS) it
   changes an acceptance decision early in the run, after which the random sequences diverge: the distributions stay equal
