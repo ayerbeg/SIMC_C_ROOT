@@ -147,14 +147,22 @@ class IReaction : public IStage {
   Fortran part after the SF weight (cross section, Coulomb focusing factor, weight).
 * `genVolume()` is the generated phase-space volume used in the normalisation.
 * Select it with `"reaction": "my_reaction"`. The default comes from the run flags (`hydrogen_elastic`,
-  `phase_space`, `deuterium_eep`, `nucleus_eep`).
+  `phase_space`, `deuterium_eep`, `nucleus_eep`, `pion_production`).
+* Optional hooks: `beginTry(ntried)` (messages), `prepareCentral(main0, vertex0)` (called by calculate_central before
+  the central complete_main: set the main0 quantities your cross section reads) and `finalTargetState(targ)` (target
+  COMMON values your reaction changed during the run, for the report).
 
 The (e,e'p) plug-ins share `reactions::EepReactionBase` (complete_ev, complete_recon_ev, complete_main, genvol of
 event.f/simc.f); a new (e,e'p)-like reaction can derive from it and implement `generate()` and `spectralWeight()`.
-The cross sections of the Fortran reactions that are not ported yet (pion, kaon, Delta, rho, SIDIS) throw `NotPorted`
-in `assembleWeight`.
+The cross sections of the Fortran reactions that are not ported yet (kaon, Delta, rho, SIDIS) throw `NotPorted`
+in `assembleWeight`. The exclusive pion reaction `pion_production` (P9.2, `include/simc/reactions/PionProduction.h`)
+also derives from `EepReactionBase` (it reuses complete_recon_ev and genvol) and overrides `generate`, `completeEv` and
+`completeMain`: an example of a reaction with its own kinematics, Fermi motion (`MainEvent::pfermi`), extra random
+numbers (Delta mass, pi0 decay) and its own weight assembly. Its JSON keys: `data_dir` (delta_relativistic_bw.inp),
+`verbose`.
 
-Templates: `include/simc/reactions/HydrogenElastic.h`, `include/simc/reactions/NuclearEep.h`.
+Templates: `include/simc/reactions/HydrogenElastic.h`, `include/simc/reactions/NuclearEep.h`,
+`include/simc/reactions/PionProduction.h`.
 
 ### Spectral function (`ISpectralFunction`, component of the D/A(e,e'p) reactions)
 

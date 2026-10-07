@@ -21,9 +21,11 @@ Each sink accepts an optional JSON config `{"file": "..."}`.
   util/root_tree/make_root_tree.f + froot.c (tree `h10`, one `Float_t` leaf per tag, branch title = name).
 - Only successful events are written (results_write.f:34).
 - Each value is computed in double precision and stored as `Float_t`, like make_root_tree's `real*4 ntup_out`.
-- Implemented layout: the (e,e'p) family (`doing_hyd_elast`, `doing_deuterium`, `doing_heavy`). This includes `doing_phsp`,
-  which keeps `doing_hyd_elast`, so the acceptance runs also have these 46 columns. The pion/kaon/delta and semi/rho layouts
-  (NtupleInit.f l.101-295) will come with those reactions. Until then `beginRun` throws for them.
+- Implemented layouts: the (e,e'p) family (`doing_hyd_elast`, `doing_deuterium`, `doing_heavy`), 46 columns. This includes
+  `doing_phsp`, which keeps `doing_hyd_elast`, so the acceptance runs also have these 46 columns. Exclusive pion production
+  (`doing_pion`, P9.2): 53 columns, 65 with `doing_pizero` (§1b). The kaon/delta and semi/rho layouts (NtupleInit.f l.101-295)
+  will come with those reactions; `beginRun` throws for them (and for `using_tgt_field`). The layout is chosen from the run
+  flags (`NtupleColumnsFor(setup)`, `FillNtuple`).
 - **Arm assignment** (results_write.f:64 and 89): `hs*` = the spectrometer on the beam **right** (HMS, HRSR) and `ss*` = the
   one on the **left** (SOS, HRSL, SHMS).
   - `electron_arm` = 1, 3, 7 (beam-right spectrometers, `core/SpectrometerId.h`): `hs*` holds the electron, `ss*` the hadron.
@@ -89,6 +91,37 @@ Signs:
 - `fry = −main.target.rastery`.
 - `Pmx/Pmy/Pmz` are the "Heepcheck" components (results_write.f:57-61).
 - `corrsing` uses the nominal `Ebeam` and Mp = 938.27231.
+
+### 1b. Pion layout (doing_pion; NtupleInit.f:101-190, results_write.f:131-186)
+
+Columns 1-33 are those of the table above (same arm assignment). Then:
+
+| # | branch | C++ source | units | Fortran |
+|---|---|---|---|---|
+| 34 | `missmass` | `main.ntup.mm/1000` (complete_recon_ev: sign(mm²)·sqrt\|Em²−Pm²\| with Em = ν + Mtar_struck − E_π) | GeV | results_write.f:134 |
+| 35 | `mmnuc` | `main.ntup.mmA/1000` (missing mass on the nucleus, M instead of Mtar_struck) | GeV | results_write.f:135 |
+| 36 | `phad` | `recon.p.P/1000` | GeV/c | results_write.f:136 |
+| 37 | `t` | `main.ntup.t/1e6` (recon; SIMC sign: −t_Mandelstam) | GeV² | results_write.f:137 |
+| 38 | `pmpar` | `recon.PmPar/1000` | GeV/c | results_write.f:138 |
+| 39 | `pmper` | `recon.PmPer/1000` | GeV/c | results_write.f:139 |
+| 40 | `pmoop` | `recon.PmOop/1000` | GeV/c | results_write.f:140 |
+| 41 | `fry` | `-main.target.rastery` | cm | results_write.f:141 |
+| 42 | `radphot` | `main.ntup.radphot/1000` | GeV | results_write.f:142 |
+| 43 | `pfermi` | `pfer/1000·\|d\|/d`, d = p̂fermi·q̂(vertex) (d = 0 → 1e-20) | GeV/c | results_write.f:143-145 |
+| 44 | `siglab` | `main.sigcc` (d⁵σ incl. Delta factor and Coulomb factor) | µb/MeV/sr² | results_write.f:146 |
+| 45 | `sigcm` | `main.ntup.sigcm` (peepi) | µb/MeV²/rad | results_write.f:147 |
+| 46 | `Weight` | `main.weight` |  | results_write.f:148 |
+| 47 | `decdist` | `main.ntup.decdist` (0 without a decay) | cm | results_write.f:149 |
+| 48 | `Mhadron` | `sqrt(main.ntup.Mh2_final)` (the muon mass after a π decay) | MeV | results_write.f:150 |
+| 49 | `pdotqhat` | `pfer/1000·d` | GeV/c | results_write.f:151 |
+| 50 | `Q2i` | `vertex.Q2/1e6` | GeV² | results_write.f:152 |
+| 51 | `Wi` | `main.w/1000` (vertex, Mtar_struck) | GeV | results_write.f:153 |
+| 52 | `ti` | `main.t/1e6` (vertex) | GeV² | results_write.f:154 |
+| 53 | `phipqi` | `main.phi_pq` (vertex) | rad | results_write.f:155 |
+| 54-65 | `xcal_gamma1`, `ycal_gamma1`, `Egamma1`, `Pgamma1x/y/z`, `xcal_gamma2`, `ycal_gamma2`, `Egamma2`, `Pgamma2x/y/z` | doing_pizero only: the calorimeter positions (written only by mc_calo, not ported: 0) and the lab photons of pizero_decay (MeV) | cm, MeV | results_write.f:172-185 |
+
+`pfer`, `pferx..z` are COMMON /pfermi/ (`MainEvent::pfermi`) of the event. The validation captures prove the 53 columns
+bit for bit (`l1_simcrun_replay_pion_*`).
 
 ## 2. Run summary JSON (RunSummarySink, hist2json)
 

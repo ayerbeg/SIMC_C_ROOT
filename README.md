@@ -6,8 +6,10 @@ replay tests), and complete runs agree statistically with the Fortran (L2). Arou
 stage of the event chain (target, beam, reaction, radiation, cross section, spectrometers, outputs) is a plug-in
 chosen by name from a JSON pipeline.
 
-Current scope: H(e,e'p) elastic, D(e,e'p) and A(e,e'p) (theory-file or Benhar spectral functions; task P8), with and
-without radiation, and phase-space (`doing_phsp`) runs, HMS and SHMS arms. Other reactions and the SOS/HRS/calorimeter arms are refused with a `NotPorted` error (later phases).
+Current scope: H(e,e'p) elastic, D(e,e'p) and A(e,e'p) (theory-file or Benhar spectral functions; task P8), exclusive
+pion electroproduction (π+/π−/π0 on H, D and A, quasifree, coherent and π Δ final states, decay in flight; task P9; the
+π0 runs with the calorimeter arm wait for P14), with and without radiation, and phase-space (`doing_phsp`) runs, HMS and
+SHMS arms. Other reactions and the SOS/HRS/calorimeter arms are refused with a `NotPorted` error (later phases).
 
 Documentation (`docs/`):
 

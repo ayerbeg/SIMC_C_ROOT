@@ -68,10 +68,10 @@ Life cycle: `Registry<I>::create(name)` → `configure(json, params)` → `init(
 | `IRandom` | `uniform()` = grnd, `gauss1(nsig)` = gauss1.f | `mt64` (`ScriptedRandom` for replays) |
 | `ITarget` (+ `ITargetLossProvider`) | vertex z, `tripThruTarget` → {eloss, radlen}, `multipleScattering` → {dyptar, dxptar}; start-up `targetInit`, `extremeLosses` (target.f, init.f:target_init) | `hallc_cryo` |
 | `IBeam` | beam spread, raster, vertex position, incoming energy (event.f:generate l.150-212) | `standard` |
-| `IReaction` | `generate`, `completeEv`, `completeRecon`, `completeMain` (the event weight), `genVolume` (event.f, simc.f) | `hydrogen_elastic`, `phase_space`, `deuterium_eep`, `nucleus_eep` |
+| `IReaction` | `generate`, `completeEv`, `completeRecon`, `completeMain` (the event weight), `genVolume` (event.f, simc.f) | `hydrogen_elastic`, `phase_space`, `deuterium_eep`, `nucleus_eep`, `pion_production` (P9.2) |
 | `ISpectralFunction` | `weight(vertex)` = main%SF_weight (event.f:complete_main l.1397-1430); a component of the D/A(e,e'p) reactions | `theory` (init.f theory files), `benhar` (sf_lookup.f) |
 | `IRadiator` | `initEvent` (radc_init_ev), `radiate` (generate_rad); read-back `currentValues`, `photonEnergies`, `hadronRadiates` | `simc_rad` |
-| `IPhysicsModel` | `sigcc`, `sigccRecon` (physics_*.f, called by complete_main) | `sigep`, `deforest`, `deforest_cc1/cc2/cc1_onshell` |
+| `IPhysicsModel` | `sigcc`, `sigccRecon` (physics_*.f, called by complete_main) | `sigep`, `deforest`, `deforest_cc1/cc2/cc1_onshell`, `pion` (physics_pion.f:peepi; `sigccMain` also writes main%thetacm ... and ntup%sigcm*) |
 | `ISpectrometer` | `transport(SpecInput) → SpecResult`, `stopCounters()` (mc_*.f) | `hms`, `shms`, `ideal_box` (example) |
 | `IMaterialModel` | energy loss, musc, musc_ext (enerloss_new.f, musc*.f) | `simc_material` (inside `hallc_cryo`) |
 | `IOutputSink` | `beginRun`, `fill` (every try), `endRun` (+ optional `driver::IReportSink`) | `root_tree`, `run_summary`, `gen_hist`, `fortran_hist` |
@@ -164,8 +164,8 @@ replays (§7) possible.
 | label | what | reference |
 |---|---|---|
 | `unit` | parameters, .inp reader, sinks, summary/hist2json, stage headers and registry | reference/runs .inp/.hist |
-| `l1` | routine tables, bitwise or with stated tolerance | reference/functions/<routine>/*.tsv (P8: theory_init, sf_lookup*, generate_em, eep_state, *_eepA; P6.4: mc_{hms,shms}_{coll,decay}, transp_decay_*, project_decay, pion_coll_absorb, bitwise incl. steps.txt.xz / coll_calls.txt) |
-| `replay` | the complete MonteCarlo and SimcRun driven by a captured RANLUX stream: bitwise tree/.bin/.hist; every mc_hms/mc_shms call of the P6.F2 pion captures (9464 calls, `l1_replay_p6f2_pi_*_cap`) | reference/functions/event_capture{,_eepA}, runs/p4f1_*_cap, runs/p8f1_{d,fe56}_rad_cap, runs/p6f2_pi_{hms,shms}_cap (call files in fortran_harness/spectrometers_coll_decay/work) |
+| `l1` | routine tables, bitwise or with stated tolerance | reference/functions/<routine>/*.tsv (P8: theory_init, sf_lookup*, generate_em, eep_state, *_eepA; P6.4: mc_{hms,shms}_{coll,decay}, transp_decay_*, project_decay, pion_coll_absorb, bitwise incl. steps.txt.xz / coll_calls.txt; P9.1: pion cross sections, transform_to_cm_pion, pizero_decay_fixedrng; P9.2: pion_state, generate_pion_fixedrng, complete_ev_pion, complete_recon_ev_pion, complete_main_pion, decay_fixedrng, mc_decay_fixedrng) |
+| `replay` | the complete MonteCarlo and SimcRun driven by a captured RANLUX stream: bitwise tree/.bin/.hist; every mc_hms/mc_shms call of the P6.F2 pion captures (9464 calls, `l1_replay_p6f2_pi_*_cap`); the two P9.F1 pion captures (π+ H, π− D, decay ON): full run (`l1_simcrun_replay_pion_*`), montecarlo (`l1_montecarlo_replay_pion_*`) and per routine (`l1_replay_event_capture_pion_*`) | reference/functions/event_capture{,_eepA,_pion}, runs/p4f1_*_cap, runs/p8f1_{d,fe56}_rad_cap, runs/p6f2_pi_{hms,shms}_cap (call files in fortran_harness/spectrometers_coll_decay/work) |
 | `cli` | `simc++` with .inp vs JSON inputs, `inp2json`, plug-in selection by `--pipeline` | — |
 | `regression` | before/after output identity (`tests/regression`): all h10 branches and entries bitwise, text outputs equal apart from time stamps | SIMC++_Project/baselines/f9cea51_{rad,norad,phsp}_s4242 (`--fortran-compat`), 08812e6_corrected_{rad,norad,phsp}_s4242 (default); D/A(e,e'p): 508633a_[corrected_]eep_{d,fe56}_rad_n20k_s4242 (P8.2) |
 | `fortran_diff` | one test per corrected Fortran bug, both modes (`tests/fortran_diff`), and the D-032 arm-code checks | reference/functions, reference/runs |
@@ -193,8 +193,14 @@ data/                         COSY maps (byte copies of the Fortran files), tabl
 ## 9. Known limitations of the design (to be lifted with the ports that need them)
 
 * (lifted in P8.2, D-030) the event weight is assembled by the reaction (`IReaction::completeMain`); the cross-section
-  branches of the not yet ported reactions (pion, kaon, Delta, rho, SIDIS) throw `NotPorted` in
-  `reactions::assembleWeight`.
+  branches of the not yet ported reactions (kaon, Delta, rho, SIDIS) throw `NotPorted` in `reactions::assembleWeight`.
+  The pion reaction (P9.2) assembles its weight itself (`PionProduction::completeMain`: peepi, Delta factors,
+  tgtweight Z/N, Coulomb factor).
+* Two optional `IReaction` hooks exist for Fortran COMMON state that the driver otherwise would not see (P9.2):
+  `prepareCentral(main0, vertex0)` (calculate_central: the pion reaction fills main0 epsilon/t/phi_pq in corrected
+  mode, D-038 F5) and `finalTargetState(targ)` (the report prints targ%Mrec_struck as the run leaves it, the last
+  Breit-Wigner Delta mass, simc.f:844). COMMON /pfermi/ is `MainEvent::pfermi`, set by the reaction's generate (and
+  by calculate_central for the central event).
 * The spectral-function file of D/A(e,e'p) is chosen before the set-up (the set-up reads the theory file, which also
   fixes the generation limits): `SimcRun` reads `pipeline.reaction.spectral_function` and passes it to
   `BuildRunSetup` (`SetupOptions::sf_file`, `use_benhar_sf`).
