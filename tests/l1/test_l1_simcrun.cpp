@@ -168,18 +168,21 @@ public:
     std::string name() const override { return "test_ntuple_capture"; }
     void configure(const Json&, const SimcParameters&) override {}
     void init(const StageContext&) override {}
-    void beginRun(const RunSetup& s) override { setup_ = s; }
+    void beginRun(const RunSetup& s) override {
+        setup_ = s;
+        ntu_.assign(NtupleColumnsFor(s).size(), 0.0);   // the layout of the run ((e,e'p) 46, pion 53, P9.2)
+    }
     void fill(const MainEvent& m, const Event& v, const Event& o, const Event& r, bool success) override {
         if (!success) return;
-        FillEepNtuple(setup_, m, v, o, r, ntu_);
+        FillNtuple(setup_, m, v, o, r, ntu_);
         rows.push_back(ntu_);
     }
     void endRun(const RunSummary&) override {}
-    std::vector<std::array<double, kEepNtupleSize>> rows;
+    std::vector<std::vector<double>> rows;
 
 private:
     RunSetup setup_;
-    std::array<double, kEepNtupleSize> ntu_{};
+    std::vector<double> ntu_;
 };
 
 /// Compares a text file with the Fortran one, line by line; `skip` = 1-based line numbers not compared.
@@ -320,19 +323,21 @@ int replay(const std::string& capdir, const std::string& rundir, const std::stri
             std::memcpy(&nsz, recs[0].data(), 4);
             const std::size_t first = 1 + static_cast<std::size_t>(nsz);
             const std::size_t nev = (recs.size() - first) / static_cast<std::size_t>(nsz);
-            if (nev != cap->rows.size() || nsz != kEepNtupleSize) {
+            const auto& cols = NtupleColumnsFor(sr.setup());
+            const int ncol = static_cast<int>(cols.size());
+            if (nev != cap->rows.size() || nsz != ncol) {
                 std::printf("  .bin: %zu events x %d columns, C++ %zu events\n", nev, nsz, cap->rows.size());
                 ok = false;
             }
-            const auto& cols = EepNtupleColumns();
             for (std::size_t k = 0; k < std::min(nev, cap->rows.size()); ++k)
-                for (int i = 0; i < kEepNtupleSize; ++i) {
+                for (int i = 0; i < std::min(ncol, static_cast<int>(nsz)); ++i) {
                     double v;
                     std::memcpy(&v, recs[first + k * static_cast<std::size_t>(nsz) + static_cast<std::size_t>(i)].data(), 8);
                     check(cb, cols[static_cast<std::size_t>(i)].name, cap->rows[k][static_cast<std::size_t>(i)], v,
                           static_cast<long>(k));
                 }
-            ok = report("ntuple (double) vs the Fortran .bin, 46 columns (bitwise)", cb) && ok;
+            ok = report(("ntuple (double) vs the Fortran .bin, " + std::to_string(ncol) + " columns (bitwise)").c_str(),
+                        cb) && ok;
         }
     }
 
@@ -347,7 +352,7 @@ int replay(const std::string& capdir, const std::string& rundir, const std::stri
             std::printf("  cannot read the h10 trees\n");
             ok = false;
         } else {
-            const auto& cols = EepNtupleColumns();
+            const auto& cols = NtupleColumnsFor(sr.setup());
             std::vector<float> va(cols.size()), vb(cols.size());
             for (std::size_t i = 0; i < cols.size(); ++i) {
                 ta->SetBranchAddress(cols[i].name, &va[i]);

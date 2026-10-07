@@ -55,3 +55,17 @@ foreach(_c "d;p8f1_d_rad_cap" "fe56;p8f1_fe56_rad_cap")
         ${_run})
     set_tests_properties(l1_simcrun_replay_eepA_${_tag} PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 900)
 endforeach()
+
+# task P9.2: the full-run replay of the two P9.F1 pion captures (pi+ H and pi- D, K1, rad, decay ON in the SHMS;
+# reference/functions/event_capture_pion/cap_{pip_h,pim_d}, reference/runs/p9f1_{pip_h,pim_d}_dec1_cap): 53-column tree,
+# .bin, bookkeeping, normalisation, .hist/.geni/.gen text.
+foreach(_c "pip_h;p9f1_pip_h_dec1_cap" "pim_d;p9f1_pim_d_dec1_cap")
+    list(GET _c 0 _tag)
+    list(GET _c 1 _run)
+    set(_out ${CMAKE_CURRENT_BINARY_DIR}/simcrun_replay_pion_${_tag})
+    file(MAKE_DIRECTORY ${_out})
+    add_test(NAME l1_simcrun_replay_pion_${_tag} COMMAND test_l1_simcrun replay
+        ${SIMC_REFERENCE_DIR}/functions/event_capture_pion/cap_${_tag} ${SIMC_REFERENCE_DIR}/runs/${_run} ${_tag} ${_out}
+        ${_run})
+    set_tests_properties(l1_simcrun_replay_pion_${_tag} PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 900)
+endforeach()
