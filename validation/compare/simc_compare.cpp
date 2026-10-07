@@ -495,9 +495,12 @@ int main(int argc, char** argv) {
                                    " differs from wtcontr = " + fmt(wt) + " (tree holds all successes, wtcontr only pass_cuts)");
         }
     }
-    // AVERAGE.sigcc = sum(sigcc over successes)/nevent (simc.f:248,959)
+    // AVERAGE.sigcc = sum(sigcc over successes)/nevent (simc.f:248,959). The pion/kaon/delta ntuple calls the same
+    // quantity "siglab" (results_write.f:146, NtupleInit.f:129; P9.2): used when the configured branch is absent.
+    std::string sigcc_b = cfg.sigccBranch;
+    if ((!TA.col(sigcc_b) || !TB.col(sigcc_b)) && TA.col("siglab") && TB.col("siglab")) sigcc_b = "siglab";
     if (const Scalar *sa = RA.scalar("sigcc_average"), *sb = RB.scalar("sigcc_average");
-        sa && sb && haveCounters && TA.col(cfg.sigccBranch) && TB.col(cfg.sigccBranch)) {
+        sa && sb && haveCounters && TA.col(sigcc_b) && TB.col(sigcc_b)) {
         auto err = [&](const RunSummary& R, const std::vector<double>& x) {
             double S1 = 0, S2 = 0, n = 0;
             for (double v : x) if (std::isfinite(v)) { S1 += v; S2 += v * v; n += 1; }
@@ -515,8 +518,8 @@ int main(int argc, char** argv) {
         t.name = "AVERAGE.sigcc";
         t.method = "pull";
         t.a = sa->value; t.b = sb->value;
-        t.ea = std::hypot(err(RA, *TA.col(cfg.sigccBranch)), sa->halfulp);
-        t.eb = std::hypot(err(RB, *TB.col(cfg.sigccBranch)), sb->halfulp);
+        t.ea = std::hypot(err(RA, *TA.col(sigcc_b)), sa->halfulp);
+        t.eb = std::hypot(err(RB, *TB.col(sigcc_b)), sb->halfulp);
         t.pull = pull(t.a, t.ea, t.b, t.eb);
         t.p = pullPValue(t.pull);
         add(t);
@@ -585,9 +588,25 @@ int main(int argc, char** argv) {
                 continue;
             }
             const auto& mB = itB->second;
-            std::vector<std::string> keys = RA.stopOrder.at(spec);
-            for (const auto& k : RB.stopOrder.at(spec))
-                if (std::find(keys.begin(), keys.end(), k) == keys.end()) keys.push_back(k);
+            // Only the counters reported by BOTH runs are compared (P9.2): the Fortran .geni does not print every
+            // counter (SHMS q3_mid, D1_men, targ_*, cer1/2, BP_in/out; OUTPUT_FORMAT.md), while the SIMC++ summary
+            // carries all of them; a counter missing on one side is not a measured 0. Such keys are listed as warnings
+            // when they are non-zero; their counts end up in the 'unaccounted' cell of the partition test.
+            std::vector<std::string> keys;
+            const auto& oB = RB.stopOrder.at(spec);
+            for (const auto& k : RA.stopOrder.at(spec))
+                if (std::find(oB.begin(), oB.end(), k) != oB.end()) keys.push_back(k);
+            for (int side = 0; side < 2; ++side) {
+                const auto& order = side ? oB : RA.stopOrder.at(spec);
+                const auto& mm = side ? itB->second : mA;
+                for (const auto& k : order) {
+                    if (std::find(keys.begin(), keys.end(), k) != keys.end()) continue;
+                    auto it = mm.find(k);
+                    if (it != mm.end() && it->second != 0)
+                        warnings.push_back(spec + "." + k + " = " + std::to_string(it->second) + " only in " +
+                                           (side ? "B" : "A") + " (not reported by the other run; not compared)");
+                }
+            }
             auto get = [](const std::map<std::string, int64_t>& m, const std::string& k) {
                 auto it = m.find(k);
                 return it == m.end() ? int64_t(0) : it->second;
