@@ -122,9 +122,14 @@ target_link_libraries(simcpp PRIVATE ${SIMC_DRIVER_LIBS} ${SIMC_EXAMPLE_PLUGINS}
 set_target_properties(simcpp PROPERTIES OUTPUT_NAME "simc++" RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 add_subdirectory(tests/unit)
+# P10.4 (D-044): the L1 and fortran_diff tests compare bitwise against Fortran references made on one toolchain
+# (reference/TOOLCHAIN.txt). Their executables run through tests/toolchain_guard.sh, which on a failure prints the
+# reference toolchain next to this machine's (TEST_LAUNCHER, CMake >= 3.29; older CMake: no hint).
+set(CMAKE_TEST_LAUNCHER ${CMAKE_SOURCE_DIR}/tests/toolchain_guard.sh --fortran-ref ${SIMC_REFERENCE_DIR}/TOOLCHAIN.txt --)
 add_subdirectory(tests/l1)
-add_subdirectory(tests/regression)
 add_subdirectory(tests/fortran_diff)   # P7.5: documented differences with the Fortran (D-031/D-032)
+unset(CMAKE_TEST_LAUNCHER)
+add_subdirectory(tests/regression)     # C++ baselines: output_identity.sh prints the baseline toolchain itself
 
 # ============================================================================
 # Installation

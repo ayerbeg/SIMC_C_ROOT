@@ -61,6 +61,8 @@ foreach(r ${_hist_runs})
     set_tests_properties(hist2json_${r} PROPERTIES SKIP_RETURN_CODE 77)
 endforeach()
 include(${CMAKE_CURRENT_SOURCE_DIR}/setup.cmake OPTIONAL)   # P2.1 setup vs .hist
+# P10.4 (D-044): squares are x*x as in gfortran, never std::pow(x, 2) (gcc 16 calls libm pow for it)
+add_test(NAME lint_no_pow_square COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/lint_no_pow_square.sh ${CMAKE_SOURCE_DIR})
 
 # CTest labels (P7.4): every test of this directory is "unit"; the inp2json command line also "cli".
 get_property(_unit_tests DIRECTORY PROPERTY TESTS)

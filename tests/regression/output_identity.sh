@@ -51,5 +51,11 @@ for f in $base_files; do
             fi ;;
     esac
 done
-[[ $status -eq 0 ]] && echo "OUTPUT IDENTITY: PASS ($RUN vs $BASE)" || echo "OUTPUT IDENTITY: FAIL ($RUN vs $BASE)"
+if [[ $status -eq 0 ]]; then
+    echo "OUTPUT IDENTITY: PASS ($RUN vs $BASE)"
+else
+    echo "OUTPUT IDENTITY: FAIL ($RUN vs $BASE)"
+    # P10.4 (D-044): the baseline is only bitwise valid for the toolchain recorded in its README.txt
+    "$(dirname "${BASH_SOURCE[0]}")/../toolchain_guard.sh" --baseline-hint "$BASE/README.txt" --binary "$SIMCPP"
+fi
 exit $status

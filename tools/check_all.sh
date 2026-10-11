@@ -11,6 +11,8 @@
 # Writes simc_runs/<timestamp>_check[_label]/ {summary.md, git.txt, build.log, tests.log,
 # val_build.log, val_tests.log} and appends one line to simc_runs/index.tsv
 # (columns: run_id overall build run tests seconds config; run = n/a, config = check_all@<commit>).
+# summary.md and git.txt also record the toolchain (glibc + libm md5, gcc, gfortran, the compiler that built simc++;
+# tools/toolchain_fingerprint.sh), because the bitwise references are tied to it (D-044).
 # Exit code: 0 only if both builds and both test suites pass.
 
 set -uo pipefail
@@ -43,7 +45,11 @@ RUN_ID="$(date +%Y%m%d_%H%M%S)_check${LABEL:+_$LABEL}"
 OUT="$RUNS_DIR/$RUN_ID"; mkdir -p "$OUT"
 BUILD="$OUT/build"; VBUILD="$OUT/val_build"
 T0=$(date +%s)
+FPRINT="$(dirname "${BASH_SOURCE[0]}")/toolchain_fingerprint.sh"
+TOOLCHAIN="$("$FPRINT")"
+REFTC="$(grep -m1 -E '^glibc/libm:' /home/ayerbe/NewDisk/reference/TOOLCHAIN.txt 2>/dev/null | sed -E 's/^glibc\/libm: *//;s/ +\(.*$//')"
 { echo "commit $COMMIT (branch $(git -C "$SRC_DIR" branch --show-current)), uncommitted files: $DIRTY";
+  echo "toolchain: $TOOLCHAIN";
   git -C "$SRC_DIR" status --short; } > "$OUT/git.txt"
 
 jobs=$(nproc)
@@ -55,6 +61,7 @@ T=skipped; if [[ $B -eq 0 ]]; then (cd "$BUILD" && ctest --output-on-failure) > 
   cmake --build "$VBUILD" -j"$jobs" ) > "$OUT/val_build.log" 2>&1; VB=$?
 VT=skipped; if [[ $VB -eq 0 ]]; then (cd "$VBUILD" && ctest --output-on-failure) > "$OUT/val_tests.log" 2>&1; VT=$?; fi
 SECS=$(( $(date +%s) - T0 ))
+BUILT_BY="$("$FPRINT" --binary "$BUILD/bin/simc++" --field built_by)"
 
 ok() { [[ "$1" == 0 ]]; }
 if ok $B && ok $T && ok $VB && ok $VT; then OVERALL=OK; else OVERALL=FAIL; fi
@@ -63,6 +70,7 @@ WARN=$(grep -c "warning:" "$OUT/build.log" 2>/dev/null)
 cat > "$OUT/summary.md" <<EOF
 # check_all $RUN_ID : $OVERALL
 - commit: $COMMIT (uncommitted files: $DIRTY)
+- toolchain: $TOOLCHAIN; simc++ built by GCC ${BUILT_BY:-?} (Fortran references: ${REFTC:-no reference/TOOLCHAIN.txt})
 - main build: exit $B, compiler warnings: $WARN
 - main tests: $(tline "$OUT/tests.log")
 - validation build: exit $VB
