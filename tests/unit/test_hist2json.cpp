@@ -95,13 +95,10 @@ int main(int argc, char** argv) {
         std::istringstream is(gtxt);
         for (std::string line; std::getline(is, line);) {
             std::istringstream ls(line);
-            int k = 0;
-            const bool q3 = line.find("Q3 phys") != std::string::npos;
+            // (the Q3 "mid" column is stored as q2_mid_dup)
             for (std::string t; ls >> t;) {
                 double v;
                 if (t.find_first_not_of("-0123456789") != std::string::npos || !isNumberToken(t, v)) continue;
-                ++k;
-                (void)q3;   // the Q3 "mid" column is stored as q2_mid_dup
                 ++g_numbers;
                 if (!present(stops, v)) { ++g_missing; std::printf("  geni missing %s: %s\n", t.c_str(), line.c_str()); }
             }
