@@ -77,3 +77,23 @@ foreach(_tag h_k1_rad_dec1 d_k1_pim_rad_dec1)
     set_tests_properties(regression_identity_pion_${_tag} regression_corrected_pion_${_tag} PROPERTIES
                          SKIP_RETURN_CODE 77 TIMEOUT 1200 LABELS regression)
 endforeach()
+
+# P10.2: kaon production (K+ Lambda H with decay in flight, K+ Sigma- D; K1, rad, seed 4242, 20000 events) against the
+# baselines of commit 1275770, in both modes (SIMC_BASELINE_DIR/1275770_[corrected_]kaon_<tag>_n20k_s4242/). Inputs: the
+# P10.F1 L2 inputs in reference/runs.
+set(SIMC_KAON_BASELINE_COMMIT "1275770" CACHE STRING "Commit whose kaon outputs are the identity baseline")
+foreach(_tag h_k1_rad_dec1 d_k1_sigm_rad_dec1)
+    set(_inp ${SIMC_REFERENCE_DIR}/runs/kaon_${_tag}_A/kaon_${_tag}_A.inp)
+    add_test(NAME regression_identity_kaon_${_tag}
+             COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/output_identity.sh $<TARGET_FILE:simcpp> $<TARGET_FILE:simc_root_identity>
+                     ${_inp} 4242 dir_kaon_${_tag}_s4242
+                     ${SIMC_BASELINE_DIR}/${SIMC_KAON_BASELINE_COMMIT}_kaon_${_tag}_n20k_s4242
+                     ${CMAKE_CURRENT_BINARY_DIR}/identity_kaon_${_tag} --fortran-compat --ngen 20000)
+    add_test(NAME regression_corrected_kaon_${_tag}
+             COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/output_identity.sh $<TARGET_FILE:simcpp> $<TARGET_FILE:simc_root_identity>
+                     ${_inp} 4242 dir_kaon_${_tag}_s4242
+                     ${SIMC_BASELINE_DIR}/${SIMC_KAON_BASELINE_COMMIT}_corrected_kaon_${_tag}_n20k_s4242
+                     ${CMAKE_CURRENT_BINARY_DIR}/corrected_kaon_${_tag} --ngen 20000)
+    set_tests_properties(regression_identity_kaon_${_tag} regression_corrected_kaon_${_tag} PROPERTIES
+                         SKIP_RETURN_CODE 77 TIMEOUT 1200 LABELS regression)
+endforeach()
