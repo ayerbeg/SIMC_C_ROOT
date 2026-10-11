@@ -12,6 +12,9 @@
 //   complete_main <dir> ...                                        event.f:complete_main (pion branch)
 //   capture <cap dir> <inp> <data/spectral> <data/pion> <tol>      every real generate / complete_ev /
 //                                                                  complete_recon_ev / complete_main call of a capture
+// Kaon (task P10.2): the same modes with two extra arguments `kaon <data/kaon>` run reactions::KaonProduction and the
+// "kaon" model against the P10.F1 tables (kaon_state, generate_kaon_fixedrng, complete_ev_kaon, complete_recon_ev_kaon,
+// complete_main_kaon, event_capture_kaon); kaon_state is mode pion_state with the kaon columns.
 // Exit: 0 pass, 1 fail, 77 reference missing.
 #include <cmath>
 #include <cstdio>
@@ -34,7 +37,9 @@
 #include "simc/material/HallCCryoTarget.h"
 #include "simc/radiation/SimcRadiator.h"
 #include "simc/radiation/kernel/RadcState.h"
+#include "simc/physics/kaon/KaonModel.h"
 #include "simc/reactions/EventChain.h"
+#include "simc/reactions/KaonProduction.h"
 #include "simc/reactions/PionProduction.h"
 #include "simc/reactions/StandardBeam.h"
 #include "simc/setup/KinematicsUtils.h"
@@ -51,9 +56,31 @@ int iv(const Row& r, const char* c) { return static_cast<int>(std::lround(r[c]))
 bool same(double a, double b) { return (std::isnan(a) && std::isnan(b)) || std::memcmp(&a, &b, sizeof a) == 0; }
 
 std::string gSpectral, gPion;   // data directories
+std::string gKaon;              // data/kaon: non-empty = the kaon tables (P10.2)
+bool isKaon() { return !gKaon.empty(); }
 
 /// cfg -> SIMC input file (reference/functions/pion_state/configs.txt)
 std::string cfgInp(const std::string& inpdir, int cfg) {
+    if (isKaon()) {   // reference/functions/kaon_state/configs.txt
+        static const char* k[] = {"",
+                                  "p10f1_kl_h_dec1_cap",
+                                  "p10f1_ksm_d_dec1_cap",
+                                  "l1_h_k1_norad",
+                                  "l1_h_k2_dec0",
+                                  "l1_h_k1_sig0_dec0",
+                                  "l1_d_k1_lam_dec1",
+                                  "l1_d_k2_sig0_dec0",
+                                  "l1_he3_k1_dec1",
+                                  "l1_he3coh_k2c_dec1",
+                                  "l1_c12_k1_dec0",
+                                  "l1_c12coh_k2c_dec1",
+                                  "l1_he3coh11_k2c_dec1",
+                                  "l1_he3coh12_k2c_dec1",
+                                  "l1_he4coh_k2c_dec1",
+                                  "l1_d_k2_sigm_dec0"};
+        if (cfg < 1 || cfg > 15) throw std::runtime_error("bad cfg " + std::to_string(cfg));
+        return inpdir + "/" + k[cfg] + ".inp";
+    }
     static const char* f[] = {"",
                               "p9f1_pip_h_dec1_cap",
                               "p9f1_pim_d_dec1_cap",
@@ -242,11 +269,14 @@ std::unique_ptr<Process> makeProcess(const std::string& inp, bool compat = true)
     sc.radiator = &P->rad;
     P->beam.configure(Json::object(), P->params);
     P->beam.init(sc);
-    P->model = Registry<IPhysicsModel>::create("pion");
-    P->model->configure(Json{{"data_dir", gPion}, {"verbose", false}}, P->params);
+    P->model = Registry<IPhysicsModel>::create(isKaon() ? "kaon" : "pion");
+    P->model->configure(Json{{"data_dir", isKaon() ? gKaon : gPion}, {"verbose", false}}, P->params);
     P->model->init(sc);
     sc.physics = P->model.get();
-    P->reaction = std::make_unique<reactions::PionProduction>();
+    if (isKaon())
+        P->reaction = std::make_unique<reactions::KaonProduction>();
+    else
+        P->reaction = std::make_unique<reactions::PionProduction>();
     P->reaction->configure(Json{{"verbose", false}, {"data_dir", gPion}}, P->params);
     P->reaction->init(sc);
     P->ctx = P->reaction->mainContext();
@@ -372,6 +402,14 @@ bool doCompleteMain(Process& P, const Row& r, Outputs& o) {
     m.epsilon = r["in_m_epsilon"];
     m.t = r["in_m_t"];
     m.phi_pq = r["in_m_phi_pq"];
+    if (isKaon()) {   // the fields peeK's survival-probability block reads (physics_kaon.f:148-165)
+        m.theta_pq = r["in_m_theta_pq"];
+        m.FP.p.path = r["in_m_FP_p_path"];
+        m.FP.p.dx = r["in_m_FP_p_dx"];
+        m.FP.p.dy = r["in_m_FP_p_dy"];
+        m.SP.p.delta = r["in_m_SP_p_delta"];
+        m.ntup.decdist = r["decdist_in"];
+    }
     getPfermi(r, m.pfermi);
     m.ntup.sigcm1 = r["in_ntup_sigcm1"];
     m.ntup.sigcm2 = r["in_ntup_sigcm2"];
@@ -382,8 +420,30 @@ bool doCompleteMain(Process& P, const Row& r, Outputs& o) {
         ctx.Coulomb_ave = r["ov_coulomb_ave"];
     }
     P.reaction->mainContext() = ctx;
+    // kaon: the row overrides of doing_decay / hadron_arm / ctau (ov_state, drv_complete_main10)
+    kaon::KaonModel* km = isKaon() ? dynamic_cast<kaon::KaonModel*>(P.model.get()) : nullptr;
+    kaon::PeekConfig savedPeek;
+    SimcParameters savedParams;
+    if (km) {
+        savedPeek = km->config();
+        savedParams = P.setup.params;
+        if (r.has("ov_state") && iv(r, "ov_state") == 1) {
+            km->config().doing_decay = iv(r, "ov_doing_decay") != 0;
+            km->config().hadron_arm = iv(r, "ov_hadron_arm");
+            km->config().ctau = r["ov_ctau"];
+            P.setup.params.doing_decay = km->config().doing_decay;
+        }
+    }
     const bool ok = P.reaction->completeMain(iv(r, "force_sigcc") == 1, m, v, v0, rec);
     P.reaction->mainContext() = P.ctx;
+    if (km) {
+        o["decdist_out"] = m.ntup.decdist;
+        o["eff_doing_decay"] = km->config().doing_decay ? 1. : 0.;
+        o["eff_hadron_arm"] = km->config().hadron_arm;
+        o["eff_ctau"] = km->config().ctau;
+        km->config() = savedPeek;
+        P.setup.params = savedParams;
+    }
     o["success"] = ok;
     o["SF_weight"] = m.SF_weight;
     o["sigcc"] = m.sigcc;
@@ -406,7 +466,7 @@ bool doCompleteMain(Process& P, const Row& r, Outputs& o) {
     o["hx_coul_fac"] = ctx.using_Coulomb ? c * c : 1.0;
     const double hp = m.SF_weight * m.jacobian * m.gen_weight * m.sigcc;
     o["hx_prod"] = hp;
-    o["hx_tgtweight"] = hp != 0.0 ? m.weight / hp : 0.0;
+    o[isKaon() ? "hx_ratio" : "hx_tgtweight"] = hp != 0.0 ? m.weight / hp : 0.0;
     return ok;
 }
 
@@ -525,7 +585,7 @@ int runPionState(const std::string& dir, const std::string& inpdir, double tol) 
         std::printf("pion_state: SKIP (%s)\n", err.c_str());
         return 77;
     }
-    Cmp c{"pion_state (start-up + calculate_central)", tol};
+    Cmp c{isKaon() ? "kaon_state (start-up + calculate_central)" : "pion_state (start-up + calculate_central)", tol};
     for (std::size_t i = 0; i < out.rows.size(); ++i) {
         Row r(out, i);
         const int cfg = iv(r, "cfg");
@@ -542,6 +602,10 @@ int runPionState(const std::string& dir, const std::string& inpdir, double tol) 
         Json pipe{{"sinks", Json::array()},
                   {"physics", {{"type", "pion"}, {"data_dir", gPion}}},
                   {"reaction", {{"type", "pion_production"}, {"data_dir", gPion}}}};
+        if (isKaon())
+            pipe = Json{{"sinks", Json::array()},
+                        {"physics", {{"type", "kaon"}, {"data_dir", gKaon}}},
+                        {"reaction", {{"type", "kaon_production"}, {"data_dir", gPion}}}};
         // pi0 configurations use the HMS/SHMS as hadron arm in the L1 inputs (the calorimeter is P14)
         driver::SimcRun run(p, pipe, opt);
         run.initialise();
@@ -551,6 +615,12 @@ int runPionState(const std::string& dir, const std::string& inpdir, double tol) 
         Outputs o;
         o["doing_pion"] = f.doing_pion;
         o["doing_pizero"] = f.doing_pizero;
+        o["doing_kaon"] = f.doing_kaon;
+        o["which_kaon"] = s.params.which_kaon;
+        o["doing_hydkaon"] = f.doing_hydkaon;
+        o["doing_deutkaon"] = f.doing_deutkaon;
+        o["doing_hekaon"] = f.doing_hekaon;
+        o["doing_semika"] = f.doing_semika;
         o["which_pion"] = s.params.which_pion;
         o["pizero_ngamma"] = s.params.pizero_ngamma;
         o["doing_hydpi"] = f.doing_hydpi;
@@ -639,6 +709,18 @@ int runPionState(const std::string& dir, const std::string& inpdir, double tol) 
         o["c_ntup_sigcm2"] = m0.ntup.sigcm2;
         o["c_efer"] = m0.pfermi.efer;
         putEvent("v0_", run.central().vertex0, o);
+        o["c_decdist"] = m0.ntup.decdist;   // COMMON decdist after the central peeK (kaon)
+        if (isKaon()) {   // spot values of /sigkaon/ (the kaon model's tables)
+            const kaon::SaghaiTables& T = dynamic_cast<const kaon::KaonModel&>(run.model()).tables();
+            o["weightc_1_1"] = T.wc(1, 1);
+            o["weightc_20_50"] = T.wc(20, 50);
+            o["weightd_1_1_1"] = T.wd(1, 1, 1);
+            o["weightd_8_40_30"] = T.wd(8, 40, 30);
+            o["zrff1_1_1_1"] = T.zrff[0][kaon::SaghaiTables::idxP(1, 1, 1)];
+            o["ziff6_10_11_19"] = T.ziff[5][kaon::SaghaiTables::idxP(10, 11, 19)];
+            o["zsrff1_1_1_1"] = T.zsrff[0][kaon::SaghaiTables::idxS(1, 1, 1)];
+            o["zsiff6_20_10_19"] = T.zsiff[5][kaon::SaghaiTables::idxS(20, 10, 19)];
+        }
         for (const auto& n : out.names) {
             if (n == "cfg") continue;
             auto it = o.find(n);
@@ -725,7 +807,7 @@ int runPionState(const std::string& dir, const std::string& inpdir, double tol) 
         if (!eq) ++badstop;
     }
     std::printf("  STOP configurations: %d, %d differ\n", nstop, badstop);
-    ok = ok && nstop == 8 && badstop == 0;
+    ok = ok && nstop == (isKaon() ? 4 : 8) && badstop == 0;
     std::printf("pion_state: %s\n", ok ? "PASS" : "FAIL");
     return ok ? 0 : 1;
 }
@@ -943,6 +1025,7 @@ int main(int argc, char** argv) {
     const std::string what = argv[1];
     gSpectral = argv[4];
     gPion = argv[5];
+    if (argc > 8 && std::string(argv[7]) == "kaon") gKaon = argv[8];
     const double tol = std::atof(argv[6]);
     try {
         if (what == "pion_state") return runPionState(argv[2], argv[3], tol);

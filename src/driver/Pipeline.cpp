@@ -76,6 +76,8 @@ PipelineConfig PipelineConfig::Defaults(const RunSetup& s) {
         p.reaction.type = "nucleus_eep";
     else if (f.doing_pion)   // which_pion 0/1/2/3/10/11, pi+/pi-/pi0 (P9.2)
         p.reaction.type = "pion_production";
+    else if (f.doing_kaon)   // which_kaon 0/1/2/10/11/12 (P10.2)
+        p.reaction.type = "kaon_production";
     else
         p.reaction.type = "";   // not ported: SimcRun reports NotPorted with the reaction title
     // event.f:complete_main l.1444-1456
@@ -84,6 +86,8 @@ PipelineConfig PipelineConfig::Defaults(const RunSetup& s) {
         p.physics.config["Mh"] = s.Mh;
     } else if (f.doing_pion && !f.doing_phsp) {
         p.physics.type = "pion";   // physics_pion.f:peepi (l.1459)
+    } else if (f.doing_kaon && !f.doing_phsp) {
+        p.physics.type = "kaon";   // physics_kaon.f:peeK (l.1503)
     } else {
         p.physics.type = "sigep";
     }

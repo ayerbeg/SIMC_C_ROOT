@@ -68,7 +68,8 @@ struct DeltaMassTable {
 
 class PionProduction : public EepReactionBase {
 public:
-    explicit PionProduction(std::string name = "pion_production");
+    /// kaon = true: the doing_kaon branches of the same event.f code (reactions::KaonProduction, task P10.2).
+    explicit PionProduction(std::string name = "pion_production", bool kaon = false);
     ~PionProduction() override;
 
     void configure(const Json& config, const SimcParameters& params) override;
@@ -88,6 +89,9 @@ public:
     void setMrecStruck(double m) { mrecStruck_ = m; }
     const DeltaMassTable& deltaTable() const { return delta_; }
     nuclear::SfTable* sfTable() { return sf_.get(); }
+
+protected:
+    bool kaon_{false};                 ///< doing_kaon instead of doing_pion (KaonProduction)
 
 private:
     /// event.f:720-786: main%W, epsilon, theta_pq, t, tmin, q2, phi_pq from the completed vertex.

@@ -89,6 +89,9 @@ public:
     const RunTotals& totals() const { return report_.totals; }
     const RunReport& report() const { return report_; }
     const CentralResult& central() const { return central_; }
+    /// The run's physics model and reaction (after initialise; L1 tests read their tables / Fortran state).
+    const IPhysicsModel& model() const { return *model_; }
+    const IReaction& reaction() const { return *reaction_; }
     IRandom& rng() { return *rngPtr_; }
     IRadiator& radiator() { return *radiator_; }
     MonteCarlo& montecarlo() { return *mc_; }

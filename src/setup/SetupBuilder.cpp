@@ -630,7 +630,7 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
         }
     }
     // ---- dbase.f:624-681 kaon model tables: they belong to the kaon cross-section model
-    if (f.doing_kaon) s.not_ported.push_back("kaon model tables weightc/weightd/saghai (dbase.f:624-681)");
+    // (doing_kaon: read by the "kaon" physics model, kaon::SaghaiTables, task P10.1)
 
     // =========================================================================================
     // init.f:limits_init (l.91-575), called at dbase.f:685

@@ -52,6 +52,9 @@ bool UsesEepLayout(const ReactionFlags& f);
 // ------------------------------------------------------------------------------------------- pion layout (P9.2)
 constexpr int kPionNtupleSize = 53;        ///< NtupleInit.f:101-141 (doing_pion, no target field, no pi0)
 constexpr int kPionPizeroNtupleSize = 65;  ///< + 12 pi0 photon columns (NtupleInit.f:165-190)
+constexpr int kKaonNtupleSize = 55;        ///< doing_kaon: + saghai, factor (NtupleInit.f:160-166, task P10.2)
+/// The kaon columns (55): the 53 pion/kaon/delta columns + saghai (ntup%sigcm1), factor (ntup%sigcm2).
+const std::vector<NtupleColumn>& KaonNtupleColumns();
 
 /// The pion/kaon/delta columns in Fortran order (53, or 65 with doing_pizero). Columns 1-33 are those of the (e,e'p)
 /// layout.

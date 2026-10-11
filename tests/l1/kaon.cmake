@@ -26,3 +26,33 @@ set_tests_properties(${_kaon_l1} PROPERTIES SKIP_RETURN_CODE 77 LABELS l1)
 add_test(NAME fortran_diff_D043_kaon_model
          COMMAND test_l1_kaon fortran_diff_D043 ${_kfn}/peek ${_kfn}/kaon_state ${_kdata} ${_kfn}/eekeek ${_kfn}/saghai_tables)
 set_tests_properties(fortran_diff_D043_kaon_model PROPERTIES SKIP_RETURN_CODE 77 LABELS "fortran_diff;unit")
+
+# task P10.2: the kaon reaction (reactions::KaonProduction + "kaon" model) against the P10.F1 event tables, fortran_compat,
+# bitwise; the same runner as the pion tables (test_l1_pion_event ... kaon <data/kaon>)
+set(_kinp ${_kfn}/kaon_state/inp)
+set(_ksp ${CMAKE_SOURCE_DIR}/data/spectral)
+set(_kpd ${CMAKE_SOURCE_DIR}/data/pion)
+add_test(NAME l1_kaon_state COMMAND test_l1_pion_event pion_state ${_kfn}/kaon_state ${_kinp} ${_ksp} ${_kpd} 0 kaon ${_kdata})
+add_test(NAME l1_generate_kaon_fixedrng
+         COMMAND test_l1_pion_event generate ${_kfn}/generate_kaon_fixedrng ${_kinp} ${_ksp} ${_kpd} 0 kaon ${_kdata})
+add_test(NAME l1_complete_ev_kaon
+         COMMAND test_l1_pion_event complete_ev ${_kfn}/complete_ev_kaon ${_kinp} ${_ksp} ${_kpd} 0 kaon ${_kdata})
+add_test(NAME l1_complete_recon_ev_kaon
+         COMMAND test_l1_pion_event complete_recon_ev ${_kfn}/complete_recon_ev_kaon ${_kinp} ${_ksp} ${_kpd} 0 kaon ${_kdata})
+add_test(NAME l1_complete_main_kaon
+         COMMAND test_l1_pion_event complete_main ${_kfn}/complete_main_kaon ${_kinp} ${_ksp} ${_kpd} 0 kaon ${_kdata})
+set(_kaon_ev l1_kaon_state l1_generate_kaon_fixedrng l1_complete_ev_kaon l1_complete_recon_ev_kaon l1_complete_main_kaon)
+foreach(_c "kl_h;p10f1_kl_h_dec1_cap" "ksm_d;p10f1_ksm_d_dec1_cap")
+    list(GET _c 0 _tag)
+    list(GET _c 1 _run)
+    add_test(NAME l1_replay_event_capture_kaon_${_tag}
+             COMMAND test_l1_pion_event capture ${_kfn}/event_capture_kaon/cap_${_tag}
+                     ${SIMC_REFERENCE_DIR}/runs/${_run}/${_run}.inp ${_ksp} ${_kpd} 0 kaon ${_kdata})
+    list(APPEND _kaon_ev l1_replay_event_capture_kaon_${_tag})
+endforeach()
+set_tests_properties(${_kaon_ev} PROPERTIES SKIP_RETURN_CODE 77 LABELS l1 TIMEOUT 900)
+set_tests_properties(l1_replay_event_capture_kaon_kl_h l1_replay_event_capture_kaon_ksm_d PROPERTIES LABELS "l1;replay")
+# the kaon project/transp decay calls and mc_hms/mc_shms with kaon decay (same runner as the P9.F1 pion tables)
+add_test(NAME l1_decay_kaon_fixedrng COMMAND test_l1_coll_decay pdecay ${_kfn}/decay_kaon_fixedrng)
+add_test(NAME l1_mc_decay_kaon_fixedrng COMMAND test_l1_coll_decay mcdecay ${_kfn}/mc_decay_kaon_fixedrng)
+set_tests_properties(l1_decay_kaon_fixedrng l1_mc_decay_kaon_fixedrng PROPERTIES SKIP_RETURN_CODE 77 LABELS l1)

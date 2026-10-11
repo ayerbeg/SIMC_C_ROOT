@@ -92,7 +92,7 @@ double DeltaMassTable::sample(double rn) const {
 }
 
 // ---------------------------------------------------------------------------------------------------------- plug-in
-PionProduction::PionProduction(std::string name) : EepReactionBase(std::move(name)) {}
+PionProduction::PionProduction(std::string name, bool kaon) : EepReactionBase(std::move(name)), kaon_(kaon) {}
 PionProduction::~PionProduction() = default;
 
 void PionProduction::configure(const Json& config, const SimcParameters& params) {
@@ -107,8 +107,9 @@ void PionProduction::configure(const Json& config, const SimcParameters& params)
 void PionProduction::init(const StageContext& ctx) {
     const RunSetup& s = ctx.setup;
     const ReactionFlags& f = s.flags;
-    if (!f.doing_pion)
-        throw std::invalid_argument("reaction '" + name_ + "': the input is not exclusive pion production (doing_pion)");
+    if (kaon_ ? !f.doing_kaon : !f.doing_pion)
+        throw std::invalid_argument("reaction '" + name_ + "': the input is not " +
+                                    (kaon_ ? "kaon production (doing_kaon)" : "exclusive pion production (doing_pion)"));
     if (f.using_tgt_field || s.params.using_tgt_field)
         throw NotPorted("reaction '" + name_ + "': using_tgt_field (polarized-target angles) not ported");
     EepReactionBase::init(ctx);
@@ -123,7 +124,7 @@ void PionProduction::init(const StageContext& ctx) {
         if (log_)
             for (const auto& m : msgs) *log_ << m << "\n";
     }
-    if (f.doing_hepi) {   // dbase.f:594-621 sf_lookup_init for generate_em
+    if (f.doing_hepi || f.doing_hekaon) {   // dbase.f:594-621 sf_lookup_init for generate_em
         sf_ = std::make_unique<nuclear::SfTable>();
         sf_->setFortranCompat(s.fortran_compat);
         std::vector<std::string> msgs;
@@ -178,7 +179,9 @@ bool PionProduction::generate(MainEvent& main, Event& vertex, Event& orig, IRand
     F.pferz = 0.0;
     vertex.Em = 0.0;
     F.efer = s.targ.Mtar_struck;   // used for pion/kaon xsec calcs.
-    if (f.doing_deutpi || f.doing_hepi) {
+    // event.f:336-338 doing_deutpi.or.doing_hepi.or.doing_deutkaon.or.doing_hekaon (kaon: P10.2)
+    const bool deut = f.doing_deutpi || f.doing_deutkaon, he = f.doing_hepi || f.doing_hekaon;
+    if (deut || he) {
         const std::vector<double>& pval = s.pdist.pval;
         const std::vector<double>& mprob = s.pdist.mprob;
         const int nump = static_cast<int>(pval.size());
@@ -204,12 +207,12 @@ bool PionProduction::generate(MainEvent& main, Event& vertex, Event& orig, IRand
         F.pferx = std::sin(ranth) * std::cos(ranph);
         F.pfery = std::sin(ranth) * std::sin(ranph);
         F.pferz = std::cos(ranth);
-        if (f.doing_deutpi) {   // Em = binding energy
+        if (deut) {   // Em = binding energy
             vertex.Em = Mp + Mn - s.targ.M;
             const double m_spec = s.targ.M - s.targ.Mtar_struck + vertex.Em;   // = Mn(Mp) for pi+(-)
             F.efer = s.targ.M - std::sqrt(sq(m_spec) + sq(F.pfer));
         }
-        if (f.doing_hepi) {
+        if (he) {
             vertex.Em = sf_->generateEm(F.pfer, rng);   // call generate_em(pfer, vertex%Em)
             const double m_spec = s.targ.M - s.targ.Mtar_struck + vertex.Em;   // = M^*_{A-1}
             F.efer = s.targ.M - std::sqrt(sq(m_spec) + sq(F.pfer));
@@ -306,7 +309,8 @@ bool PionProduction::completeEv(MainEvent& main, Event& vertex, IRandom& rng) {
     double b = sq(vertex.q);
     double c = vertex.nu + s.targ.M;
     // For nuclei, correct for fermi motion and missing energy (l.648-654)
-    if (f.doing_deutpi || f.doing_hepi) {
+    const bool deut = f.doing_deutpi || f.doing_deutkaon, he = f.doing_hepi || f.doing_hekaon;   // l.646-647
+    if (deut || he) {
         a = a - std::fabs(F.pfer) * (F.pferx * vertex.up.x + F.pfery * vertex.up.y + F.pferz * vertex.up.z);
         b = b + sq(F.pfer) +
             2 * vertex.q * std::fabs(F.pfer) * (F.pferx * vertex.uq.x + F.pfery * vertex.uq.y + F.pferz * vertex.uq.z);
@@ -357,21 +361,21 @@ bool PionProduction::completeEv(MainEvent& main, Event& vertex, IRandom& rng) {
     vertex.PmPer = std::sqrt(fmaxF(0.e0, sq(vertex.Pm) - sq(vertex.PmPar) - sq(vertex.PmOop)));
 
     // l.937-955
-    if (f.doing_hydpi) {
+    if (f.doing_hydpi || f.doing_hydkaon) {
         vertex.Trec = 0.0;
-    } else if (f.doing_deutpi || f.doing_hepi) {
+    } else if (deut || he) {
         vertex.Trec = std::sqrt(sq(vertex.Mrec) + sq(vertex.Pm)) - vertex.Mrec;
     }
 
     // krel (l.961-977). FORTRAN-QUIRK(D-038 F11): SAVEd local, never set by the H/coherent branch.
-    if (f.doing_deutpi) {
+    if (deut) {
         const double mm2 = sq(vertex.Emiss) - sq(vertex.Pmiss);
         if (mm2 < 0 && log_)
             *log_ << " BAD MM!!!!! Emiss,Pmiss=" << fortran::listReal(vertex.Emiss) << fortran::listReal(vertex.Pmiss)
                   << "\n";
         const double MM = std::sqrt(fmaxF(0.e0, mm2));
         krel_ = std::sqrt(fmaxF(0.e0, sq(MM) - 4. * sq(mrecStruck_)));
-    } else if (f.doing_hepi) {
+    } else if (he) {
         const double mm2 = sq(vertex.Emiss) - sq(vertex.Pmiss);
         if (mm2 < 0 && log_)
             *log_ << " BAD MM!!!!! Emiss,Pmiss=" << fortran::listReal(vertex.Emiss) << fortran::listReal(vertex.Pmiss)
