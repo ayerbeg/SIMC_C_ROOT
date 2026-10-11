@@ -56,3 +56,19 @@ set_tests_properties(l1_replay_event_capture_kaon_kl_h l1_replay_event_capture_k
 add_test(NAME l1_decay_kaon_fixedrng COMMAND test_l1_coll_decay pdecay ${_kfn}/decay_kaon_fixedrng)
 add_test(NAME l1_mc_decay_kaon_fixedrng COMMAND test_l1_coll_decay mcdecay ${_kfn}/mc_decay_kaon_fixedrng)
 set_tests_properties(l1_decay_kaon_fixedrng l1_mc_decay_kaon_fixedrng PROPERTIES SKIP_RETURN_CODE 77 LABELS l1)
+
+# task P10.2: the full-run replay of the two P10.F1 kaon captures (K+ Lambda H and K+ Sigma- D, K1, rad, decay ON in the
+# SHMS; reference/functions/event_capture_kaon/cap_{kl_h,ksm_d}, reference/runs/p10f1_{kl_h,ksm_d}_dec1_cap): 55-column
+# tree, .bin, bookkeeping, normalisation, .hist/.geni/.gen text; and every montecarlo call (kaon decay draws).
+foreach(_c "kl_h;p10f1_kl_h_dec1_cap" "ksm_d;p10f1_ksm_d_dec1_cap")
+    list(GET _c 0 _tag)
+    list(GET _c 1 _run)
+    set(_out ${CMAKE_CURRENT_BINARY_DIR}/simcrun_replay_kaon_${_tag})
+    file(MAKE_DIRECTORY ${_out})
+    add_test(NAME l1_simcrun_replay_kaon_${_tag} COMMAND test_l1_simcrun replay
+        ${_kfn}/event_capture_kaon/cap_${_tag} ${SIMC_REFERENCE_DIR}/runs/${_run} ${_tag} ${_out} ${_run})
+    add_test(NAME l1_montecarlo_replay_kaon_${_tag} COMMAND test_l1_driver replay
+        ${_kfn}/event_capture_kaon/cap_${_tag} ${SIMC_REFERENCE_DIR}/runs/${_run} ${_tag} ${_ksp} ${_run})
+    set_tests_properties(l1_simcrun_replay_kaon_${_tag} l1_montecarlo_replay_kaon_${_tag}
+        PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 900 LABELS "l1;replay")
+endforeach()
