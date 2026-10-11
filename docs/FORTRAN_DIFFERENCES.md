@@ -289,3 +289,56 @@ run of the same seed). Binary: commit 3b27d5c.
 * D-037 F7 (decay drift) moves the recon of ~1.4 % of the K1 events (π decays in the SHMS) by ≤ 1e-2 % δ; in K2 (HMS) it
   changes an acceptance decision early in the run, after which the random sequences diverge: the distributions stay equal
   (ΣWeight within 2e-5).
+
+## 10. Kaon production: L2 in both modes and the effect of each correction (task P10.2)
+
+`simc_compare` (default config) of simc++ seed 4242, 200000 successes, against the P10.F1 Fortran runs
+`reference/runs/kaon_<tag>_A` (and `_B` for h_k1_rad_dec0). Run folders
+`SIMC++_Project/simc_runs/20261011_*_P10.2_L2_{compat,corrected}_<tag>/` (`compare_vs_A/`, `compare_vs_B/`, `mode_diff_vs_compat.txt`
+in the corrected folders). Binary: commit 1275770 (numerically identical to the final commit). Batch:
+`validation/scripts/p10_kaon_l2.sh`.
+
+| run | compat vs A: verdict (F/N), worst p | corrected vs A | wtcontr Fortran / compat / corrected | CENTRAL.sigcc corrected/Fortran |
+|---|---|---|---|---|
+| h_k1_rad_dec0 | PASS 2/268, 3.0e-3 (vs B: PASS 6/268) | FAIL 136/271 | 2.1195 / 2.1162 / 2.8930 | ×4.905 |
+| h_k1_rad_dec1 | PASS 3/279, 1.8e-3 | FAIL 106/282 | 2.7957 / 2.7978 / 3.7731 | ×4.905 |
+| h_k2_rad_dec0 | PASS 5/253, 2.5e-3 | FAIL 134/256 | 1.2661 / 1.2710 / 1.0985 | ×5.726 |
+| h_k2_rad_dec1 | PASS 0/259, 1.8e-2 | FAIL 54/262 | 1.7592 / 1.7568 / 1.4798 | ×5.726 |
+| h_k1_sig0_rad_dec0 | PASS 0/268, 1.0e-2 | FAIL 139/271 | 6.8830 / 6.9053 / 8.1603 | ×6.780 |
+| d_k1_sigm_rad_dec1 | PASS 0/285, 1.2e-2 | FAIL 166/288 | 9.8722 / 9.8255 / 11.2915 | ×6.781 |
+| he3_k1_rad_dec1 | PASS 1/285, 1.5e-3 | FAIL 120/288 | 1.9239 / 1.9094 / 2.4619 | ×4.903 |
+| he3coh_k2c_rad_dec1 | PASS 8/258, 4.4e-3 | FAIL 44/261 | 0.65205 / 0.65695 / 0.55462 | ×8.319 |
+| h_k1_norad_dec0 | FAIL 10/266, 1.9e-3 (seed 4242; seeds 4243, 4244: PASS 0/266) | FAIL 134/269 | 2.4935 / 2.4981 / 3.5807 | ×4.900 |
+
+* **compat**: every configuration agrees with the Fortran. h_k1_norad_dec0 at seed 4242 has 10 failures, all in correlated
+  target-z / SHMS y-slope variables (hsytari, ssytari, ssyptari, ssypfp; worst p 1.9e-3, no gross failure); seeds 4243 and
+  4244 give PASS 0/266 with those variables at p > 0.05: a fluctuation of seed 4242 (as P9.2 d_k1_pim).
+* **corrected**: in the decay-OFF runs the corrected and compat runs contain the SAME events (same Ntried; only Weight,
+  decdist and saghai differ: `mode_diff_vs_compat.txt`); in the decay-ON runs the decay corrections change acceptance decisions
+  and the random sequences diverge. The failures are the deterministic effects of the corrections, measured one by one with a
+  scratch build in which each correction can be switched off (same seed, 200k; corrected / corrected-without-X − 1 on wtcontr):
+
+| run | D-006 pass_cuts (simc.f:237) | D-043 F5 survival p_kaon | D-006 K→ππ mass (transp.f:158) | D-037 F7 drift |
+|---|---|---|---|---|
+| h_k1_rad_dec0 | +37.5 % | +3.35 % (ΣWeight all events −0.72 %) | – | – |
+| h_k1_rad_dec1 | +35.9 % | – | −1.13 % | +0.01 % |
+| h_k2_rad_dec0 | −16.5 % | +0.23 % (ΣWeight +2.26 %) | – | – |
+| h_k2_rad_dec1 | −15.9 % | – | +0.16 % | +0.09 % |
+| h_k1_sig0_rad_dec0 | +18.9 % | +1.41 % (ΣWeight −2.82 %) | – | – |
+| d_k1_sigm_rad_dec1 | +15.9 % | – | −1.37 % | +0.02 % |
+| he3_k1_rad_dec1 | +29.7 % | – | −1.16 % | +0.11 % |
+| he3coh_k2c_rad_dec1 | −15.8 % | – | +0.13 % | +0.23 % |
+| h_k1_norad_dec0 | +43.8 % | +4.06 % (ΣWeight −0.03 %) | – | – |
+
+  * D-006 pass_cuts alone (corrected-without-F5 / compat in the decay-OFF runs): K1 H 1.3227, K2 H 0.8623, Σ0 1.1654, norad
+    1.3775; P10.F1 measured on the Fortran trees (passcuts_l2.py) 1/(1−0.245) = 1.3245, 1/1.158 = 0.8636, 1/(1−0.142) = 1.1655,
+    1/(1−0.274) = 1.377: the correction is the only difference. (The values in the table, with F5 on, are larger for K1 because
+    F5 raises the weight of the high-δ kaons that the corrected cut keeps.)
+  * F5 reweights each decay-OFF event by exp(−L·Mk/cτ·(1/p_kaon − 1/p_central)): per recon-Pm bin the corrected/compat ratio runs
+    from 1.10 to 0.75 in K1 H, so every weighted distribution changes shape (most of the 134-139 failing tests). The `decdist`
+    column (survival probability) follows.
+  * D-006 kaon mass: the K→ππ product of a first-half decay in transp gets Mπ instead of Mk: −1.1…−1.4 % of the K1 (SHMS)
+    acceptance (Ncontribute/Ntried −1.1 %, 3.6σ, and the SHMS aperture counters), +0.1…0.2 % in the K2 (HMS) runs.
+  * D-037 F7: ≤ 0.23 %, within the statistics of the diverged sequences.
+  * F1/F2/F3: only the `saghai` column (0 for every Fortran event, the Saghai model value in corrected mode). F6: no effect with
+    HMS/SHMS (zaero = 0). F13: CENTRAL.sigcc ×4.9–8.3 (a `.hist` number only).
