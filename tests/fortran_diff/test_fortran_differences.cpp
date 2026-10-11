@@ -1182,6 +1182,44 @@ int testCentralSigcc() {
     return 0;
 }
 
+// D-043 F13 (= D-038 F5 for kaons): calculate_central evaluates peeK with main0 epsilon = t = theta_pq = phi_pq = 0
+// (simc.f:1236-1290). Kaon capture input p10f1_kl_h_dec1_cap (K+ Lambda H, K1).
+int testCentralSigccKaon() {
+    SimcParameters p;
+    const std::string inp = g_ref + "/functions/kaon_state/inp/p10f1_kl_h_dec1_cap.inp";
+    if (!std::ifstream(inp)) {
+        std::printf("SKIP: %s missing\n", inp.c_str());
+        return 77;
+    }
+    InpReader rd(p);
+    if (!rd.loadRun(inp)) return 1;
+    double sig[2] = {0, 0};
+    MainEvent m0[2];
+    for (int compat = 0; compat < 2; ++compat) {
+        driver::RunOptions opt;
+        opt.quiet_stages = true;
+        opt.fortran_compat = compat == 1;
+        opt.data_dir = specDir();
+        std::ostringstream log;
+        opt.log = &log;
+        driver::SimcRun run(p, Json{{"sinks", Json::array()}}, opt);
+        run.initialise();
+        sig[compat] = run.central().central.sigcc;
+        m0[compat] = run.central().main0;
+    }
+    // the Fortran value (reference/functions/kaon_state cfg 1 c_sigcc; .hist CENTRAL.sigcc 0.143536E-06)
+    expect(std::fabs(sig[1] / 0.143536e-6 - 1) < 5e-6, "compat: CENTRAL.sigcc = " + fortran::E(sig[1], 13, 6) +
+                                                            " (Fortran 0.143536E-06)");
+    expect(m0[1].epsilon == 0 && m0[1].t == 0 && m0[1].theta_pq == 0 && m0[1].phi_pq == 0,
+           "compat: main0 epsilon, t, theta_pq, phi_pq stay 0");
+    expect(m0[0].epsilon > 0.8 && m0[0].epsilon < 1 && m0[0].t > 0, "corrected: main0 epsilon, t = the central values");
+    char b[160];
+    std::snprintf(b, sizeof b, "corrected CENTRAL.sigcc %.6E differs from the Fortran %.6E (ratio %.4f)", sig[0], sig[1],
+                  sig[0] / sig[1]);
+    expect(sig[0] != sig[1] && sig[0] > 0, b);
+    return 0;
+}
+
 // D-038 F15: the .hist final-state line is missing for which_pion = 11 (simc.f:750-755).
 int testHistWhichPion11() {
     SimcParameters p;
@@ -1225,6 +1263,7 @@ const std::map<std::string, std::function<int()>>& items() {
         {"D038_F1_delta_pp_stop", testDeltaPPStop},
         {"D038_F2_pi0_neutron_on_h", testPi0NeutronOnH},
         {"D038_F5_central_sigcc", testCentralSigcc},
+        {"D043_F13_central_sigcc_kaon", testCentralSigccKaon},
         {"D038_F15_hist_which_pion_11", testHistWhichPion11},
     };
     return m;

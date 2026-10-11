@@ -30,6 +30,7 @@ set(SIMC_FORTRAN_DIFF_ITEMS
     D038_F2_pi0_neutron_on_h
     D038_F5_central_sigcc
     D038_F15_hist_which_pion_11
+    D043_F13_central_sigcc_kaon
 )
 foreach(_item ${SIMC_FORTRAN_DIFF_ITEMS})
     add_test(NAME fortran_diff_${_item}
