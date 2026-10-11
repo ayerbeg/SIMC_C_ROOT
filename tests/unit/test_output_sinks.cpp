@@ -163,7 +163,7 @@ int main(int argc, char** argv) {
             check(near(val[23], -m.target.z * setup.e_sin_th), "ssytari = -z*sin(theta_e)");
             check(near(val[24], r.q / 1000.), "q in GeV");
             check(near(val[26], r.Q2 / 1e6), "Q2 in GeV^2");
-            const double poft = 938.27231 * 10600. / (2 * 10600. * std::pow(std::sin(r.e.theta / 2), 2) + 938.27231);
+            const double poft = 938.27231 * 10600. / (2 * 10600. * (std::sin(r.e.theta / 2) * std::sin(r.e.theta / 2)) + 938.27231);
             check(near(val[33], (r.e.P - poft) / 1000., 1e-5), "corrsing");
             check(near(val[34], -r.Pmx / 1000.), "Pmx = -recon.Pmx");
             check(near(val[35], (r.Pmz * r.uq.y - r.Pmy * r.uq.z) / 1.0 / 1000.), "Pmy (Heep)");
@@ -212,7 +212,7 @@ int main(int argc, char** argv) {
         }
         check(near(j["normalization"]["wtcontr"].get<double>(), 42.0 / nsucc), "wtcontr = wtcontribute/nevent");
         check(near(j["normalization"]["sigcc_average"].get<double>(), 1.0e-3 / nsucc), "average_sigcc = sum_sigcc/nevent");
-        check(near(j["normalization"]["luminosity_GeV2"].get<double>(), 3.73199e8 * std::pow(197.327053 / 1e5, 2)),
+        check(near(j["normalization"]["luminosity_GeV2"].get<double>(), 3.73199e8 * ((197.327053 / 1e5) * (197.327053 / 1e5))),
               "luminosity in GeV^2");
         check(j["stops"]["hms"]["slit_hor"] == 7, "stop counters by aperture name");
         check(j["stop_roles"]["hms"] == "hadron", "stop role");

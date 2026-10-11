@@ -138,7 +138,7 @@ Json BuildSummaryJson(const RunSetup& s, const RunSummary& r) {
                           {"charge_mC", r.charge},
                           {"targetfac", r.targetfac},
                           {"luminosity_ub", r.luminosity},
-                          {"luminosity_GeV2", r.luminosity * std::pow(kHbarc / 100000., 2)},
+                          {"luminosity_GeV2", r.luminosity * ((kHbarc / 100000.) * (kHbarc / 100000.))},
                           {"genvol", r.genvol},
                           {"normfac", r.normfac}};
 

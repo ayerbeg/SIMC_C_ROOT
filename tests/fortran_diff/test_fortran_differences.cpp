@@ -1170,7 +1170,7 @@ int testCentralSigcc() {
     const Event& v = v0[0];
     const double tt = v.Q2 - constants::Mpi * constants::Mpi + 2 * v.nu * v.p.E -
                       2 * v.p.P * v.q * std::cos(m0[0].theta_pq);
-    expect(sameBits(m0[0].epsilon, 1. / (1. + 2. * (1 + v.nu * v.nu / v.Q2) * std::pow(std::tan(v.e.theta / 2.), 2))) ||
+    expect(sameBits(m0[0].epsilon, 1. / (1. + 2. * (1 + v.nu * v.nu / v.Q2) * (std::tan(v.e.theta / 2.) * std::tan(v.e.theta / 2.)))) ||
                std::fabs(m0[0].epsilon - v.epsilon) < 1e-12,
            "corrected: main0 epsilon = the central epsilon (" + std::to_string(m0[0].epsilon) + ")");
     expect(std::fabs(m0[0].t - tt) <= 1e-9 * std::fabs(tt) && m0[0].t > 0,   // SIMC t = -t_Mandelstam

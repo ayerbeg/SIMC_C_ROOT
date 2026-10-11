@@ -60,7 +60,8 @@ void GenHistSink::inc(const std::string& name, double val, double weight) {
     if (ibin < 1 || ibin > kNHbins) return;   // no under/overflow in the Fortran
     TH1D* h = h_.at(name).get();
     const double entries = h->GetEntries();
-    const double err2 = std::pow(h->GetBinError(ibin), 2) + weight * weight;
+    const double err = h->GetBinError(ibin);   // x*x, not std::pow(x,2): gcc 16 calls libm pow (P10.4)
+    const double err2 = err * err + weight * weight;
     h->SetBinContent(ibin, h->GetBinContent(ibin) + weight);
     h->SetBinError(ibin, std::sqrt(err2));
     h->SetEntries(entries + 1);   // SetBinContent changes fEntries; keep "number of inc() calls counted"

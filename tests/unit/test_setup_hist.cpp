@@ -403,7 +403,7 @@ int main(int argc, char** argv) {
     C.kv("misc", "charge", 0, fmtE(s.params.EXPER.charge, 16, 6));
     C.kv("misc", "targetfac", 0, fmtE(s.targetfac, 16, 6));
     C.kv("misc", "luminosity", 0, fmtE(s.luminosity, 16, 6), Dep::None, 1);
-    C.kv("misc", "luminosity", 0, fmtE(s.luminosity * std::pow(constants::hbarc / 100000., 2), 16, 6), Dep::None, 2);
+    C.kv("misc", "luminosity", 0, fmtE(s.luminosity * ((constants::hbarc / 100000.) * (constants::hbarc / 100000.)), 16, 6), Dep::None, 2);
     if (s.params.random_seed != 0) C.kv("misc", "Random Seed", 0, std::to_string(s.params.random_seed));
     C.defer("misc: CENTRAL.sigcc [calculate_central], AVERAGE.sigcc, genvol, normfac [event loop / generation]");
     C.defer("recon summary: ave.error / resolution [event loop]");

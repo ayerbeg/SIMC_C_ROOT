@@ -254,7 +254,9 @@ bool FillEepNtuple(const RunSetup& s, const MainEvent& main, const Event& /*vert
                    const Event& recon, std::array<double, kEepNtupleSize>& ntu) {
     const double Ebeam = s.params.Ebeam;
     // results_write.f:54-62
-    const double poftheta = kMp * Ebeam / (2 * Ebeam * std::pow(std::sin(recon.e.theta / 2.), 2) + kMp);
+    // sin(..)**2 is x*x in gfortran; std::pow(x,2) is NOT folded to x*x by gcc 16 under -fmath-errno (P10.4)
+    const double sinh2 = std::sin(recon.e.theta / 2.);
+    const double poftheta = kMp * Ebeam / (2 * Ebeam * (sinh2 * sinh2) + kMp);
     const double corrsing = recon.e.P - poftheta;
     const double uqyz = std::sqrt(recon.uq.y * recon.uq.y + recon.uq.z * recon.uq.z);
     const double Pm_Heepz = -(recon.Pmy * recon.uq.y + recon.Pmz * recon.uq.z) / uqyz;
