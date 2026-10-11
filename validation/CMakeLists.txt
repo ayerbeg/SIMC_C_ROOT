@@ -90,7 +90,8 @@ endif()
 
 set(SIMC_BASELINE_DIR "/home/ayerbe/NewDisk/SIMC++_Project/baselines" CACHE PATH "SIMC++ baseline outputs")
 # P7.4: both trees empty (Ncontribute = 0 in both runs, K2 acceptance) -> per-variable tests skipped, PASS
-set(_K2C ${SIMC_BASELINE_DIR}/f9cea51_K2K4_s4242)
+# P10.4: regenerated on glibc 2.43 / gcc 16.2.1 (the original f9cea51_K2K4_s4242 is kept)
+set(_K2C ${SIMC_BASELINE_DIR}/4408493_glibc243_K2K4_s4242)
 if(EXISTS ${R}/acc_phsp_K2_A/acc_phsp_K2_A.hist AND EXISTS ${_K2C}/cpp_acc_phsp_K2_A.summary.json)
   add_test(NAME compare_both_trees_empty
     COMMAND simc_compare --a ${R}/acc_phsp_K2_A --b ${_K2C}/cpp_acc_phsp_K2_A.summary.json
