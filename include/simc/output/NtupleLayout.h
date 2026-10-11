@@ -8,7 +8,8 @@
 //
 // Implemented layouts: the (e,e'p) family, i.e. doing_hyd_elast / doing_deuterium /
 // doing_heavy (this includes doing_phsp, which keeps doing_hyd_elast & co.): 46 columns; exclusive pion production
-// (doing_pion, task P9.2): 53 columns (65 with doing_pizero). Kaon/delta and semi/rho come with those reactions.
+// (doing_pion, task P9.2): 53 columns (65 with doing_pizero); kaon (doing_kaon, P10.2): 55. Delta and semi/rho come with those
+// reactions.
 #ifndef SIMC_OUTPUT_NTUPLELAYOUT_H
 #define SIMC_OUTPUT_NTUPLELAYOUT_H
 
@@ -60,7 +61,7 @@ const std::vector<NtupleColumn>& KaonNtupleColumns();
 /// layout.
 const std::vector<NtupleColumn>& PionNtupleColumns(bool pizero);
 
-/// True if the reaction flags select the pion layout (NtupleInit.f:101: doing_pion; kaon/delta are not ported).
+/// True if the reaction flags select the pion/kaon layout (NtupleInit.f:101: doing_pion, doing_kaon; delta is not ported).
 bool UsesPionLayout(const ReactionFlags& f);
 
 /// results_ntu_write for doing_pion (results_write.f:64-186). `ntu` must have PionNtupleColumns(pizero).size()

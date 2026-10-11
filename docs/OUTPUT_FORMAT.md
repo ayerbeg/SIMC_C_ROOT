@@ -23,8 +23,8 @@ Each sink accepts an optional JSON config `{"file": "..."}`.
 - Each value is computed in double precision and stored as `Float_t`, like make_root_tree's `real*4 ntup_out`.
 - Implemented layouts: the (e,e'p) family (`doing_hyd_elast`, `doing_deuterium`, `doing_heavy`), 46 columns. This includes
   `doing_phsp`, which keeps `doing_hyd_elast`, so the acceptance runs also have these 46 columns. Exclusive pion production
-  (`doing_pion`, P9.2): 53 columns, 65 with `doing_pizero` (§1b). The kaon/delta and semi/rho layouts (NtupleInit.f l.101-295)
-  will come with those reactions; `beginRun` throws for them (and for `using_tgt_field`). The layout is chosen from the run
+  (`doing_pion`, P9.2): 53 columns, 65 with `doing_pizero` (§1b). Kaon production (`doing_kaon`, P10.2): 55 columns (§1c). The
+  delta and semi/rho layouts (NtupleInit.f l.101-295) will come with those reactions; `beginRun` throws for them (and for `using_tgt_field`). The layout is chosen from the run
   flags (`NtupleColumnsFor(setup)`, `FillNtuple`).
 - **Arm assignment** (results_write.f:64 and 89): `hs*` = the spectrometer on the beam **right** (HMS, HRSR) and `ss*` = the
   one on the **left** (SOS, HRSL, SHMS).
@@ -122,6 +122,23 @@ Columns 1-33 are those of the table above (same arm assignment). Then:
 
 `pfer`, `pferx..z` are COMMON /pfermi/ (`MainEvent::pfermi`) of the event. The validation captures prove the 53 columns
 bit for bit (`l1_simcrun_replay_pion_*`).
+
+### 1c. Kaon layout (doing_kaon; NtupleInit.f:101-166, results_write.f:131-166)
+
+Columns 1-53 are those of the pion layout (§1b), with the kaon meanings below, then two kaon columns:
+
+| # | branch | C++ source | units | Fortran |
+|---|---|---|---|---|
+| 44 | `siglab` | `main.sigcc` (peeK, incl. the Coulomb factor; without the survival probability) | µb/MeV/sr² | results_write.f:146 |
+| 45 | `sigcm` | `main.ntup.sigcm` (= sig_factorized) | model units | results_write.f:147 |
+| 46 | `Weight` | `main.weight` (× survival probability when doing_decay = 0) |  | results_write.f:148 |
+| 47 | `decdist` | `main.ntup.decdist`: the decay distance [cm] with decay ON; the **survival probability** with decay OFF (physics_kaon.f:164) | cm or 1 | results_write.f:149 |
+| 48 | `Mhadron` | `sqrt(main.ntup.Mh2_final)` (μ or π mass after a K decay; a first-half K→ππ decay in transp keeps Mk in fortran_compat, D-006) | MeV | results_write.f:150 |
+| 54 | `saghai` | `main.ntup.sigcm1` (Saghai model; 0 for every event in fortran_compat, D-043 F1) | model units | results_write.f:164 |
+| 55 | `factor` | `main.ntup.sigcm2` (factorized model, = `sigcm`) | model units | results_write.f:165 |
+
+With `using_tgt_field` the two kaon columns would move to 62/63 (not ported). The kaon captures prove the 55 columns bit for
+bit (`l1_simcrun_replay_kaon_*`).
 
 ## 2. Run summary JSON (RunSummarySink, hist2json)
 

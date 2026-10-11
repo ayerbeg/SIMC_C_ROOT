@@ -154,15 +154,18 @@ class IReaction : public IStage {
 
 The (e,e'p) plug-ins share `reactions::EepReactionBase` (complete_ev, complete_recon_ev, complete_main, genvol of
 event.f/simc.f); a new (e,e'p)-like reaction can derive from it and implement `generate()` and `spectralWeight()`.
-The cross sections of the Fortran reactions that are not ported yet (kaon, Delta, rho, SIDIS) throw `NotPorted`
+The cross sections of the Fortran reactions that are not ported yet (Delta, rho, SIDIS) throw `NotPorted`
 in `assembleWeight`. The exclusive pion reaction `pion_production` (P9.2, `include/simc/reactions/PionProduction.h`)
 also derives from `EepReactionBase` (it reuses complete_recon_ev and genvol) and overrides `generate`, `completeEv` and
 `completeMain`: an example of a reaction with its own kinematics, Fermi motion (`MainEvent::pfermi`), extra random
 numbers (Delta mass, pi0 decay) and its own weight assembly. Its JSON keys: `data_dir` (delta_relativistic_bw.inp),
 `verbose`.
 
+The kaon reaction `kaon_production` (P10.2, `include/simc/reactions/KaonProduction.h`) is the same event.f code with the
+kaon flags (`PionProduction(name, kaon = true)`) and its own `completeMain` (peeK, tgtweight, survival probability).
+
 Templates: `include/simc/reactions/HydrogenElastic.h`, `include/simc/reactions/NuclearEep.h`,
-`include/simc/reactions/PionProduction.h`.
+`include/simc/reactions/PionProduction.h`, `include/simc/reactions/KaonProduction.h`.
 
 ### Spectral function (`ISpectralFunction`, component of the D/A(e,e'p) reactions)
 
@@ -214,7 +217,9 @@ private:
 };
 SIMC_REGISTER(simc::IPhysicsModel, "flat", FlatModel)
 ```
-`{"pipeline": {"physics": {"type": "flat", "value": 2.5}}}`. Templates: `src/physics/proton/ProtonModels.cpp`.
+`{"pipeline": {"physics": {"type": "flat", "value": 2.5}}}`. Templates: `src/physics/proton/ProtonModels.cpp`;
+`src/physics/pion/PionModel.cpp` and `src/physics/kaon/KaonModel.cpp` (models that also write `main` through `sigccMain`
+and read data tables, JSON key `data_dir`).
 
 ## 6. Target (`ITarget`)
 

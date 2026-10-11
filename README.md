@@ -8,7 +8,8 @@ chosen by name from a JSON pipeline.
 
 Current scope: H(e,e'p) elastic, D(e,e'p) and A(e,e'p) (theory-file or Benhar spectral functions; task P8), exclusive
 pion electroproduction (π+/π−/π0 on H, D and A, quasifree, coherent and π Δ final states, decay in flight; task P9; the
-π0 runs with the calorimeter arm wait for P14), with and without radiation, and phase-space (`doing_phsp`) runs, HMS and
+π0 runs with the calorimeter arm wait for P14), kaon electroproduction (K+Λ/Σ0/Σ− on H, D and A, quasifree and coherent,
+decay in flight or survival weight; task P10), with and without radiation, and phase-space (`doing_phsp`) runs, HMS and
 SHMS arms. Other reactions and the SOS/HRS/calorimeter arms are refused with a `NotPorted` error (later phases).
 
 Documentation (`docs/`):
@@ -86,7 +87,7 @@ ctest -L unit | -L l1 | -L replay | -L cli | -L regression | -L examples
 
 * `l1`: routine-level tables against the Fortran harness (`reference/functions/`).
 * `replay`: the complete driver fed with captured Fortran random streams reproduces the Fortran outputs bit for bit.
-* `regression`: the outputs of the standard runs (seed 4242; H(e,e'p), D/Fe(e,e'p), π+ H, π− D) must equal the baseline outputs of
+* `regression`: the outputs of the standard runs (seed 4242; H(e,e'p), D/Fe(e,e'p), π+ H, π− D, K+Λ H, K+Σ− D) must equal the baseline outputs of
   their reference commits (`SIMC++_Project/baselines/<commit>_*`), in both modes: every tree branch and entry bitwise, the text outputs apart from time stamps.
   Every refactor must keep these green.
 * `tools/check_all.sh [--commit REV]`: a clean build of everything plus both test suites, logged in
@@ -102,6 +103,7 @@ examples/       example plug-ins (ideal_box spectrometer) and their tests
 tests/          unit/ l1/ regression/
 tools/          simc++ main, inp2json, hist2json, check_all.sh
 validation/     simc_compare (L2)
-data/           COSY maps and spectral functions (copies of the Fortran files: matrices/simc_fortran, spectral),
+data/           COSY maps, spectral functions, pion and kaon model tables (copies of the Fortran files: matrices/simc_fortran,
+                spectral, pion, kaon),
                 tables, data/config/*.json
 ```
