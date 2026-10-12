@@ -9,6 +9,8 @@
 # <commit>_glibc243_<tag>; the *_COMMIT variables below therefore hold "4408493_glibc243". The original folders
 # (f9cea51_*, 08812e6_corrected_*, 508633a_*, 3b27d5c_*, 1275770_*) are kept; their README.txt explain the history.
 # On a failure, output_identity.sh prints the baseline toolchain (README.txt "toolchain:") next to this machine's.
+# P10.5: the baselines were made with ROOT 6.30.06; under ROOT 6.40.04 (C++20) every regression test passes unchanged
+# (contents identical; only ROOT metadata in the .root bytes differ, which simc_root_identity ignores), so they stay.
 add_executable(simc_root_identity root_identity.cpp)
 target_link_libraries(simc_root_identity PRIVATE ROOT::Core ROOT::RIO ROOT::Tree ROOT::Hist)
 set_target_properties(simc_root_identity PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
