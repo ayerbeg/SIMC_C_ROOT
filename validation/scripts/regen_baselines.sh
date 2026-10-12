@@ -16,7 +16,7 @@ BASEDIR="$PROJECT_DIR/baselines"
 REF=/home/ayerbe/NewDisk/reference
 FORTRAN=/home/ayerbe/NewDisk/simc_gfortran
 ROOT_DIR="${ROOTSYS:-/home/ayerbe/Builds/ROOT6_install}"
-export LD_LIBRARY_PATH="$ROOT_DIR/lib:/usr/local/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="$ROOT_DIR/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 FP="$SRC_DIR/tools/toolchain_fingerprint.sh"
 REV=HEAD; TAG=""; JOBS=4; ONLY=""
 while [[ $# -gt 0 ]]; do

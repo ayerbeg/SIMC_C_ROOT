@@ -20,7 +20,7 @@ PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SRC_DIR="$PROJECT_DIR/SIMC++_Claude"
 RUNS_DIR="$PROJECT_DIR/simc_runs"
 ROOT_DIR="${ROOTSYS:-/home/ayerbe/Builds/ROOT6_install}"
-export LD_LIBRARY_PATH="$ROOT_DIR/lib:/usr/local/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="$ROOT_DIR/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 LABEL=""; REV=""
 while [[ $# -gt 0 ]]; do
   case "$1" in

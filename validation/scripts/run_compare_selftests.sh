@@ -6,7 +6,7 @@
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD="${1:-$HERE/build}"
-export LD_LIBRARY_PATH=/home/ayerbe/Builds/ROOT6_install/lib:/usr/local/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+export LD_LIBRARY_PATH=/home/ayerbe/Builds/ROOT6_install/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
 R=/home/ayerbe/NewDisk/reference/runs
 C=/home/ayerbe/NewDisk/reference/comparisons
 CFG="$HERE/config/compare_default.json"

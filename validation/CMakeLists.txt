@@ -6,14 +6,14 @@
 cmake_minimum_required(VERSION 3.16)
 project(simc_validation CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif()
 
 list(APPEND CMAKE_PREFIX_PATH /home/ayerbe/Builds/ROOT6_install)
-find_package(ROOT 6.20 REQUIRED COMPONENTS Core RIO Tree Hist Gpad Graf MathCore)
+find_package(ROOT 6.40 REQUIRED COMPONENTS Core RIO Tree Hist Gpad Graf MathCore)
 
 find_package(nlohmann_json 3.9 QUIET)
 if(NOT nlohmann_json_FOUND)

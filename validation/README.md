@@ -5,7 +5,7 @@
 Standalone CMake project (it does not touch the top-level build):
 
 ```bash
-export LD_LIBRARY_PATH=/home/ayerbe/Builds/ROOT6_install/lib:/usr/local/lib
+export LD_LIBRARY_PATH=/home/ayerbe/Builds/ROOT6_install/lib     # ROOT 6.40 (C++20); not /usr/local/lib (old ROOT, old libtbb)
 cmake -S validation -B validation/build -DCMAKE_PREFIX_PATH=/home/ayerbe/Builds/ROOT6_install
 cmake --build validation/build -j
 (cd validation/build && ctest --output-on-failure)      # self-tests, about 40 s

@@ -1,6 +1,6 @@
 # SIMC++
 
-SIMC++ is a C++17 / ROOT 6 translation of SIMC, the Hall C Monte Carlo (Fortran, `simc_gfortran`), built as a
+SIMC++ is a C++20 / ROOT 6 translation of SIMC, the Hall C Monte Carlo (Fortran, `simc_gfortran`), built as a
 plug-in framework. The Fortran is the physics specification: the ported routines reproduce it bit for bit (L1 and
 replay tests), and complete runs agree statistically with the Fortran (L2). Around these faithful kernels, every
 stage of the event chain (target, beam, reaction, radiation, cross section, spectrometers, outputs) is a plug-in
@@ -24,8 +24,10 @@ Documentation (`docs/`):
 
 ## Build
 
-Requirements: CMake ≥ 3.15, a C++17 compiler, ROOT ≥ 6.20 (Core, Tree, Hist, RIO), nlohmann/json ≥ 3.9 (fetched
-automatically if absent).
+Requirements: CMake ≥ 3.15, a C++20 compiler, ROOT ≥ 6.40 built with C++20 (Core, Tree, Hist, RIO; the default is
+`/home/ayerbe/Builds/ROOT6_install`, ROOT 6.40.04), nlohmann/json ≥ 3.9 (fetched automatically if absent). At run
+time put only `$ROOTSYS/lib` in `LD_LIBRARY_PATH`: on this machine `/usr/local/lib` holds an old ROOT and an old
+`libtbb.so.12` that break linking against ROOT 6.40 (libImt).
 
 ```bash
 cmake -S . -B build -DCMAKE_PREFIX_PATH=/home/ayerbe/Builds/ROOT6_install -DCMAKE_BUILD_TYPE=Release \

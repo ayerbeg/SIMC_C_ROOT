@@ -15,7 +15,7 @@ Status: v2, task P7.4 (2026-10-04); updated in P8.2 (reaction-owned weight, D/A(
    `FORTRAN-DIFF-CANDIDATE(D-xxx)` with the question; the open acceptance-mode items `FORTRAN-OPEN(D-031 flag 1)`;
    documented faithful oddities `FORTRAN-QUIRK(D-xxx)`. Every item is listed in [FORTRAN_DIFFERENCES.md](FORTRAN_DIFFERENCES.md).
 2. **A modern, object-oriented framework around faithful kernels** (D-026). The Fortran-faithful code ("kernels")
-   is the numerical core. The rest — stage interfaces, plug-ins, driver, I/O — is ordinary C++17: explicit inputs
+   is the numerical core. The rest — stage interfaces, plug-ins, driver, I/O — is ordinary C++20: explicit inputs
    and outputs, RAII and `unique_ptr` ownership, value types for events, const-correct interfaces, no global state.
 3. **Everything is a plug-in** chosen by name from the JSON pipeline (§4). The driver depends only on interfaces.
 4. **Validation is layered** (D-002, §7): L1 tables per routine, bitwise replays of captured Fortran runs,

@@ -4,7 +4,7 @@ project(SIMC_CPP VERSION 2.0 LANGUAGES CXX)
 # SIMC++ (translation branch): docs/ARCHITECTURE.md, docs/DRIVER.md.
 # The pre-translation ("legacy") code and its SIMC_BUILD_LEGACY option were removed in P7.2; they are in git history.
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -14,7 +14,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG")
 
 enable_testing()
 
-find_package(ROOT 6.20 REQUIRED COMPONENTS Core Tree Hist RIO)
+find_package(ROOT 6.40 REQUIRED COMPONENTS Core Tree Hist RIO)
 
 # ============================================================================
 # Find nlohmann/json
