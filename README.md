@@ -9,8 +9,13 @@ chosen by name from a JSON pipeline.
 Current scope: H(e,e'p) elastic, D(e,e'p) and A(e,e'p) (theory-file or Benhar spectral functions; task P8), exclusive
 pion electroproduction (π+/π−/π0 on H, D and A, quasifree, coherent and π Δ final states, decay in flight; task P9; the
 π0 runs with the calorimeter arm wait for P14), kaon electroproduction (K+Λ/Σ0/Σ− on H, D and A, quasifree and coherent,
-decay in flight or survival weight; task P10), with and without radiation, and phase-space (`doing_phsp`) runs, HMS and
-SHMS arms. Other reactions and the SOS/HRS/calorimeter arms are refused with a `NotPorted` error (later phases).
+decay in flight or survival weight; task P10), (e,e'p)π in the Delta region (`doing_delta`, H, and D/A in the corrected
+mode; task P11), with and without radiation, and phase-space (`doing_phsp`) runs, HMS and SHMS arms. Other reactions and the
+SOS/HRS/calorimeter arms are refused with a `NotPorted` error (later phases).
+
+**Delta runs: the weight contains no cross section.** As in the Fortran (physics_delta.f:132, "Need new xsec model."),
+the `doing_delta` event weight is phase space × virtual-photon flux × the proton CM→lab jacobian; the model cross section
+is not applied. Delta yields are therefore not physical rates (docs/FORTRAN_DIFFERENCES.md, D-048 F4).
 
 Documentation (`docs/`):
 

@@ -147,7 +147,7 @@ class IReaction : public IStage {
   Fortran part after the SF weight (cross section, Coulomb focusing factor, weight).
 * `genVolume()` is the generated phase-space volume used in the normalisation.
 * Select it with `"reaction": "my_reaction"`. The default comes from the run flags (`hydrogen_elastic`,
-  `phase_space`, `deuterium_eep`, `nucleus_eep`, `pion_production`).
+  `phase_space`, `deuterium_eep`, `nucleus_eep`, `pion_production`, `kaon_production`, `delta_production`).
 * Optional hooks: `beginTry(ntried)` (messages), `prepareCentral(main0, vertex0)` (called by calculate_central before
   the central complete_main: set the main0 quantities your cross section reads) and `finalTargetState(targ)` (target
   COMMON values your reaction changed during the run, for the report).
@@ -164,8 +164,15 @@ numbers (Delta mass, pi0 decay) and its own weight assembly. Its JSON keys: `dat
 The kaon reaction `kaon_production` (P10.2, `include/simc/reactions/KaonProduction.h`) is the same event.f code with the
 kaon flags (`PionProduction(name, kaon = true)`) and its own `completeMain` (peeK, tgtweight, survival probability).
 
+The Delta-region reaction `delta_production` (P11.1, `include/simc/reactions/DeltaProduction.h`) is the same event.f code
+with the delta flags (the proton is the detected hadron, one extra grnd for the choice between the two roots of the
+proton-energy quadratic) and its own `completeMain` (peedelta, tgtweight 1). Its physics model `delta`
+(`include/simc/physics/delta/DeltaModel.h`) reproduces physics_delta.f:peedelta, which contains no cross section
+(D-048 F4): a real Delta cross-section model would be a new `IPhysicsModel` selected with `"physics": "my_delta_model"`.
+
 Templates: `include/simc/reactions/HydrogenElastic.h`, `include/simc/reactions/NuclearEep.h`,
-`include/simc/reactions/PionProduction.h`, `include/simc/reactions/KaonProduction.h`.
+`include/simc/reactions/PionProduction.h`, `include/simc/reactions/KaonProduction.h`,
+`include/simc/reactions/DeltaProduction.h`.
 
 ### Spectral function (`ISpectralFunction`, component of the D/A(e,e'p) reactions)
 

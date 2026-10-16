@@ -23,8 +23,9 @@ Each sink accepts an optional JSON config `{"file": "..."}`.
 - Each value is computed in double precision and stored as `Float_t`, like make_root_tree's `real*4 ntup_out`.
 - Implemented layouts: the (e,e'p) family (`doing_hyd_elast`, `doing_deuterium`, `doing_heavy`), 46 columns. This includes
   `doing_phsp`, which keeps `doing_hyd_elast`, so the acceptance runs also have these 46 columns. Exclusive pion production
-  (`doing_pion`, P9.2): 53 columns, 65 with `doing_pizero` (§1b). Kaon production (`doing_kaon`, P10.2): 55 columns (§1c). The
-  delta and semi/rho layouts (NtupleInit.f l.101-295) will come with those reactions; `beginRun` throws for them (and for `using_tgt_field`). The layout is chosen from the run
+  (`doing_pion`, P9.2): 53 columns, 65 with `doing_pizero` (§1b). Kaon production (`doing_kaon`, P10.2): 55 columns (§1c).
+  Delta region (`doing_delta`, P11.1): the 53 pion columns (§1d). The semi/rho layouts (NtupleInit.f l.191-295) will come with
+  those reactions; `beginRun` throws for them (and for `using_tgt_field`). The layout is chosen from the run
   flags (`NtupleColumnsFor(setup)`, `FillNtuple`).
 - **Arm assignment** (results_write.f:64 and 89): `hs*` = the spectrometer on the beam **right** (HMS, HRSR) and `ss*` = the
   one on the **left** (SOS, HRSL, SHMS).
@@ -139,6 +140,23 @@ Columns 1-53 are those of the pion layout (§1b), with the kaon meanings below, 
 
 With `using_tgt_field` the two kaon columns would move to 62/63 (not ported). The kaon captures prove the 55 columns bit for
 bit (`l1_simcrun_replay_kaon_*`).
+
+### 1d. Delta layout (doing_delta; NtupleInit.f:101-158, results_write.f:131-155)
+
+The 53 columns of the pion layout (§1b), with these meanings for H/D/A(e,e'p)π (the proton is detected, the pion missing):
+
+| # | branch | content for doing_delta |
+|---|---|---|
+| 34 | `missmass` | the missing (pion) mass, recon |
+| 36 | `phad` | the proton momentum, recon |
+| 37, 52 | `t`, `ti` | t of the proton vertex (Mh² = Mp²), recon / vertex |
+| 44 | `siglab` | `main.sigcc` = peedelta: **phase space × photon flux × jacobian, NO cross section** (D-048 F4) |
+| 45 | `sigcm` | `main.ntup.sigcm` = sig_blok (the Brauel π fit at the proton CM angles; not in the weight). fortran_compat: the Fortran value read from the low 8 bytes of binary128 arguments, meaningless, NaN/Inf in ~0.4 % of the events (D-048 F3); default: the fit with the intended arguments |
+| 46 | `Weight` | `main.weight` (no cross section, F4) |
+| 47, 48 | `decdist`, `Mhadron` | 0 and Mp (no decay) |
+
+The arm prefixes follow `electron_arm` as for every layout (D1: SHMS e⁻, HMS p → `hs*` = proton). The Delta captures prove the
+53 columns bit for bit (`l1_simcrun_replay_delta_*`).
 
 ## 2. Run summary JSON (RunSummarySink, hist2json)
 

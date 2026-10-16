@@ -55,8 +55,8 @@ finish: Normalise → RunReport → RunSummary → sinks (endRun; IReportSink::w
   ```
   `PipelineConfig::Defaults` reproduces the Fortran choices from the flags: `phase_space` if `doing_phsp`
   (D-009: on hydrogen it still runs the elastic kinematics with sigcc = 1), `hydrogen_elastic` for H(e,e'p),
-  `deuterium_eep` (D) / `nucleus_eep` (A > 2), `pion_production` (doing_pion, P9.2), `kaon_production` (doing_kaon, P10.2), `sigep` (H) / `deforest` (D, A) / `pion`
-  (doing_pion) / `kaon` (doing_kaon), `simc_rad` (radc_init_ev runs for every event, even without radiation), the arms
+  `deuterium_eep` (D) / `nucleus_eep` (A > 2), `pion_production` (doing_pion, P9.2), `kaon_production` (doing_kaon, P10.2), `delta_production` (doing_delta, P11.1), `sigep` (H) / `deforest` (D, A) / `pion`
+  (doing_pion) / `kaon` (doing_kaon) / `delta` (doing_delta; no cross section, D-048 F4), `simc_rad` (radc_init_ev runs for every event, even without radiation), the arms
   from `electron_arm`/`hadron_arm` (`MonteCarlo::DefaultArm`), `root_tree` only if `Nntu > 0`.
   `simc++ --print-pipeline` shows the resolved pipeline.
 * **Wiring (P7.4).** `SimcRun::initialise` creates the stages by name, initialises the target and the radiator
@@ -117,7 +117,7 @@ finish: Normalise → RunReport → RunSummary → sinks (endRun; IReportSink::w
 
 ## 5. Not supported yet
 
-Reactions other than H/D/A(e,e'p), exclusive pion (P9.2) and kaon (P10.2) production and `doing_phsp` (delta, rho,
-semi-inclusive: NotPorted at initialise), SOS/HRS/calorimeter arms (codes 2-4, 7-8; P14: the pi0 runs with the
-calorimeter), `using_tgt_field`, `random_state_file`, the delta and semi/rho ntuple layouts, the kaon layout with the target field, the `.geni` blocks of
-SOS/HRS/calo.
+Reactions other than H/D/A(e,e'p), exclusive pion (P9.2), kaon (P10.2) and Delta-region (e,e'p)pi (P11.1) production and
+`doing_phsp` (rho, semi-inclusive: NotPorted at initialise), SOS/HRS/calorimeter arms (codes 2-4, 7-8; P14: the pi0 runs with
+the calorimeter), `using_tgt_field`, `random_state_file`, the semi/rho ntuple layouts, the kaon layout with the target field,
+the `.geni` blocks of SOS/HRS/calo.
