@@ -53,6 +53,12 @@ for t in h_k1_rad_dec1 d_k1_sigm_rad_dec1; do
             "corrected_kaon_${t}_n20k_s4242|$REF/runs/kaon_${t}_A/kaon_${t}_A.inp|--ngen 20000|dir_kaon_${t}_s4242|regression_corrected_kaon_${t} (was 1275770_corrected_kaon_${t}_n20k_s4242)")
 done
 
+# P11.1: Delta region H(e,e'p)pi, D1 (SHMS e-, HMS p), rad
+for t in h_d1_rad; do
+  CONFIGS+=("delta_${t}_n20k_s4242|$REF/runs/delta_${t}_A/delta_${t}_A.inp|--fortran-compat --ngen 20000|dir_delta_${t}_s4242|regression_identity_delta_${t} (new in P11.1)"
+            "corrected_delta_${t}_n20k_s4242|$REF/runs/delta_${t}_A/delta_${t}_A.inp|--ngen 20000|dir_delta_${t}_s4242|regression_corrected_delta_${t} (new in P11.1)")
+done
+
 WT="$(mktemp -d "${TMPDIR:-/tmp}/simc_regen_wt.XXXXXX")"
 cleanup() { git -C "$SRC_DIR" worktree remove --force "$WT" >/dev/null 2>&1; git -C "$SRC_DIR" worktree prune; rm -rf "$WT.build"; }
 trap cleanup EXIT
