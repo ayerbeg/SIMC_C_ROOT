@@ -31,6 +31,11 @@ set(SIMC_FORTRAN_DIFF_ITEMS
     D038_F5_central_sigcc
     D038_F15_hist_which_pion_11
     D043_F13_central_sigcc_kaon
+    D048_F1_delta_DA_stop
+    D048_F2_delta_tail1_egamma
+    D048_F3_delta_sigblok_args
+    D048_F6_delta_warning_text
+    D048_F9_central_sigcc_delta
 )
 foreach(_item ${SIMC_FORTRAN_DIFF_ITEMS})
     add_test(NAME fortran_diff_${_item}

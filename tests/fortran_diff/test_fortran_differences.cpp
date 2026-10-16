@@ -36,6 +36,7 @@
 #include "simc/material/HallCCryoTarget.h"
 #include "simc/optics/CosyEngine.h"
 #include "simc/output/SummaryJson.h"
+#include "simc/physics/delta/DeltaModel.h"
 #include "simc/physics/nuclear/SpectralFunctionTables.h"
 #include "simc/radiation/SimcRadiator.h"
 #include "simc/reactions/NuclearEep.h"
@@ -1240,6 +1241,274 @@ int testHistWhichPion11() {
     return 0;
 }
 
+
+// ------------------------------------------------------------------------------------------------ D-048 (P11.1, Delta)
+std::string deltaInp(const std::string& name) {
+    const std::string a = g_ref + "/functions/delta_state/inp/" + name + ".inp";
+    if (std::ifstream(a)) return a;
+    return g_ref + "/runs/" + name + "/" + name + ".inp";
+}
+bool loadDeltaInp(const std::string& name, SimcParameters& p) {
+    const std::string inp = deltaInp(name);
+    if (!std::ifstream(inp)) {
+        std::printf("SKIP: %s missing\n", inp.c_str());
+        return false;
+    }
+    InpReader rd(p);
+    return rd.loadRun(inp);
+}
+
+/// Output sink that checks the complete_ev energy-momentum balance of every contributing event at the vertex:
+/// (nu + efer - E_p)^2 - |q + |pfer| pfer_hat - p|^2 = Mrec_struck^2 (event.f:633-679, both roots), and collects
+/// plausibility figures (weights, root, Fermi momentum, the radiating tail).
+struct DeltaCheckSink : IOutputSink {
+    double mrec2{0};
+    long n{0}, bad{0}, nonfinite{0}, tail1{0}, pferNonZero{0};
+    double maxrel{0}, sumw{0}, wmin{1e300}, wmax{0}, pmin{1e300}, pmax{0};
+    std::string name() const override { return "delta_check"; }
+    void configure(const Json&, const SimcParameters&) override {}
+    void init(const StageContext&) override {}
+    void beginRun(const RunSetup& s) override { mrec2 = s.targ.Mrec_struck * s.targ.Mrec_struck; }
+    void fill(const MainEvent& m, const Event& v, const Event&, const Event&, bool success) override {
+        if (!success) return;
+        ++n;
+        const FermiMomentum& f = m.pfermi;
+        const double ap = std::fabs(f.pfer);
+        const double rx = v.q * v.uq.x + ap * f.pferx - v.p.P * v.up.x;
+        const double ry = v.q * v.uq.y + ap * f.pfery - v.p.P * v.up.y;
+        const double rz = v.q * v.uq.z + ap * f.pferz - v.p.P * v.up.z;
+        const double er = v.nu + f.efer - v.p.E;
+        const double m2 = er * er - (rx * rx + ry * ry + rz * rz);
+        const double rel = std::fabs(m2 - mrec2) / (er * er);   // relative to the terms that cancel
+        maxrel = std::max(maxrel, rel);
+        if (!(rel < 1e-9)) ++bad;
+        if (!std::isfinite(m.weight) || !(m.weight > 0)) ++nonfinite;
+        sumw += m.weight;
+        wmin = std::min(wmin, m.weight);
+        wmax = std::max(wmax, m.weight);
+        pmin = std::min(pmin, v.p.P);
+        pmax = std::max(pmax, v.p.P);
+        if (m.ntup.radarm == 1) ++tail1;
+        if (f.pfer != 0) ++pferNonZero;
+    }
+    void endRun(const RunSummary&) override {}
+};
+
+struct DeltaRunResult {
+    bool ran{false};
+    std::string what;
+    long ntried{0}, nevent{0};
+    double wtcontr{0};
+    DeltaCheckSink* sink{nullptr};
+    std::vector<std::string> messages;
+};
+DeltaRunResult runDelta(const SimcParameters& p, bool compat, long ngen, std::unique_ptr<driver::SimcRun>& keep) {
+    DeltaRunResult r;
+    driver::RunOptions opt;
+    opt.quiet_stages = true;
+    opt.fortran_compat = compat;
+    opt.override_ngen = true;
+    opt.ngen = ngen;
+    opt.override_seed = true;
+    opt.seed = 4242;
+    opt.run_name = "d048";
+    opt.data_dir = specDir();
+    static std::ostringstream log;
+    opt.log = &log;
+    keep = std::make_unique<driver::SimcRun>(p, Json{{"sinks", Json::array()}}, opt);
+    auto sk = std::make_unique<DeltaCheckSink>();
+    r.sink = sk.get();
+    keep->addSink(std::move(sk));
+    try {
+        keep->run();
+        r.ran = true;
+        r.ntried = keep->totals().ntried;
+        r.nevent = keep->totals().nevent;
+        r.wtcontr = keep->totals().wtcontribute;
+        r.messages = keep->setup().messages;
+    } catch (const std::exception& e) {
+        r.what = e.what();
+    }
+    return r;
+}
+
+// D-048 F1 (D-018): dbase.f:779-788 tests the pion flags doing_deutpi/doing_hepi, so every D/A (e,e'p)pi run STOPs;
+// corrected: D/A Delta runs (the D/A branches of event.f/init.f, never run in the Fortran: self-consistency only).
+int testDeltaDAStop() {
+    const char* names[] = {"l1s_d_d1", "l1s_he3_d1", "l1s_c12_d1"};
+    for (const char* nm : names) {
+        SimcParameters p;
+        if (!loadDeltaInp(nm, p)) return 77;
+        for (int compat = 0; compat < 2; ++compat) {
+            SetupOptions so;
+            so.fortran_compat = compat == 1;
+            so.data_dir = specDir();
+            const RunSetup s = BuildRunSetup(p, so);
+            const std::string msg = "STOP I don't have ANY idea what (e,e'p)pi we're doing!!!";
+            if (compat) {
+                expect(!s.ok() && s.stops.front() == msg, std::string(nm) + " compat: STOPs as the Fortran: " +
+                                                              (s.ok() ? "<no STOP>" : s.stops.front()));
+            } else {
+                const bool d = std::lround(p.targ.A) == 2;
+                expect(s.ok() && (d ? s.flags.doing_deutdelta : s.flags.doing_hedelta) && !s.pdist.pval.empty() &&
+                           s.VERTEXedge.Pm.max == s.pdist.pval.back() && (d || s.VERTEXedge.Em.max > 0),
+                       std::string(nm) + " corrected: set up (" + (d ? "doing_deutdelta" : "doing_hedelta") +
+                           ", momentum distribution " + s.pdist.file + ", nump " + std::to_string(s.pdist.pval.size()) +
+                           (d ? "" : ", spectral function " + s.sf.file + ", Em max " + std::to_string(s.VERTEXedge.Em.max)) +
+                           ")");
+            }
+        }
+        // corrected: 300 events; energy-momentum balance of every event at the vertex, finite positive weights
+        std::unique_ptr<driver::SimcRun> keep;
+        const DeltaRunResult r = runDelta(p, false, 300, keep);
+        expect(r.ran && r.nevent == 300, std::string(nm) + " corrected: runs 300 events" + (r.what.empty() ? "" : " (" + r.what + ")"));
+        if (!r.ran) continue;
+        const DeltaCheckSink& k = *r.sink;
+        char b[400];
+        std::snprintf(b, sizeof b,
+                      "%s corrected: %ld events, Ntried %ld, (nu+efer-Ep)^2-|q+pfer-p|^2 = Mpi^2 for all (max rel %.2e, %ld bad), "
+                      "weights finite > 0 (%ld bad; %.3g..%.3g), Fermi momentum non-zero in %ld, p %.0f..%.0f MeV/c, "
+                      "tail-1 events %ld",
+                      nm, k.n, r.ntried, k.maxrel, k.bad, k.nonfinite, k.wmin, k.wmax, k.pferNonZero, k.pmin, k.pmax, k.tail1);
+        expect(k.n == 300 && k.bad == 0 && k.nonfinite == 0 && k.pferNonZero == k.n, b);
+    }
+    return 0;
+}
+
+// D-048 F2: radc.f:288-293 sets no tail-1 Egamma limits for doing_delta: every ntail = 1 try fails.
+int testDeltaTail1() {
+    SimcParameters p;
+    if (!loadDeltaInp("p11f1_dh_d1_rad_cap", p)) return 77;
+    DeltaRunResult r[2];
+    std::unique_ptr<driver::SimcRun> keep[2];
+    for (int compat = 0; compat < 2; ++compat) r[compat] = runDelta(p, compat == 1, 400, keep[compat]);
+    if (!r[0].ran || !r[1].ran) {
+        expect(false, "runs: " + r[0].what + " / " + r[1].what);
+        return 0;
+    }
+    char b[300];
+    std::snprintf(b, sizeof b, "compat: 0 of %ld events radiate in tail 1 (radarm = 1), Ntried %ld", r[1].sink->n, r[1].ntried);
+    expect(r[1].sink->tail1 == 0, b);
+    std::snprintf(b, sizeof b, "corrected: %ld of %ld events radiate in tail 1, Ntried %ld (compat %ld, ratio %.3f)",
+                  r[0].sink->tail1, r[0].sink->n, r[0].ntried, r[1].ntried,
+                  static_cast<double>(r[0].ntried) / static_cast<double>(r[1].ntried));
+    expect(r[0].sink->tail1 > 0 && r[0].ntried < r[1].ntried, b);
+    expect(r[0].sink->bad == 0 && r[1].sink->bad == 0, "both modes: vertex energy-momentum balance holds for every event");
+    return 0;
+}
+
+// D-048 F3: physics_delta.f:99-100 passes binary128 quotients to the REAL*8 dummies of sig_blok.
+int testDeltaSigblok() {
+    simcl1::Table in, out;
+    std::string err;
+    const std::string dir = g_ref + "/functions/peedelta";
+    if (!in.load(dir + "/input.txt", err) || !out.load(dir + "/output.txt", err)) {
+        std::printf("SKIP: %s\n", err.c_str());
+        return 77;
+    }
+    long nrow = 0, compatBad = 0, corrBad = 0, valBad = 0, nonfiniteCompat = 0, nonfiniteCorr = 0, diffModes = 0;
+    for (std::size_t i = 0; i < out.rows.size(); ++i) {
+        simcl1::Row r(out, i);
+        Event v;
+        v.Ein = r["v_Ein"];
+        v.nu = r["v_nu"];
+        v.q = r["v_q"];
+        v.Q2 = r["v_Q2"];
+        v.e.E = r["v_e_E"];
+        v.p.P = r["v_p_P"];
+        v.p.E = r["v_p_E"];
+        v.up = {r["v_up_x"], r["v_up_y"], r["v_up_z"]};
+        v.uq = {r["v_uq_x"], r["v_uq_y"], r["v_uq_z"]};
+        MainEvent m;
+        m.epsilon = r["in_m_epsilon"];
+        m.t = r["in_m_t"];
+        m.phi_pq = r["in_m_phi_pq"];
+        m.pfermi = {r["pfer"], r["pferx"], r["pfery"], r["pferz"], r["efer"]};
+        delta::DeltaConfig c;
+        c.which_pion = static_cast<int>(std::lround(r["eff_which_pion"]));
+        c.Mtar_struck = r["eff_Mtar_struck"];
+        c.sigblok_binary128_quirk = true;
+        MainEvent m1 = m, m2 = m;
+        const double v1 = delta::peedelta(v, m1, c);
+        c.sigblok_binary128_quirk = false;
+        const double v2 = delta::peedelta(v, m2, c);
+        ++nrow;
+        auto same = [](double a, double b) { return (std::isnan(a) && std::isnan(b)) || std::memcmp(&a, &b, 8) == 0; };
+        if (!same(m1.ntup.sigcm1, r["ntup_sigcm1"])) ++compatBad;
+        if (!same(m2.ntup.sigcm1, r["hx_sigblok_intended"])) ++corrBad;
+        if (!same(v1, r["peedelta"]) || !same(v2, v1)) ++valBad;
+        if (!std::isfinite(m1.ntup.sigcm1)) ++nonfiniteCompat;
+        if (!std::isfinite(m2.ntup.sigcm1)) ++nonfiniteCorr;
+        if (!same(m1.ntup.sigcm1, m2.ntup.sigcm1)) ++diffModes;
+    }
+    char b[300];
+    std::snprintf(b, sizeof b, "compat: ntup%%sigcm = the Fortran (low 8 bytes of the binary128 arguments) on %ld of %ld rows "
+                  "(%ld non-finite)", nrow - compatBad, nrow, nonfiniteCompat);
+    expect(compatBad == 0 && nrow > 3000, b);
+    std::snprintf(b, sizeof b, "corrected: ntup%%sigcm = sig_blok(t, Q2, s in GeV^2) = hx_sigblok_intended on %ld of %ld rows "
+                  "(%ld non-finite; %ld rows differ from compat)", nrow - corrBad, nrow, nonfiniteCorr, diffModes);
+    expect(corrBad == 0 && nonfiniteCorr == 0, b);
+    std::snprintf(b, sizeof b, "both modes: the peedelta value (the weight) is the Fortran one on all rows (%ld bad)", valBad);
+    expect(valBad == 0, b);
+    return 0;
+}
+
+// D-048 F6: dbase.f:184-186 quote typo in the A >= 2 Delta warning.
+int testDeltaWarningText() {
+    SimcParameters p;
+    if (!loadDeltaInp("l1s_d_d1", p)) return 77;
+    std::string fortranLine;   // the verbatim line of the Fortran run (reference/runs/delta_d_d1_rad_A/*.out)
+    {
+        std::ifstream f(g_ref + "/runs/delta_d_d1_rad_A/delta_d_d1_rad_A.out");
+        for (std::string l; std::getline(f, l);)
+            if (l.find("WARNING: Delta cross section model") != std::string::npos) fortranLine = l;
+    }
+    for (int compat = 0; compat < 2; ++compat) {
+        SetupOptions so;
+        so.fortran_compat = compat == 1;
+        so.data_dir = specDir();
+        const RunSetup s = BuildRunSetup(p, so);
+        std::string got;
+        for (const auto& m : s.messages)
+            if (m.find("WARNING: Delta cross section model") != std::string::npos) got = m;
+        if (compat)
+            expect(!fortranLine.empty() && " " + got == fortranLine,
+                   "compat: the Fortran text (list-directed, leading blank) '" + got.substr(0, 40) + "...'");
+        else
+            expect(got == "WARNING: Delta cross section model only set up for proton target!", "corrected: '" + got + "'");
+    }
+    return 0;
+}
+
+// D-048 F9 (= D-038 F5): the central peedelta sees main0 epsilon = t = phi_pq = 0 (simc.f:1236-1290).
+int testCentralSigccDelta() {
+    SimcParameters p;
+    if (!loadDeltaInp("p11f1_dh_d1_rad_cap", p)) return 77;
+    double sig[2] = {0, 0};
+    MainEvent m0[2];
+    for (int compat = 0; compat < 2; ++compat) {
+        driver::RunOptions opt;
+        opt.quiet_stages = true;
+        opt.fortran_compat = compat == 1;
+        opt.data_dir = specDir();
+        std::ostringstream log;
+        opt.log = &log;
+        driver::SimcRun run(p, Json{{"sinks", Json::array()}}, opt);
+        run.initialise();
+        sig[compat] = run.central().central.sigcc;
+        m0[compat] = run.central().main0;
+    }
+    // the Fortran value (.hist of delta_h_d1_rad_A / p11f1_dh_d1_rad_cap: CENTRAL.sigcc = 0.227051E+01)
+    expect(std::fabs(sig[1] / 2.27051 - 1) < 5e-6, "compat: CENTRAL.sigcc = " + fortran::E(sig[1], 13, 6) +
+                                                       " (Fortran 0.227051E+01)");
+    expect(m0[1].epsilon == 0 && m0[1].t == 0 && m0[1].phi_pq == 0, "compat: main0 epsilon, t, phi_pq stay 0");
+    expect(m0[0].epsilon > 0.8 && m0[0].epsilon < 1, "corrected: main0 epsilon = the central epsilon");
+    char b[160];
+    std::snprintf(b, sizeof b, "corrected CENTRAL.sigcc %.6E vs Fortran %.6E (ratio %.4f)", sig[0], sig[1], sig[0] / sig[1]);
+    expect(sig[0] != sig[1] && sig[0] > 0, b);
+    return 0;
+}
+
 const std::map<std::string, std::function<int()>>& items() {
     static const std::map<std::string, std::function<int()>> m = {
         {"D032_spectrometer_id", testSpectrometerId},
@@ -1265,6 +1534,11 @@ const std::map<std::string, std::function<int()>>& items() {
         {"D038_F5_central_sigcc", testCentralSigcc},
         {"D043_F13_central_sigcc_kaon", testCentralSigccKaon},
         {"D038_F15_hist_which_pion_11", testHistWhichPion11},
+        {"D048_F1_delta_DA_stop", testDeltaDAStop},
+        {"D048_F2_delta_tail1_egamma", testDeltaTail1},
+        {"D048_F3_delta_sigblok_args", testDeltaSigblok},
+        {"D048_F6_delta_warning_text", testDeltaWarningText},
+        {"D048_F9_central_sigcc_delta", testCentralSigccDelta},
     };
     return m;
 }
