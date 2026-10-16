@@ -38,6 +38,8 @@ RadcRun RadcRun::FromSetup(const RunSetup& s) {
     r.doing_pion = s.flags.doing_pion;
     r.doing_kaon = s.flags.doing_kaon;
     r.doing_rho = s.flags.doing_rho;
+    r.doing_delta = s.flags.doing_delta;
+    r.delta_tail1_case4 = s.flags.doing_delta && !s.fortran_compat;   // D-048 F2
     r.doing_semi = s.flags.doing_semi;
     r.targ_A = s.targ.A;
     r.Mh = s.Mh;

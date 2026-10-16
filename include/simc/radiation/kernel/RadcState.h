@@ -62,6 +62,10 @@ struct RadcRun {
     double dE_edge_test{0};              ///< [MeV]
     bool doing_eep{false}, doing_hyd_elast{false}, doing_deuterium{false}, doing_heavy{false};
     bool doing_pion{false}, doing_kaon{false}, doing_rho{false}, doing_semi{false};
+    bool doing_delta{false};
+    /// D-048 F2 (FORTRAN-BUG): tail-1 Egamma limits of doing_delta set by CASE 4 (pion production); false = the Fortran
+    /// (no branch for doing_delta, radc.f:288-293). = doing_delta && !fortran_compat.
+    bool delta_tail1_case4{false};
     double targ_A{0};                    ///< targ%A (schwinger)
     double Mh{0}, Mh2{0};                ///< [MeV], [MeV^2]
     double spec_e_P{0}, spec_p_P{0};     ///< spec%e%P, spec%p%P [MeV/c]

@@ -187,7 +187,7 @@ const std::vector<NtupleColumn>& KaonNtupleColumns() {
     return kaon;
 }
 
-bool UsesPionLayout(const ReactionFlags& f) { return f.doing_pion || f.doing_kaon; }
+bool UsesPionLayout(const ReactionFlags& f) { return f.doing_pion || f.doing_kaon || f.doing_delta; }
 
 // Fortran: results_write.f:131-186 (doing_pion; no target field)
 bool FillPionNtuple(const RunSetup& s, const MainEvent& main, const Event& vertex, const Event& orig,
@@ -232,17 +232,19 @@ bool FillPionNtuple(const RunSetup& s, const MainEvent& main, const Event& verte
 }
 
 const std::vector<NtupleColumn>& NtupleColumnsFor(const RunSetup& s) {
-    if (s.flags.doing_pion && !s.flags.using_tgt_field && !s.params.using_tgt_field)
+    // NtupleInit.f:101: doing_pion .or. doing_kaon .or. doing_delta share the 53 columns (doing_delta: task P11.1)
+    if ((s.flags.doing_pion || s.flags.doing_delta) && !s.flags.using_tgt_field && !s.params.using_tgt_field)
         return PionNtupleColumns(s.flags.doing_pizero);
     if (s.flags.doing_kaon && !s.flags.using_tgt_field && !s.params.using_tgt_field) return KaonNtupleColumns();
     if (UsesEepLayout(s.flags)) return EepNtupleColumns();
     throw std::runtime_error("ntuple: only the (e,e'p)/phase-space (NtupleInit.f:296-321), the exclusive pion and the "
-                             "kaon (NtupleInit.f:101-190, no target field) layouts are implemented so far");
+                             "kaon/delta (NtupleInit.f:101-190, no target field) layouts are implemented so far");
 }
 
 bool FillNtuple(const RunSetup& s, const MainEvent& main, const Event& vertex, const Event& orig, const Event& recon,
                 std::vector<double>& ntu) {
-    if (s.flags.doing_pion || s.flags.doing_kaon) return FillPionNtuple(s, main, vertex, orig, recon, ntu);
+    if (s.flags.doing_pion || s.flags.doing_kaon || s.flags.doing_delta)
+        return FillPionNtuple(s, main, vertex, orig, recon, ntu);
     std::array<double, kEepNtupleSize> a{};
     std::copy(ntu.begin(), ntu.begin() + std::min<std::size_t>(ntu.size(), kEepNtupleSize), a.begin());
     const bool ok = FillEepNtuple(s, main, vertex, orig, recon, a);

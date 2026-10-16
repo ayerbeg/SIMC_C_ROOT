@@ -237,7 +237,14 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
         s.Mh = K::Mk;
     } else if (f0.doing_delta) {                 // dbase.f:182-185
         s.Mh = K::Mp;
-        if (A >= 2) msg("WARNING: Delta cross section model only set up for proton target!");
+        // FORTRAN-BUG(D-048 F6): original Fortran dbase.f:184-186: `write(6,*) 'WARNING: Delta cross section model",`
+        // + continuation `" only set up for proton target!'`: a quote typo makes it ONE string, printed with `",`, the
+        // 72 blanks padding the 132-column line, the 7 blanks of the continuation and `"`; corrected because the
+        // message is meant as one sentence. fortran_compat prints the Fortran text.
+        if (A >= 2)
+            msg(s.fortran_compat ? "WARNING: Delta cross section model\"," + std::string(79, ' ') +
+                                       "\" only set up for proton target!"
+                                 : "WARNING: Delta cross section model only set up for proton target!");
     } else if (f0.doing_semi) {                  // dbase.f:191-205
         if (f0.doing_semipi) {
             s.Mh = K::Mpi;
@@ -571,10 +578,17 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
     }
 
     // ---- dbase.f:562-587 momentum distribution
-    if (f.doing_deutpi || f.doing_hepi || f.doing_deutkaon || f.doing_hekaon || f.doing_deutsemi) {
+    // FORTRAN-BUG(D-048 F1): original Fortran dbase.f:563-565 and 594 (momentum distribution and spectral function):
+    // `if(doing_deutpi.or.doing_hepi.or.doing_deutkaon.or.doing_hekaon.or.doing_deutsemi)` /
+    // `if(doing_hepi.or.doing_hekaon .or. ...)` omit doing_deutdelta / doing_hedelta, although generate (event.f:336-371)
+    // draws the D/A(e,e'p)pi Fermi momentum from pval/mprob and the A > 2 missing energy with generate_em (sf_lookup),
+    // and limits_init uses pval(nump) / Emval(numEm) (init.f:349-358). The Fortran never reaches them (the D/A Delta runs
+    // STOP, dbase.f:779-788); corrected together with that STOP: the delta flags load the same files as the pion.
+    const bool deutdelta = f.doing_deutdelta && !s.fortran_compat, hedelta = f.doing_hedelta && !s.fortran_compat;
+    if (f.doing_deutpi || f.doing_hepi || f.doing_deutkaon || f.doing_hekaon || f.doing_deutsemi || deutdelta || hedelta) {
         std::string file;
-        if (f.doing_deutpi || f.doing_deutkaon || f.doing_deutsemi) file = "deut.dat";
-        if (f.doing_hepi || f.doing_hekaon) {
+        if (f.doing_deutpi || f.doing_deutkaon || f.doing_deutsemi || deutdelta) file = "deut.dat";
+        if (f.doing_hepi || f.doing_hekaon || hedelta) {
             if (A == 3) file = "he3.dat";
             else if (A == 4) file = "he4.dat";
             else if (A == 12) file = "c12.dat";
@@ -594,7 +608,7 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
     // of the proton/neutron column is made here; the table is read by the "benhar" ISpectralFunction (sf_lookup_init).
     // (also for A > 2 quasifree pion/kaon production, doing_hepi/doing_hekaon: the table of generate_em, P9.2)
     double benharEmMax = 0.0;   // Emval(numEm)
-    if ((f.doing_heavy && p.use_benhar_sf) || f.doing_hepi || f.doing_hekaon) {
+    if ((f.doing_heavy && p.use_benhar_sf) || f.doing_hepi || f.doing_hekaon || hedelta) {
         SpectralFunctionChoice& sf = s.sf;
         sf.type = "benhar";
         if (!opt.sf_file.empty()) {
@@ -623,7 +637,7 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
             sf.proton = true;
         }
     }
-    if (f.doing_hepi || f.doing_hekaon) {   // sf_lookup_init: Emval(numEm) for VERTEXedge%Em%max (init.f:356)
+    if (f.doing_hepi || f.doing_hekaon || hedelta) {   // sf_lookup_init: Emval(numEm) for VERTEXedge%Em%max (init.f:356)
         if (!ReadBenharEmMax(joinPath(opt.data_dir, s.sf.file), benharEmMax)) {
             stop("cannot read spectral function " + s.sf.file);
             return s;
@@ -953,10 +967,15 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
             return s;
         }
     } else if (ff.doing_delta) {
-        // FORTRAN-BUG(D-018), path not ported (P11): original Fortran dbase.f:780-788 tests doing_hyddelta, doing_deutpi,
-        // doing_hepi (not doing_deutdelta / doing_hedelta), so valid D(e,e'p)pi and A(e,e'p)pi runs STOP here. Kept in
-        // both modes until the Delta reaction is ported; the port must test the delta flags.
-        if (!(ff.doing_hyddelta || ff.doing_deutpi || ff.doing_hepi)) {
+        // FORTRAN-BUG(D-018, D-048 F1): original Fortran dbase.f:780-788:
+        // `if (doing_hyddelta) ... else if (doing_deutpi) ... else if (doing_hepi) ... else stop 'I don''t have ANY idea
+        // what (e,e''p)pi we''re doing!!!'` tests the PION flags doing_deutpi / doing_hepi, never set for doing_delta, so
+        // every D or A (e,e'p)pi run STOPs; corrected because the flags meant are doing_deutdelta / doing_hedelta (as in
+        // dbase.f:187-189 and the D/A delta branches of event.f/init.f). The D/A branches then run; they were never run
+        // in the Fortran (no reference). fortran_compat keeps the STOP.
+        const bool known = s.fortran_compat ? (ff.doing_hyddelta || ff.doing_deutpi || ff.doing_hepi)
+                                            : (ff.doing_hyddelta || ff.doing_deutdelta || ff.doing_hedelta);
+        if (!known) {
             stop("I don't have ANY idea what (e,e'p)pi we're doing!!!");
             return s;
         }

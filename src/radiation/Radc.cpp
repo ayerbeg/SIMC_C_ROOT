@@ -326,7 +326,15 @@ bool generateRad(const RadcRun& run, RadcState& st, MainEvent& main, Event& vert
             // FORTRAN-DIFF-CANDIDATE(D-019): radc.f:283-286, for ntail = 0 Egamma_min(1) keeps its stale COMMON value.
             // Question: should it be set for ntail = 0 too (D(e,e'p) only)?
             if (ntail != 0) st.Egamma_min[1] = run.gen_sumEgen.min - vertex.e.E;
-        } else if (run.doing_pion || run.doing_kaon || run.doing_rho || run.doing_semi) {   // CASE 4 (l.288-293)
+        } else if (run.doing_pion || run.doing_kaon || run.doing_rho || run.doing_semi ||   // CASE 4 (l.288-293)
+                   run.delta_tail1_case4) {
+            // FORTRAN-BUG(D-048 F2): original Fortran radc.f:288-289:
+            // `else if (doing_pion .or. doing_kaon .or. doing_rho .or. doing_semi) then` has no doing_delta, so for
+            // doing_delta Egamma_min(1)/Egamma_max(1) are never assigned (0), basicrad returns weight 0 (radc.f:61) and
+            // EVERY try with ntail = 1 fails (about 44 % of the tries at the P11.F1 kinematics); corrected because
+            // doing_delta generates the electron energy in the pion sumEgen window (init.f:455-463, the "generated
+            // ELECTRON energy limits" branch, the same as pion production), so the pion limit applies. fortran_compat
+            // keeps the Fortran.
             st.Egamma_min[1] = 0.;
             st.Egamma_max[1] = run.gen_sumEgen.max - vertex.e.E;
         }

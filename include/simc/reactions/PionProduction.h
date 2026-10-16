@@ -92,6 +92,7 @@ public:
 
 protected:
     bool kaon_{false};                 ///< doing_kaon instead of doing_pion (KaonProduction)
+    bool doingDelta_{false};           ///< doing_delta instead of doing_pion (DeltaProduction, task P11.1)
 
 private:
     /// event.f:720-786: main%W, epsilon, theta_pq, t, tmin, q2, phi_pq from the completed vertex.

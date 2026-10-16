@@ -107,9 +107,11 @@ void PionProduction::configure(const Json& config, const SimcParameters& params)
 void PionProduction::init(const StageContext& ctx) {
     const RunSetup& s = ctx.setup;
     const ReactionFlags& f = s.flags;
-    if (kaon_ ? !f.doing_kaon : !f.doing_pion)
+    if (doingDelta_ ? !f.doing_delta : (kaon_ ? !f.doing_kaon : !f.doing_pion))
         throw std::invalid_argument("reaction '" + name_ + "': the input is not " +
-                                    (kaon_ ? "kaon production (doing_kaon)" : "exclusive pion production (doing_pion)"));
+                                    (doingDelta_ ? std::string("(e,e'p)pi in the Delta region (doing_delta)")
+                                            : (kaon_ ? std::string("kaon production (doing_kaon)")
+                                                     : std::string("exclusive pion production (doing_pion)"))));
     if (f.using_tgt_field || s.params.using_tgt_field)
         throw NotPorted("reaction '" + name_ + "': using_tgt_field (polarized-target angles) not ported");
     EepReactionBase::init(ctx);
@@ -124,7 +126,9 @@ void PionProduction::init(const StageContext& ctx) {
         if (log_)
             for (const auto& m : msgs) *log_ << m << "\n";
     }
-    if (f.doing_hepi || f.doing_hekaon) {   // dbase.f:594-621 sf_lookup_init for generate_em
+    // dbase.f:594-621 sf_lookup_init for generate_em. doing_hedelta: see SetupBuilder (D-048 F1, the Fortran never loads
+    // the table for the Delta; the A(e,e'p)pi runs only exist in corrected mode).
+    if (f.doing_hepi || f.doing_hekaon || f.doing_hedelta) {
         sf_ = std::make_unique<nuclear::SfTable>();
         sf_->setFortranCompat(s.fortran_compat);
         std::vector<std::string> msgs;
@@ -179,8 +183,10 @@ bool PionProduction::generate(MainEvent& main, Event& vertex, Event& orig, IRand
     F.pferz = 0.0;
     vertex.Em = 0.0;
     F.efer = s.targ.Mtar_struck;   // used for pion/kaon xsec calcs.
-    // event.f:336-338 doing_deutpi.or.doing_hepi.or.doing_deutkaon.or.doing_hekaon (kaon: P10.2)
-    const bool deut = f.doing_deutpi || f.doing_deutkaon, he = f.doing_hepi || f.doing_hekaon;
+    // event.f:336-338 doing_deutpi.or.doing_hepi.or.doing_deutkaon.or.doing_hekaon.or.doing_deutdelta.or.doing_hedelta
+    // (kaon: P10.2; delta: P11.1); l.362 and l.368 select the D / A branch with the same flags.
+    const bool deut = f.doing_deutpi || f.doing_deutkaon || f.doing_deutdelta,
+               he = f.doing_hepi || f.doing_hekaon || f.doing_hedelta;
     if (deut || he) {
         const std::vector<double>& pval = s.pdist.pval;
         const std::vector<double>& mprob = s.pdist.mprob;
@@ -309,7 +315,9 @@ bool PionProduction::completeEv(MainEvent& main, Event& vertex, IRandom& rng) {
     double b = sq(vertex.q);
     double c = vertex.nu + s.targ.M;
     // For nuclei, correct for fermi motion and missing energy (l.648-654)
-    const bool deut = f.doing_deutpi || f.doing_deutkaon, he = f.doing_hepi || f.doing_hekaon;   // l.646-647
+    // l.646-647, l.949-950, l.964-968 (the same flags incl. doing_deutdelta / doing_hedelta)
+    const bool deut = f.doing_deutpi || f.doing_deutkaon || f.doing_deutdelta,
+               he = f.doing_hepi || f.doing_hekaon || f.doing_hedelta;
     if (deut || he) {
         a = a - std::fabs(F.pfer) * (F.pferx * vertex.up.x + F.pfery * vertex.up.y + F.pferz * vertex.up.z);
         b = b + sq(F.pfer) +
@@ -325,8 +333,13 @@ bool PionProduction::completeEv(MainEvent& main, Event& vertex, IRandom& rng) {
     vertex.p.E = (-QB - std::sqrt(radical)) / 2. / QA;
     if (vertex.p.E < 0.0) return false;
     const double Ehad2 = (-QB + std::sqrt(radical)) / 2. / QA;
-    // verify that 'backwards' soln. is no good (l.680-685)
-    if (Ehad2 > s.edge.p.E.min && Ehad2 < s.edge.p.E.max && ntried_ <= 5000 && log_) {
+    if (f.doing_delta) {   // choose one of the two solutions (l.682-684)
+        // FORTRAN-DIFF-CANDIDATE(D-048 F5): the second root is taken with probability 0.5 and no factor 1/0.5 enters
+        // gen_weight or the jacobian, so when both roots are physical each is generated at half rate with full weight.
+        // Question: is a factor 2 missing? Kept in both modes (one grnd, the Fortran random-number order).
+        if (rng.uniform() > 0.5) vertex.p.E = Ehad2;
+    } else if (Ehad2 > s.edge.p.E.min && Ehad2 < s.edge.p.E.max && ntried_ <= 5000 && log_) {
+        // verify that 'backwards' soln. is no good (l.685-689)
         *log_ << " The low-momentum solution to E_hadron is within the spectrometer generation\n"
               << " limits.  If it is in the acceptance, Its the end of the world as we know it!!!\n"
               << " E_hadron solns=" << fortran::listReal(vertex.p.E) << fortran::listReal(Ehad2) << "\n";
@@ -361,7 +374,7 @@ bool PionProduction::completeEv(MainEvent& main, Event& vertex, IRandom& rng) {
     vertex.PmPer = std::sqrt(fmaxF(0.e0, sq(vertex.Pm) - sq(vertex.PmPar) - sq(vertex.PmOop)));
 
     // l.937-955
-    if (f.doing_hydpi || f.doing_hydkaon) {
+    if (f.doing_hydpi || f.doing_hydkaon || f.doing_hyddelta) {
         vertex.Trec = 0.0;
     } else if (deut || he) {
         vertex.Trec = std::sqrt(sq(vertex.Mrec) + sq(vertex.Pm)) - vertex.Mrec;

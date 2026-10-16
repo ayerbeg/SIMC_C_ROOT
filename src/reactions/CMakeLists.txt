@@ -25,3 +25,9 @@ target_compile_options(simcfw_reactions_pion PRIVATE -Wall -Wextra -pedantic)
 add_library(simcfw_reactions_kaon OBJECT kaon/KaonProduction.cpp)
 target_link_libraries(simcfw_reactions_kaon PUBLIC simcfw simcfw_reactions simcfw_reactions_pion)
 target_compile_options(simcfw_reactions_kaon PRIVATE -Wall -Wextra -pedantic)
+
+# simcfw_reactions_delta (task P11.1): IReaction "delta_production" (event.f doing_delta branches = the pion code with the
+# delta flags and the two-root choice, plus the complete_main delta branch).
+add_library(simcfw_reactions_delta OBJECT delta/DeltaProduction.cpp)
+target_link_libraries(simcfw_reactions_delta PUBLIC simcfw simcfw_reactions simcfw_reactions_pion)
+target_compile_options(simcfw_reactions_delta PRIVATE -Wall -Wextra -pedantic)
