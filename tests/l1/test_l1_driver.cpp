@@ -252,7 +252,7 @@ int replay(const std::string& capdir, const std::string& rundir, const std::stri
     }
     bool okSetup = report("setup vs cap_final:", cs);
 
-    const bool pion = setup.flags.doing_pion || setup.flags.doing_kaon;   // P9.2 pion, P10.2 kaon captures (decay in the hadron arm)
+    const bool pion = setup.flags.doing_pion || setup.flags.doing_kaon || setup.flags.doing_delta;   // P9.2 pion, P10.2 kaon, P11.1 delta captures
     const bool hadronIsHms = p.hadron_arm == 1;
     // ---- indices
     std::map<long, std::size_t> genRow, recRow;
@@ -394,7 +394,7 @@ int replay(const std::string& capdir, const std::string& rundir, const std::stri
     bool okBin = true;
     std::vector<std::string> recs;
     if (pion) {
-        std::printf("  .bin: the 53 pion / 55 kaon columns are checked by the full-run replay (l1_simcrun_replay_{pion,kaon}_*)\n");
+        std::printf("  .bin: the 53 pion/delta / 55 kaon columns are checked by the full-run replay (l1_simcrun_replay_{pion,kaon,delta}_*)\n");
     } else if (!readRecords(bin, recs) || recs.empty()) {
         std::printf("  .bin: cannot read %s\n", bin.c_str());
         okBin = false;

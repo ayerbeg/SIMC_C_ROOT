@@ -15,6 +15,10 @@
 // Kaon (task P10.2): the same modes with two extra arguments `kaon <data/kaon>` run reactions::KaonProduction and the
 // "kaon" model against the P10.F1 tables (kaon_state, generate_kaon_fixedrng, complete_ev_kaon, complete_recon_ev_kaon,
 // complete_main_kaon, event_capture_kaon); kaon_state is mode pion_state with the kaon columns.
+// Delta (task P11.1): `delta` as argument 7 (no data directory) runs reactions::DeltaProduction and the "delta" model
+// against the P11.F1 tables (delta_state, generate_delta_fixedrng, complete_ev_delta, complete_recon_ev_delta,
+// complete_main_delta, event_capture_delta) and adds the mode `peedelta <dir> ...` (physics_delta.f:peedelta with the
+// driver's re-evaluation columns hx_*).
 // Exit: 0 pass, 1 fail, 77 reference missing.
 #include <cmath>
 #include <cstdio>
@@ -33,11 +37,15 @@
 #include "simc/core/Registry.h"
 #include "simc/core/random/ScriptedRandom.h"
 #include "simc/driver/SimcRun.h"
+#include "simc/driver/Central.h"
 #include "simc/input/InpReader.h"
 #include "simc/material/HallCCryoTarget.h"
 #include "simc/radiation/SimcRadiator.h"
 #include "simc/radiation/kernel/RadcState.h"
+#include "simc/physics/delta/DeltaModel.h"
 #include "simc/physics/kaon/KaonModel.h"
+#include "simc/physics/pion/PionCrossSections.h"
+#include "simc/reactions/DeltaProduction.h"
 #include "simc/reactions/EventChain.h"
 #include "simc/reactions/KaonProduction.h"
 #include "simc/reactions/PionProduction.h"
@@ -58,9 +66,17 @@ bool same(double a, double b) { return (std::isnan(a) && std::isnan(b)) || std::
 std::string gSpectral, gPion;   // data directories
 std::string gKaon;              // data/kaon: non-empty = the kaon tables (P10.2)
 bool isKaon() { return !gKaon.empty(); }
+bool gDelta = false;            // the Delta tables (P11.1)
+bool isDelta() { return gDelta; }
 
 /// cfg -> SIMC input file (reference/functions/pion_state/configs.txt)
 std::string cfgInp(const std::string& inpdir, int cfg) {
+    if (isDelta()) {   // reference/functions/delta_state/configs.txt
+        static const char* d[] = {"", "p11f1_dh_d1_rad_cap", "p11f1_dh_d2_rad_cap", "l1_h_d1_norad",
+                                  "l1_h_d2_norad", "l1_h_d1_wp1", "l1_h_d1_wp2"};
+        if (cfg < 1 || cfg > 6) throw std::runtime_error("bad cfg " + std::to_string(cfg));
+        return inpdir + "/" + d[cfg] + ".inp";
+    }
     if (isKaon()) {   // reference/functions/kaon_state/configs.txt
         static const char* k[] = {"",
                                   "p10f1_kl_h_dec1_cap",
@@ -269,17 +285,22 @@ std::unique_ptr<Process> makeProcess(const std::string& inp, bool compat = true)
     sc.radiator = &P->rad;
     P->beam.configure(Json::object(), P->params);
     P->beam.init(sc);
-    P->model = Registry<IPhysicsModel>::create(isKaon() ? "kaon" : "pion");
+    P->model = Registry<IPhysicsModel>::create(isDelta() ? "delta" : (isKaon() ? "kaon" : "pion"));
     P->model->configure(Json{{"data_dir", isKaon() ? gKaon : gPion}, {"verbose", false}}, P->params);
     P->model->init(sc);
     sc.physics = P->model.get();
-    if (isKaon())
+    if (isDelta())
+        P->reaction = std::make_unique<reactions::DeltaProduction>();
+    else if (isKaon())
         P->reaction = std::make_unique<reactions::KaonProduction>();
     else
         P->reaction = std::make_unique<reactions::PionProduction>();
     P->reaction->configure(Json{{"verbose", false}, {"data_dir", gPion}}, P->params);
     P->reaction->init(sc);
     P->ctx = P->reaction->mainContext();
+    // delta (P11.1): es_init ends with calculate_central, whose radc_init_ev leaves the COMMON /radccom/ values that a
+    // row whose complete_ev fails before radc_init_ev reports (cfg 6, which_pion 2: every row fails)
+    if (isDelta()) driver::calculateCentral(P->setup, *P->reaction, P->rad, *P->model);
     return P;
 }
 
@@ -434,8 +455,25 @@ bool doCompleteMain(Process& P, const Row& r, Outputs& o) {
             P.setup.params.doing_decay = km->config().doing_decay;
         }
     }
+    // delta: the row overrides of which_pion / targ%Mtar_struck (ov_state, drv_complete_main11)
+    delta::DeltaModel* dm = isDelta() ? dynamic_cast<delta::DeltaModel*>(P.model.get()) : nullptr;
+    delta::DeltaConfig savedDelta;
+    if (dm) {
+        savedDelta = dm->config();
+        if (r.has("ov_state") && iv(r, "ov_state") == 1) {
+            dm->config().which_pion = iv(r, "ov_which_pion");
+            dm->config().Mtar_struck = r["ov_Mtar_struck"];
+        }
+        m.ntup.decdist = 0.0;
+    }
     const bool ok = P.reaction->completeMain(iv(r, "force_sigcc") == 1, m, v, v0, rec);
     P.reaction->mainContext() = P.ctx;
+    if (dm) {
+        o["decdist_out"] = m.ntup.decdist;
+        o["eff_which_pion"] = dm->config().which_pion;
+        o["eff_Mtar_struck"] = dm->config().Mtar_struck;
+        dm->config() = savedDelta;
+    }
     if (km) {
         o["decdist_out"] = m.ntup.decdist;
         o["eff_doing_decay"] = km->config().doing_decay ? 1. : 0.;
@@ -466,7 +504,7 @@ bool doCompleteMain(Process& P, const Row& r, Outputs& o) {
     o["hx_coul_fac"] = ctx.using_Coulomb ? c * c : 1.0;
     const double hp = m.SF_weight * m.jacobian * m.gen_weight * m.sigcc;
     o["hx_prod"] = hp;
-    o[isKaon() ? "hx_ratio" : "hx_tgtweight"] = hp != 0.0 ? m.weight / hp : 0.0;
+    o[(isKaon() || isDelta()) ? "hx_ratio" : "hx_tgtweight"] = hp != 0.0 ? m.weight / hp : 0.0;
     return ok;
 }
 
@@ -478,7 +516,7 @@ int runEventTable(const std::string& name, const std::string& dir, const std::st
         return *P;
     };
     if (name == "generate") {
-        return runAuto("generate_pion_fixedrng (event.f:126-428, pion branches, scripted grnd/gauss1)", dir, tol,
+        return runAuto(std::string(isDelta() ? "[delta tables] " : "") + "generate_pion_fixedrng (event.f:126-428, pion branches, scripted grnd/gauss1)", dir, tol,
                        [&](const Row& r, Outputs& o) {
                            Process& P = proc(iv(r, "cfg"));
                            MainEvent m;   // drv_generate9: main, vertex, orig = 0 per row
@@ -496,7 +534,7 @@ int runEventTable(const std::string& name, const std::string& dir, const std::st
                        });
     }
     if (name == "complete_ev") {
-        return runAuto("complete_ev_pion (event.f:432-1052, pion branches)", dir, tol, [&](const Row& r, Outputs& o) {
+        return runAuto(std::string(isDelta() ? "[delta tables] " : "") + "complete_ev_pion (event.f:432-1052, pion branches)", dir, tol, [&](const Row& r, Outputs& o) {
             const int cfg = iv(r, "cfg");
             Process& P = proc(cfg);
             P.reaction->setMrecStruck(P.setup.targ.Mrec_struck);   // drv_complete_ev9: restored before every row
@@ -518,7 +556,7 @@ int runEventTable(const std::string& name, const std::string& dir, const std::st
         });
     }
     if (name == "complete_recon_ev") {
-        return runAuto("complete_recon_ev_pion (event.f:1056-1359)", dir, tol, [&](const Row& r, Outputs& o) {
+        return runAuto(std::string(isDelta() ? "[delta tables] " : "") + "complete_recon_ev_pion (event.f:1056-1359)", dir, tol, [&](const Row& r, Outputs& o) {
             Process& P = proc(iv(r, "cfg"));
             Event rec;
             getArm("in_e_", r, rec.e);
@@ -532,13 +570,67 @@ int runEventTable(const std::string& name, const std::string& dir, const std::st
     }
     if (name == "complete_main") {
         std::size_t identity_bad = 0;
-        const int rc = runAuto("complete_main_pion (event.f:1363-1569, pion branch)", dir, tol,
+        const int rc = runAuto(std::string(isDelta() ? "[delta tables] " : "") + "complete_main_pion (event.f:1363-1569, pion branch)", dir, tol,
                                [&](const Row& r, Outputs& o) {
                                    Process& P = proc(iv(r, "cfg"));
                                    doCompleteMain(P, r, o);
                                });
         (void)identity_bad;
         return rc;
+    }
+    if (name == "peedelta" && isDelta()) {
+        return runAuto("peedelta (physics_delta.f:1-135 + driver re-evaluation)", dir, tol, [&](const Row& r, Outputs& o) {
+            Process& P = proc(iv(r, "cfg"));
+            MainEvent m;
+            Event v;
+            getEvent("v_", r, v);
+            m.epsilon = r["in_m_epsilon"];
+            m.t = r["in_m_t"];
+            m.phi_pq = r["in_m_phi_pq"];
+            getPfermi(r, m.pfermi);
+            m.ntup.sigcm1 = r["in_ntup_sigcm1"];
+            m.ntup.sigcm2 = r["in_ntup_sigcm2"];
+            m.ntup.sigcm = r["in_ntup_sigcm"];
+            delta::DeltaConfig cfg = dynamic_cast<delta::DeltaModel&>(*P.model).config();
+            if (r.has("ov_state") && iv(r, "ov_state") == 1) {
+                cfg.which_pion = iv(r, "ov_which_pion");
+                cfg.Mtar_struck = r["ov_Mtar_struck"];
+            }
+            delta::PeedeltaTrace tr;
+            const double val = delta::peedelta(v, m, cfg, nullptr, &tr);
+            o["peedelta"] = val;
+            o["m_thetacm"] = m.thetacm;
+            o["m_phicm"] = m.phicm;
+            o["m_pcm"] = m.pcm;
+            o["m_davejac"] = m.davejac;
+            o["m_johnjac"] = m.johnjac;
+            o["m_wcm"] = m.wcm;
+            o["ntup_sigcm1"] = m.ntup.sigcm1;
+            o["ntup_sigcm2"] = m.ntup.sigcm2;
+            o["ntup_sigcm"] = m.ntup.sigcm;
+            o["eff_which_pion"] = cfg.which_pion;
+            o["eff_Mtar_struck"] = cfg.Mtar_struck;
+            o["hx_tfcos"] = tr.tfcos;
+            o["hx_s"] = tr.s;
+            o["hx_k_eq"] = tr.k_eq;
+            o["hx_fac"] = tr.fac;
+            o["hx_gtpr"] = tr.gtpr;
+            o["hx_t_seen"] = tr.t_arg;
+            o["hx_q2_seen"] = tr.q2_arg;
+            o["hx_s_seen"] = tr.s_arg;
+            o["hx_t_gev"] = m.t / 1.e6;
+            o["hx_q2_gev"] = v.Q2 / 1.e6;
+            o["hx_s_gev"] = tr.s / 1.e6;
+            o["hx_sigblok_seen"] = pion::sigBlok(m.thetacm, m.phicm, tr.t_arg, tr.q2_arg, tr.s_arg, m.epsilon,
+                                                 cfg.Mtar_struck / 1000., cfg.which_pion);
+            // the corrected path (D-048 F3): peedelta with the doubles must give the intended value
+            delta::DeltaConfig cc = cfg;
+            cc.sigblok_binary128_quirk = false;
+            MainEvent m2 = m;
+            delta::peedelta(v, m2, cc);
+            o["hx_sigblok_intended"] = m2.ntup.sigcm1;
+            o["hx_ratio"] = val / (m.davejac * (tr.gtpr * tr.fac));
+        });
     }
     std::printf("unknown table %s\n", name.c_str());
     return 1;
@@ -585,7 +677,9 @@ int runPionState(const std::string& dir, const std::string& inpdir, double tol) 
         std::printf("pion_state: SKIP (%s)\n", err.c_str());
         return 77;
     }
-    Cmp c{isKaon() ? "kaon_state (start-up + calculate_central)" : "pion_state (start-up + calculate_central)", tol};
+    Cmp c{isDelta() ? "delta_state (start-up + calculate_central)"
+                    : (isKaon() ? "kaon_state (start-up + calculate_central)" : "pion_state (start-up + calculate_central)"),
+          tol};
     for (std::size_t i = 0; i < out.rows.size(); ++i) {
         Row r(out, i);
         const int cfg = iv(r, "cfg");
@@ -606,6 +700,10 @@ int runPionState(const std::string& dir, const std::string& inpdir, double tol) 
             pipe = Json{{"sinks", Json::array()},
                         {"physics", {{"type", "kaon"}, {"data_dir", gKaon}}},
                         {"reaction", {{"type", "kaon_production"}, {"data_dir", gPion}}}};
+        if (isDelta())
+            pipe = Json{{"sinks", Json::array()},
+                        {"physics", {{"type", "delta"}}},
+                        {"reaction", {{"type", "delta_production"}, {"data_dir", gPion}}}};
         // pi0 configurations use the HMS/SHMS as hadron arm in the L1 inputs (the calorimeter is P14)
         driver::SimcRun run(p, pipe, opt);
         run.initialise();
@@ -614,6 +712,14 @@ int runPionState(const std::string& dir, const std::string& inpdir, double tol) 
         const ReactionFlags& f = s.flags;
         Outputs o;
         o["doing_pion"] = f.doing_pion;
+        o["doing_delta"] = f.doing_delta;
+        o["doing_hyddelta"] = f.doing_hyddelta;
+        o["doing_deutdelta"] = f.doing_deutdelta;
+        o["doing_hedelta"] = f.doing_hedelta;
+        o["doing_hyd_elast"] = f.doing_hyd_elast;
+        o["doing_deuterium"] = f.doing_deuterium;
+        o["doing_heavy"] = f.doing_heavy;
+        o["doing_phsp"] = f.doing_phsp;
         o["doing_pizero"] = f.doing_pizero;
         o["doing_kaon"] = f.doing_kaon;
         o["which_kaon"] = s.params.which_kaon;
@@ -710,6 +816,7 @@ int runPionState(const std::string& dir, const std::string& inpdir, double tol) 
         o["c_efer"] = m0.pfermi.efer;
         putEvent("v0_", run.central().vertex0, o);
         o["c_decdist"] = m0.ntup.decdist;   // COMMON decdist after the central peeK (kaon)
+        o["c_ntup_krel"] = m0.ntup.krel;
         if (isKaon()) {   // spot values of /sigkaon/ (the kaon model's tables)
             const kaon::SaghaiTables& T = dynamic_cast<const kaon::KaonModel&>(run.model()).tables();
             o["weightc_1_1"] = T.wc(1, 1);
@@ -807,7 +914,7 @@ int runPionState(const std::string& dir, const std::string& inpdir, double tol) 
         if (!eq) ++badstop;
     }
     std::printf("  STOP configurations: %d, %d differ\n", nstop, badstop);
-    ok = ok && nstop == (isKaon() ? 4 : 8) && badstop == 0;
+    ok = ok && nstop == (isDelta() ? 3 : (isKaon() ? 4 : 8)) && badstop == 0;
     std::printf("pion_state: %s\n", ok ? "PASS" : "FAIL");
     return ok ? 0 : 1;
 }
@@ -1026,10 +1133,12 @@ int main(int argc, char** argv) {
     gSpectral = argv[4];
     gPion = argv[5];
     if (argc > 8 && std::string(argv[7]) == "kaon") gKaon = argv[8];
+    if (argc > 7 && std::string(argv[7]) == "delta") gDelta = true;
     const double tol = std::atof(argv[6]);
     try {
         if (what == "pion_state") return runPionState(argv[2], argv[3], tol);
-        if (what == "generate" || what == "complete_ev" || what == "complete_recon_ev" || what == "complete_main")
+        if (what == "generate" || what == "complete_ev" || what == "complete_recon_ev" || what == "complete_main" ||
+            what == "peedelta")
             return runEventTable(what, argv[2], argv[3], tol);
         if (what == "capture") return runCapture(argv[2], argv[3], tol);
     } catch (const std::exception& e) {
