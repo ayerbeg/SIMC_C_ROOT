@@ -94,7 +94,7 @@ ctest -L unit | -L l1 | -L replay | -L cli | -L regression | -L examples
 
 * `l1`: routine-level tables against the Fortran harness (`reference/functions/`).
 * `replay`: the complete driver fed with captured Fortran random streams reproduces the Fortran outputs bit for bit.
-* `regression`: the outputs of the standard runs (seed 4242; H(e,e'p), D/Fe(e,e'p), π+ H, π− D, K+Λ H, K+Σ− D) must equal the baseline outputs of
+* `regression`: the outputs of the standard runs (seed 4242; H(e,e'p), D/Fe(e,e'p), π+ H, π− D, K+Λ H, K+Σ− D, H(e,e'p)π Delta) must equal the baseline outputs of
   their reference commits (`SIMC++_Project/baselines/<commit>_*`), in both modes: every tree branch and entry bitwise, the text outputs apart from time stamps.
   Every refactor must keep these green.
 * `tools/check_all.sh [--commit REV]`: a clean build of everything plus both test suites, logged in

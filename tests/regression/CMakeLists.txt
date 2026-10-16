@@ -104,3 +104,23 @@ foreach(_tag h_k1_rad_dec1 d_k1_sigm_rad_dec1)
     set_tests_properties(regression_identity_kaon_${_tag} regression_corrected_kaon_${_tag} PROPERTIES
                          SKIP_RETURN_CODE 77 TIMEOUT 1200 LABELS regression)
 endforeach()
+
+# P11.1: Delta region H(e,e'p)pi (D1: SHMS e-, HMS p; rad, seed 4242, 20000 events) against the baselines of commit 074cced
+# (glibc 2.43 / gcc 16.2.1 / ROOT 6.40.04), in both modes (SIMC_BASELINE_DIR/074cced_glibc243_[corrected_]delta_h_d1_rad_n20k_s4242/,
+# validation/scripts/regen_baselines.sh --only delta). Input: the P11.F1 L2 input in reference/runs.
+set(SIMC_DELTA_BASELINE_COMMIT "074cced_glibc243" CACHE STRING "Commit whose Delta outputs are the identity baseline")
+foreach(_tag h_d1_rad)
+    set(_inp ${SIMC_REFERENCE_DIR}/runs/delta_${_tag}_A/delta_${_tag}_A.inp)
+    add_test(NAME regression_identity_delta_${_tag}
+             COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/output_identity.sh $<TARGET_FILE:simcpp> $<TARGET_FILE:simc_root_identity>
+                     ${_inp} 4242 dir_delta_${_tag}_s4242
+                     ${SIMC_BASELINE_DIR}/${SIMC_DELTA_BASELINE_COMMIT}_delta_${_tag}_n20k_s4242
+                     ${CMAKE_CURRENT_BINARY_DIR}/identity_delta_${_tag} --fortran-compat --ngen 20000)
+    add_test(NAME regression_corrected_delta_${_tag}
+             COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/output_identity.sh $<TARGET_FILE:simcpp> $<TARGET_FILE:simc_root_identity>
+                     ${_inp} 4242 dir_delta_${_tag}_s4242
+                     ${SIMC_BASELINE_DIR}/${SIMC_DELTA_BASELINE_COMMIT}_corrected_delta_${_tag}_n20k_s4242
+                     ${CMAKE_CURRENT_BINARY_DIR}/corrected_delta_${_tag} --ngen 20000)
+    set_tests_properties(regression_identity_delta_${_tag} regression_corrected_delta_${_tag} PROPERTIES
+                         SKIP_RETURN_CODE 77 TIMEOUT 1200 LABELS regression)
+endforeach()
