@@ -362,3 +362,40 @@ in the corrected folders). Binary: commit 1275770 (numerically identical to the 
   * D-037 F7: ≤ 0.23 %, within the statistics of the diverged sequences.
   * F1/F2/F3: only the `saghai` column (0 for every Fortran event, the Saghai model value in corrected mode). F6: no effect with
     HMS/SHMS (zaero = 0). F13: CENTRAL.sigcc ×4.9–8.3 (a `.hist` number only).
+
+## 11. Delta region (e,e'p)π: L2 in both modes and the effect of each correction (task P11.1)
+
+`simc_compare` (default config) of simc++ seed 4242, 200000 successes, against the P11.F1 Fortran runs
+`reference/runs/delta_h_<tag>_A` (and `_B` for d1_rad). Run folders `SIMC++_Project/simc_runs/20261016_*_P11.1_L2_{compat,corrected}_h_<tag>/`
+(`compare_vs_A/`, `compare_vs_B/`, `mode_diff_vs_compat.txt`; the corrected rad folders also hold `scratch_noF2/`: a scratch build with
+only D-048 F2 switched off). Batch: `validation/scripts/p11_delta_l2.sh`. Binary: commit ca2d338 (numerically identical to the final commit).
+
+| run | compat vs A: verdict (F/N), worst p | corrected vs A | Ntried Fortran / compat / corrected | wtcontr ×1e7 Fortran / compat / corrected |
+|---|---|---|---|---|
+| h_d1_rad | PASS 0/245, 1.4e-2 (vs B: PASS 2/245) | FAIL 167/245 (vs B 168/245) | 17612941 / 17644171 / 10261664 | 4.3116 / 4.3059 / 7.5453 |
+| h_d1_norad | PASS 0/243, 1.7e-2 | FAIL 5/243 (deterministic only) | 10143696 / 10134383 / 10134383 | 9.5367 / 9.5306 / 9.4863 |
+| h_d2_rad | PASS 7/260, 1.0e-3 (seeds 4243, 4244: PASS 0/260) | FAIL 177/260 | 19433914 / 19397195 / 10681851 | 3.8394 / 3.8515 / 7.0874 |
+| h_d2_norad | PASS 0/260, 1.0e-2 | FAIL 5/260 (deterministic only) | 10598717 / 10582401 / 10582401 | 8.7355 / 8.7347 / 8.7672 |
+
+* **compat**: every configuration agrees with the Fortran. d2_rad at seed 4242 has 7 failures in correlated HMS (electron) y-slope / Q²
+  variables (worst p 1.0e-3); seeds 4243 and 4244 give PASS 0/260: a fluctuation of seed 4242. Open point: the SHMS `hb_out` stop
+  fraction of d1_rad (SHMS = electron arm) is lower in all three C++ seeds (0.002601, 0.002641, 0.002603 per try) than in the two Fortran
+  samples (0.002643, 0.002660): about −1.4 %, ~3σ on the pooled samples (seed 4244 vs B: FAIL 10/245, hb_out pull 3.3 plus hsdelta/phad
+  shape). The montecarlo replay of both captures is bitwise (`l1_montecarlo_replay_delta_*`), so the algorithm is the Fortran one;
+  more Fortran seeds would settle it (as D-040/D-041 for the SHMS dc2 counter).
+* **corrected, norad**: the corrected and compat runs contain the SAME events (same Ntried, `mode_diff`: only `sigcm` differs, Weight
+  identical). The 5 failures are deterministic: CENTRAL.sigcc (D-048 F9: 0.227270E+01 → 0.167664E+02, ×7.38) and the 4 tests of `sigcm`
+  (D-048 F3: the Blok fit with the intended arguments instead of the binary128 debris). wtcontr changes by −0.47 % (D1) / +0.37 % (D2):
+  D-006 pass_cuts (P11.F1 measured +0.49 % / −0.31 % on the Fortran trees), within 1.7σ of the Fortran.
+* **corrected, rad = D-048 F2 (tail-1 Egamma limits)**: the scratch build without F2 (all other corrections on) gives the SAME Ntried as
+  compat (17644171, 19397195) and agrees with the Fortran apart from the same deterministic F3/F9 tests (D1 5/245, D2 12/260 = the 5 +
+  the 7 seed-4242 fluctuations of compat). F2 alone therefore causes the whole rad difference:
+  * Ntried for 200000 successes: ×0.5816 (D1), ×0.5507 (D2), i.e. 41.8 % / 44.9 % of the Fortran tries were lost to the never-radiating
+    tail 1 (P11.F1: every ntail = 1 try fails, frac(1) = 0.43-0.46);
+  * acceptance per try 0.01134 → 0.01949 (D1, ×1.719), 0.01031 → 0.01872 (D2, ×1.816); wtcontr ×1.758 (D1), ×1.836 (D2);
+  * rad/norad wtcontr: 0.452 → 0.795 (D1), 0.440 → 0.808 (D2) (pion K1: 0.878);
+  * the shapes change too (radphot, missmass, phad, Weight ...: tail-1 events now exist, 43 % of the radiated events in the
+    fortran_diff run), hence the ~170 failing tests.
+* D/A Delta (F1): no Fortran reference exists; validated by self-consistency only (`fortran_diff_D048_F1_delta_DA_stop`: D, He-3, C-12,
+  300 events each: the vertex energy-momentum balance holds for every event to 1e-13, weights finite and positive, Fermi momentum drawn).
+* **Reminder (D-048 F4): none of these yields contains a Delta cross section.**
