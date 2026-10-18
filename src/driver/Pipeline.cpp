@@ -92,6 +92,8 @@ PipelineConfig PipelineConfig::Defaults(const RunSetup& s) {
         p.physics.type = "kaon";   // physics_kaon.f:peeK (l.1503)
     } else if (f.doing_delta && !f.doing_phsp) {
         p.physics.type = "delta";   // physics_delta.f:peedelta (l.1512)
+    } else if (f.doing_semi && !f.doing_phsp) {
+        p.physics.type = "sidis";   // semi_physics.f:peepiX (l.1521); the reaction comes with P12.2
     } else {
         p.physics.type = "sigep";
     }

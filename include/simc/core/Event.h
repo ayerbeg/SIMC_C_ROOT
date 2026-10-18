@@ -78,6 +78,7 @@ struct NtupVars {
     double Mh2_final{0}; ///< hadron mass^2 after decay (MeV^2)
     double sigcm1{0};    ///< pion/kaon: first model cross section (physics_pion.f:126 sig_param_2021) [ub/MeV^2/rad]
     double sigcm2{0};    ///< pion/kaon: second model (physics_pion.f:148 MAID, W < 2 GeV only) [ub/MeV^2/rad]
+    double xfermi{0};    ///< SIDIS with Fermi motion: x_Bjorken = Q2/(2 P.q) (semi_physics.f:250, ntuple column 55)
     /// pi0 photons (pizero_decay.f, event.f:899-901): (E, px, py, pz) in the lab [MeV] (task P9.2)
     std::array<double, 4> gamma1{}, gamma2{};
     /// pi0 photon positions at the calorimeter [cm] (simc.f:1500-1560, mc_calo only; never written with HMS/SHMS)
