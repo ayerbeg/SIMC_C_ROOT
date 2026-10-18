@@ -284,6 +284,9 @@ double Cteq5Pdf::partonX(int iprtn, double x, double q, std::ostream* log) {
     }
     // X <= XV(0) after the first call leaves Jx = -1: the Fortran then reads XV(-1) and UPD(0), i.e. the neighbouring
     // COMMON /CtqPar1/ words Al and QL(MXQ). Unreachable for x > 0 (XV(0) = 0 in every CTEQ5 table); refused.
+    // A NaN x (NaN kinematics) also ends with Jx = -1; there the Fortran result is NaN whatever it reads (every
+    // POLINT difference is NaN), which is returned.
+    if (jx < 0 && std::isnan(x)) return x;
     if (jx < 0)
         throw NotPorted("Ctq5Pdf.f:PartonX: x <= XV(0) after the first call (the Fortran reads outside XV/UPD)");
     const int ip = iprtn >= 3 ? -iprtn : iprtn;

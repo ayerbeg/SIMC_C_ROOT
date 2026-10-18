@@ -259,6 +259,8 @@ int runSanity(const std::string& dataDir) {
             stopped = true;
         }
         check(stopped, "Ctq5Pdf x > 1 STOP");
+        double qn = 2.0;
+        check(std::isnan(pdf.pdf(1, std::nan(""), qn)), "Ctq5Pdf NaN x -> NaN (as the Fortran)");
     }
     // ffint: table node values are reproduced, linear between nodes
     {
