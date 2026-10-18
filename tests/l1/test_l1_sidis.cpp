@@ -11,14 +11,29 @@
 //                                      F2 ranges, EMC and attenuation limits, peepiX pi+/pi-/K+/D/threshold, the D-031
 //                                      switches, semi_dilution in [0,1]) and the plug-in "sidis" (registry, refused
 //                                      input combinations)
-// The bitwise L1 comparisons against the P12.F1 Fortran tables (reference/functions/sidis/) are added when the tables
-// exist. Exit: 0 pass, 1 fail, 77 data missing.
+// Bitwise L1 comparisons against the P12.F1 Fortran tables (reference/functions/sidis/<routine>/, fortran_compat; the
+// tolerance argument is |rel|, 0 = bitwise; NaN/Inf must match):
+//   ctq5pdf <dir> <data/sidis> <tol>           Ctq5Pdf(ipart, x, Q) in table order (one process): pdf, Q_after
+//   ctq5_state <dir> <data/sidis>              COMMON /CtqPar1/ ... after SetCtq5(1) (ctq5_state.txt), bitwise
+//   fdss <dir> <data/sidis> <fortran fdss dir> <tol>   fDSS(IH, IC, IO, X, Q2) for every set (KANLO.GRID from
+//                                              data/sidis, the unreachable grids from the Fortran fdss/ directory)
+//   f1f2in21 <dir> <tol>                       F1F2IN21(Z, A, Q2, W2): F1, F2
+//   slacemcfit <dir> <tol>                     slacemcfit(A, x), Rhad_global(A, x)
+//   fortran_diff <peepix dir> <sidis_state dir> <inp dirs> <data/sidis> <data/spectral>
+//                                              P12.1 F1/F3/F4 in both modes on the peepix rows
+//   peepix <dir> <sidis_state dir> <inp dirs (':'-separated)> <data/sidis> <data/spectral> <tol>
+//                                              peepiX with the per-configuration set-up (BuildRunSetup of the cfg's .inp,
+//                                              fortran_compat), the row overrides (ov_state) and the SAVEd state; the
+//                                              outputs and the harness intermediates hx_* (rows in table order per cfg)
+// Exit: 0 pass, 1 fail, 77 data missing.
+#include <array>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <functional>
+#include <map>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -31,6 +46,8 @@
 #include "simc/core/RunSetup.h"
 #include "simc/core/SimcConstants.h"
 #include "simc/core/SimcParameters.h"
+#include "simc/input/InpReader.h"
+#include "simc/setup/SetupBuilder.h"
 #include "simc/physics/sidis/Cteq5Pdf.h"
 #include "simc/physics/sidis/F1F2In21.h"
 #include "simc/physics/sidis/Fdss.h"
@@ -39,6 +56,9 @@
 #include "simc/stages/IPhysicsModel.h"
 
 using namespace simc;
+using simcl1::ColumnSpec;
+using simcl1::Outputs;
+using simcl1::Row;
 
 namespace {
 
@@ -106,20 +126,20 @@ int runTables(const std::string& dataDir) {
         return 77;
     }
     check(p.Nx == 90 && p.Nt == 13 && p.NfMx == 5, "CTEQ5M NX NT NfMx = 90 13 5");
-    check(p.Iorder == 2 && p.Nfl == 5 && p.Al == 0.2260 && p.Alambda == p.Al, "CTEQ5M Ordr Nfl lambda = 2 5 0.2260");
+    check(p.Iorder == 2 && p.Nfl == 5 && p.Al() == 0.2260 && p.Alambda == p.Al(), "CTEQ5M Ordr Nfl lambda = 2 5 0.2260");
     check(p.Amass[3] == 1.3 && p.Amass[4] == 4.5 && p.Amass[5] == 180.0, "CTEQ5M quark masses");
     check(p.Qini == 1.0 && p.Qmax == 1.0e4 && p.Xmin == 1.0e-5, "CTEQ5M QINI QMAX XMIN");
-    check(p.XV[0] == 0.0 && p.XV[1] == 9.99983E-06 && p.XV[90] == 1.0, "CTEQ5M XV(0) XV(1) XV(90)");
-    check(p.QL[0] == std::log(1.0 / 0.2260) && p.QL[13] == std::log(1.0e4 / 0.2260), "CTEQ5M QL = ln(Q/Al)");
+    check(p.XV(0) == 0.0 && p.XV(1) == 9.99983E-06 && p.XV(90) == 1.0, "CTEQ5M XV(0) XV(1) XV(90)");
+    check(p.QL(0) == std::log(1.0 / 0.2260) && p.QL(13) == std::log(1.0e4 / 0.2260), "CTEQ5M QL = ln(Q/Al)");
     check(p.points_expected() == 91 * 14 * 8 && p.points_read() == p.points_expected(),
           "CTEQ5M parton table: " + std::to_string(p.points_read()) + " of " + std::to_string(p.points_expected()) +
               " values read");
-    check(p.UPD[0] == 0.0 && p.UPD[static_cast<std::size_t>(p.points_expected() - 1)] == 0.0,
+    check(p.UPD(1) == 0.0 && p.UPD(p.points_expected()) == 0.0,
           "CTEQ5M UPD(1) and UPD(Npts) (x = 0 / x = 1 nodes) are 0");
     // a few values in the middle: monotonic grids
     bool mono = true;
-    for (int i = 1; i <= p.Nx; ++i) mono = mono && p.XV[static_cast<std::size_t>(i)] > p.XV[static_cast<std::size_t>(i - 1)];
-    for (int i = 1; i <= p.Nt; ++i) mono = mono && p.QL[static_cast<std::size_t>(i)] > p.QL[static_cast<std::size_t>(i - 1)];
+    for (int i = 1; i <= p.Nx; ++i) mono = mono && p.XV(i) > p.XV(i - 1);
+    for (int i = 1; i <= p.Nt; ++i) mono = mono && p.QL(i) > p.QL(i - 1);
     check(mono, "CTEQ5M x and Q grids increasing");
     std::string e2;
     sidis::Cteq5Pdf bad;
@@ -503,6 +523,398 @@ int runSanity(const std::string& dataDir) {
     return g_fail ? 1 : 0;
 }
 
+
+// ================================================================================================= L1 tables
+int iv(const Row& r, const char* c) { return static_cast<int>(std::lround(r[c])); }
+std::vector<ColumnSpec> specs(const std::vector<std::string>& names, double tol) {
+    std::vector<ColumnSpec> v;
+    for (const auto& n : names) v.push_back(ColumnSpec{n, tol, 0.0});
+    return v;
+}
+bool sameBits(double a, double b) { return (std::isnan(a) && std::isnan(b)) || std::memcmp(&a, &b, sizeof a) == 0; }
+
+int runCtq5pdf(const std::string& dir, const std::string& dataDir, double tol) {
+    sidis::Cteq5Pdf pdf;
+    std::string err;
+    if (!pdf.load(dataDir, 1, &err)) {
+        std::printf("cteq5m: %s\n", err.c_str());
+        return 77;
+    }
+    std::ostringstream log;
+    return simcl1::run("ctq5pdf (Ctq5Pdf.f:Ctq5Pdf, SetCtq5(1))", dir, specs({"pdf", "Q_after"}, tol),
+                       [&](const Row& r, Outputs& o) {
+                           double q = r["Q"];
+                           o["pdf"] = pdf.pdf(iv(r, "ipart"), r["x"], q, &log);
+                           o["Q_after"] = q;
+                       });
+}
+
+int runCtq5State(const std::string& dir, const std::string& dataDir) {
+    simcl1::Table t;
+    std::string err;
+    if (!t.load(dir + "/ctq5_state.txt", err)) {
+        std::printf("%s\n", err.c_str());
+        return 77;
+    }
+    sidis::Cteq5Pdf p;
+    if (!p.load(dataDir, 1, &err)) {
+        std::printf("cteq5m: %s\n", err.c_str());
+        return 1;
+    }
+    Row r(t, 0);
+    int n = 0, bad = 0;
+    auto c = [&](const std::string& name, double v) {
+        if (!r.has(name)) return;
+        ++n;
+        if (!sameBits(v, r[name])) {
+            ++bad;
+            std::printf("  %s: ref %.17g cpp %.17g\n", name.c_str(), r[name], v);
+        }
+    };
+    c("Al", p.Al());
+    c("Alambda", p.Alambda);
+    c("Nfl", p.Nfl);
+    c("Iorder", p.Iorder);
+    c("Nx", p.Nx);
+    c("Nt", p.Nt);
+    c("NfMx", p.NfMx);
+    c("Qini", p.Qini);
+    c("Qmax", p.Qmax);
+    c("Xmin", p.Xmin);
+    for (int i = 1; i <= 6; ++i) c("Amass_" + std::to_string(i), p.Amass[static_cast<std::size_t>(i - 1)]);
+    for (int i = 0; i <= sidis::Cteq5Pdf::MXQ; ++i) c("QL_" + std::to_string(i), p.QL(i));
+    for (int i = 0; i <= sidis::Cteq5Pdf::MXX; ++i) c("XV_" + std::to_string(i), p.XV(i));
+    std::printf("ctq5_state: %d of %zu columns compared, %d differ -> %s\n", n, t.names.size(), bad,
+                bad || n != static_cast<int>(t.names.size()) ? "FAIL" : "PASS");
+    return bad || n != static_cast<int>(t.names.size()) ? 1 : 0;
+}
+
+int runFdss(const std::string& dir, const std::string& dataDir, const std::string& fortranFdss, double tol) {
+    std::map<std::pair<int, int>, sidis::FdssGrid> grids;
+    std::string err;
+    auto grid = [&](int ih, int io) -> const sidis::FdssGrid& {
+        auto k = std::make_pair(ih, io);
+        auto it = grids.find(k);
+        if (it == grids.end()) {
+            sidis::FdssGrid g;
+            const bool reach = ih == 2 && io == 1;
+            if (!g.load(reach ? dataDir : fortranFdss, ih, io, &err)) throw std::runtime_error(err);
+            it = grids.emplace(k, std::move(g)).first;
+        }
+        return it->second;
+    };
+    return simcl1::run("fdss (fdss.f:fDSS)", dir,
+                       specs({"U", "UB", "D", "DB", "S", "SB", "C", "B", "GL", "n_warn_x", "n_warn_q2"}, tol),
+                       [&](const Row& r, Outputs& o) {
+                           std::ostringstream log;
+                           const auto v = grid(iv(r, "IH"), iv(r, "IO")).eval(iv(r, "IC"), r["X"], r["Q2"], &log);
+                           o["U"] = v.U;
+                           o["UB"] = v.UB;
+                           o["D"] = v.D;
+                           o["DB"] = v.DB;
+                           o["S"] = v.S;
+                           o["SB"] = v.SB;
+                           o["C"] = v.C;
+                           o["B"] = v.B;
+                           o["GL"] = v.GL;
+                           const std::string l = log.str();
+                           o["n_warn_x"] = l.find("X OUT OF RANGE") != std::string::npos ? 1 : 0;
+                           o["n_warn_q2"] = l.find("Q2 OUT OF RANGE") != std::string::npos ? 1 : 0;
+                       });
+}
+
+int runF1f2in21(const std::string& dir, double tol) {
+    return simcl1::run("f1f2in21 (F1F2IN21_v1.0.f, A = 1)", dir, specs({"F1", "F2"}, tol), [&](const Row& r, Outputs& o) {
+        double F1 = 0, F2 = 0;
+        sidis::f1f2in21(r["Z"], r["A"], r["Q2"], r["W2"], F1, F2);
+        o["F1"] = F1;
+        o["F2"] = F2;
+    });
+}
+
+int runSlac(const std::string& dir, double tol) {
+    return simcl1::run("slacemcfit / Rhad_global (semi_physics.f)", dir, specs({"slacemcfit", "rhad_global"}, tol),
+                       [&](const Row& r, Outputs& o) {
+                           o["slacemcfit"] = sidis::slacemcfit(r["A"], r["x"]);
+                           o["rhad_global"] = sidis::rhadGlobal(r["A"], r["x"]);
+                       });
+}
+
+// ------------------------------------------------------------------------------------------------- peepix
+Event readEvent(const Row& r, const std::string& p) {
+    Event e;
+    auto g = [&](const char* n) { return r[p + n]; };
+    e.Ein = g("Ein"); e.Em = g("Em"); e.Pm = g("Pm"); e.Emiss = g("Emiss"); e.Pmiss = g("Pmiss");
+    e.Pmx = g("Pmx"); e.Pmy = g("Pmy"); e.Pmz = g("Pmz"); e.PmPar = g("PmPar"); e.PmPer = g("PmPer"); e.PmOop = g("PmOop");
+    e.nu = g("nu"); e.q = g("q"); e.Q2 = g("Q2"); e.Trec = g("Trec"); e.W = g("W"); e.Mrec = g("Mrec");
+    e.epsilon = g("epsilon"); e.theta_pq = g("theta_pq"); e.theta_tarq = g("theta_tarq"); e.phi_pq = g("phi_pq");
+    e.phi_targ = g("phi_targ"); e.beta = g("beta"); e.phi_s = g("phi_s"); e.phi_c = g("phi_c");
+    e.zhad = g("zhad"); e.pt2 = g("pt2"); e.xbj = g("xbj");
+    auto arm = [&](ArmFull& a, const std::string& s) {
+        a.delta = r[p + s + "delta"]; a.xptar = r[p + s + "xptar"]; a.yptar = r[p + s + "yptar"]; a.z = r[p + s + "z"];
+        a.theta = r[p + s + "theta"]; a.phi = r[p + s + "phi"]; a.E = r[p + s + "E"]; a.P = r[p + s + "P"];
+    };
+    arm(e.e, "e_");
+    arm(e.p, "p_");
+    e.ue = {g("ue_x"), g("ue_y"), g("ue_z")};
+    e.up = {g("up_x"), g("up_y"), g("up_z")};
+    e.uq = {g("uq_x"), g("uq_y"), g("uq_z")};
+    return e;
+}
+
+std::string findInp(const std::string& dirs, const std::string& name) {
+    std::string base = name;
+    if (base.find('/') != std::string::npos) base = base.substr(base.find_last_of('/') + 1);
+    if (base.size() < 4 || base.substr(base.size() - 4) != ".inp") base += ".inp";
+    std::stringstream ss(dirs);
+    for (std::string d; std::getline(ss, d, ':');) {
+        const std::string p = d + "/" + base;
+        if (std::ifstream(p).good()) return p;
+    }
+    return "";
+}
+
+std::map<int, std::string> readConfigs(const std::string& stateDir) {
+    std::map<int, std::string> m;
+    std::ifstream in(stateDir + "/configs.txt");
+    std::string line;
+    std::getline(in, line);   // header
+    while (std::getline(in, line)) {
+        std::istringstream ls(line);
+        int cfg;
+        std::string inp;
+        if (ls >> cfg >> inp) m[cfg] = inp;
+    }
+    return m;
+}
+
+int runPeepix(const std::string& dir, const std::string& stateDir, const std::string& inpDirs, const std::string& dataDir,
+              const std::string& spectralDir, double tol) {
+    const auto cfgs = readConfigs(stateDir);
+    if (cfgs.empty()) {
+        std::printf("no %s/configs.txt\n", stateDir.c_str());
+        return 77;
+    }
+    struct Proc {
+        RunSetup setup;
+        sidis::PeepiXConfig cfg;
+        sidis::PeepiXState st;
+        sidis::Cteq5Pdf pdf;
+        sidis::FdssGrid fdss;
+    };
+    std::map<int, std::unique_ptr<Proc>> procs;
+    sidis::Cteq5Pdf pdf0;
+    sidis::FdssGrid fdss0;
+    std::string err;
+    if (!pdf0.load(dataDir, 1, &err) || !fdss0.load(dataDir, 2, 1, &err)) {
+        std::printf("%s\n", err.c_str());
+        return 77;
+    }
+    auto proc = [&](int cfg) -> Proc& {
+        auto it = procs.find(cfg);
+        if (it != procs.end()) return *it->second;
+        const auto c = cfgs.find(cfg);
+        if (c == cfgs.end()) throw std::runtime_error("cfg " + std::to_string(cfg) + " not in configs.txt");
+        const std::string inp = findInp(inpDirs, c->second);
+        if (inp.empty()) throw std::runtime_error("no .inp for cfg " + std::to_string(cfg) + " (" + c->second + ")");
+        auto P = std::make_unique<Proc>();
+        SimcParameters p;
+        InpReader rd(p);
+        if (!rd.loadRun(inp)) throw std::runtime_error("cannot read " + inp);
+        SetupOptions so;
+        so.fortran_compat = true;
+        so.data_dir = spectralDir;
+        P->setup = BuildRunSetup(p, so);
+        if (!P->setup.ok()) throw std::runtime_error(inp + ": setup STOP " + P->setup.stops.front());
+        P->cfg = sidis::makeConfig(P->setup);
+        P->pdf = pdf0;   // one Fortran process per cfg: fresh SAVEd Warn/First
+        P->fdss = fdss0;
+        return *procs.emplace(cfg, std::move(P)).first->second;
+    };
+    const std::vector<std::string> outs = {"peepix", "survivalprob", "m_davejac", "m_johnjac", "ntup_sigcm",
+                                           "ntup_xfermi", "decdist_out"};
+    const std::vector<std::string> hx = {
+        "hx_thr_return", "hx_targA", "hx_targZ", "hx_targN", "hx_Mpi_gev", "hx_mhad", "hx_mtar", "hx_Ehad", "hx_phad",
+        "hx_cthpq", "hx_xbj_raw", "hx_xbj", "hx_Q2gev", "hx_Qgev", "hx_pt2gev", "hx_wsq", "hx_w", "hx_mmpi2", "hx_u",
+        "hx_ubar", "hx_d", "hx_dbar", "hx_s", "hx_sbar", "hx_uA", "hx_ubarA", "hx_dA", "hx_dbarA", "hx_sA", "hx_sbarA",
+        "hx_sum_sq", "hx_xp", "hx_zp", "hx_sv", "hx_yf", "hx_yu", "hx_u1", "hx_ub", "hx_d1", "hx_db", "hx_s1", "hx_sb",
+        "hx_dsigdz", "hx_b", "hx_Rhad", "hx_sighad", "hx_F1p", "hx_F2p", "hx_F1n", "hx_F2n", "hx_slac", "hx_F1",
+        "hx_F2", "hx_W1", "hx_W2", "hx_sin2th2", "hx_sige", "hx_sigsemi", "hx_jacobian", "hx_fac", "hx_peepix",
+        "hx_Qgev_after"};
+    // hx_* are the harness's re-evaluation (hxsemi.f) of the peepiX intermediates: all 0 on the doing_cent rows (not
+    // evaluated). hx_pathlen/hx_survival are not compared: the harness uses zaero = 0 for the arms without a zaero
+    // branch (5, 6) where peepiX keeps the SAVEd zaero; the SIMC values are the outputs survivalprob/decdist_out.
+    std::vector<std::string> all = outs;
+    // the hx_* columns present in the table (an absent one is skipped)
+    simcl1::Table probe;
+    if (probe.load(dir + "/output.txt", err))
+        for (const auto& h : hx)
+            if (probe.col(h) >= 0) all.push_back(h);
+    std::ostringstream log;
+    return simcl1::run("peepix (semi_physics.f:peepiX)", dir, specs(all, tol), [&](const Row& r, Outputs& o) {
+        Proc& P = proc(iv(r, "cfg"));
+        sidis::PeepiXConfig c = P.cfg;
+        if (iv(r, "ov_state") == 1) {
+            c.doing_hplus = iv(r, "ov_hplus") != 0;
+            c.doing_pizero = iv(r, "ov_pizero") != 0;
+            c.do_fermi = iv(r, "ov_do_fermi") != 0;
+            c.sigc_flag = iv(r, "ov_sigc_flag");
+            c.sigc_nbin = iv(r, "ov_sigc_nbin");
+            c.sigc_kin_min = r["ov_sigc_kin_min"];
+            c.sigc_kin_max = r["ov_sigc_kin_max"];
+            c.sigc_kin_ind = r["ov_sigc_kin_ind"];
+            c.hadron_arm = iv(r, "ov_hadron_arm");
+        }
+        const Event v = readEvent(r, "v_");
+        const Event v0 = readEvent(r, "v0_");
+        MainEvent m;
+        m.theta_pq = r["in_m_theta_pq"];
+        m.FP.p.path = r["in_m_FP_p_path"];
+        m.FP.p.dx = r["in_m_FP_p_dx"];
+        m.FP.p.dy = r["in_m_FP_p_dy"];
+        m.SP.p.delta = r["in_m_SP_p_delta"];
+        m.davejac = r["in_m_davejac"];
+        m.johnjac = r["in_m_johnjac"];
+        m.ntup.sigcm = r["in_ntup_sigcm"];
+        m.ntup.xfermi = r["in_ntup_xfermi"];
+        m.ntup.decdist = r["decdist_in"];
+        m.pfermi = {r["pfer"], r["pferx"], r["pfery"], r["pferz"], r["efer"]};
+        double sp = r["in_survivalprob"];
+        sidis::PeepiXTrace t;
+        const double res = sidis::peepiX(v, v0, m, sp, iv(r, "doing_cent") != 0, c, P.pdf,
+                                         c.doing_semika ? &P.fdss : nullptr, P.st, &log, &t);
+        o["peepix"] = res;
+        o["survivalprob"] = sp;
+        o["m_davejac"] = m.davejac;
+        o["m_johnjac"] = m.johnjac;
+        o["ntup_sigcm"] = m.ntup.sigcm;
+        o["ntup_xfermi"] = m.ntup.xfermi;
+        o["decdist_out"] = m.ntup.decdist;
+        const std::map<std::string, double> h = {
+            {"hx_thr_return", t.threshold_return ? 1 : 0}, {"hx_targA", c.targA}, {"hx_targZ", c.targZ},
+            {"hx_targN", c.targA - c.targZ}, {"hx_Mpi_gev", t.Mpi_gev}, {"hx_mhad", t.mhad}, {"hx_mtar", t.mtar},
+            {"hx_Ehad", t.Ehad}, {"hx_phad", t.phad}, {"hx_cthpq", t.cthpq}, {"hx_xbj_raw", t.xbj_raw},
+            {"hx_xbj", t.xbj}, {"hx_Q2gev", t.Q2gev}, {"hx_Qgev", t.Qgev}, {"hx_pt2gev", t.pt2gev}, {"hx_wsq", t.wsq},
+            {"hx_w", t.w}, {"hx_mmpi2", t.mmpi2}, {"hx_u", t.u}, {"hx_ubar", t.ubar}, {"hx_d", t.d},
+            {"hx_dbar", t.dbar}, {"hx_s", t.s}, {"hx_sbar", t.sbar}, {"hx_uA", t.uA}, {"hx_ubarA", t.ubarA},
+            {"hx_dA", t.dA}, {"hx_dbarA", t.dbarA}, {"hx_sA", t.sA}, {"hx_sbarA", t.sbarA}, {"hx_sum_sq", t.sum_sq},
+            {"hx_xp", t.xp}, {"hx_zp", t.zp}, {"hx_sv", t.sv}, {"hx_yf", t.yf}, {"hx_yu", t.yu}, {"hx_u1", t.u1},
+            {"hx_ub", t.ub}, {"hx_d1", t.d1}, {"hx_db", t.db}, {"hx_s1", t.s1}, {"hx_sb", t.sb},
+            {"hx_dsigdz", t.dsigdz}, {"hx_b", t.b}, {"hx_Rhad", t.rhad}, {"hx_sighad", t.sighad}, {"hx_F1p", t.F1p},
+            {"hx_F2p", t.F2p}, {"hx_F1n", t.F1n}, {"hx_F2n", t.F2n}, {"hx_slac", t.emc}, {"hx_F1", t.F1},
+            {"hx_F2", t.F2}, {"hx_W1", t.W1}, {"hx_W2", t.W2}, {"hx_sin2th2", t.sin2th2}, {"hx_sige", t.sige},
+            {"hx_sigsemi", t.sigsemi}, {"hx_jacobian", t.jacobian}, {"hx_fac", t.fac}, {"hx_peepix", res},
+            {"hx_Qgev_after", t.Qgev_after}};
+        const bool cent = iv(r, "doing_cent") != 0;
+        for (const auto& kv : h) o[kv.first] = cent ? 0.0 : kv.second;
+    });
+}
+
+// ------------------------------------------------------------------------------------------------- fortran_diff
+// P12.1 F1/F3/F4 (FORTRAN-BUG, corrected by default) on the peepix table rows: the corrected mode differs from the
+// Fortran exactly where a correction applies. Compat = the Fortran (bitwise, as l1_peepix); corrected: peepiX changes
+// only on pi0 rows (F1, the dbar FF), survivalprob/decdist only on decay-OFF rows (F3: p_hadron; F4: sqrt and zaero),
+// every other output is unchanged.
+int runFortranDiff(const std::string& dir, const std::string& stateDir, const std::string& inpDirs,
+                   const std::string& dataDir, const std::string& spectralDir) {
+    const auto cfgs = readConfigs(stateDir);
+    simcl1::Table in;
+    std::string err;
+    if (cfgs.empty() || !in.load(dir + "/input.txt", err)) return 77;
+    sidis::Cteq5Pdf pdf0;
+    sidis::FdssGrid fdss0;
+    if (!pdf0.load(dataDir, 1, &err) || !fdss0.load(dataDir, 2, 1, &err)) return 77;
+    struct Mode {
+        sidis::PeepiXConfig cfg;
+        sidis::PeepiXState st;
+        sidis::Cteq5Pdf pdf;
+    };
+    std::map<int, std::array<Mode, 2>> procs;   // [0] compat, [1] corrected
+    long nrow = 0, pi0 = 0, pi0chg = 0, other_chg = 0, surv = 0, survchg = 0, surv_other = 0, zaero_rows = 0;
+    std::ostringstream log;
+    for (std::size_t i = 0; i < in.rows.size(); ++i) {
+        Row r(in, i);
+        const int cfg = iv(r, "cfg");
+        auto it = procs.find(cfg);
+        if (it == procs.end()) {
+            const std::string inp = findInp(inpDirs, cfgs.at(cfg));
+            if (inp.empty()) throw std::runtime_error("no .inp for cfg " + std::to_string(cfg));
+            SimcParameters p;
+            InpReader rd(p);
+            if (!rd.loadRun(inp)) throw std::runtime_error("cannot read " + inp);
+            std::array<Mode, 2> m;
+            for (int k = 0; k < 2; ++k) {
+                SetupOptions so;
+                so.fortran_compat = k == 0;
+                so.data_dir = spectralDir;
+                const RunSetup st = BuildRunSetup(p, so);
+                m[static_cast<std::size_t>(k)].cfg = sidis::makeConfig(st);
+                m[static_cast<std::size_t>(k)].pdf = pdf0;
+            }
+            it = procs.emplace(cfg, std::move(m)).first;
+        }
+        double res[2], sp[2], dd[2];
+        bool pizero = false, decayOff = false, thr = false;
+        int arm = 0;
+        for (int k = 0; k < 2; ++k) {
+            Mode& M = it->second[static_cast<std::size_t>(k)];
+            sidis::PeepiXConfig c = M.cfg;
+            if (iv(r, "ov_state") == 1) {
+                c.doing_hplus = iv(r, "ov_hplus") != 0;
+                c.doing_pizero = iv(r, "ov_pizero") != 0;
+                c.do_fermi = iv(r, "ov_do_fermi") != 0;
+                c.sigc_flag = iv(r, "ov_sigc_flag");
+                c.sigc_nbin = iv(r, "ov_sigc_nbin");
+                c.sigc_kin_min = r["ov_sigc_kin_min"];
+                c.sigc_kin_max = r["ov_sigc_kin_max"];
+                c.sigc_kin_ind = r["ov_sigc_kin_ind"];
+                c.hadron_arm = iv(r, "ov_hadron_arm");
+            }
+            const Event v = readEvent(r, "v_");
+            const Event v0 = readEvent(r, "v0_");
+            MainEvent m;
+            m.theta_pq = r["in_m_theta_pq"];
+            m.FP.p.path = r["in_m_FP_p_path"];
+            m.FP.p.dx = r["in_m_FP_p_dx"];
+            m.FP.p.dy = r["in_m_FP_p_dy"];
+            m.SP.p.delta = r["in_m_SP_p_delta"];
+            m.ntup.decdist = r["decdist_in"];
+            m.pfermi = {r["pfer"], r["pferx"], r["pfery"], r["pferz"], r["efer"]};
+            sp[k] = r["in_survivalprob"];
+            sidis::PeepiXTrace t;
+            res[k] = sidis::peepiX(v, v0, m, sp[k], iv(r, "doing_cent") != 0, c, M.pdf,
+                                   c.doing_semika ? &fdss0 : nullptr, M.st, &log, &t);
+            dd[k] = m.ntup.decdist;
+            pizero = c.doing_pizero && c.doing_semipi;
+            decayOff = !c.doing_decay;
+            thr = t.threshold_return;
+            arm = c.hadron_arm;
+        }
+        ++nrow;
+        const bool peq = sameBits(res[0], res[1]);
+        if (pizero && !thr) {
+            ++pi0;
+            if (!peq) ++pi0chg;
+        } else if (!peq) {
+            ++other_chg;
+        }
+        if (decayOff && !thr) {
+            ++surv;
+            if (!sameBits(sp[0], sp[1]) && !sameBits(dd[0], dd[1])) ++survchg;
+            if (arm == 5 || arm == 6) ++zaero_rows;
+        } else if (!sameBits(sp[0], sp[1]) || !sameBits(dd[0], dd[1])) {
+            ++surv_other;
+        }
+    }
+    std::printf("fortran_diff P12.1 (peepix rows %ld):\n", nrow);
+    std::printf("  F1 pi0 dbar FF: %ld pi0 rows, peepiX changed on %ld; non-pi0 rows changed: %ld\n", pi0, pi0chg,
+                other_chg);
+    std::printf("  F3/F4 survival: %ld decay-OFF rows (%ld with hadron_arm 5/6), survivalprob and decdist changed on %ld; "
+                "other rows changed: %ld\n", surv, zaero_rows, survchg, surv_other);
+    const bool ok = pi0 > 0 && pi0chg == pi0 && other_chg == 0 && surv > 0 && survchg > 0 && surv_other == 0;
+    std::printf("fortran_diff P12.1 -> %s\n", ok ? "PASS" : "FAIL");
+    return ok ? 0 : 1;
+}
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -515,6 +927,14 @@ int main(int argc, char** argv) {
         if (what == "files" && argc > 3) return runFiles(argv[2], argv[3]);
         if (what == "tables" && argc > 2) return runTables(argv[2]);
         if (what == "sanity" && argc > 2) return runSanity(argv[2]);
+        if (what == "ctq5pdf" && argc > 4) return runCtq5pdf(argv[2], argv[3], std::atof(argv[4]));
+        if (what == "ctq5_state" && argc > 3) return runCtq5State(argv[2], argv[3]);
+        if (what == "fdss" && argc > 5) return runFdss(argv[2], argv[3], argv[4], std::atof(argv[5]));
+        if (what == "f1f2in21" && argc > 3) return runF1f2in21(argv[2], std::atof(argv[3]));
+        if (what == "slacemcfit" && argc > 3) return runSlac(argv[2], std::atof(argv[3]));
+        if (what == "fortran_diff" && argc > 6) return runFortranDiff(argv[2], argv[3], argv[4], argv[5], argv[6]);
+        if (what == "peepix" && argc > 7)
+            return runPeepix(argv[2], argv[3], argv[4], argv[5], argv[6], std::atof(argv[7]));
     } catch (const std::exception& e) {
         std::printf("ERROR: %s\n", e.what());
         return 1;

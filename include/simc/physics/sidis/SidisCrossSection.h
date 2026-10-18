@@ -75,14 +75,19 @@ struct PeepiXState {
 /// Intermediate values of one peepiX call (optional diagnostics for the L1 tables; never changes the numerics).
 struct PeepiXTrace {
     bool threshold_return{false};     ///< mmpi2 below threshold: returned 0 at l.280-284
+    double Mpi_gev{0}, mhad{0}, mtar{0};
+    double xbj_raw{0};                ///< x_Bj before the clamp to 1
     double xbj{0}, Q2gev{0}, Qgev{0}, pt2gev{0}, wsq{0}, w{0}, mmpi2{0}, zhad{0}, pt2{0}, Ehad{0}, phad{0}, cthpq{0};
     double u{0}, ubar{0}, d{0}, dbar{0}, s{0}, sbar{0}, sum_sq{0};
+    double uA{0}, ubarA{0}, dA{0}, dbarA{0}, sA{0}, sbarA{0};
+    double Qgev_after{0};             ///< Qgev after the six Ctq5Pdf calls (Alambda if Q < Alambda)
+    double sin2th2{0};
     double u1{0}, ub{0}, d1{0}, db{0}, s1{0}, sb{0};   ///< fragmentation functions (z D) used
     double xp{0}, zp{0}, sv{0}, yf{0}, yu{0};
     double dsigdz{0}, b{0}, rhad{0}, sighad{0};
     double F1p{0}, F2p{0}, F1n{0}, F2n{0}, emc{0}, F1{0}, F2{0}, W1{0}, W2{0}, sige{0}, sigsemi{0};
     double jacobian{0}, fac{0}, sigma{0};
-    double pathlen{0}, betak{0}, gammak{0};
+    double pathlen{0}, betak{0}, gammak{0}, survival{0};
 };
 
 /// Fortran: semi_physics.f:peepiX(vertex, vertex0, main, survivalprob, doing_cent) (l.1-631).

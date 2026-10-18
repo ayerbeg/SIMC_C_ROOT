@@ -174,6 +174,7 @@ double peepiX(const Event& vertex, const Event& vertex0, MainEvent& main, double
     } else {
         xbj = Q2 / 2. / mtar / nu;
     }
+    tr.xbj_raw = xbj;
     if (xbj > 1.0) {
         if (log) *log << " XBj is too large!" << fnum(xbj) << "\n";
         xbj = 1.0;
@@ -192,6 +193,9 @@ double peepiX(const Event& vertex, const Event& vertex0, MainEvent& main, double
     // FORTRAN-DIFF-CANDIDATE(P12.1 F5): a mass^2 multiplied by (1 - pt2 [GeV^2]); the intended missing-mass formula
     // is unknown, kept.
     const double mmpi2 = sq(mtargev) + 2. * mtargev * nugev * (1 - zhad) * (1 - pt2gev);
+    tr.Mpi_gev = Mpi_gev;
+    tr.mhad = mhad;
+    tr.mtar = mtar;
     tr.xbj = xbj;
     tr.Q2gev = Q2gev;
     tr.Qgev = Qgev;
@@ -241,6 +245,13 @@ double peepiX(const Event& vertex, const Event& vertex0, MainEvent& main, double
     tr.s = s;
     tr.sbar = sbar;
     tr.sum_sq = sum_sq;
+    tr.uA = uA;
+    tr.ubarA = ubarA;
+    tr.dA = dA;
+    tr.dbarA = dbarA;
+    tr.sA = sA;
+    tr.sbarA = sbarA;
+    tr.Qgev_after = Qgev;
 
     // Peter Bosted's parameterization (l.460-495) / fDSS (l.496-506)
     double u1 = 0, ub = 0, d1 = 0, db = 0, s1 = 0, sb = 0;
@@ -363,6 +374,7 @@ double peepiX(const Event& vertex, const Event& vertex0, MainEvent& main, double
     tr.F2 = F2;
     tr.W1 = W1;
     tr.W2 = W2;
+    tr.sin2th2 = sin2th2;
     tr.sige = sige;
     tr.sigsemi = sigsemi;
     tr.jacobian = jacobian;
@@ -408,6 +420,7 @@ double peepiX(const Event& vertex, const Event& vertex0, MainEvent& main, double
         tr.pathlen = pathlen;
         tr.betak = betak;
         tr.gammak = gammak;
+        tr.survival = survivalprob;
     }
     if (trace) *trace = tr;
     return peepix;
