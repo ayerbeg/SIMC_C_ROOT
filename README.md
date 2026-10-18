@@ -10,7 +10,9 @@ Current scope: H(e,e'p) elastic, D(e,e'p) and A(e,e'p) (theory-file or Benhar sp
 pion electroproduction (π+/π−/π0 on H, D and A, quasifree, coherent and π Δ final states, decay in flight; task P9; the
 π0 runs with the calorimeter arm wait for P14), kaon electroproduction (K+Λ/Σ0/Σ− on H, D and A, quasifree and coherent,
 decay in flight or survival weight; task P10), (e,e'p)π in the Delta region (`doing_delta`, H, and D/A in the corrected
-mode; task P11), with and without radiation, and phase-space (`doing_phsp`) runs, HMS and SHMS arms. Other reactions and the
+mode; task P11), with and without radiation, and phase-space (`doing_phsp`) runs, HMS and SHMS arms. The SIDIS
+(e,e'h)X cross section (`doing_semi`, semi_physics.f:peepiX with CTEQ5M, fDSS and F1F2IN21; physics model `sidis`, task
+P12.1) is ported; the SIDIS event generation follows in P12.2. Other reactions and the
 SOS/HRS/calorimeter arms are refused with a `NotPorted` error (later phases).
 
 **Delta runs: the weight contains no cross section.** As in the Fortran (physics_delta.f:132, "Need new xsec model."),
@@ -110,7 +112,7 @@ examples/       example plug-ins (ideal_box spectrometer) and their tests
 tests/          unit/ l1/ regression/
 tools/          simc++ main, inp2json, hist2json, check_all.sh
 validation/     simc_compare (L2)
-data/           COSY maps, spectral functions, pion and kaon model tables (copies of the Fortran files: matrices/simc_fortran,
-                spectral, pion, kaon),
+data/           COSY maps, spectral functions, pion, kaon and SIDIS model tables (copies of the Fortran files:
+                matrices/simc_fortran, spectral, pion, kaon, sidis),
                 tables, data/config/*.json
 ```
