@@ -55,12 +55,18 @@ public:
     /// Fortran: PartonX(IPRTN, X, Q) (l.97-196). Updates the SAVEd `First` (the X < Xmin warning is printed once).
     double partonX(int iprtn, double x, double q, std::ostream* log = nullptr);
 
-    // COMMON /CtqPar1/ Al, XV(0:MXX), QL(0:MXQ), UPD(MXPQX); /CtqPar2/ Nx, Nt, NfMx; /XQrange/ Qini, Qmax, Xmin;
-    // /QCDtable/ Alambda, Nfl, Iorder; /Masstbl/ Amass(6)
-    double Al{0};
-    std::array<double, MXX + 1> XV{};   ///< XV(0:MXX), 0-based as in the Fortran
-    std::array<double, MXQ + 1> QL{};   ///< QL(0:MXQ): ln(Q/Al) after ReadTbl l.264-266
-    std::vector<double> UPD;            ///< UPD(1:MXPQX): UPD(i) = UPD[i-1]
+    // COMMON /CtqPar1/ Al, XV(0:MXX), QL(0:MXQ), UPD(MXPQX) as ONE contiguous storage in the Fortran order: PartonX
+    // can index XV(-1) (= Al) and UPD(0) (= QL(MXQ)) when x <= XV(0) after its first call (Jx = -1, the clamp to 0 is
+    // only done the first time, Ctq5Pdf.f:149-156); the reads are reproduced as the Fortran memory layout makes them.
+    double& Al() { return c1_[0]; }
+    double Al() const { return c1_[0]; }
+    double& XV(int i) { return c1_[static_cast<std::size_t>(kXV + i)]; }     ///< XV(i), i = -1 .. MXX
+    double XV(int i) const { return c1_[static_cast<std::size_t>(kXV + i)]; }
+    double& QL(int i) { return c1_[static_cast<std::size_t>(kQL + i)]; }     ///< QL(i) = ln(Q_i/Al), i = 0 .. MXQ
+    double QL(int i) const { return c1_[static_cast<std::size_t>(kQL + i)]; }
+    double& UPD(int i) { return c1_[static_cast<std::size_t>(kUPD + i - 1)]; }   ///< UPD(i), i = 0 .. MXPQX (1-based)
+    double UPD(int i) const { return c1_[static_cast<std::size_t>(kUPD + i - 1)]; }
+    // /CtqPar2/ Nx, Nt, NfMx; /XQrange/ Qini, Qmax, Xmin; /QCDtable/ Alambda, Nfl, Iorder; /Masstbl/ Amass(6)
     int Nx{0}, Nt{0}, NfMx{0};
     double Qini{0}, Qmax{0}, Xmin{0};
     double Alambda{0};
@@ -74,6 +80,8 @@ public:
     bool first{true};   ///< PartonX: Data First /.true./
 
 private:
+    static constexpr int kXV = 1, kQL = kXV + MXX + 1, kUPD = kQL + MXQ + 1;
+    std::vector<double> c1_ = std::vector<double>(static_cast<std::size_t>(kUPD + MXPQX), 0.0);
     int iset_{0};
     int npts_{0}, npts_read_{0};
 };

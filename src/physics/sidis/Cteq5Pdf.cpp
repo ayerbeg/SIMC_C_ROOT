@@ -162,13 +162,13 @@ bool Cteq5Pdf::load(const std::string& dir, int iset, std::string* err) {
     if (!r.skipRecord() || !r.skipRecord()) return fail(err, path + ": short header");
     double Dr = 0, Fl = 0;
     {
-        std::vector<double*> v{&Dr, &Fl, &Al};
+        std::vector<double*> v{&Dr, &Fl, &Al()};
         for (auto& a : Amass) v.push_back(&a);
         if (!readReals(v)) return fail(err, path + ": cannot read Dr, Fl, Al, Amass(1:6)");
     }
     Iorder = static_cast<int>(std::lround(Dr));   // Nint
     Nfl = static_cast<int>(std::lround(Fl));
-    Alambda = Al;
+    Alambda = Al();
     // l.258-259
     if (!r.skipRecord()) return fail(err, path + ": short header");
     r.beginRead();
@@ -181,31 +181,31 @@ bool Cteq5Pdf::load(const std::string& dir, int iset, std::string* err) {
     if (!r.skipRecord()) return fail(err, path + ": short header");
     {
         std::vector<double*> v{&Qini, &Qmax};
-        for (int i = 0; i <= Nt; ++i) v.push_back(&QL[static_cast<std::size_t>(i)]);
+        for (int i = 0; i <= Nt; ++i) v.push_back(&QL(i));
         if (!readReals(v)) return fail(err, path + ": cannot read QINI, QMAX, QL(0:NT)");
     }
     // l.264-265
     if (!r.skipRecord()) return fail(err, path + ": short header");
     {
         std::vector<double*> v{&Xmin};
-        for (int i = 0; i <= Nx; ++i) v.push_back(&XV[static_cast<std::size_t>(i)]);
+        for (int i = 0; i <= Nx; ++i) v.push_back(&XV(i));
         if (!readReals(v)) return fail(err, path + ": cannot read XMIN, XV(0:NX)");
     }
     // l.267-269
-    for (int iq = 0; iq <= Nt; ++iq) QL[static_cast<std::size_t>(iq)] = std::log(QL[static_cast<std::size_t>(iq)] / Al);
+    for (int iq = 0; iq <= Nt; ++iq) QL(iq) = std::log(QL(iq) / Al());
     // l.274-279: Read (Nu, *, IOSTAT=IRET) (UPD(I), I=1,Npts): an end of file or a bad item ends the read silently;
     // the values read so far are kept, the others keep their COMMON value (0).
     const int nblk = (Nx + 1) * (Nt + 1);
     npts_ = nblk * (NfMx + 3);
     if (npts_ > MXPQX) return fail(err, path + ": Npts > MXPQX");
-    UPD.assign(MXPQX, 0.0);
+    for (int i = 1; i <= MXPQX; ++i) UPD(i) = 0.0;
     if (!r.skipRecord()) return fail(err, path + ": no parton table");
     r.beginRead();
     npts_read_ = 0;
     for (int i = 1; i <= npts_; ++i) {
         double v = 0;
         if (!r.next(tok) || !parseReal(tok, v)) break;
-        UPD[static_cast<std::size_t>(i - 1)] = v;
+        UPD(i) = v;
         ++npts_read_;
     }
     iset_ = iset;
@@ -239,12 +239,12 @@ double Cteq5Pdf::pdf(int iparton, double x, double& q, std::ostream* log) {
 
 // Fortran: Ctq5Pdf.f:PartonX (l.97-196)
 double Cteq5Pdf::partonX(int iprtn, double x, double q, std::ostream* log) {
-    const double qg = std::log(q / Al);   // Work with Log (Q)
+    const double qg = std::log(q / Al());   // Work with Log (Q)
     // Find lower end of interval containing X
     int jl = -1, ju = Nx + 1;
     while (ju - jl > 1) {
         const int jm = (ju + jl) / 2;
-        if (x > XV[static_cast<std::size_t>(jm)])
+        if (x > XV(jm))
             jl = jm;
         else
             ju = jm;
@@ -266,7 +266,7 @@ double Cteq5Pdf::partonX(int iprtn, double x, double q, std::ostream* log) {
     ju = Nt + 1;
     while (ju - jl > 1) {
         const int jm = (ju + jl) / 2;
-        if (qg > QL[static_cast<std::size_t>(jm)])
+        if (qg > QL(jm))
             jl = jm;
         else
             ju = jm;
@@ -282,13 +282,8 @@ double Cteq5Pdf::partonX(int iprtn, double x, double q, std::ostream* log) {
             *log << b << "\n";
         }
     }
-    // X <= XV(0) after the first call leaves Jx = -1: the Fortran then reads XV(-1) and UPD(0), i.e. the neighbouring
-    // COMMON /CtqPar1/ words Al and QL(MXQ). Unreachable for x > 0 (XV(0) = 0 in every CTEQ5 table); refused.
-    // A NaN x (NaN kinematics) also ends with Jx = -1; there the Fortran result is NaN whatever it reads (every
-    // POLINT difference is NaN), which is returned.
-    if (jx < 0 && std::isnan(x)) return x;
-    if (jx < 0)
-        throw NotPorted("Ctq5Pdf.f:PartonX: x <= XV(0) after the first call (the Fortran reads outside XV/UPD)");
+    // X <= XV(0) after the first call leaves Jx = -1 (x = 0, or a NaN x): the Fortran then reads XV(-1) = Al and, for
+    // JFL = Jq = 0, UPD(0) = QL(MXQ) - the neighbouring words of COMMON /CtqPar1/, reproduced by the storage layout.
     const int ip = iprtn >= 3 ? -iprtn : iprtn;
     // Find the off-set in the linear array Upd
     const int jfl = ip + NfMx;
@@ -297,11 +292,11 @@ double Cteq5Pdf::partonX(int iprtn, double x, double q, std::ostream* log) {
     double fq[M1], df = 0;
     for (int iq = 1; iq <= M1; ++iq) {
         const int j1 = j0 + (Nx + 1) * (iq - 1) + 1;
-        fq[iq - 1] = polint(&XV[static_cast<std::size_t>(jx)], &UPD[static_cast<std::size_t>(j1 - 1)], M1, x, df);
+        fq[iq - 1] = polint(&XV(jx), &UPD(j1), M1, x, df);
     }
     // Finish off by interpolating in Q
     double ddf = 0;
-    return polint(&QL[static_cast<std::size_t>(jq)], fq, M1, qg, ddf);
+    return polint(&QL(jq), fq, M1, qg, ddf);
 }
 
 }  // namespace sidis
