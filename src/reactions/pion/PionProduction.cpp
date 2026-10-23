@@ -107,9 +107,10 @@ void PionProduction::configure(const Json& config, const SimcParameters& params)
 void PionProduction::init(const StageContext& ctx) {
     const RunSetup& s = ctx.setup;
     const ReactionFlags& f = s.flags;
-    if (doingDelta_ ? !f.doing_delta : (kaon_ ? !f.doing_kaon : !f.doing_pion))
+    if (doingSemi_ ? !f.doing_semi : (doingDelta_ ? !f.doing_delta : (kaon_ ? !f.doing_kaon : !f.doing_pion)))
         throw std::invalid_argument("reaction '" + name_ + "': the input is not " +
-                                    (doingDelta_ ? std::string("(e,e'p)pi in the Delta region (doing_delta)")
+                                    (doingSemi_ ? std::string("semi-inclusive production (doing_semi)") :
+                                     doingDelta_ ? std::string("(e,e'p)pi in the Delta region (doing_delta)")
                                             : (kaon_ ? std::string("kaon production (doing_kaon)")
                                                      : std::string("exclusive pion production (doing_pion)"))));
     if (f.using_tgt_field || s.params.using_tgt_field)

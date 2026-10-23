@@ -31,3 +31,9 @@ target_compile_options(simcfw_reactions_kaon PRIVATE -Wall -Wextra -pedantic)
 add_library(simcfw_reactions_delta OBJECT delta/DeltaProduction.cpp)
 target_link_libraries(simcfw_reactions_delta PUBLIC simcfw simcfw_reactions simcfw_reactions_pion)
 target_compile_options(simcfw_reactions_delta PRIVATE -Wall -Wextra -pedantic)
+
+# simcfw_reactions_sidis (task P12.2): IReaction "sidis_production" (event.f doing_semi branches; the PionProduction
+# plumbing with the semi generation, complete_ev and complete_main branches; the "sidis" model of simcfw_sidis).
+add_library(simcfw_reactions_sidis OBJECT sidis/SidisProduction.cpp)
+target_link_libraries(simcfw_reactions_sidis PUBLIC simcfw simcfw_reactions simcfw_reactions_pion simcfw_sidis)
+target_compile_options(simcfw_reactions_sidis PRIVATE -Wall -Wextra -pedantic)

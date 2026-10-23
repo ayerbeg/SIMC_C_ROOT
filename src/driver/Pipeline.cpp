@@ -80,6 +80,8 @@ PipelineConfig PipelineConfig::Defaults(const RunSetup& s) {
         p.reaction.type = "kaon_production";
     else if (f.doing_delta)   // H/D/A(e,e'p)pi (P11.1)
         p.reaction.type = "delta_production";
+    else if (f.doing_semi)   // (e,e'pi)X / (e,e'K)X on H, D, A (P12.2)
+        p.reaction.type = "sidis_production";
     else
         p.reaction.type = "";   // not ported: SimcRun reports NotPorted with the reaction title
     // event.f:complete_main l.1444-1456
@@ -93,7 +95,7 @@ PipelineConfig PipelineConfig::Defaults(const RunSetup& s) {
     } else if (f.doing_delta && !f.doing_phsp) {
         p.physics.type = "delta";   // physics_delta.f:peedelta (l.1512)
     } else if (f.doing_semi && !f.doing_phsp) {
-        p.physics.type = "sidis";   // semi_physics.f:peepiX (l.1521); the reaction comes with P12.2
+        p.physics.type = "sidis";   // semi_physics.f:peepiX (l.1521)
     } else {
         p.physics.type = "sigep";
     }

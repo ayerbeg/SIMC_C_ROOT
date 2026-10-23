@@ -78,6 +78,7 @@ struct NtupVars {
     double Mh2_final{0}; ///< hadron mass^2 after decay (MeV^2)
     double sigcm1{0};    ///< pion/kaon: first model cross section (physics_pion.f:126 sig_param_2021) [ub/MeV^2/rad]
     double sigcm2{0};    ///< pion/kaon: second model (physics_pion.f:148 MAID, W < 2 GeV only) [ub/MeV^2/rad]
+    double dilu{0};      ///< SIDIS dilution (event.f:1525 ntup%dilu = 1.0; semi_dilution is dead code). Not an ntuple column
     double xfermi{0};    ///< SIDIS with Fermi motion: x_Bjorken = Q2/(2 P.q) (semi_physics.f:250, ntuple column 55)
     /// pi0 photons (pizero_decay.f, event.f:899-901): (E, px, py, pz) in the lab [MeV] (task P9.2)
     std::array<double, 4> gamma1{}, gamma2{};
