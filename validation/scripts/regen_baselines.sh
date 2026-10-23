@@ -59,6 +59,12 @@ for t in h_d1_rad; do
             "corrected_delta_${t}_n20k_s4242|$REF/runs/delta_${t}_A/delta_${t}_A.inp|--ngen 20000|dir_delta_${t}_s4242|regression_corrected_delta_${t} (new in P11.1)")
 done
 
+# P12.2: SIDIS H(e,e'pi+)X, K1 (HMS e-, SHMS pi+), rad
+for t in h_k1_pip_rad; do
+  CONFIGS+=("sidis_${t}_n20k_s4242|$REF/runs/sidis_${t}_A/sidis_${t}_A.inp|--fortran-compat --ngen 20000|dir_sidis_${t}_s4242|regression_identity_sidis_${t} (new in P12.2)"
+            "corrected_sidis_${t}_n20k_s4242|$REF/runs/sidis_${t}_A/sidis_${t}_A.inp|--ngen 20000|dir_sidis_${t}_s4242|regression_corrected_sidis_${t} (new in P12.2)")
+done
+
 WT="$(mktemp -d "${TMPDIR:-/tmp}/simc_regen_wt.XXXXXX")"
 cleanup() { git -C "$SRC_DIR" worktree remove --force "$WT" >/dev/null 2>&1; git -C "$SRC_DIR" worktree prune; rm -rf "$WT.build"; }
 trap cleanup EXIT
