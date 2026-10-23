@@ -35,6 +35,7 @@
 #include "simc/input/InpReader.h"
 #include "simc/material/HallCCryoTarget.h"
 #include "simc/optics/CosyEngine.h"
+#include "simc/output/NtupleLayout.h"
 #include "simc/output/SummaryJson.h"
 #include "simc/physics/delta/DeltaModel.h"
 #include "simc/physics/nuclear/SpectralFunctionTables.h"
@@ -1509,6 +1510,147 @@ int testCentralSigccDelta() {
     return 0;
 }
 
+
+// ------------------------------------------------------------------------------------------------ D-051 (P12.2, SIDIS)
+bool loadSidisInp(const std::string& name, SimcParameters& p) {
+    std::string inp = g_ref + "/functions/sidis/sidis_state/inp/" + name + ".inp";
+    if (!std::ifstream(inp)) inp = g_ref + "/runs/" + name + "/" + name + ".inp";
+    if (!std::ifstream(inp)) {
+        std::printf("SKIP: %s missing\n", inp.c_str());
+        return false;
+    }
+    InpReader rd(p);
+    return rd.loadRun(inp);
+}
+
+/// Sink: the SIDIS ntuple of every contributing event (FillSemiNtuple of the run's mode) and the vertex PmPer test.
+struct SemiSink : IOutputSink {
+    const RunSetup* s{nullptr};
+    long n{0}, pfermiNan{0}, pfermiZero{0}, pmperCurrent{0};
+    std::string name() const override { return "semi_check"; }
+    void configure(const Json&, const SimcParameters&) override {}
+    void init(const StageContext&) override {}
+    void beginRun(const RunSetup& rs) override { s = &rs; }
+    void fill(const MainEvent& m, const Event& v, const Event& o, const Event& r, bool success) override {
+        if (!success) return;
+        ++n;
+        std::vector<double> ntu(kSemiNtupleSize, 0.0);
+        FillSemiNtuple(*s, m, v, o, r, ntu);
+        if (std::isnan(ntu[53])) ++pfermiNan;
+        if (ntu[53] == 0.0) ++pfermiZero;
+        const double pp = std::sqrt(std::max(0.e0, v.Pm * v.Pm - v.PmPar * v.PmPar - v.PmOop * v.PmOop));
+        if (sameBits(pp, v.PmPer)) ++pmperCurrent;
+    }
+    void endRun(const RunSummary&) override {}
+};
+
+struct SemiRun {
+    bool ran{false};
+    std::string what;
+    SemiSink* sink{nullptr};
+};
+SemiRun runSemi(const SimcParameters& p, bool compat, long ngen, std::unique_ptr<driver::SimcRun>& keep) {
+    SemiRun r;
+    driver::RunOptions opt;
+    opt.quiet_stages = true;
+    opt.fortran_compat = compat;
+    opt.override_ngen = true;
+    opt.ngen = ngen;
+    opt.override_seed = true;
+    opt.seed = 4242;
+    opt.run_name = "d051";
+    opt.data_dir = specDir();
+    static std::ostringstream log;
+    opt.log = &log;
+    keep = std::make_unique<driver::SimcRun>(p, Json{{"sinks", Json::array()}}, opt);
+    auto sk = std::make_unique<SemiSink>();
+    r.sink = sk.get();
+    keep->addSink(std::move(sk));
+    try {
+        keep->run();
+        r.ran = true;
+    } catch (const std::exception& e) {
+        r.what = e.what();
+    }
+    return r;
+}
+
+// D-051 F3 (results_write.f:208-209, pfermi 0/0 for pfer = 0) and F9 (event.f:922, PmPer from the previous Pm), H pi+.
+int testSemiPfermiPmPer() {
+    SimcParameters p;
+    if (!loadSidisInp("l1_h_k1_pip_norad", p)) return 77;
+    SemiRun r[2];
+    std::unique_ptr<driver::SimcRun> keep[2];
+    for (int compat = 0; compat < 2; ++compat) r[compat] = runSemi(p, compat == 1, 300, keep[compat]);
+    if (!r[0].ran || !r[1].ran) {
+        expect(false, "runs: " + r[0].what + " / " + r[1].what);
+        return 0;
+    }
+    const SemiSink &c = *r[1].sink, &k = *r[0].sink;
+    char b[300];
+    std::snprintf(b, sizeof b, "F3 compat: pfermi = 0/0 = NaN in %ld of %ld H events (as the Fortran .bin)", c.pfermiNan, c.n);
+    expect(c.n == 300 && c.pfermiNan == c.n, b);
+    std::snprintf(b, sizeof b, "F3 corrected: pfermi = 0 in %ld of %ld H events", k.pfermiZero, k.n);
+    expect(k.n == 300 && k.pfermiZero == k.n, b);
+    std::snprintf(b, sizeof b, "F9 compat: vertex PmPer from this event's Pm in %ld of %ld events (stale Pm otherwise)",
+                  c.pmperCurrent, c.n);
+    expect(c.pmperCurrent < c.n / 10, b);
+    std::snprintf(b, sizeof b, "F9 corrected: vertex PmPer from this event's Pm in %ld of %ld events", k.pmperCurrent, k.n);
+    expect(k.pmperCurrent == k.n, b);
+    return 0;
+}
+
+// D-051 F12 (simc.f:679-700: no pi0 title) and F14 (simc.f:701-717: A >= 3 kaon SIDIS STOPs at the report).
+int testSemiHistTitles() {
+    {
+        SimcParameters p;
+        if (!loadSidisInp("l1_h_k1_pip_norad", p)) return 77;
+        p.doing_pizero = true;
+        p.pizero_ngamma = 2;
+        driver::RunReport rr;
+        for (int compat = 0; compat < 2; ++compat) {
+            SetupOptions so;
+            so.fortran_compat = compat == 1;
+            so.data_dir = specDir();
+            const RunSetup s = BuildRunSetup(p, so);
+            const std::string h = driver::FormatHist(s, rr);
+            if (compat)
+                expect(h.find("H(e,e'pi+)X") != std::string::npos && h.find("pi0)X") == std::string::npos,
+                       "F12 compat: a pi0 SIDIS run is titled H(e,e'pi+)X (doing_hplus = 1)");
+            else
+                expect(h.find("H(e,e'pi0)X") != std::string::npos, "F12 corrected: title H(e,e'pi0)X");
+        }
+    }
+    {
+        SimcParameters p;
+        if (!loadSidisInp("l1_c12_k1_kp_rad", p)) return 77;
+        driver::RunReport rr;
+        for (int compat = 0; compat < 2; ++compat) {
+            SetupOptions so;
+            so.fortran_compat = compat == 1;
+            so.data_dir = specDir();
+            const RunSetup s = BuildRunSetup(p, so);
+            std::string h, err;
+            try {
+                h = driver::FormatHist(s, rr);
+            } catch (const FortranStop& e) {
+                err = e.what();
+            }
+            if (compat)
+                expect(err.find("I don't have ANY idea what A(e,e'k)X we're doing!!!") != std::string::npos,
+                       "F14 compat: C-12 K+ SIDIS STOPs when the .hist is written: " + err);
+            else
+                expect(err.empty() && h.find("A(e,e'k+)X") != std::string::npos,
+                       "F14 corrected: the .hist is written with A(e,e'k+)X" + (err.empty() ? "" : " (" + err + ")"));
+        }
+        // corrected: the C-12 K+ run itself (100 events, finite positive weights)
+        std::unique_ptr<driver::SimcRun> keep;
+        const SemiRun r = runSemi(p, false, 100, keep);
+        expect(r.ran && r.sink->n == 100, "F14 corrected: C-12 K+ SIDIS runs 100 events" + (r.what.empty() ? "" : " (" + r.what + ")"));
+    }
+    return 0;
+}
+
 const std::map<std::string, std::function<int()>>& items() {
     static const std::map<std::string, std::function<int()>> m = {
         {"D032_spectrometer_id", testSpectrometerId},
@@ -1539,6 +1681,8 @@ const std::map<std::string, std::function<int()>>& items() {
         {"D048_F3_delta_sigblok_args", testDeltaSigblok},
         {"D048_F6_delta_warning_text", testDeltaWarningText},
         {"D048_F9_central_sigcc_delta", testCentralSigccDelta},
+        {"D051_F3_F9_semi_pfermi_pmper", testSemiPfermiPmPer},
+        {"D051_F12_F14_semi_hist_titles", testSemiHistTitles},
     };
     return m;
 }
