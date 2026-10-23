@@ -20,7 +20,7 @@
 //   f1f2in21 <dir> <tol>                       F1F2IN21(Z, A, Q2, W2): F1, F2
 //   slacemcfit <dir> <tol>                     slacemcfit(A, x), Rhad_global(A, x)
 //   fortran_diff <peepix dir> <sidis_state dir> <inp dirs> <data/sidis> <data/spectral>
-//                                              P12.1 F1/F3/F4 in both modes on the peepix rows
+//                                              D-051 F1/F4/F6 in both modes on the peepix rows (F2: sanity)
 //   peepix <dir> <sidis_state dir> <inp dirs (':'-separated)> <data/sidis> <data/spectral> <tol>
 //                                              peepiX with the per-configuration set-up (BuildRunSetup of the cfg's .inp,
 //                                              fortran_compat), the row overrides (ov_state) and the SAVEd state; the
@@ -392,15 +392,46 @@ int runSanity(const std::string& dataDir) {
             stopped = true;
         }
         check(stopped, "peepiX unknown hadron STOP");
-        // pi0 (P12.1 F1): compat uses db = u1 (pi+ value), corrected the average; d1 is the average in both
+        // pi0 (D-051 F4): compat uses db = u1 (pi+ value) and mhad = Mpi, corrected the average and Mpi0
         auto c0 = cp;
         c0.doing_pizero = true;
         sidis::PeepiXTrace t0, t1;
         sidis::peepiX(v, v, m, sp, false, c0, pdf, nullptr, st, &log, &t0);
-        c0.pizero_db_fixed = true;
+        c0.pizero_fixed = true;
         sidis::peepiX(v, v, m, sp, false, c0, pdf, nullptr, st, &log, &t1);
-        check(t0.db == t0.yf && t1.db == (t1.yf + t1.yu) / 2. && t0.d1 == t1.d1 && t0.u1 == t1.u1 && t0.dsigdz != t1.dsigdz,
-              "pi0 dbar FF: compat yf, corrected average (P12.1 F1)");
+        check(t0.db == t0.yf && t1.db == (t1.yf + t1.yu) / 2. && t0.d1 == t1.d1 && t0.u1 == t1.u1 &&
+                  t0.dsigdz != t1.dsigdz && t0.mhad == Mpi && t1.mhad == constants::Mpi0,
+              "pi0 dbar FF and mass: compat yf/Mpi, corrected average/Mpi0 (D-051 F4)");
+        // D-051 F1: x_Bj > 1 -> clamped to 1 -> every PDF 0 -> compat 0/0 = NaN, corrected 0
+        {
+            const Event vx = sidisVertex(10600., 1.2, 4.0e6, 0.3, 0.05e6, Mpi);
+            auto c1 = cp;
+            MainEvent m1;
+            sidis::PeepiXTrace tx;
+            const double nanv = sidis::peepiX(vx, vx, m1, sp, false, c1, pdf, nullptr, st, &log, &tx);
+            c1.sum_sq_guard = true;
+            const double zero = sidis::peepiX(vx, vx, m1, sp, false, c1, pdf, nullptr, st, &log, &tx);
+            check(tx.xbj == 1.0 && tx.sum_sq == 0 && std::isnan(nanv) && zero == 0.0,
+                  fmt("sum_sq = 0: compat %g, corrected %g (D-051 F1)", nanv, zero));
+        }
+        // D-051 F2: Fermi momentum along q with P.q < 0 -> negative x_Bj: compat Ctq5Pdf STOP, corrected 0
+        {
+            auto c2 = dp;
+            c2.do_fermi = true;
+            MainEvent m2;
+            m2.pfermi = {6000., 0., 0., 1., std::sqrt(constants::Mp * constants::Mp + 3.6e7)};   // pfer along q
+            bool stop2 = false;
+            try {
+                sidis::peepiX(v, v, m2, sp, false, c2, pdf, nullptr, st, &log, &tr);
+            } catch (const FortranStop&) {
+                stop2 = true;
+            }
+            c2.nonpositive_xbj_zero = true;
+            m2.davejac = -5;
+            const double z2 = sidis::peepiX(v, v, m2, sp, false, c2, pdf, nullptr, st, &log, &tr);
+            check(stop2 && z2 == 0.0 && tr.xbj < 0 && m2.ntup.xfermi == tr.xbj && m2.davejac == -5,
+                  fmt("negative Fermi x_Bj %g: compat STOP, corrected 0 (D-051 F2)", tr.xbj));
+        }
         // Fermi motion: xfermi written, fac
         auto cf = dp;
         cf.do_fermi = true;
@@ -435,10 +466,10 @@ int runSanity(const std::string& dataDir) {
         cs.survival_p_hadron = cs.survival_path_fixed = false;
         ss.zaero = -183.;   // stale value of an earlier arm-3 call
         sidis::peepiX(vk, vk, ms, spc, false, cs, pdf, &kgrid, ss, &log, &tr);
-        check(ss.zaero == -183., "SHMS compat keeps the SAVEd zaero (P12.1 F4)");
+        check(ss.zaero == -183., "SHMS compat keeps the SAVEd zaero (D-051 F6)");
         cs.survival_path_fixed = true;
         sidis::peepiX(vk, vk, ms, spc, false, cs, pdf, &kgrid, ss, &log, &tr);
-        check(ss.zaero == 0. && tr.pathlen == 2000., "SHMS corrected zaero = 0 (P12.1 F4)");
+        check(ss.zaero == 0. && tr.pathlen == 2000., "SHMS corrected zaero = 0 (D-051 F6)");
         // doing_cent (dead code): z binning
         auto cc = cp;
         cc.sigc_flag = 0;
@@ -488,10 +519,13 @@ int runSanity(const std::string& dataDir) {
         check(model->sigcc(v, m2) == ref && m2.davejac == 0, "plug-in sigcc == peepiX, main unchanged");
         check(model->sigccMain(v, m2) == ref && m2.davejac == m.davejac, "plug-in sigccMain writes main");
         check(model->sigccRecon(v, m2) == 1.0, "plug-in sigcc_recon = 1");
-        check(c.pizero_db_fixed && c.survival_p_hadron && c.survival_path_fixed, "default mode = corrected");
+        check(c.sum_sq_guard && c.nonpositive_xbj_zero && c.pizero_fixed && c.survival_p_hadron && c.survival_path_fixed,
+              "default mode = corrected");
         s.fortran_compat = true;
         const auto cc = sidis::makeConfig(s);
-        check(!cc.pizero_db_fixed && !cc.survival_p_hadron && !cc.survival_path_fixed, "fortran_compat = Fortran");
+        check(!cc.sum_sq_guard && !cc.nonpositive_xbj_zero && !cc.pizero_fixed && !cc.survival_p_hadron &&
+                  !cc.survival_path_fixed,
+              "fortran_compat = Fortran");
         // refused combinations
         RunSetup s0 = s;
         s0.flags.doing_pizero = true;
@@ -811,10 +845,11 @@ int runPeepix(const std::string& dir, const std::string& stateDir, const std::st
 }
 
 // ------------------------------------------------------------------------------------------------- fortran_diff
-// P12.1 F1/F3/F4 (FORTRAN-BUG, corrected by default) on the peepix table rows: the corrected mode differs from the
+// D-051 F1/F4/F6 (FORTRAN-BUG, corrected by default) on the peepix table rows: the corrected mode differs from the
 // Fortran exactly where a correction applies. Compat = the Fortran (bitwise, as l1_peepix); corrected: peepiX changes
-// only on pi0 rows (F1, the dbar FF), survivalprob/decdist only on decay-OFF rows (F3: p_hadron; F4: sqrt and zaero),
-// every other output is unchanged.
+// only on the sum_sq = 0 rows (F1: NaN -> 0) and the pi0 rows (F4: dbar FF, Mpi0), survivalprob/decdist only on
+// decay-OFF rows (F6: p_hadron, sqrt, zaero); every other output is unchanged. (F2 needs a negative x_Bj, which STOPs
+// the Fortran: not in the table, covered by sidis_sanity.)
 int runFortranDiff(const std::string& dir, const std::string& stateDir, const std::string& inpDirs,
                    const std::string& dataDir, const std::string& spectralDir) {
     const auto cfgs = readConfigs(stateDir);
@@ -830,7 +865,7 @@ int runFortranDiff(const std::string& dir, const std::string& stateDir, const st
         sidis::Cteq5Pdf pdf;
     };
     std::map<int, std::array<Mode, 2>> procs;   // [0] compat, [1] corrected
-    long nrow = 0, pi0 = 0, pi0chg = 0, other_chg = 0, surv = 0, survchg = 0, surv_other = 0, zaero_rows = 0;
+    long nrow = 0, nan0 = 0, nan0chg = 0, pi0 = 0, pi0chg = 0, other_chg = 0, surv = 0, survchg = 0, surv_other = 0, zaero_rows = 0;
     std::ostringstream log;
     for (std::size_t i = 0; i < in.rows.size(); ++i) {
         Row r(in, i);
@@ -854,7 +889,7 @@ int runFortranDiff(const std::string& dir, const std::string& stateDir, const st
             it = procs.emplace(cfg, std::move(m)).first;
         }
         double res[2], sp[2], dd[2];
-        bool pizero = false, decayOff = false, thr = false;
+        bool pizero = false, decayOff = false, thr = false, sumsq0 = false;
         int arm = 0;
         for (int k = 0; k < 2; ++k) {
             Mode& M = it->second[static_cast<std::size_t>(k)];
@@ -887,12 +922,18 @@ int runFortranDiff(const std::string& dir, const std::string& stateDir, const st
             dd[k] = m.ntup.decdist;
             pizero = c.doing_pizero && c.doing_semipi;
             decayOff = !c.doing_decay;
-            thr = t.threshold_return;
+            if (k == 0) {
+                thr = t.threshold_return;
+                sumsq0 = !thr && t.sum_sq == 0.0;
+            }
             arm = c.hadron_arm;
         }
         ++nrow;
         const bool peq = sameBits(res[0], res[1]);
-        if (pizero && !thr) {
+        if (sumsq0) {
+            ++nan0;
+            if (std::isnan(res[0]) && res[1] == 0.0) ++nan0chg;
+        } else if (pizero && !thr) {
             ++pi0;
             if (!peq) ++pi0chg;
         } else if (!peq) {
@@ -906,13 +947,14 @@ int runFortranDiff(const std::string& dir, const std::string& stateDir, const st
             ++surv_other;
         }
     }
-    std::printf("fortran_diff P12.1 (peepix rows %ld):\n", nrow);
-    std::printf("  F1 pi0 dbar FF: %ld pi0 rows, peepiX changed on %ld; non-pi0 rows changed: %ld\n", pi0, pi0chg,
+    std::printf("fortran_diff D-051 (peepix rows %ld):\n", nrow);
+    std::printf("  F1 sum_sq = 0: %ld rows, compat NaN -> corrected 0 on %ld\n", nan0, nan0chg);
+    std::printf("  F4 pi0 FF/mass: %ld pi0 rows, peepiX changed on %ld; other rows changed: %ld\n", pi0, pi0chg,
                 other_chg);
-    std::printf("  F3/F4 survival: %ld decay-OFF rows (%ld with hadron_arm 5/6), survivalprob and decdist changed on %ld; "
+    std::printf("  F6 survival: %ld decay-OFF rows (%ld with hadron_arm 5/6), survivalprob and decdist changed on %ld; "
                 "other rows changed: %ld\n", surv, zaero_rows, survchg, surv_other);
-    const bool ok = pi0 > 0 && pi0chg == pi0 && other_chg == 0 && surv > 0 && survchg > 0 && surv_other == 0;
-    std::printf("fortran_diff P12.1 -> %s\n", ok ? "PASS" : "FAIL");
+    const bool ok = nan0 > 0 && nan0chg == nan0 && pi0 > 0 && pi0chg == pi0 && other_chg == 0 && surv > 0 && survchg > 0 && surv_other == 0;
+    std::printf("fortran_diff D-051 -> %s\n", ok ? "PASS" : "FAIL");
     return ok ? 0 : 1;
 }
 }  // namespace
