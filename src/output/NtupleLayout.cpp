@@ -231,20 +231,96 @@ bool FillPionNtuple(const RunSetup& s, const MainEvent& main, const Event& verte
     return side != ArmSide::Unknown;
 }
 
+// NtupleInit.f:192-237 (doing_semi, no target field, no pi0; task P12.2)
+const std::vector<NtupleColumn>& SemiNtupleColumns() {
+    static const std::vector<NtupleColumn> semi = [] {
+        std::vector<NtupleColumn> c(EepNtupleColumns().begin(), EepNtupleColumns().begin() + 33);
+        const std::vector<NtupleColumn> tail = {
+            {"missmass", "main.ntup.mm/1000 (complete_recon_ev, nucleon)", "GeV", "results_write.f:188"},
+            {"ppi", "recon.p.P/1000", "GeV/c", "results_write.f:189"},
+            {"t", "main.ntup.t/1e6 (recon)", "GeV^2", "results_write.f:190"},
+            {"fry", "-main.target.rastery", "cm", "results_write.f:191"},
+            {"radphot", "main.ntup.radphot/1000", "GeV", "results_write.f:192"},
+            {"siglab", "main.sigcc (peepiX)", "ub/MeV^2/sr^2", "results_write.f:193"},
+            {"sigcent", "main.sigcent (never assigned: 0, D-051 F5)", "", "results_write.f:194"},
+            {"Weight", "main.weight", "", "results_write.f:195"},
+            {"decdist", "main.ntup.decdist (decay-OFF: survival probability)", "cm or 1", "results_write.f:196"},
+            {"Mhadron", "sqrt(main.ntup.Mh2_final)", "MeV", "results_write.f:197"},
+            {"z", "recon.zhad", "", "results_write.f:198"},
+            {"zi", "vertex.zhad", "", "results_write.f:199"},
+            {"pt2", "recon.pt2/1e6", "GeV^2", "results_write.f:200"},
+            {"pt2i", "vertex.pt2/1e6", "GeV^2", "results_write.f:201"},
+            {"xbj", "recon.xbj", "", "results_write.f:202"},
+            {"xbji", "vertex.xbj", "", "results_write.f:203"},
+            {"thqi", "acos(vertex.uq.z)", "rad", "results_write.f:204"},
+            {"sighad", "main.ntup.sigcm (peepiX sighad)", "GeV^-2", "results_write.f:205"},
+            {"jacobian", "main.davejac (peepiX jacobian*1000)", "", "results_write.f:206"},
+            {"centjac", "main.johnjac (never assigned: 0, D-051 F5)", "", "results_write.f:207"},
+            {"pfermi", "pfer/1000*sign(pfermi_hat.uq) (vertex uq; 0/0 = NaN for pfer = 0 in compat, D-051 F3)", "GeV/c",
+             "results_write.f:208-209"},
+            {"xfermi", "main.ntup.xfermi (x_Bj with Fermi motion)", "", "results_write.f:210"},
+            {"phipqi", "main.phi_pq", "rad", "results_write.f:211"},
+        };
+        c.insert(c.end(), tail.begin(), tail.end());
+        return c;
+    }();
+    return semi;
+}
+
+// Fortran: results_write.f:187-215 (doing_semi; no target field, no pi0)
+bool FillSemiNtuple(const RunSetup& s, const MainEvent& main, const Event& vertex, const Event& orig,
+                    const Event& recon, std::vector<double>& ntu) {
+    const ArmSide side = FillArms(s, main, orig, recon, ntu.data());
+    const FermiMomentum& F = main.pfermi;
+    ntu[33] = main.ntup.mm / 1000.;
+    ntu[34] = recon.p.P / 1000.;
+    ntu[35] = main.ntup.t / 1.e6;
+    ntu[36] = -main.target.rastery;
+    ntu[37] = main.ntup.radphot / 1000.;
+    ntu[38] = main.sigcc;
+    ntu[39] = main.sigcent;
+    ntu[40] = main.weight;
+    ntu[41] = main.ntup.decdist;
+    ntu[42] = std::sqrt(main.ntup.Mh2_final);
+    ntu[43] = recon.zhad;
+    ntu[44] = vertex.zhad;
+    ntu[45] = recon.pt2 / 1.e06;
+    ntu[46] = vertex.pt2 / 1.e06;
+    ntu[47] = recon.xbj;
+    ntu[48] = vertex.xbj;
+    ntu[49] = std::acos(vertex.uq.z);
+    ntu[50] = main.ntup.sigcm;
+    ntu[51] = main.davejac;
+    ntu[52] = main.johnjac;
+    double dummy = F.pferx * vertex.uq.x + F.pfery * vertex.uq.y + F.pferz * vertex.uq.z;
+    // FORTRAN-BUG(D-051 F3): original Fortran results_write.f:208-209 has no `if (dummy.eq.0) dummy=1.e-20` (the pion
+    // block, l.143, has it): pfer = 0 (every H and A > 2 event) gives 0/0 = NaN in the ntuple column pfermi; corrected
+    // as the pion block (pfermi = 0).
+    if (!s.fortran_compat && dummy == 0) dummy = 1.e-20;
+    ntu[53] = F.pfer / 1000. * std::fabs(dummy) / dummy;
+    ntu[54] = main.ntup.xfermi;
+    ntu[55] = main.phi_pq;
+    return side != ArmSide::Unknown;
+}
+
 const std::vector<NtupleColumn>& NtupleColumnsFor(const RunSetup& s) {
     // NtupleInit.f:101: doing_pion .or. doing_kaon .or. doing_delta share the 53 columns (doing_delta: task P11.1)
     if ((s.flags.doing_pion || s.flags.doing_delta) && !s.flags.using_tgt_field && !s.params.using_tgt_field)
         return PionNtupleColumns(s.flags.doing_pizero);
     if (s.flags.doing_kaon && !s.flags.using_tgt_field && !s.params.using_tgt_field) return KaonNtupleColumns();
+    if (s.flags.doing_semi && !s.flags.doing_pizero && !s.flags.using_tgt_field && !s.params.using_tgt_field)
+        return SemiNtupleColumns();
     if (UsesEepLayout(s.flags)) return EepNtupleColumns();
     throw std::runtime_error("ntuple: only the (e,e'p)/phase-space (NtupleInit.f:296-321), the exclusive pion and the "
-                             "kaon/delta (NtupleInit.f:101-190, no target field) layouts are implemented so far");
+                             "kaon/delta (NtupleInit.f:101-190, no target field) and the SIDIS (NtupleInit.f:192-237, no target "
+                             "field, no pi0) layouts are implemented so far");
 }
 
 bool FillNtuple(const RunSetup& s, const MainEvent& main, const Event& vertex, const Event& orig, const Event& recon,
                 std::vector<double>& ntu) {
     if (s.flags.doing_pion || s.flags.doing_kaon || s.flags.doing_delta)
         return FillPionNtuple(s, main, vertex, orig, recon, ntu);
+    if (s.flags.doing_semi) return FillSemiNtuple(s, main, vertex, orig, recon, ntu);
     std::array<double, kEepNtupleSize> a{};
     std::copy(ntu.begin(), ntu.begin() + std::min<std::size_t>(ntu.size(), kEepNtupleSize), a.begin());
     const bool ok = FillEepNtuple(s, main, vertex, orig, recon, a);

@@ -8,8 +8,8 @@
 //
 // Implemented layouts: the (e,e'p) family, i.e. doing_hyd_elast / doing_deuterium /
 // doing_heavy (this includes doing_phsp, which keeps doing_hyd_elast & co.): 46 columns; exclusive pion production
-// (doing_pion, task P9.2): 53 columns (65 with doing_pizero); kaon (doing_kaon, P10.2): 55. Delta and semi/rho come with those
-// reactions.
+// (doing_pion, task P9.2): 53 columns (65 with doing_pizero); kaon (doing_kaon, P10.2): 55; Delta (P11.1) as pion; SIDIS
+// (doing_semi, P12.2): 56. rho comes with that reaction.
 #ifndef SIMC_OUTPUT_NTUPLELAYOUT_H
 #define SIMC_OUTPUT_NTUPLELAYOUT_H
 
@@ -67,6 +67,15 @@ bool UsesPionLayout(const ReactionFlags& f);
 /// results_ntu_write for doing_pion (results_write.f:64-186). `ntu` must have PionNtupleColumns(pizero).size()
 /// elements; columns 1-24 keep their previous content for an unknown electron arm (as FillEepNtuple).
 bool FillPionNtuple(const RunSetup& setup, const MainEvent& main, const Event& vertex, const Event& orig,
+                    const Event& recon, std::vector<double>& ntu);
+
+// ------------------------------------------------------------------------------------------- semi layout (P12.2)
+constexpr int kSemiNtupleSize = 56;   ///< NtupleInit.f:192-237 (doing_semi, no target field, no pi0)
+/// The SIDIS columns (56) in Fortran order; columns 1-33 are those of the (e,e'p) layout.
+const std::vector<NtupleColumn>& SemiNtupleColumns();
+/// results_ntu_write for doing_semi (results_write.f:187-215). `ntu` must have 56 elements. setup.fortran_compat
+/// selects the Fortran pfermi = 0/0 for pfer = 0 (D-051 F3); the default guards the division as the pion block.
+bool FillSemiNtuple(const RunSetup& setup, const MainEvent& main, const Event& vertex, const Event& orig,
                     const Event& recon, std::vector<double>& ntu);
 
 /// The layout of a run: the columns and the filler (FillEepNtuple or FillPionNtuple). Throws std::runtime_error for
