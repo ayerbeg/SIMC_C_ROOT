@@ -140,12 +140,12 @@ dbase.f:125-132 does it (the species flag is switched off afterwards, so the exc
 
 | inputs | Fortran flags (dbase.f) | hadron | cross section (`"physics": "sidis"`, semi_physics.f:peepiX) | SIMC++ |
 |---|---|---|---|---|
-| `doing_semi=1 doing_pion=1 doing_hplus=1` | doing_semipi, Mh = Mpi | π+ | CTEQ5M × P. Bosted's 2021 π FF fit | model ported (P12.1); reaction P12.2 |
+| `doing_semi=1 doing_pion=1 doing_hplus=1` | doing_semipi, Mh = Mpi | π+ | CTEQ5M × P. Bosted's 2021 π FF fit | ported (model P12.1, reaction `sidis_production` P12.2) |
 | `doing_semi=1 doing_pion=1 doing_hplus=0` | doing_semipi | π− | same, favoured/unfavoured swapped | as above |
 | `doing_semi=1 doing_pion=1 doing_pizero=1` | doing_semipi, Mh = Mpi0 | π0 | π+/π− average (D-051 F4) | **refused** (`NotPorted`): the π0 photons need the calorimeter arm (P14) |
-| `doing_semi=1 doing_kaon=1 doing_hplus=1/0` | doing_semika, Mh = Mk | K+ / K− | CTEQ5M × fDSS NLO (fdss/KANLO.GRID) | model ported (P12.1); reaction P12.2 |
+| `doing_semi=1 doing_kaon=1 doing_hplus=1/0` | doing_semika, Mh = Mk | K+ / K− | CTEQ5M × fDSS NLO (fdss/KANLO.GRID) | ported (model P12.1, reaction `sidis_production` P12.2) |
 | `doing_semi=1` alone | neither doing_semipi nor doing_semika | — | — | the set-up STOPs as dbase.f:776 ('I don't have ANY idea what (e,e'm)X we're doing!!!'); the model refuses it too |
-| `doing_semi=1 doing_phsp=1` | phsp keeps doing_semi (dbase.f:227-234): SIDIS generation, sigcc = 1 (event.f:1446) | — | none | the "sidis" model refuses it (std::invalid_argument); the phase-space SIDIS generation comes with the reaction (P12.2) |
+| `doing_semi=1 doing_phsp=1` | phsp keeps doing_semi (dbase.f:227-234): SIDIS generation, sigcc = 1 (event.f:1446) | — | none | the "sidis" model refuses it (std::invalid_argument); the phase-space SIDIS generation (sigcc = 1) is not ported |
 
 Other inputs read by the SIDIS code: `targ%A`/`targ%Z` (H: hydrogen; D: `doing_deutsemi`, isospin-symmetric
 nucleon sum; A ≥ 3: `doing_hesemi`, plus the SLAC EMC fit and the hadron attenuation fit), `do_fermi` (Fermi motion,
@@ -155,4 +155,5 @@ weight for kaons only, event.f:1560), `hadron_arm` (the aerogel distance of the 
 `pt_b_param` and `sigc_*` are read and ignored as in the Fortran (D-051 F5); SIMC++ prints a WARNING when they are set. `do_fermi` on D: a negative x_Bj STOPs the Fortran; SIMC++ gives the event weight 0 (D-051 F2).
 
 JSON (physics-model keys, all optional): `"pipeline": {"physics": {"type": "sidis", "data_dir": "<dir with cteq5m.tbl
-and KANLO.GRID>", "verbose": true}}` (default `data/sidis`). The default pipeline chooses `sidis` for doing_semi.
+and KANLO.GRID>", "verbose": true}}` (default `data/sidis`). The default pipeline chooses the reaction `sidis_production` and the model `sidis` for doing_semi. A ≥ 3 kaon SIDIS
+runs in the default mode (the Fortran STOPs when the .hist is written, D-051 F14).

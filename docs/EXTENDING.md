@@ -147,7 +147,8 @@ class IReaction : public IStage {
   Fortran part after the SF weight (cross section, Coulomb focusing factor, weight).
 * `genVolume()` is the generated phase-space volume used in the normalisation.
 * Select it with `"reaction": "my_reaction"`. The default comes from the run flags (`hydrogen_elastic`,
-  `phase_space`, `deuterium_eep`, `nucleus_eep`, `pion_production`, `kaon_production`, `delta_production`).
+  `phase_space`, `deuterium_eep`, `nucleus_eep`, `pion_production`, `kaon_production`, `delta_production`,
+  `sidis_production`).
 * Optional hooks: `beginTry(ntried)` (messages), `prepareCentral(main0, vertex0)` (called by calculate_central before
   the central complete_main: set the main0 quantities your cross section reads) and `finalTargetState(targ)` (target
   COMMON values your reaction changed during the run, for the report).
@@ -170,9 +171,14 @@ proton-energy quadratic) and its own `completeMain` (peedelta, tgtweight 1). Its
 (`include/simc/physics/delta/DeltaModel.h`) reproduces physics_delta.f:peedelta, which contains no cross section
 (D-048 F4): a real Delta cross-section model would be a new `IPhysicsModel` selected with `"physics": "my_delta_model"`.
 
+The semi-inclusive reaction `sidis_production` (P12.2, `include/simc/reactions/SidisProduction.h`) shares the PionProduction
+plumbing but has its own generate (the hadron energy is generated, not solved for), complete_ev (two-pion threshold, z,
+p_T²) and completeMain (the run's model, `sidis` = peepiX; the survival weight for kaons without decay). A different SIDIS
+cross section (other PDFs or fragmentation functions) is a new `IPhysicsModel` selected with `"physics": "my_sidis_model"`.
+
 Templates: `include/simc/reactions/HydrogenElastic.h`, `include/simc/reactions/NuclearEep.h`,
 `include/simc/reactions/PionProduction.h`, `include/simc/reactions/KaonProduction.h`,
-`include/simc/reactions/DeltaProduction.h`.
+`include/simc/reactions/DeltaProduction.h`, `include/simc/reactions/SidisProduction.h`.
 
 ### Spectral function (`ISpectralFunction`, component of the D/A(e,e'p) reactions)
 

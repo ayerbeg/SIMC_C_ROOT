@@ -24,8 +24,8 @@ Each sink accepts an optional JSON config `{"file": "..."}`.
 - Implemented layouts: the (e,e'p) family (`doing_hyd_elast`, `doing_deuterium`, `doing_heavy`), 46 columns. This includes
   `doing_phsp`, which keeps `doing_hyd_elast`, so the acceptance runs also have these 46 columns. Exclusive pion production
   (`doing_pion`, P9.2): 53 columns, 65 with `doing_pizero` (§1b). Kaon production (`doing_kaon`, P10.2): 55 columns (§1c).
-  Delta region (`doing_delta`, P11.1): the 53 pion columns (§1d). The semi/rho layouts (NtupleInit.f l.191-295) will come with
-  those reactions; `beginRun` throws for them (and for `using_tgt_field`). The layout is chosen from the run
+  Delta region (`doing_delta`, P11.1): the 53 pion columns (§1d). SIDIS (`doing_semi`, P12.2): 56 columns (§1e). The rho
+  layout (NtupleInit.f l.191-295) will come with that reaction; `beginRun` throws for it (and for `using_tgt_field` and π0 SIDIS). The layout is chosen from the run
   flags (`NtupleColumnsFor(setup)`, `FillNtuple`).
 - **Arm assignment** (results_write.f:64 and 89): `hs*` = the spectrometer on the beam **right** (HMS, HRSR) and `ss*` = the
   one on the **left** (SOS, HRSL, SHMS).
@@ -157,6 +157,35 @@ The 53 columns of the pion layout (§1b), with these meanings for H/D/A(e,e'p)π
 
 The arm prefixes follow `electron_arm` as for every layout (D1: SHMS e⁻, HMS p → `hs*` = proton). The Delta captures prove the
 53 columns bit for bit (`l1_simcrun_replay_delta_*`).
+
+### 1e. SIDIS layout (doing_semi; NtupleInit.f:192-237, results_write.f:187-215)
+
+Columns 1-33 as the (e,e'p) layout, then:
+
+| # | branch | source | units |
+|---|---|---|---|
+| 34 | `missmass` | `main.ntup.mm/1000` (complete_recon_ev, nucleon) | GeV |
+| 35 | `ppi` | `recon.p.P/1000` | GeV/c |
+| 36 | `t` | `main.ntup.t/1e6` (recon) | GeV² |
+| 37 | `fry` | `-main.target.rastery` | cm |
+| 38 | `radphot` | `main.ntup.radphot/1000` | GeV |
+| 39 | `siglab` | `main.sigcc` = peepiX | µb/MeV²/sr² |
+| 40 | `sigcent` | `main.sigcent`: never assigned, always 0 (D-051 F5) | |
+| 41 | `Weight` | `main.weight` (× the survival probability for K± with doing_decay = 0) | |
+| 42 | `decdist` | decay distance [cm] with doing_decay = 1; the survival probability (peepiX) with doing_decay = 0 | |
+| 43 | `Mhadron` | `sqrt(Mh2_final)` | MeV |
+| 44, 45 | `z`, `zi` | recon / vertex z = E_h/ν | |
+| 46, 47 | `pt2`, `pt2i` | recon / vertex p_T² /1e6 | GeV² |
+| 48, 49 | `xbj`, `xbji` | recon / vertex x_Bj (proton mass) | |
+| 50 | `thqi` | `acos(vertex.uq.z)` (the vertex q angle) | rad |
+| 51 | `sighad` | `main.ntup.sigcm` = peepiX σ_had | GeV⁻² |
+| 52 | `jacobian` | `main.davejac` (peepiX jacobian × 1000) | |
+| 53 | `centjac` | `main.johnjac`: never assigned, always 0 (D-051 F5) | |
+| 54 | `pfermi` | `pfer/1000 * sign(p̂_fermi·q̂)`: fortran_compat 0/0 = **NaN** for every event with pfer = 0 (H, A > 2; D-051 F3), default 0 | GeV/c |
+| 55 | `xfermi` | `main.ntup.xfermi` (x_Bj with Fermi motion; unchanged without do_fermi) | |
+| 56 | `phipqi` | `main.phi_pq` | rad |
+
+The two SIDIS captures prove the 56 columns bit for bit (`l1_simcrun_replay_semi_{h,d}`).
 
 ## 2. Run summary JSON (RunSummarySink, hist2json)
 

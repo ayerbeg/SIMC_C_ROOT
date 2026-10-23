@@ -10,9 +10,9 @@ Current scope: H(e,e'p) elastic, D(e,e'p) and A(e,e'p) (theory-file or Benhar sp
 pion electroproduction (π+/π−/π0 on H, D and A, quasifree, coherent and π Δ final states, decay in flight; task P9; the
 π0 runs with the calorimeter arm wait for P14), kaon electroproduction (K+Λ/Σ0/Σ− on H, D and A, quasifree and coherent,
 decay in flight or survival weight; task P10), (e,e'p)π in the Delta region (`doing_delta`, H, and D/A in the corrected
-mode; task P11), with and without radiation, and phase-space (`doing_phsp`) runs, HMS and SHMS arms. The SIDIS
-(e,e'h)X cross section (`doing_semi`, semi_physics.f:peepiX with CTEQ5M, fDSS and F1F2IN21; physics model `sidis`, task
-P12.1) is ported; the SIDIS event generation follows in P12.2. Other reactions and the
+mode; task P11), with and without radiation, and phase-space (`doing_phsp`) runs, HMS and SHMS arms. Semi-inclusive
+(e,e'π±)X and (e,e'K±)X on H, D and A (`doing_semi`; semi_physics.f:peepiX with CTEQ5M, fDSS and F1F2IN21; physics model
+`sidis`, P12.1, reaction `sidis_production`, P12.2) is ported; π0 SIDIS waits for the calorimeter arm (P14). Other reactions and the
 SOS/HRS/calorimeter arms are refused with a `NotPorted` error (later phases).
 
 **Delta runs: the weight contains no cross section.** As in the Fortran (physics_delta.f:132, "Need new xsec model."),
@@ -96,7 +96,7 @@ ctest -L unit | -L l1 | -L replay | -L cli | -L regression | -L examples
 
 * `l1`: routine-level tables against the Fortran harness (`reference/functions/`).
 * `replay`: the complete driver fed with captured Fortran random streams reproduces the Fortran outputs bit for bit.
-* `regression`: the outputs of the standard runs (seed 4242; H(e,e'p), D/Fe(e,e'p), π+ H, π− D, K+Λ H, K+Σ− D, H(e,e'p)π Delta) must equal the baseline outputs of
+* `regression`: the outputs of the standard runs (seed 4242; H(e,e'p), D/Fe(e,e'p), π+ H, π− D, K+Λ H, K+Σ− D, H(e,e'p)π Delta, H(e,e'π+)X) must equal the baseline outputs of
   their reference commits (`SIMC++_Project/baselines/<commit>_*`), in both modes: every tree branch and entry bitwise, the text outputs apart from time stamps.
   Every refactor must keep these green.
 * `tools/check_all.sh [--commit REV]`: a clean build of everything plus both test suites, logged in
