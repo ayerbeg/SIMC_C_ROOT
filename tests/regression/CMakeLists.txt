@@ -124,3 +124,23 @@ foreach(_tag h_d1_rad)
     set_tests_properties(regression_identity_delta_${_tag} regression_corrected_delta_${_tag} PROPERTIES
                          SKIP_RETURN_CODE 77 TIMEOUT 1200 LABELS regression)
 endforeach()
+
+# P12.2: SIDIS H(e,e'pi+)X (K1: HMS e-, SHMS pi+; rad, seed 4242, 20000 events) against the baselines of commit 31b4232
+# (glibc 2.43 / gcc 16.2.1 / ROOT 6.40.04), in both modes (SIMC_BASELINE_DIR/31b4232_glibc243_[corrected_]sidis_h_k1_pip_rad_n20k_s4242/,
+# validation/scripts/regen_baselines.sh --only sidis). Input: the P12.F1 L2 input in reference/runs.
+set(SIMC_SIDIS_BASELINE_COMMIT "31b4232_glibc243" CACHE STRING "Commit whose SIDIS outputs are the identity baseline")
+foreach(_tag h_k1_pip_rad)
+    set(_inp ${SIMC_REFERENCE_DIR}/runs/sidis_${_tag}_A/sidis_${_tag}_A.inp)
+    add_test(NAME regression_identity_sidis_${_tag}
+             COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/output_identity.sh $<TARGET_FILE:simcpp> $<TARGET_FILE:simc_root_identity>
+                     ${_inp} 4242 dir_sidis_${_tag}_s4242
+                     ${SIMC_BASELINE_DIR}/${SIMC_SIDIS_BASELINE_COMMIT}_sidis_${_tag}_n20k_s4242
+                     ${CMAKE_CURRENT_BINARY_DIR}/identity_sidis_${_tag} --fortran-compat --ngen 20000)
+    add_test(NAME regression_corrected_sidis_${_tag}
+             COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/output_identity.sh $<TARGET_FILE:simcpp> $<TARGET_FILE:simc_root_identity>
+                     ${_inp} 4242 dir_sidis_${_tag}_s4242
+                     ${SIMC_BASELINE_DIR}/${SIMC_SIDIS_BASELINE_COMMIT}_corrected_sidis_${_tag}_n20k_s4242
+                     ${CMAKE_CURRENT_BINARY_DIR}/corrected_sidis_${_tag} --ngen 20000)
+    set_tests_properties(regression_identity_sidis_${_tag} regression_corrected_sidis_${_tag} PROPERTIES
+                         SKIP_RETURN_CODE 77 TIMEOUT 1200 LABELS regression)
+endforeach()
