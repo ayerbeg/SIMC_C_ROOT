@@ -99,14 +99,28 @@ void reactionLines(Out& o, const RunSetup& s) {
         else if (f.doing_heavy) o.list("              ****--------  A(e,e'p)  --------****");
         else stop("I don't have ANY idea what (e,e'p) we're doing!!!");
     } else if (f.doing_semi) {
+        // simc.f:677-720
+        const char* tg = A == 1 ? "H" : (A == 2 ? "D" : "A");
+        const bool known = A == 1 || A == 2 || A >= 3;
+        auto title = [&](const char* h) {
+            o.list(std::string(" ****--------  ") + tg + "(e,e'" + h + ")X  --------****");
+        };
         if (f.doing_semipi) {
-            if (A == 1) o.list(f.doing_hplus ? " ****--------  H(e,e'pi+)X  --------****" : " ****--------  H(e,e'pi-)X  --------****");
-            else if (A == 2) o.list(f.doing_hplus ? " ****--------  D(e,e'pi+)X  --------****" : " ****--------  D(e,e'pi-)X  --------****");
-            else if (A >= 3) o.list(f.doing_hplus ? " ****--------  A(e,e'pi+)X  --------****" : " ****--------  A(e,e'pi-)X  --------****");
+            if (f.doing_pizero && !s.fortran_compat && known)
+                // FORTRAN-BUG(D-051 F12): original Fortran simc.f:679-700 has no pi0 line: a pi0 run is titled pi+ or pi-
+                // by doing_hplus; corrected because dbase.f:701-753 announces the run as (e,e'pi0)X.
+                title("pi0");
+            else if (known)
+                title(f.doing_hplus ? "pi+" : "pi-");
             else stop("I don't have ANY idea what A(e,e'pi)X we're doing!!!");
         } else if (f.doing_semika) {
-            if (A == 1) o.list(f.doing_hplus ? " ****--------  H(e,e'k+)X  --------****" : " ****--------  H(e,e'k-)X  --------****");
-            else if (A == 2) o.list(f.doing_hplus ? " ****--------  D(e,e'k+)X  --------****" : " ****--------  D(e,e'k-)X  --------****");
+            if (A == 1 || A == 2) title(f.doing_hplus ? "k+" : "k-");
+            else if (A >= 3 && !s.fortran_compat)
+                // FORTRAN-BUG(D-051 F14): original Fortran simc.f:701-717 has no A >= 3 branch: a kaon SIDIS run on a nucleus
+                // STOPs ('I don't have ANY idea what A(e,e'k)X ...') after the whole event loop, when the .hist is written
+                // (the .hist is truncated); corrected because the run itself is well defined (dbase.f:768-773 announces it,
+                // peepiX handles A > 2): the A(e,e'k+-)X title is written and the report completes.
+                title(f.doing_hplus ? "k+" : "k-");
             else stop("I don't have ANY idea what A(e,e'k)X we're doing!!!");
         } else {
             stop("I don't have ANY idea what A(e,e'x)X we're doing!!!");
