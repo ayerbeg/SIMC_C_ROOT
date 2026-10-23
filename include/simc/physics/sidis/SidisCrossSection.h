@@ -54,12 +54,19 @@ struct PeepiXConfig {
     double Mh2{0};                    ///< Mh2 [MeV^2]
     int sigc_flag{0}, sigc_nbin{0};   ///< central cross section binning (doing_cent only, dead code)
     double sigc_kin_min{0}, sigc_kin_max{0}, sigc_kin_ind{0};
-    /// FORTRAN-BUG(P12.1 F1): pi0 fragmentation function of dbar = the pi+/pi- average (the Fortran averages d1 twice
-    /// and leaves db = the pi+ or pi- value, semi_physics.f:490-495).
-    bool pizero_db_fixed{false};
-    /// FORTRAN-BUG(P12.1 F3, as D-043 F5): survival probability with beta*gamma of p_hadron = spec%p%P(1+delta/100).
+    /// FORTRAN-BUG(D-051 F1): dsigdz = 0 when sum_sq <= 0 (all PDFs 0: x_Bj clamped to 1, or Q < Alambda); the
+    /// Fortran divides 0/0 (semi_physics.f:508-513, the old guard l.378-400 is commented out) and returns NaN.
+    bool sum_sq_guard{false};
+    /// FORTRAN-BUG(D-051 F2): a non-positive Fermi-motion x_Bj (2 P.q <= 0, semi_physics.f:247-248) returns 0 (early
+    /// return as below the threshold) instead of the Ctq5Pdf STOP (Ctq5Pdf.f:80-83) that ends the run.
+    bool nonpositive_xbj_zero{false};
+    /// FORTRAN-BUG(D-051 F4): pi0 fragmentation function of dbar = the pi+/pi- average (the Fortran averages d1 twice
+    /// and leaves db = the pi+ or pi- value, semi_physics.f:490-495) and mhad = Mpi0 for doing_pizero (l.227 uses the
+    /// charged Mpi while Mpi_gev, l.149, and dbase.f Mh use Mpi0).
+    bool pizero_fixed{false};
+    /// FORTRAN-BUG(D-051 F6, as D-043 F5): survival probability with beta*gamma of p_hadron = spec%p%P(1+delta/100).
     bool survival_p_hadron{false};
-    /// FORTRAN-BUG(P12.1 F4, as D-043 F6): zaero = 0 for the arms without an aerogel distance (SHMS) and the slope
+    /// FORTRAN-BUG(D-051 F6, as D-043 F6): zaero = 0 for the arms without an aerogel distance (SHMS) and the slope
     /// correction zaero*sqrt(1+dx^2+dy^2).
     bool survival_path_fixed{false};
 };
@@ -98,7 +105,7 @@ struct PeepiXTrace {
 /// The early return below the mmpi2 threshold (l.280-284) leaves all of these unchanged.
 /// `pdf` must be loaded (SetCtq5(1)); `fdss` (fDSS kaon NLO grid) is needed for doing_semika. Messages (xbj > 1, PDF
 /// and FF range warnings, the doing_cent banner) go to `log`. Neither doing_semipi nor doing_semika: FortranStop
-/// (l.231-232).
+/// (l.231-232). Compat: a negative x_Bj STOPs in Ctq5Pdf (FortranStop, D-051 F2).
 double peepiX(const Event& vertex, const Event& vertex0, MainEvent& main, double& survivalprob, bool doing_cent,
               const PeepiXConfig& cfg, Cteq5Pdf& pdf, const FdssGrid* fdss, PeepiXState& st,
               std::ostream* log = nullptr, PeepiXTrace* trace = nullptr);

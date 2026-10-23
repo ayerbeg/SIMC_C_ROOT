@@ -183,7 +183,7 @@ double resmod(Nucleon n, int sf, double w2, double q2, const double* xv) {
     }
 
     double sig = sig_res + sig_nr;
-    // FORTRAN-QUIRK(P12.1 F11): (w-mp) < wdif(1) = w-(mp+mpi) is never true: the intended threshold cut is a no-op
+    // FORTRAN-QUIRK(P12.1 Q3): (w-mp) < wdif(1) = w-(mp+mpi) is never true: the intended threshold cut is a no-op
     if ((W - mp) < wdif[1]) sig = 0.0;
     return sig;
 }

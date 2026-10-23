@@ -53,7 +53,7 @@ double slacemcfit(double A, double x) {
 // Fortran: semi_physics.f:Rhad_global (l.652-680)
 double rhadGlobal(double A, double z) {
     const double Ahyd = 1.0;
-    // FORTRAN-DIFF-CANDIDATE(P12.1 F12): only A = 1 returns 1; deuterium gets the attenuation fit (0.955 at z = 0.5).
+    // FORTRAN-DIFF-CANDIDATE(D-051 F10): only A = 1 returns 1; deuterium gets the attenuation fit (0.955 at z = 0.5).
     if (A == Ahyd) return 1.0;
     const double Nzero = 0.98883 - 0.0038309 * A + 0.10841E-4 * (A * A);
     const double alphah = 0.31953E-01 - 0.18659E-02 * A + 0.51747E-05 * (A * A);
@@ -148,8 +148,11 @@ double peepiX(const Event& vertex, const Event& vertex0, MainEvent& main, double
 
     double mhad;
     if (cfg.doing_semipi) {
-        // FORTRAN-DIFF-CANDIDATE(P12.1 F2): Mpi also for doing_pizero, although Mpi_gev (l.149) and dbase.f Mh use Mpi0.
         mhad = Mpi;
+        if (cfg.doing_pizero && cfg.pizero_fixed)
+            // FORTRAN-BUG(D-051 F4): original Fortran semi_physics.f:227: `mhad = Mpi` also for doing_pizero; corrected
+            // because Mpi_gev (l.149) and dbase.f:194 (Mh) use Mpi0 for the pi0.
+            mhad = Mpi0;
     } else if (cfg.doing_semika) {
         mhad = Mk;
     } else {
@@ -171,6 +174,16 @@ double peepiX(const Event& vertex, const Event& vertex0, MainEvent& main, double
     if (cfg.do_fermi) {   // xbj = Q2/(2 P.q)
         xbj = Q2 / 2. / (f.efer * nu - std::abs(f.pfer) * (f.pferx * qx + f.pfery * qy + f.pferz * qz));
         if (!doing_cent) main.ntup.xfermi = xbj;
+        if (cfg.nonpositive_xbj_zero && !(xbj > 0.)) {
+            // FORTRAN-BUG(D-051 F2): original Fortran semi_physics.f:247-248 passes the negative x_Bj of an unphysical
+            // P.q <= 0 (large pfer along q) to Ctq5Pdf, which STOPs the run (Ctq5Pdf.f:80-83: no D run with
+            // do_fermi = 1 can finish); corrected: the event gets cross section 0 (early return, as l.280-284).
+            tr.xbj_raw = xbj;
+            tr.xbj = xbj;
+            tr.threshold_return = true;
+            if (trace) *trace = tr;
+            return 0.0;
+        }
     } else {
         xbj = Q2 / 2. / mtar / nu;
     }
@@ -190,7 +203,7 @@ double peepiX(const Event& vertex, const Event& vertex0, MainEvent& main, double
     // zero below the 2 pi / pi K threshold (PB)
     const double mtargev = mtar / 1000.;
     const double nugev = nu / 1000.;
-    // FORTRAN-DIFF-CANDIDATE(P12.1 F5): a mass^2 multiplied by (1 - pt2 [GeV^2]); the intended missing-mass formula
+    // FORTRAN-DIFF-CANDIDATE(D-051 F7): a mass^2 multiplied by (1 - pt2 [GeV^2]); the intended missing-mass formula
     // is unknown, kept.
     const double mmpi2 = sq(mtargev) + 2. * mtargev * nugev * (1 - zhad) * (1 - pt2gev);
     tr.Mpi_gev = Mpi_gev;
@@ -209,7 +222,7 @@ double peepiX(const Event& vertex, const Event& vertex0, MainEvent& main, double
     tr.phad = phad;
     tr.cthpq = cthpq;
     if (mmpi2 < sq(mtargev + mhad / 1000.)) {
-        // FORTRAN-QUIRK(P12.1 F6): early return: davejac, ntup%sigcm and the survival probability (decdist) keep the
+        // FORTRAN-QUIRK(P12.1 Q1): early return: davejac, ntup%sigcm and the survival probability (decdist) keep the
         // values of the previous event (the weight is 0).
         tr.threshold_return = true;
         if (trace) *trace = tr;
@@ -280,8 +293,8 @@ double peepiX(const Event& vertex, const Event& vertex0, MainEvent& main, double
             u1 = (yf + yu) / 2.;
             d1 = (yf + yu) / 2.;
             ub = (yf + yu) / 2.;
-            if (cfg.pizero_db_fixed)
-                // FORTRAN-BUG(P12.1 F1): original Fortran semi_physics.f:494: `d1 = (yf + yu) / 2.` (d1 a second time);
+            if (cfg.pizero_fixed)
+                // FORTRAN-BUG(D-051 F4): original Fortran semi_physics.f:494: `d1 = (yf + yu) / 2.` (d1 a second time);
                 // corrected because the comment and the three other lines average every light (anti)quark FF, and db
                 // keeps the pi+ (doing_hplus) or pi- value of l.487 otherwise.
                 db = (yf + yu) / 2.;
@@ -311,11 +324,18 @@ double peepiX(const Event& vertex, const Event& vertex0, MainEvent& main, double
     tr.s1 = s1;
     tr.sb = sb;
 
-    const double dsigdz = (sq(qu) * uA * u1 + sq(qu) * ubarA * ub + sq(qd) * dA * d1 + sq(qd) * dbarA * db +
-                           sq(qs) * sA * s1 + sq(qs) * sbarA * sb) /
-                          sum_sq / zhad;
+    double dsigdz;
+    if (cfg.sum_sq_guard && !(sum_sq > 0.))
+        // FORTRAN-BUG(D-051 F1): original Fortran semi_physics.f:508-513 divides by sum_sq without the guard of the old
+        // code (l.378-400, commented out): all PDFs 0 (x_Bj clamped to 1, Q < Alambda) gives 0/0 = NaN in the weight;
+        // corrected as the old guard: dsigdz = 0.
+        dsigdz = 0.0;
+    else
+        dsigdz = (sq(qu) * uA * u1 + sq(qu) * ubarA * ub + sq(qd) * dA * d1 + sq(qd) * dbarA * db + sq(qs) * sA * s1 +
+                  sq(qs) * sbarA * sb) /
+                 sum_sq / zhad;
 
-    // FORTRAN-DIFF-CANDIDATE(P12.1 F7): the input pt_b_param is not used (l.142 commented out); b is this z-dependent fit.
+    // FORTRAN-QUIRK(D-051 F5): the input pt_b_param is not used (l.142 commented out); b is this z-dependent fit.
     const double b = 1. / (0.120 * sq(zhad) + 0.200);
     const double rhad = rhadGlobal(targA, zhad);
     const double sighad = rhad * dsigdz * b * std::exp(-b * pt2gev) / 2. / pi;
@@ -393,14 +413,14 @@ double peepiX(const Event& vertex, const Event& vertex0, MainEvent& main, double
         } else if (cfg.hadron_arm == 4) {
             st.zaero = -183.;
         } else if (cfg.survival_path_fixed) {
-            // FORTRAN-BUG(P12.1 F4, as D-043 F6): original Fortran semi_physics.f:611-620 has no branch for hadron_arm 5
+            // FORTRAN-BUG(D-051 F6, as D-043 F6): original Fortran semi_physics.f:611-620 has no branch for hadron_arm 5
             // (SHMS): zaero keeps the SAVEd value of an earlier call (0 in a SIMC run); corrected because the path must
             // not depend on earlier calls: 0 (full length to the last plane).
             st.zaero = 0.;
         }
         double pathlen;
         if (cfg.survival_path_fixed)
-            // FORTRAN-BUG(P12.1 F4, as D-043 F6): original Fortran semi_physics.f:621: zaero*(1+dx**2+dy**2);
+            // FORTRAN-BUG(D-051 F6, as D-043 F6): original Fortran semi_physics.f:621: zaero*(1+dx**2+dy**2);
             // corrected because the path length along the track is zaero*sqrt(1+dx**2+dy**2).
             pathlen = main.FP.p.path + st.zaero * std::sqrt(1 + sq(main.FP.p.dx) + sq(main.FP.p.dy));
         else
@@ -408,7 +428,7 @@ double peepiX(const Event& vertex, const Event& vertex0, MainEvent& main, double
         const double p_kaon = cfg.spec_p_P * (1. + main.SP.p.delta / 100.);
         double betak;
         if (cfg.survival_p_hadron)
-            // FORTRAN-BUG(P12.1 F3, as D-043 F5): original Fortran semi_physics.f:623: betak =
+            // FORTRAN-BUG(D-051 F6, as D-043 F5): original Fortran semi_physics.f:623: betak =
             // spec%p%P/sqrt(spec%p%P**2+Mh2) (the central momentum; p_kaon is computed and unused, against the comment
             // of l.607-608); corrected because the decay probability depends on the momentum of this hadron.
             betak = p_kaon / std::sqrt(sq(p_kaon) + cfg.Mh2);

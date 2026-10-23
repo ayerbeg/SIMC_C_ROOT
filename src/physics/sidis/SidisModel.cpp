@@ -36,10 +36,10 @@ std::vector<std::string> ignoredInputNotes(const RunSetup& s) {
     std::vector<std::string> v;
     const SimcParameters& p = s.params;
     if (p.pt_b_param != 0.0)
-        v.push_back("NOTE (SIMC++): pt_b_param is read but not used by semi_physics.f (l.142 is commented out; the pt2 "
+        v.push_back("WARNING (SIMC++, D-051 F5): pt_b_param is read but not used by semi_physics.f (l.142 is commented out; the pt2 "
                     "slope is b = 1/(0.120 z^2 + 0.200) GeV^-2, l.525)");
     if (p.sigc_flag != 0 || p.sigc_nbin != 0 || p.sigc_kin_min != 0.0 || p.sigc_kin_max != 0.0 || p.sigc_kin_ind != 0.0)
-        v.push_back("NOTE (SIMC++): sigc_flag/sigc_nbin/sigc_kin_min/sigc_kin_max/sigc_kin_ind are read but not used: "
+        v.push_back("WARNING (SIMC++, D-051 F5): sigc_flag/sigc_nbin/sigc_kin_min/sigc_kin_max/sigc_kin_ind are read but not used: "
                     "the central cross section call peepiX(..., .TRUE.) is commented out (event.f:1523)");
     return v;
 }
@@ -65,9 +65,11 @@ PeepiXConfig makeConfig(const RunSetup& s) {
     c.sigc_kin_max = s.params.sigc_kin_max;
     c.sigc_kin_ind = s.params.sigc_kin_ind;
     const bool corr = !s.fortran_compat;
-    c.pizero_db_fixed = corr;       // P12.1 F1
-    c.survival_p_hadron = corr;     // P12.1 F3
-    c.survival_path_fixed = corr;   // P12.1 F4
+    c.sum_sq_guard = corr;            // D-051 F1
+    c.nonpositive_xbj_zero = corr;    // D-051 F2
+    c.pizero_fixed = corr;            // D-051 F4
+    c.survival_p_hadron = corr;       // D-051 F6
+    c.survival_path_fixed = corr;     // D-051 F6
     return c;
 }
 

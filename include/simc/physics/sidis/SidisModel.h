@@ -14,8 +14,9 @@
 //     { "data_dir": "<dir with cteq5m.tbl and KANLO.GRID>", "verbose": true }
 // Run state read from the set-up: targ%A, targ%Z, targ%Mtar_struck, doing_semipi/semika/pizero/hplus, do_fermi,
 // doing_decay, hadron_arm, ctau, spec%p%P, Mh2, sigc_* (dead doing_cent branch only).
-// fortran_compat (D-031) restores the Fortran as built; the default corrects P12.1 F1 (pi0 dbar fragmentation),
-// F3 (survival probability from the hadron momentum) and F4 (zaero for the SHMS, sqrt in the path). Unsupported
+// fortran_compat (D-031) restores the Fortran as built; the default corrects D-051 F1 (0/0 when all PDFs are 0),
+// F2 (negative Fermi x_Bj: weight 0 instead of the STOP), F4 (pi0 dbar FF and mass) and F6 (survival probability:
+// hadron momentum, zaero for the SHMS, sqrt in the path). Unsupported
 // combinations are refused in init() (sidis::checkSupported). docs/FORTRAN_DIFFERENCES.md.
 #ifndef SIMC_PHYSICS_SIDIS_SIDISMODEL_H
 #define SIMC_PHYSICS_SIDIS_SIDISMODEL_H
@@ -38,7 +39,7 @@ namespace sidis {
 /// Checked: doing_semi set, exactly one of doing_semipi/doing_semika (dbase.f:125-132), no doing_pizero (pi0 SIDIS:
 /// the photons need the calorimeter arm, task P14), no doing_phsp (sigcc = 1 there, event.f:1446).
 std::vector<std::string> checkSupported(const RunSetup& s);
-/// The informational notes for SIDIS inputs that the Fortran reads and ignores (pt_b_param, sigc_*).
+/// The warnings for SIDIS inputs that the Fortran reads and ignores (pt_b_param, sigc_*).
 std::vector<std::string> ignoredInputNotes(const RunSetup& s);
 /// PeepiXConfig from the set-up (fortran_compat selects the D-031 switches).
 PeepiXConfig makeConfig(const RunSetup& s);
