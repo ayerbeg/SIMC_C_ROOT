@@ -32,3 +32,40 @@ set_tests_properties(l1_ctq5pdf l1_ctq5_state l1_fdss l1_f1f2in21 l1_slacemcfit_
 add_test(NAME fortran_diff_D051_sidis
          COMMAND test_l1_sidis fortran_diff ${_sfn}/peepix ${_sfn}/sidis_state "${_sinp}" ${_sdata} ${_ssp})
 set_tests_properties(fortran_diff_D051_sidis PROPERTIES SKIP_RETURN_CODE 77 LABELS "fortran_diff;unit")
+
+# task P12.2: the SIDIS reaction (reactions::SidisProduction + the "sidis" model) against the P12.F1 event tables,
+# fortran_compat, BITWISE (tolerance 0); runners of the pion/kaon/delta tables with `semi <data/sidis>`.
+set(_sst ${_sfn}/sidis_state/inp)
+set(_spd ${CMAKE_SOURCE_DIR}/data/pion)
+add_test(NAME l1_generate_semi_fixedrng
+         COMMAND test_l1_pion_event generate ${_sfn}/generate_semi_fixedrng ${_sst} ${_ssp} ${_spd} 0 semi ${_sdata})
+add_test(NAME l1_complete_ev_semi
+         COMMAND test_l1_pion_event complete_ev ${_sfn}/complete_ev_semi ${_sst} ${_ssp} ${_spd} 0 semi ${_sdata})
+add_test(NAME l1_complete_recon_ev_semi
+         COMMAND test_l1_pion_event complete_recon_ev ${_sfn}/complete_recon_ev_semi ${_sst} ${_ssp} ${_spd} 0 semi ${_sdata})
+add_test(NAME l1_complete_main_semi
+         COMMAND test_l1_pion_event complete_main ${_sfn}/complete_main_semi ${_sst} ${_ssp} ${_spd} 0 semi ${_sdata})
+set(_semi_l1 l1_generate_semi_fixedrng l1_complete_ev_semi l1_complete_recon_ev_semi l1_complete_main_semi)
+# the two P12.F1 captures (H(e,e'pi+)X and D(e,e'pi+)X, K1 rad, HMS e- + SHMS pi+): every generate / complete_ev /
+# complete_recon_ev / complete_main call, every montecarlo call, and the full SimcRun (56-column tree, .bin values,
+# bookkeeping, .hist/.geni/.gen)
+foreach(_c "h;p12f1_sh_k1_pip_rad_cap" "d;p12f1_sd_k1_pip_rad_cap")
+    list(GET _c 0 _tag)
+    list(GET _c 1 _run)
+    add_test(NAME l1_replay_event_capture_semi_${_tag}
+             COMMAND test_l1_pion_event capture ${_sfn}/event_capture_semi/cap_${_tag}
+                     ${SIMC_REFERENCE_DIR}/runs/${_run}/${_run}.inp ${_ssp} ${_spd} 0 semi ${_sdata})
+    set(_out ${CMAKE_CURRENT_BINARY_DIR}/simcrun_replay_semi_${_tag})
+    file(MAKE_DIRECTORY ${_out})
+    add_test(NAME l1_simcrun_replay_semi_${_tag} COMMAND test_l1_simcrun replay
+        ${_sfn}/event_capture_semi/cap_${_tag} ${SIMC_REFERENCE_DIR}/runs/${_run} ${_tag} ${_out} ${_run})
+    add_test(NAME l1_montecarlo_replay_semi_${_tag} COMMAND test_l1_driver replay
+        ${_sfn}/event_capture_semi/cap_${_tag} ${SIMC_REFERENCE_DIR}/runs/${_run} ${_tag} ${_ssp} ${_run})
+    list(APPEND _semi_l1 l1_replay_event_capture_semi_${_tag} l1_simcrun_replay_semi_${_tag}
+         l1_montecarlo_replay_semi_${_tag})
+endforeach()
+set_tests_properties(${_semi_l1} PROPERTIES SKIP_RETURN_CODE 77 LABELS l1 TIMEOUT 900)
+foreach(_tag h d)
+    set_tests_properties(l1_replay_event_capture_semi_${_tag} l1_simcrun_replay_semi_${_tag}
+        l1_montecarlo_replay_semi_${_tag} PROPERTIES LABELS "l1;replay")
+endforeach()

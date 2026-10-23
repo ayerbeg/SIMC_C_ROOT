@@ -252,7 +252,8 @@ int replay(const std::string& capdir, const std::string& rundir, const std::stri
     }
     bool okSetup = report("setup vs cap_final:", cs);
 
-    const bool pion = setup.flags.doing_pion || setup.flags.doing_kaon || setup.flags.doing_delta;   // P9.2 pion, P10.2 kaon, P11.1 delta captures
+    const bool pion = setup.flags.doing_pion || setup.flags.doing_kaon || setup.flags.doing_delta ||
+                      setup.flags.doing_semi;   // P9.2 pion, P10.2 kaon, P11.1 delta, P12.2 semi captures
     const bool hadronIsHms = p.hadron_arm == 1;
     // ---- indices
     std::map<long, std::size_t> genRow, recRow;
@@ -329,7 +330,10 @@ int replay(const std::string& capdir, const std::string& rundir, const std::stri
             check(c, "hms_stop", I.e_called ? stopIndexHms(I.e_stop) : -9., m("hms_stop"), nt);
         }
         if (pion) {
-            check(c, "decdist", main.ntup.decdist, m("decdist"), nt);
+            // semi with doing_decay = 0 (P12.2): the captured decdist of a success is the survival probability that
+            // peepiX (complete_main, after montecarlo) wrote to the COMMON; montecarlo itself leaves it 0
+            if (!(setup.flags.doing_semi && !setup.params.doing_decay))
+                check(c, "decdist", main.ntup.decdist, m("decdist"), nt);
             check(c, "Mh2_final", main.ntup.Mh2_final, m("Mh2_final"), nt);
         }
         check(c, "shms_stop_id", shmsArm ? shmsArm->kernel().stopId() : 0., m("shms_stop_id"), nt);
@@ -394,7 +398,7 @@ int replay(const std::string& capdir, const std::string& rundir, const std::stri
     bool okBin = true;
     std::vector<std::string> recs;
     if (pion) {
-        std::printf("  .bin: the 53 pion/delta / 55 kaon columns are checked by the full-run replay (l1_simcrun_replay_{pion,kaon,delta}_*)\n");
+        std::printf("  .bin: the 53 pion/delta / 55 kaon / 56 semi columns are checked by the full-run replay (l1_simcrun_replay_{pion,kaon,delta,semi}_*)\n");
     } else if (!readRecords(bin, recs) || recs.empty()) {
         std::printf("  .bin: cannot read %s\n", bin.c_str());
         okBin = false;

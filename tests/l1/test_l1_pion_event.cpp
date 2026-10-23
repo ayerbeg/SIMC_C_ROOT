@@ -19,6 +19,9 @@
 // against the P11.F1 tables (delta_state, generate_delta_fixedrng, complete_ev_delta, complete_recon_ev_delta,
 // complete_main_delta, event_capture_delta) and adds the mode `peedelta <dir> ...` (physics_delta.f:peedelta with the
 // driver's re-evaluation columns hx_*).
+// SIDIS (task P12.2): `semi <data/sidis>` as arguments 7-8 runs reactions::SidisProduction and the "sidis" model
+// against the P12.F1 tables (sidis/generate_semi_fixedrng, complete_ev_semi, complete_recon_ev_semi, complete_main_semi,
+// event_capture_semi).
 // Exit: 0 pass, 1 fail, 77 reference missing.
 #include <cmath>
 #include <cstdio>
@@ -49,6 +52,8 @@
 #include "simc/reactions/EventChain.h"
 #include "simc/reactions/KaonProduction.h"
 #include "simc/reactions/PionProduction.h"
+#include "simc/reactions/SidisProduction.h"
+#include "simc/physics/sidis/SidisModel.h"
 #include "simc/reactions/StandardBeam.h"
 #include "simc/setup/KinematicsUtils.h"
 #include "simc/setup/SetupBuilder.h"
@@ -68,9 +73,27 @@ std::string gKaon;              // data/kaon: non-empty = the kaon tables (P10.2
 bool isKaon() { return !gKaon.empty(); }
 bool gDelta = false;            // the Delta tables (P11.1)
 bool isDelta() { return gDelta; }
+std::string gSidis;             // data/sidis: non-empty = the SIDIS tables (P12.2)
+bool isSemi() { return !gSidis.empty(); }
 
 /// cfg -> SIMC input file (reference/functions/pion_state/configs.txt)
 std::string cfgInp(const std::string& inpdir, int cfg) {
+    if (isSemi()) {   // reference/functions/sidis/sidis_state/configs.txt
+        static const char* d[] = {"",
+                                  "p12f1_sh_k1_pip_rad_cap",
+                                  "p12f1_sd_k1_pip_rad_cap",
+                                  "l1_h_k1_pip_norad",
+                                  "l1_h_k1_pim_rad",
+                                  "l1_d_k1_pip_fermi",
+                                  "l1_d_k1_pim_rad",
+                                  "l1_h_k1_kp_rad",
+                                  "l1_h_k1_km_rad",
+                                  "l1_d_k1_kp_rad",
+                                  "l1_h_k2_pip_rad",
+                                  "l1_c12_k1_pip_rad"};
+        if (cfg < 1 || cfg > 11) throw std::runtime_error("bad cfg " + std::to_string(cfg));
+        return inpdir + "/" + d[cfg] + ".inp";
+    }
     if (isDelta()) {   // reference/functions/delta_state/configs.txt
         static const char* d[] = {"", "p11f1_dh_d1_rad_cap", "p11f1_dh_d2_rad_cap", "l1_h_d1_norad",
                                   "l1_h_d2_norad", "l1_h_d1_wp1", "l1_h_d1_wp2"};
@@ -262,6 +285,7 @@ struct Process {
     std::unique_ptr<IPhysicsModel> model;
     std::unique_ptr<reactions::PionProduction> reaction;
     reactions::MainContext ctx;
+    NtupVars centralNtup;   ///< COMMON /ntuple_variables/ as calculate_central leaves it (semi: ntup%xfermi)
 };
 
 std::unique_ptr<Process> makeProcess(const std::string& inp, bool compat = true) {
@@ -285,11 +309,13 @@ std::unique_ptr<Process> makeProcess(const std::string& inp, bool compat = true)
     sc.radiator = &P->rad;
     P->beam.configure(Json::object(), P->params);
     P->beam.init(sc);
-    P->model = Registry<IPhysicsModel>::create(isDelta() ? "delta" : (isKaon() ? "kaon" : "pion"));
-    P->model->configure(Json{{"data_dir", isKaon() ? gKaon : gPion}, {"verbose", false}}, P->params);
+    P->model = Registry<IPhysicsModel>::create(isSemi() ? "sidis" : (isDelta() ? "delta" : (isKaon() ? "kaon" : "pion")));
+    P->model->configure(Json{{"data_dir", isSemi() ? gSidis : (isKaon() ? gKaon : gPion)}, {"verbose", false}}, P->params);
     P->model->init(sc);
     sc.physics = P->model.get();
-    if (isDelta())
+    if (isSemi())
+        P->reaction = std::make_unique<reactions::SidisProduction>();
+    else if (isDelta())
         P->reaction = std::make_unique<reactions::DeltaProduction>();
     else if (isKaon())
         P->reaction = std::make_unique<reactions::KaonProduction>();
@@ -300,7 +326,8 @@ std::unique_ptr<Process> makeProcess(const std::string& inp, bool compat = true)
     P->ctx = P->reaction->mainContext();
     // delta (P11.1): es_init ends with calculate_central, whose radc_init_ev leaves the COMMON /radccom/ values that a
     // row whose complete_ev fails before radc_init_ev reports (cfg 6, which_pion 2: every row fails)
-    if (isDelta()) driver::calculateCentral(P->setup, *P->reaction, P->rad, *P->model);
+    // semi (P12.2): es_init's calculate_central also runs the central peepiX (SAVEd zaero, survivalprob, PDF warnings)
+    if (isDelta() || isSemi()) P->centralNtup = driver::calculateCentral(P->setup, *P->reaction, P->rad, *P->model).main0.ntup;
     return P;
 }
 
@@ -354,6 +381,7 @@ bool runGenerate(Process& P, long ntried, MainEvent& m, Event& v, Event& o, Scri
     out["radphot"] = m.ntup.radphot;
     out["radarm"] = m.ntup.radarm;
     out["ntup_krel"] = m.ntup.krel;
+    out["ntup_xfermi"] = m.ntup.xfermi;
     out["targ_Mrec_struck"] = P.reaction->mrecStruck();
     putPfermi(m.pfermi, out);
     putGammas(m.ntup, out);
@@ -381,6 +409,12 @@ void loadCompleteEvInputs(const Process& P, const Row& r, MainEvent& m, Event& v
     v.p.theta = r["p_theta"];
     v.p.phi = r["p_phi"];
     v.Em = r["v_Em_in"];
+    if (isSemi()) {   // the hadron generated by generate (event.f:289-298) and the stale vertex%Pm (event.f:922)
+        v.p.E = r["p_E"];
+        v.p.P = r["p_P"];
+        v.p.delta = r["p_delta"];
+        v.Pm = r["in_v_Pm"];
+    }
     if (calcAngles) {
         PhysicsAngles(s.spec.e.theta, s.spec.e.phi, v.e.xptar, v.e.yptar, v.e.theta, v.e.phi);
         PhysicsAngles(s.spec.p.theta, s.spec.p.phi, v.p.xptar, v.p.yptar, v.p.theta, v.p.phi);
@@ -420,10 +454,10 @@ bool doCompleteMain(Process& P, const Row& r, Outputs& o) {
     m.sigcc = r["in_sigcc"];
     m.sigcc_recon = r["in_sigcc_recon"];
     m.weight = r["in_weight"];
-    m.epsilon = r["in_m_epsilon"];
-    m.t = r["in_m_t"];
-    m.phi_pq = r["in_m_phi_pq"];
-    if (isKaon()) {   // the fields peeK's survival-probability block reads (physics_kaon.f:148-165)
+    if (r.has("in_m_epsilon")) m.epsilon = r["in_m_epsilon"];
+    if (r.has("in_m_t")) m.t = r["in_m_t"];
+    if (r.has("in_m_phi_pq")) m.phi_pq = r["in_m_phi_pq"];
+    if (isKaon() || isSemi()) {   // the fields peeK's / peepiX's survival-probability block reads
         m.theta_pq = r["in_m_theta_pq"];
         m.FP.p.path = r["in_m_FP_p_path"];
         m.FP.p.dx = r["in_m_FP_p_dx"];
@@ -432,8 +466,8 @@ bool doCompleteMain(Process& P, const Row& r, Outputs& o) {
         m.ntup.decdist = r["decdist_in"];
     }
     getPfermi(r, m.pfermi);
-    m.ntup.sigcm1 = r["in_ntup_sigcm1"];
-    m.ntup.sigcm2 = r["in_ntup_sigcm2"];
+    if (r.has("in_ntup_sigcm1")) m.ntup.sigcm1 = r["in_ntup_sigcm1"];
+    if (r.has("in_ntup_sigcm2")) m.ntup.sigcm2 = r["in_ntup_sigcm2"];
     m.ntup.sigcm = r["in_ntup_sigcm"];
     reactions::MainContext ctx = P.ctx;
     if (r.has("ov_coulomb") && iv(r, "ov_coulomb") == 1) {
@@ -466,7 +500,38 @@ bool doCompleteMain(Process& P, const Row& r, Outputs& o) {
         }
         m.ntup.decdist = 0.0;
     }
+    // semi (P12.2): main fields at entry and the row overrides of doing_hplus/doing_pizero/do_fermi/sigc_* (ov_state)
+    sidis::SidisModel* sm = isSemi() ? dynamic_cast<sidis::SidisModel*>(P.model.get()) : nullptr;
+    sidis::PeepiXConfig savedSidis;
+    if (sm) {
+        m.sigcent = r["in_sigcent"];
+        m.ntup.dilu = r["in_ntup_dilu"];
+        m.davejac = r["in_m_davejac"];
+        m.johnjac = r["in_m_johnjac"];
+        m.ntup.xfermi = r["in_ntup_xfermi"];
+        savedSidis = sm->config();
+        if (r.has("ov_state") && iv(r, "ov_state") == 1) {
+            sm->config().doing_hplus = iv(r, "ov_hplus") != 0;
+            sm->config().doing_pizero = iv(r, "ov_pizero") != 0;
+            sm->config().do_fermi = iv(r, "ov_do_fermi") != 0;
+            sm->config().sigc_flag = iv(r, "ov_sigc_flag");
+            sm->config().sigc_nbin = iv(r, "ov_sigc_nbin");
+            sm->config().sigc_kin_min = r["ov_sigc_kin_min"];
+            sm->config().sigc_kin_max = r["ov_sigc_kin_max"];
+            sm->config().sigc_kin_ind = r["ov_sigc_kin_ind"];
+        }
+    }
     const bool ok = P.reaction->completeMain(iv(r, "force_sigcc") == 1, m, v, v0, rec);
+    if (sm) {
+        o["decdist_out"] = m.ntup.decdist;
+        o["sigcent"] = m.sigcent;
+        o["ntup_xfermi"] = m.ntup.xfermi;
+        o["ntup_dilu"] = m.ntup.dilu;
+        o["eff_doing_hplus"] = sm->config().doing_hplus ? 1. : 0.;
+        o["eff_doing_pizero"] = sm->config().doing_pizero ? 1. : 0.;
+        o["eff_do_fermi"] = sm->config().do_fermi ? 1. : 0.;
+        sm->config() = savedSidis;
+    }
     P.reaction->mainContext() = P.ctx;
     if (dm) {
         o["decdist_out"] = m.ntup.decdist;
@@ -504,7 +569,7 @@ bool doCompleteMain(Process& P, const Row& r, Outputs& o) {
     o["hx_coul_fac"] = ctx.using_Coulomb ? c * c : 1.0;
     const double hp = m.SF_weight * m.jacobian * m.gen_weight * m.sigcc;
     o["hx_prod"] = hp;
-    o[(isKaon() || isDelta()) ? "hx_ratio" : "hx_tgtweight"] = hp != 0.0 ? m.weight / hp : 0.0;
+    o[(isKaon() || isDelta() || isSemi()) ? "hx_ratio" : "hx_tgtweight"] = hp != 0.0 ? m.weight / hp : 0.0;
     return ok;
 }
 
@@ -520,6 +585,7 @@ int runEventTable(const std::string& name, const std::string& dir, const std::st
                        [&](const Row& r, Outputs& o) {
                            Process& P = proc(iv(r, "cfg"));
                            MainEvent m;   // drv_generate9: main, vertex, orig = 0 per row
+                           if (isSemi()) m.ntup.xfermi = P.centralNtup.xfermi;   // COMMON ntup%xfermi of the central peepiX
                            Event v, orig;
                            v.Pm = r["in_v_Pm"];
                            for (int i = 1; i <= 3; ++i)
@@ -1028,7 +1094,8 @@ int runCapture(const std::string& capdir, const std::string& inp, double tol) {
         const int cN = rngT.col("ntried"), cP = rngT.col("phase"), cK = rngT.col("kind"), cV = rngT.col("value");
         for (const auto& r : rngT.rows) {
             const int ph = static_cast<int>(r[static_cast<std::size_t>(cP)]);
-            if (ph != 1 && ph != 6) continue;
+            // semi (P12.F1 captures): phase 9 = the gauss1 of the tail-1 complete_ev re-call inside generate_rad
+            if (ph != 1 && ph != 6 && !(isSemi() && ph == 9)) continue;
             auto& q = stream[std::lround(r[static_cast<std::size_t>(cN)])];
             (static_cast<int>(r[static_cast<std::size_t>(cK)]) == 1 ? q.first : q.second)
                 .push_back(r[static_cast<std::size_t>(cV)]);
@@ -1075,7 +1142,8 @@ int runCapture(const std::string& capdir, const std::string& inp, double tol) {
             "v_Pmx", "v_Pmy", "v_Pmz", "v_Pmiss", "v_Emiss", "v_PmPar", "v_PmOop", "v_PmPer", "v_Trec", "v_p_E",
             "v_p_P", "v_p_delta", "t_Eloss_2", "t_Eloss_3", "t_teff_2", "t_teff_3", "m_Trec", "m_w", "m_t", "m_tmin",
             "m_q2", "m_epsilon", "m_theta_pq", "m_phi_pq", "ntup_krel", "v_up_x", "v_up_y", "v_up_z", "r_hardcorfac",
-            "r_frac_1", "r_frac_2", "r_frac_3", "r_g_4", "r_c_4", "r_rad_proton_ev"};
+            "r_frac_1", "r_frac_2", "r_frac_3", "r_g_4", "r_c_4", "r_rad_proton_ev",
+            "v_zhad", "v_pt2"};   // semi: assigned after the two-pion threshold test (event.f:990-992)
         for (std::size_t i = 0; i < cevT.rows.size(); ++i) {
             Row r(cevT, i);
             MainEvent m;
@@ -1134,6 +1202,7 @@ int main(int argc, char** argv) {
     gPion = argv[5];
     if (argc > 8 && std::string(argv[7]) == "kaon") gKaon = argv[8];
     if (argc > 7 && std::string(argv[7]) == "delta") gDelta = true;
+    if (argc > 8 && std::string(argv[7]) == "semi") gSidis = argv[8];
     const double tol = std::atof(argv[6]);
     try {
         if (what == "pion_state") return runPionState(argv[2], argv[3], tol);
