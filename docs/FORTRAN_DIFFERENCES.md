@@ -425,3 +425,34 @@ only D-048 F2 switched off). Batch: `validation/scripts/p11_delta_l2.sh`. Binary
 * D/A Delta (F1): no Fortran reference exists; validated by self-consistency only (`fortran_diff_D048_F1_delta_DA_stop`: D, He-3, C-12,
   300 events each: the vertex energy-momentum balance holds for every event to 1e-13, weights finite and positive, Fermi momentum drawn).
 * **Reminder (D-048 F4): none of these yields contains a Delta cross section.**
+
+## 12. SIDIS (e,e'h)X: L2 in both modes and the effect of each correction (task P12.2)
+
+`validation/scripts/p12_sidis_l2.sh` (commit 1d31aa7, simc_compare/simc_mode_diff of the same commit; seed 4242, 100000
+successes = the reference ngen) against the P12.F1 references `reference/runs/sidis_*_A` (and `_B` for H π+ K1 rad).
+F = tests with p < 0.01 out of N (expected 0.01 N); "ratio" = C++ corrected / C++ compat.
+
+| config | compat verdict (vs A) | compat F/N | compat wtcontr A / C++ (pull) | corrected verdict | corrected wtcontr (ratio) | corrected tree vs compat (simc_mode_diff) |
+|---|---|---|---|---|---|---|
+| H π+ K1 rad | PASS (vs B: PASS, F = 7) | 8/270 | 95.92 / 97.52 (−2.7) | FAIL (wtcontr only, + decdist/pfermi columns) | 138.26 (1.418) | Weight identical in all 100000 events; decdist and pfermi differ |
+| H π+ K1 norad | PASS | 6/253 | 106.69 / 106.48 (+0.4) | FAIL (same) | 151.68 (1.424) | Weight identical; decdist, pfermi |
+| H π− K1 rad | PASS | 8/270 | 47.89 / 48.70 (−2.7) | FAIL (same) | 68.01 (1.396) | Weight identical; decdist, pfermi |
+| D π+ K1 rad | PASS | 0/270 | 167.53 / 165.23 (+2.3) | FAIL (wtcontr, decdist) | 234.93 (1.422) | Weight identical; decdist in 99999 events |
+| H K+ K1 rad | PASS | 5/270 | 7.00 / 7.13 (−3.2) | FAIL (every weighted test) | 10.86 (1.522) | Weight and decdist differ in 95903 events: ΣWeight × 1.068, B/A 1.29 at low Pm → 1.04 at high Pm |
+| H π+ K2 rad | PASS | 2/270 | 243.33 / 243.76 (−0.3) | FAIL (wtcontr, decdist, pfermi) | 355.47 (1.458) | Weight identical; decdist, pfermi |
+| C-12 π+ K1 rad | PASS | 3/270 | 23.99 / 24.15 (−1.1) | FAIL (wtcontr, decdist, pfermi) | 34.06 (1.410) | Weight identical; decdist, pfermi |
+| D π+ K1 rad, do_fermi = 1 | — (the Fortran STOPs at try 27848, D-051 F2) | — | — | runs: 100000 successes in 14783024 tries | — | no reference |
+
+Explanation of the corrected-mode differences (every one is a documented correction; no other difference):
+* **wtcontr × 1.40–1.46**: D-006 (simc.f:237 pass_cuts tests the SHMS hadron δ against the electron-arm limit
+  SPedge%e%delta%max): the P12.F1 report measured −28.9 … −32.2 % of ΣWeight in the Fortran, i.e. × 1/(1−0.30) ≈ 1.43 in
+  the corrected mode. The tree (all successes) is unchanged by D-006.
+* **decdist** (every decay-OFF run): D-051 F6 — the survival probability from the hadron momentum and the √ path; for pions it
+  is written but not applied to the weight (event.f:1560), so Weight is unchanged.
+* **K+ weights**: the same F6 survival enters the kaon weight: ΣWeight × 1.068 (larger for lower kaon momenta, B/A 1.29 at
+  recon Pm 1.7 GeV/c), so every weighted K+ distribution moves; the compat K+ run passes. Combined with D-006: × 1.522.
+* **pfermi**: D-051 F3 — 0 instead of 0/0 = NaN for H and C-12 (simc_compare skips the all-NaN Fortran column).
+* D-051 F1 (NaN → 0 when every PDF is 0), F2, F9, F12, F14 change no event of these runs' trees (F9 is not an ntuple column).
+* Compat: the recurring `missmass` / `decdist` / `wtcontr` p ≈ 0.002–0.006 failures of H π± K1 rad come from one C++ sample
+  (π+ and π− share the random stream); against seed B the same C++ run gives F = 7 with different variables, and the cap_h /
+  cap_d replays are bitwise, so they are fluctuations of the C++ sample, not a model difference.
