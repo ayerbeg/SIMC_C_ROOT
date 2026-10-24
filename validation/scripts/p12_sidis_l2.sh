@@ -23,9 +23,9 @@ for tag in "${TAGS[@]}"; do
     "$PROJ/tools/run_simc.sh" "$REF/$run/$run.inp" $nb --label "P12.2_L2_${mode}_${tag}" --args "$args" > /dev/null 2>&1
     d="$PROJ/simc_runs/$(readlink "$PROJ/simc_runs/latest")"
     if [[ -f "$REF/$run/$run.hist" ]]; then
-      "$CMP" --a "$REF/$run" --b "$d/$run.summary.json" --out "$d/compare_vs_A" --config "$CFG" > "$d/compare_vs_A.log" 2>&1
+      "$CMP" --a "$REF/$run" --b "$d/$run.summary.json" --mode-b $mode --out "$d/compare_vs_A" --config "$CFG" > "$d/compare_vs_A.log" 2>&1
       if [[ -d "$REF/sidis_${tag}_B" ]]; then
-        "$CMP" --a "$REF/sidis_${tag}_B" --b "$d/$run.summary.json" --out "$d/compare_vs_B" --config "$CFG" > "$d/compare_vs_B.log" 2>&1
+        "$CMP" --a "$REF/sidis_${tag}_B" --b "$d/$run.summary.json" --mode-b $mode --out "$d/compare_vs_B" --config "$CFG" > "$d/compare_vs_B.log" 2>&1
       fi
     fi
     if [[ $mode == compat ]]; then cdir="$d"; elif [[ -n "${cdir:-}" && $modes != corrected ]]; then

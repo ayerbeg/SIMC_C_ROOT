@@ -273,6 +273,7 @@ void usage() {
                  "                    [--label-a NAME] [--label-b NAME] [--perturb VAR:SHIFT]... [--empty-tree-b]\n"
                  "                    [--skip v1,v2] [--nbins N] [--prefer-hist] [--no-pdf]\n"
                  "                    [--expect PASS|FAIL|IDENTICAL] [--expect-flagged v1,v2]\n"
+                 "                    [--mode-a compat|corrected] [--mode-b compat|corrected]\n"
                  "       simc_compare --dump-summary SPEC OUT.json\n";
 }
 
@@ -293,6 +294,7 @@ int main(int argc, char** argv) {
     std::vector<std::string> expectFlagged, extraSkip;
     int nbinsCli = 0;
     bool preferHist = false, noPdf = false, emptyTreeB = false;
+    int modeA = -2, modeB = -2;   // --mode-a/--mode-b: 1 compat, 0 corrected, -2 = from the run summary
     try {
         for (int i = 1; i < argc; ++i) {
             std::string a = argv[i];
@@ -313,6 +315,11 @@ int main(int argc, char** argv) {
             else if (a == "--prefer-hist") preferHist = true;
             else if (a == "--no-pdf") noPdf = true;
             else if (a == "--empty-tree-b") emptyTreeB = true;
+            else if (a == "--mode-a" || a == "--mode-b") {
+                const std::string v = next();
+                if (v != "compat" && v != "corrected") throw std::runtime_error(a + " needs compat or corrected");
+                (a == "--mode-a" ? modeA : modeB) = v == "compat" ? 1 : 0;
+            }
             else if (a == "--perturb") {
                 std::string v = next();
                 size_t c = v.rfind(':');
@@ -363,6 +370,8 @@ int main(int argc, char** argv) {
         fs::create_directories(outDir);
         RA = loadRun(specA, !preferHist);
         RB = loadRun(specB, !preferHist);
+        if (modeA != -2) RA.fortran_compat = modeA;
+        if (modeB != -2) RB.fortran_compat = modeB;
         for (auto& w : RA.warnings) warnings.push_back("A: " + w);
         for (auto& w : RB.warnings) warnings.push_back("B: " + w);
         if (!cfg.treeName.empty()) RA.treeName = RB.treeName = cfg.treeName;
@@ -467,18 +476,82 @@ int main(int argc, char** argv) {
         t.p = pullPValue(t.pull);
         add(t);
     }
-    // wtcontr (.hist) with the relative error of the tree yield
+    // wtcontr (.hist): sum of main%weight over the pass_cuts events only (simc.f:229-241, 311-313), times normfac/nevent.
+    // P12.3 (D-053): its relative error is that of the pass_cuts subset of the tree, sqrt(sum w^2)/sum w of the events in
+    // the run's own pass_cuts window (perTriedMean over Ntried as the tree yield); without the window data (SPedge, slop,
+    // electron_arm, the mode) the relative error of the whole tree yield is used, with a note.
     if (const Scalar *wa = RA.scalar("wtcontr"), *wb = RB.scalar("wtcontr"); wa && wb) {
         Test t;
         t.category = "norm";
         t.name = "wtcontr";
         t.method = "pull";
         t.a = wa->value; t.b = wb->value;
-        t.ea = YA > 0 ? std::fabs(wa->value) * sYA / YA : 0;
-        t.eb = YB > 0 ? std::fabs(wb->value) * sYB / YB : 0;
+        std::string why[2];
+        auto relerr = [&](int k) -> double {
+            const RunSummary& R = k ? RB : RA;
+            const TreeData& T = k ? TB : TA;
+            const Norm& N = k ? NB : NA;
+            const std::vector<double>& W = k ? *WB : *WA;
+            const double Yall = k ? YB : YA, sYall = k ? sYB : sYA;
+            auto fallback = [&](const std::string& reason) {
+                why[k] = reason;
+                return Yall > 0 ? sYall / Yall : 0.0;
+            };
+            if (!R.has_spedge || !R.has_slop) return fallback("no SPedge/slop");
+            if (R.fortran_compat < 0) return fallback("pass_cuts mode unknown (--mode)");
+            const bool right = R.electron_arm == 1 || R.electron_arm == 3 || R.electron_arm == 7;
+            const bool left = R.electron_arm == 2 || R.electron_arm == 4 || R.electron_arm == 5 || R.electron_arm == 8;
+            if (!right && !left) return fallback("electron_arm unknown");
+            const char* ep[2] = {right ? "hs" : "ss", right ? "ss" : "hs"};   // e, p prefixes
+            const char* var[3] = {"delta", "yptar", "xptar"};
+            const std::vector<double>* c[6];
+            for (int a = 0; a < 2; ++a)
+                for (int v = 0; v < 3; ++v) {
+                    c[3 * a + v] = T.col(std::string(ep[a]) + var[v]);
+                    if (!c[3 * a + v]) return fallback(std::string("no branch ") + ep[a] + var[v]);
+                }
+            // the window: printed SPedge (already + slop) -/+ slop used; angles: slop in mr
+            double lo[6], hi[6];
+            for (int i = 0; i < 6; ++i) {
+                const double sl = (i % 3 == 0) ? R.slop_used[i] : R.slop_used[i] / 1000.;
+                lo[i] = R.spedge_min[i] + sl;
+                hi[i] = R.spedge_max[i] - sl;
+            }
+            if (R.fortran_compat == 1) hi[3] = R.spedge_max[0] - R.slop_used[3];   // simc.f:237 (D-006)
+            double S1 = 0, S2 = 0;
+            for (size_t i = 0; i < W.size(); ++i) {
+                bool pass = std::isfinite(W[i]);
+                for (int k6 = 0; k6 < 6 && pass; ++k6) {
+                    const double x = (*c[k6])[i];
+                    if (x <= lo[k6] || x >= hi[k6]) pass = false;
+                }
+                if (pass) { S1 += W[i]; S2 += W[i] * W[i]; }
+            }
+            if (!(S1 > 0)) return fallback("empty pass_cuts subset");
+            double Y = 0, sY = 0;
+            if (N.perTried) perTriedMean(S1, S2, N.ntried, Y, sY);
+            else { Y = S1; sY = std::sqrt(S2); }
+            // consistency: S1*normfac/nevent should be wtcontr
+            if (const Scalar* nf = R.scalar("normfac"); nf && R.has_counters && R.nevent() > 0) {
+                const double pred = S1 * nf->value / double(R.nevent());
+                const double wt = (k ? wb : wa)->value;
+                if (std::fabs(pred - wt) > 2e-3 * std::fabs(wt))
+                    warnings.push_back(std::string(k ? "B" : "A") + ": pass_cuts subset of the tree gives wtcontr " +
+                                       fmt(pred) + " != " + fmt(wt) + " (window mode " +
+                                       (R.fortran_compat ? "compat" : "corrected") + ")");
+            }
+            why[k] = std::string("pass_cuts subset, ") + (R.fortran_compat ? "compat" : "corrected") + " window";
+            return Y > 0 ? sY / Y : 0.0;
+        };
+        const double ra = relerr(0), rb = relerr(1);
+        t.ea = std::fabs(wa->value) * ra;
+        t.eb = std::fabs(wb->value) * rb;
         t.pull = pull(t.a, t.ea, t.b, t.eb);
         t.p = pullPValue(t.pull);
-        t.note = "sigma = wtcontr * relerr(tree yield)";
+        t.note = "sigma = wtcontr * relerr: A " + why[0] + "; B " + why[1];
+        for (int k = 0; k < 2; ++k)
+            if (why[k].rfind("pass_cuts subset", 0) != 0)
+                warnings.push_back(std::string(k ? "B" : "A") + ": wtcontr sigma from the whole tree yield (" + why[k] + ")");
         add(t);
         // info: consistency of wtcontr with the tree (pass_cuts subset, simc.f:311-313)
         for (int k = 0; k < 2; ++k) {

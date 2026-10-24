@@ -456,3 +456,7 @@ Explanation of the corrected-mode differences (every one is a documented correct
 * Compat: the recurring `missmass` / `decdist` / `wtcontr` p ≈ 0.002–0.006 failures of H π± K1 rad come from one C++ sample
   (π+ and π− share the random stream); against seed B the same C++ run gives F = 7 with different variables, and the cap_h /
   cap_d replays are bitwise, so they are fluctuations of the C++ sample, not a model difference.
+* P12.3 (D-053): the wtcontr sigma of simc_compare was the relative error of the whole tree yield; it is now that of the
+  pass_cuts subset (validation/README.md). Re-compared (simc_runs/20261024_012401_P12.3_wtcontr_recompare/table.tsv): H π+
+  K1 rad compat wtcontr pull −2.74 → −1.93 (σ 0.415 → 0.586), H π− −2.74 → −1.94, D π+ +2.28 → +1.61, H K+ −3.22 → −2.27;
+  the director's seeds 5201-5204 give −0.07, −0.23, −2.01, −0.36.

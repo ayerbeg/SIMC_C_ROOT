@@ -19,6 +19,7 @@ simc_compare --a SPEC --b SPEC --out DIR [--config CFG.json]
              [--label-a NAME] [--label-b NAME] [--perturb VAR:SHIFT]...
              [--skip v1,v2] [--nbins N] [--prefer-hist] [--no-pdf]
              [--expect PASS|FAIL|IDENTICAL] [--expect-flagged v1,v2]
+             [--mode-a compat|corrected] [--mode-b compat|corrected]
 simc_compare --dump-summary SPEC OUT.json
 ```
 
@@ -102,9 +103,17 @@ In this section, N is Ntried, W_i is the `Weight` branch value, and the sums run
   This is the variance of the mean of the N per-try weights. It includes the fluctuation in the
   number of accepted events. With `norm = normfac`, the same result is multiplied by
   lumi*genvol (normfac*N/nevent). With a numeric scale s: Y = s*S1 and sigma = s*sqrt(S2).
-* **wtcontr** (.hist) = sum_{pass_cuts} W * normfac/nevent (simc.f:313,398,920). Its sigma is
-  wtcontr times the relative error of the tree yield. The tree holds all successes, while
-  wtcontr uses only the `pass_cuts` subset. The tool warns if the two differ by more than 0.1 %.
+* **wtcontr** (.hist) = sum_{pass_cuts} W * normfac/nevent (simc.f:229-241, 311-313, 920). Since P12.3 (D-053) its
+  sigma is wtcontr times the relative error of the **pass_cuts subset** of the tree (perTriedMean of sum W, sum W² of
+  the events inside the run's own pass_cuts window): the window is the printed SPedge (already widened by slop%MC) ∓
+  slop%MC%used, from the .hist ("Input Spectrometer Limits", "slop.MC") or the JSON (`spedge`, `slop.MC`), the arm
+  columns follow `electron_arm`, and the p-arm delta maximum is SPedge%e%delta%max in the Fortran window (simc.f:237,
+  D-006; Fortran references and C++ fortran_compat runs) or SPedge%p%delta%max in the corrected one. The mode of a JSON
+  run is `run.fortran_compat` if present, else `--mode-a/--mode-b compat|corrected` (the L2 scripts pass it); a .hist
+  is compat. Without these data the relative error of the whole tree yield is used and a warning says so. The tool
+  also warns when the pass_cuts subset does not reproduce the run's wtcontr within 0.2 % (e.g. a wrong mode). Before
+  P12.3 the whole tree was used, which underestimated the sigma when pass_cuts removes much of the weight (SIDIS:
+  0.415 instead of 0.58).
 * **AVERAGE.sigcc** = sum_{successes} sigcc / nevent (simc.f:248,959). For ngen>0, sigma is
   sd(sigcc)/sqrt(n). For ngen<0 (nevent = Ntried) it uses the per-tried formula above.
 * **normfac**. For ngen>0 it is random through Ntried: sigma_rel = sqrt((1-acc)/Ncontribute).

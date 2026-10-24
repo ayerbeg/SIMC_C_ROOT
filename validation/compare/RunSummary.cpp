@@ -191,7 +191,37 @@ void parseFortranHist(const std::string& path, RunSummary& s) {
     std::string line;
     int nlumi = 0;
     bool haveNgen = false, haveNtried = false, haveNcontr = false;
+    // P12.3: pass_cuts window (simc.f:report "Input Spectrometer Limits" and "slop.MC" lines) and electron_arm
+    static const std::regex spe(R"(^\s*SPedge\.([ep])\.(delta|yptar|xptar)\.min/max\s*=\s*(\S+)\s+(\S+))");
+    static const std::regex slp(R"(^\s*(?:slop\.MC)?\s+([EP]) arm (delta|yptar|xptar)\s+(\S+))");
+    static const std::regex earm(R"(electron_arm=\s*(-?\d+))");
+    bool inSlop = false;
+    int nSpedge = 0, nSlop = 0;
+    s.fortran_compat = 1;
+    auto vidx = [](const std::string& a, const std::string& v) {
+        return (a == "p" || a == "P" ? 3 : 0) + (v == "delta" ? 0 : (v == "yptar" ? 1 : 2));
+    };
     while (std::getline(in, line)) {
+        {
+            std::smatch q;
+            if (std::regex_search(line, q, spe)) {
+                const int k = vidx(q[1], q[2]);
+                try {
+                    s.spedge_min[k] = std::stod(q[3]);
+                    s.spedge_max[k] = std::stod(q[4]);
+                    ++nSpedge;
+                } catch (...) {}
+            }
+            if (line.find("slop.MC") != std::string::npos) inSlop = true;
+            if (inSlop && std::regex_search(line, q, slp)) {
+                try {
+                    s.slop_used[vidx(q[1], q[2])] = std::stod(q[3]);
+                    ++nSlop;
+                } catch (...) {}
+                if (nSlop >= 6) inSlop = false;
+            }
+            if (s.electron_arm == 0 && std::regex_search(line, q, earm)) s.electron_arm = std::stoi(q[1]);
+        }
         // flags (FLAGS: block, 'name= T')
         for (auto it = std::sregex_iterator(line.begin(), line.end(), flag); it != std::sregex_iterator(); ++it) {
             std::string n = (*it)[1];
@@ -227,6 +257,8 @@ void parseFortranHist(const std::string& path, RunSummary& s) {
     }
     s.has_counters = haveNgen && haveNtried && haveNcontr;
     if (!s.has_counters) s.warnings.push_back("COUNTERS block incomplete in " + path);
+    s.has_spedge = nSpedge == 6;
+    s.has_slop = nSlop == 6;
 }
 
 // ---------------------------------------------------------------------------
@@ -367,6 +399,46 @@ void parseSummaryJson(const std::string& path, RunSummary& s) {
             }
         }
     }
+
+    // P12.3: pass_cuts window ("spedge" [min, max], "slop".MC[].used), settings.electron_arm, run.fortran_compat
+    if (j.contains("spedge") && j["spedge"].is_object()) {
+        int n = 0;
+        const char* arm[2] = {"e", "p"};
+        const char* var[3] = {"delta", "yptar", "xptar"};
+        for (int a = 0; a < 2; ++a)
+            for (int k = 0; k < 3; ++k) {
+                const json& sp = j["spedge"];
+                if (sp.contains(arm[a]) && sp[arm[a]].contains(var[k]) && sp[arm[a]][var[k]].is_array() &&
+                    sp[arm[a]][var[k]].size() == 2) {
+                    s.spedge_min[3 * a + k] = sp[arm[a]][var[k]][0].get<double>();
+                    s.spedge_max[3 * a + k] = sp[arm[a]][var[k]][1].get<double>();
+                    ++n;
+                }
+            }
+        s.has_spedge = n == 6;
+    }
+    if (j.contains("slop") && j["slop"].is_object() && j["slop"].contains("MC") && j["slop"]["MC"].is_array()) {
+        int n = 0;
+        static const char* labels[6] = {"E arm delta", "E arm yptar", "E arm xptar",
+                                        "P arm delta", "P arm yptar", "P arm xptar"};
+        for (const auto& e : j["slop"]["MC"]) {
+            if (!e.is_object() || !e.contains("label") || !e.contains("used")) continue;
+            for (int k = 0; k < 6; ++k)
+                if (e["label"] == labels[k]) {
+                    s.slop_used[k] = e["used"].get<double>();
+                    ++n;
+                }
+        }
+        s.has_slop = n == 6;
+    }
+    if (j.contains("settings") && j["settings"].is_object() && j["settings"].contains("electron_arm") &&
+        j["settings"]["electron_arm"].is_number())
+        s.electron_arm = j["settings"]["electron_arm"].get<int>();
+    if (j.contains("run") && j["run"].is_object() && j["run"].contains("fortran_compat") &&
+        j["run"]["fortran_compat"].is_boolean())
+        s.fortran_compat = j["run"]["fortran_compat"].get<bool>() ? 1 : 0;
+    else if (fromText)
+        s.fortran_compat = 1;   // converted from a Fortran .hist
 
     if (const json* t = findKey(j, {"tree"}); t && t->is_object()) {
         if (t->contains("file") && (*t)["file"].is_string()) s.treeFile = (*t)["file"];

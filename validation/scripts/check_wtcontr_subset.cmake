@@ -1,0 +1,22 @@
+# validation/scripts/check_wtcontr_subset.cmake — task P12.3: text checks of a simc_compare summary.txt.
+#   cmake -DF=<summary.txt> -DWANT=<s1;s2> [-DFORBID=<s3;...>] -P check_wtcontr_subset.cmake
+# '+' in WANT/FORBID stands for a blank (CTest argument quoting). Fails if a WANT string is absent or a FORBID present.
+if(NOT EXISTS "${F}")
+  message(FATAL_ERROR "missing ${F}")
+endif()
+file(READ "${F}" txt)
+foreach(w ${WANT})
+  string(REPLACE "+" " " w "${w}")
+  string(FIND "${txt}" "${w}" pos)
+  if(pos EQUAL -1)
+    message(FATAL_ERROR "'${w}' not found in ${F}")
+  endif()
+endforeach()
+foreach(w ${FORBID})
+  string(REPLACE "+" " " w "${w}")
+  string(FIND "${txt}" "${w}" pos)
+  if(NOT pos EQUAL -1)
+    message(FATAL_ERROR "'${w}' found in ${F}")
+  endif()
+endforeach()
+message(STATUS "ok: ${F}")

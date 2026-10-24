@@ -84,6 +84,24 @@ if(EXISTS ${R}/eep_h_elastic_norad_A/eep_h_elastic_norad_A.hist)
     COMMAND simc_compare --a ${R}/eep_h_elastic_rad_A/eep_h_elastic_rad_A.hist
             --b ${R}/eep_h_elastic_rad_A/eep_h_elastic_rad_A.hist --empty-tree-b
             --out ${T}/one_tree_empty --config ${CFG} --no-pdf --expect FAIL)
+  # P12.3 (D-053): Fortran A vs B with the wtcontr sigma from the pass_cuts subset (SIDIS, pion) -> PASS, and the
+  # subset reproduces each run's wtcontr (no "pass_cuts subset of the tree gives wtcontr" warning)
+  foreach(tag sidis_h_k1_pip_rad pion_h_k1_rad_dec1)
+    if(EXISTS ${R}/${tag}_B/${tag}_B.hist)
+      add_test(NAME compare_FvsF_${tag}
+        COMMAND simc_compare --a ${R}/${tag}_A/${tag}_A.hist --b ${R}/${tag}_B/${tag}_B.hist
+                --label-a ${tag}_A --label-b ${tag}_B --out ${T}/FvsF_${tag} --config ${CFG} --no-pdf --expect PASS)
+    endif()
+  endforeach()
+  foreach(tag eep_h_elastic_rad sidis_h_k1_pip_rad pion_h_k1_rad_dec1)
+    if(EXISTS ${R}/${tag}_B/${tag}_B.hist)
+      add_test(NAME compare_wtcontr_subset_${tag}
+        COMMAND ${CMAKE_COMMAND} -DF=${T}/FvsF_${tag}/summary.txt
+                -DWANT=A+pass_cuts+subset,+compat+window\;B+pass_cuts+subset,+compat+window
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check_wtcontr_subset.cmake)
+      set_tests_properties(compare_wtcontr_subset_${tag} PROPERTIES DEPENDS compare_FvsF_${tag})
+    endif()
+  endforeach()
 else()
   message(STATUS "reference runs not found under ${R}: compare self-tests not registered")
 endif()
@@ -96,6 +114,25 @@ if(EXISTS ${R}/acc_phsp_K2_A/acc_phsp_K2_A.hist AND EXISTS ${_K2C}/cpp_acc_phsp_
   add_test(NAME compare_both_trees_empty
     COMMAND simc_compare --a ${R}/acc_phsp_K2_A --b ${_K2C}/cpp_acc_phsp_K2_A.summary.json
             --label-a F_K2_A --label-b cpp_K2_A --out ${T}/both_trees_empty --config ${CFG} --no-pdf --expect PASS)
+endif()
+# P12.3: a C++ compat run compared with the wrong mode (--mode-b corrected) is detected: its pass_cuts subset no longer
+# reproduces its wtcontr (warning); with --mode-b compat it does. (The verdict is a deterministic FAIL: Ngen 20000 vs 100000.)
+set(_SB ${SIMC_BASELINE_DIR}/31b4232_glibc243_sidis_h_k1_pip_rad_n20k_s4242)
+if(EXISTS ${R}/sidis_h_k1_pip_rad_A/sidis_h_k1_pip_rad_A.hist AND EXISTS ${_SB}/dir_sidis_h_k1_pip_rad_s4242.summary.json)
+  foreach(m compat corrected)
+    add_test(NAME compare_wtcontr_mode_${m}
+      COMMAND simc_compare --a ${R}/sidis_h_k1_pip_rad_A/sidis_h_k1_pip_rad_A.hist
+              --b ${_SB}/dir_sidis_h_k1_pip_rad_s4242.summary.json --mode-b ${m}
+              --out ${T}/wtcontr_mode_${m} --config ${CFG} --no-pdf --expect FAIL)   # Ngen 20000 vs 100000: det FAIL
+  endforeach()
+  add_test(NAME compare_wtcontr_mode_compat_consistent
+    COMMAND ${CMAKE_COMMAND} -DF=${T}/wtcontr_mode_compat/summary.txt -DWANT=B+pass_cuts+subset,+compat+window
+            -DFORBID=pass_cuts+subset+of+the+tree+gives -P ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check_wtcontr_subset.cmake)
+  add_test(NAME compare_wtcontr_mode_corrected_detected
+    COMMAND ${CMAKE_COMMAND} -DF=${T}/wtcontr_mode_corrected/summary.txt -DWANT=B:+pass_cuts+subset+of+the+tree+gives+wtcontr
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check_wtcontr_subset.cmake)
+  set_tests_properties(compare_wtcontr_mode_compat_consistent PROPERTIES DEPENDS compare_wtcontr_mode_compat)
+  set_tests_properties(compare_wtcontr_mode_corrected_detected PROPERTIES DEPENDS compare_wtcontr_mode_corrected)
 endif()
 # P7.4: a Fortran tree with a NaN event (K2 norad, D-028 F2): reported, excluded, identical to itself
 if(EXISTS ${R}/eep_h_K2_norad_A/eep_h_K2_norad_A.hist)

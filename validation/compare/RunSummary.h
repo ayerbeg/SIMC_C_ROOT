@@ -56,6 +56,18 @@ struct RunSummary {
     std::string treeName = "h10";
     std::string weightBranch = "Weight";
 
+    // pass_cuts window (simc.f:229-241), task P12.3 (D-053): SPedge as the .hist "Input Spectrometer Limits" / the JSON
+    // "spedge" print it (already widened by slop%MC, init.f:209-216) and slop%MC%*%used (delta %, angles mr).
+    // Index: 0 e.delta, 1 e.yptar, 2 e.xptar, 3 p.delta, 4 p.yptar, 5 p.xptar.
+    bool has_spedge = false, has_slop = false;
+    double spedge_min[6] = {0, 0, 0, 0, 0, 0}, spedge_max[6] = {0, 0, 0, 0, 0, 0};
+    double slop_used[6] = {0, 0, 0, 0, 0, 0};
+    int electron_arm = 0;            ///< 0 = unknown
+    /// Which pass_cuts window the run used: 1 = the Fortran one (simc.f:237 quirk, D-006: the p-arm delta max is
+    /// SPedge%e%delta%max), 0 = the corrected one, -1 = unknown. A .hist is 1; a JSON reads run.fortran_compat if
+    /// present; simc_compare --mode-a/--mode-b override.
+    int fortran_compat = -1;
+
     std::vector<std::string> warnings;
 
     const Scalar* scalar(const std::string& k) const {
