@@ -106,6 +106,7 @@ add_subdirectory(src/physics/pion)        # pion cross-section models, transform
 add_subdirectory(src/physics/kaon)        # kaon cross sections (peeK, Saghai/factorized, fint), "kaon" model (P10.1)
 add_subdirectory(src/physics/delta)       # doing_delta: peedelta, "delta" model (P11.1)
 add_subdirectory(src/physics/sidis)       # doing_semi: peepiX, CTEQ5, fDSS, F1F2IN21, "sidis" model (P12.1)
+add_subdirectory(src/physics/rho)         # doing_rho: peerho ("rho" model), generate_rho, rho_decay (P13.1)
 add_subdirectory(src/radiation)           # IRadiator "simc_rad": radc.f, brem.f, radc_init_ev (P5.1)
 add_subdirectory(src/reactions)           # IBeam "standard", IReaction "hydrogen_elastic"/"phase_space": event.f (P4.1)
 add_subdirectory(src/driver)              # simc.f: montecarlo (P7.1), main loop + normalisation (P7.2)
