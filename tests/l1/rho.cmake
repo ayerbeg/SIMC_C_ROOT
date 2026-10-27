@@ -10,3 +10,6 @@ target_compile_options(test_l1_rho PRIVATE -Wall -Wextra -pedantic)
 add_test(NAME rho_sanity COMMAND test_l1_rho sanity)
 add_test(NAME rho_setup COMMAND test_l1_rho setup ${SIMC_REFERENCE_DIR}/runs/pion_h_k1_rad_dec1_A/pion_h_k1_rad_dec1_A.inp)
 set_tests_properties(rho_sanity rho_setup PROPERTIES SKIP_RETURN_CODE 77 LABELS unit)
+# P13.1 R1/R2 (FORTRAN-BUG, corrected by default): both modes
+add_test(NAME fortran_diff_P131_R1_R2_rho COMMAND test_l1_rho fortran_diff)
+set_tests_properties(fortran_diff_P131_R1_R2_rho PROPERTIES LABELS "fortran_diff;unit")

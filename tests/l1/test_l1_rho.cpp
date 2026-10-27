@@ -4,6 +4,7 @@
 // Modes:
 //   sanity                     kinematic identities, RNG order and counts, failure paths, the R1/R2 switches, the
 //                              decay frame, the plug-in (no Fortran tables needed)
+//   fortran_diff               P13.1 R1/R2 in both modes
 //   setup <pion .inp>          the rho set-up from a pion H input switched to doing_rho: flags, Mh, doing_decay accepted,
 //                              rho + pion refused, the default pipeline (physics "rho"), checkSupported / model init
 // Bitwise L1 against the P13.F1 tables (reference/functions/rho/) is added when the tables exist.
@@ -334,6 +335,62 @@ int sanity() {
     return nfail ? 1 : 0;
 }
 
+// P13.1 R1 and R2 (FORTRAN-BUG, corrected by default): both modes on a D-like and an H event.
+int fortranDiff() {
+    std::printf("rho fortran_diff P13.1 R1/R2\n");
+    const Event v0 = electronVertex(10600., 6000., 12.0 / K::degrad);
+    rho::GenerateRhoConfig gc;
+    gc.Mrec_struck = K::Mp;
+    gc.spec_p_P = 4000.;
+    // R2
+    for (const bool fixed : {true, false}) {
+        Event v = v0;
+        FermiMomentum pf;
+        pf.efer = K::Mp;
+        rho::RhoMassState g{};
+        double rm = 0;
+        ScriptedRandom rng;
+        rng.load({}, {0.6, 0.3, 0.7});
+        gc.mh2_final_fixed = fixed;
+        rho::generateRho(v, pf, g, rm, gc, rng);
+        check(fixed ? g.Mh2_final == g.Mh * g.Mh : g.Mh2_final == g.Mh,
+              std::string("R2 generate_rho.f:80 Mh2_final ") + (fixed ? "= Mh2 (corrected)" : "= Mh (compat)"));
+    }
+    // R1: H identical, D differs
+    Event v = v0;
+    FermiMomentum pfH;
+    pfH.efer = K::Mp;
+    rho::RhoMassState g{};
+    double rm = 0;
+    ScriptedRandom rng;
+    rng.load({}, {0.6, 0.3, 0.7});
+    gc.mh2_final_fixed = true;
+    rho::generateRho(v, pfH, g, rm, gc, rng);
+    rho::PeerhoConfig corr, compat;
+    corr.Mtar_struck = compat.Mtar_struck = K::Mp;
+    corr.targ_M = compat.targ_M = K::Mp;
+    compat.efer_from_common = false;
+    MainEvent mH;
+    mH.pfermi = pfH;
+    mH.phi_pq = phiPq(v);
+    MainEvent a = mH, b = mH;
+    check(rho::peerho(v, a, corr) == rho::peerho(v, b, compat) && a.davejac == b.davejac && a.pfermi.efer == b.pfermi.efer,
+          "R1 H: corrected == compat (bitwise)");
+    MainEvent mD = mH;
+    mD.pfermi.pfer = 200.;
+    mD.pfermi.pferx = 0.;
+    mD.pfermi.pfery = 0.6;
+    mD.pfermi.pferz = 0.8;
+    mD.pfermi.efer = K::Md - std::sqrt(K::Mn2 + 200. * 200.);
+    MainEvent c = mD, d = mD;
+    const double sc = rho::peerho(v, c, corr), sd = rho::peerho(v, d, compat);
+    std::printf("  D-like event: corrected %.10g, compat %.10g (ratio %.6f)\n", sc, sd, sc / sd);
+    check(sc != sd && c.pfermi.efer == mD.pfermi.efer && d.pfermi.efer == std::sqrt(200. * 200. + K::Mp2),
+          "R1 D: corrected keeps the generated efer, compat writes the on-shell efer back");
+    std::printf("%s (%d failure%s)\n", nfail ? "FAIL" : "PASS", nfail, nfail == 1 ? "" : "s");
+    return nfail ? 1 : 0;
+}
+
 int setup(const std::string& inp) {
     std::printf("rho set-up (P13.1) from %s\n", inp.c_str());
     SimcParameters p;
@@ -423,11 +480,12 @@ int main(int argc, char** argv) {
     const std::string what = argc > 1 ? argv[1] : "";
     try {
         if (what == "sanity") return sanity();
+        if (what == "fortran_diff") return fortranDiff();
         if (what == "setup" && argc > 2) return setup(argv[2]);
     } catch (const std::exception& e) {
         std::printf("ERROR: %s\n", e.what());
         return 1;
     }
-    std::fprintf(stderr, "usage: test_l1_rho sanity | setup <pion .inp>\n");
+    std::fprintf(stderr, "usage: test_l1_rho sanity | fortran_diff | setup <pion .inp>\n");
     return 2;
 }
