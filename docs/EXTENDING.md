@@ -231,7 +231,7 @@ private:
 SIMC_REGISTER(simc::IPhysicsModel, "flat", FlatModel)
 ```
 `{"pipeline": {"physics": {"type": "flat", "value": 2.5}}}`. Templates: `src/physics/proton/ProtonModels.cpp`;
-`src/physics/pion/PionModel.cpp`, `src/physics/kaon/KaonModel.cpp` and `src/physics/sidis/SidisModel.cpp` (models that also
+`src/physics/pion/PionModel.cpp`, `src/physics/kaon/KaonModel.cpp`, `src/physics/sidis/SidisModel.cpp` and `src/physics/rho/RhoModel.cpp` (models that also
 write `main` through `sigccMain` and read data tables, JSON key `data_dir`; `sidis` also refuses unsupported input
 combinations in `init()`, `sidis::checkSupported`).
 

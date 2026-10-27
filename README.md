@@ -12,7 +12,7 @@ pion electroproduction (π+/π−/π0 on H, D and A, quasifree, coherent and π 
 decay in flight or survival weight; task P10), (e,e'p)π in the Delta region (`doing_delta`, H, and D/A in the corrected
 mode; task P11), with and without radiation, and phase-space (`doing_phsp`) runs, HMS and SHMS arms. Semi-inclusive
 (e,e'π±)X and (e,e'K±)X on H, D and A (`doing_semi`; semi_physics.f:peepiX with CTEQ5M, fDSS and F1F2IN21; physics model
-`sidis`, P12.1, reaction `sidis_production`, P12.2) is ported; π0 SIDIS waits for the calorimeter arm (P14). Other reactions and the
+`sidis`, P12.1, reaction `sidis_production`, P12.2) is ported; π0 SIDIS waits for the calorimeter arm (P14). Exclusive ρ0 (`doing_rho`): the physics model `rho` (rho_physics.f:peerho) and the generate_rho/rho_decay kernels are ported (P13.1); the reaction is P13.2. Other reactions and the
 SOS/HRS/calorimeter arms are refused with a `NotPorted` error (later phases).
 
 **Delta runs: the weight contains no cross section.** As in the Fortran (physics_delta.f:132, "Need new xsec model."),

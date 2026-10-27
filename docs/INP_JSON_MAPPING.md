@@ -157,3 +157,22 @@ weight for kaons only, event.f:1560), `hadron_arm` (the aerogel distance of the 
 JSON (physics-model keys, all optional): `"pipeline": {"physics": {"type": "sidis", "data_dir": "<dir with cteq5m.tbl
 and KANLO.GRID>", "verbose": true}}` (default `data/sidis`). The default pipeline chooses the reaction `sidis_production` and the model `sidis` for doing_semi. A ≥ 3 kaon SIDIS
 runs in the default mode (the Fortran STOPs when the .hist is written, D-051 F14).
+
+## Rho inputs (doing_rho, task P13.1)
+
+Exclusive ρ0 electroproduction, p(e,e'ρ0)p with ρ0 → π+π−, one detected pion (generate_rho.f, rho_decay.f,
+rho_physics.f:peerho). The inputs are the standard ones; no rho-specific variable exists in the .inp:
+
+| inputs | Fortran (dbase.f) | SIMC++ |
+|---|---|---|
+| `doing_rho=1`, `targ%A=1` | doing_hydrho (l.211), Mh = Mrho (l.210), Mtar_struck = Mrec_struck = Mp (l.315-317) | model `rho` (P13.1); the reaction is task P13.2 (until then the run stops with `NotPorted`) |
+| `doing_rho=1`, `targ%A=2` / `3` | doing_deutrho / doing_herho (l.212-213: `.eq.3`; A ≥ 4 STOPs at l.871) | as H; Fermi motion as for pions (event.f:330-371). `fortran_compat` keeps the on-shell efer of peerho (P13.1 R1) |
+| `doing_hplus=1` / `0` | sign_hadron = +1 / −1 (l.318-322): the detected pion is π+ / π− | same (the rho kinematics do not depend on it) |
+| `doing_decay=1`, `ctau` | the decay pion decays in flight in the spectrometer (Mh2 = Mpi2 after rho_decay) | accepted (the set-up check of D-037 F9 treats the rho run as a pion run) |
+| `hadron_arm` | rho_decay.f:223-259: 1, 3 beam right; 2, 4, 5 beam left; anything else STOPs | 1 (HMS) and 5 (SHMS); 2/3/4 (SOS, HRS) → `NotPorted` (P14); 7/8 → input error |
+| `doing_phsp=1` | doing_rho is switched off (l.233): a phase-space run with the rho mass | as the Fortran (no rho model) |
+| `doing_rho=1` with `doing_pion`/`doing_kaon`/`doing_delta`/`doing_semi` | the other reaction runs and its hadron is still "decayed" as a rho (event.f:420-421) | refused at start-up (std::invalid_argument) |
+
+The rho model has no data files and no options besides `verbose`: `"pipeline": {"physics": {"type": "rho"}}` (the default
+for doing_rho). The fort.222 diagnostics of peerho are kept in the model (`RhoModel::diagnostics()`) and printed when
+verbose. The ntuple columns `Mrho` and `Thrho` (results_write.f:221-228) come from `NtupVars::rhomass/rhotheta`.
