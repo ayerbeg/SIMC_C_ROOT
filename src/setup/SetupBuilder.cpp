@@ -230,6 +230,13 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
     SimcParameters pre = p;
     pre.doing_phsp = false;
     const ReactionFlags f0 = DeriveReactionFlags(pre);
+    // P13.1: doing_rho together with another reaction flag. dbase.f:136-215 takes the first branch of its if-chain
+    // (pion, kaon, delta, semi) but leaves doing_rho set, so event.f:420-421 still calls rho_decay on that hadron
+    // (and complete_main uses the other cross section): no meaningful run. Refused in both modes (input error).
+    if (p.doing_rho && !p.doing_phsp && (p.doing_pion || p.doing_kaon || p.doing_delta || p.doing_semi))
+        throw std::invalid_argument(
+            "doing_rho = 1 together with doing_pion/doing_kaon/doing_delta/doing_semi: the Fortran runs the other "
+            "reaction and still decays its hadron as a rho (dbase.f:136-215, event.f:420-421). Set only one reaction flag.");
     if (f0.doing_pion) {                         // dbase.f:138-139
         s.Mh = K::Mpi;
         if (f0.doing_pizero) s.Mh = K::Mpi0;
@@ -266,7 +273,10 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
     // configuration is rejected here with a clear message (and project/transp never check a non-pi/K particle for
     // decay). fortran_compat keeps the Fortran (simc::FortranStop at the first decay).
     // (the same pi/K test as optics::decaysInFlight and project.f:78-79)
-    const bool hadronDecays = std::fabs(std::sqrt(s.Mh2) - K::Mpi) < 2 || std::fabs(std::sqrt(s.Mh2) - K::Mk) < 2;
+    // doing_rho (P13.1): the detected hadron is the pi+/pi- of rho_decay.f (Mh2 = Mpi2 after the decay, rho_decay.f:279-282),
+    // which is what project.f/transp.f see at the decay test.
+    const bool hadronDecays = std::fabs(std::sqrt(s.Mh2) - K::Mpi) < 2 || std::fabs(std::sqrt(s.Mh2) - K::Mk) < 2 ||
+                              (f0.doing_rho && !p.doing_phsp);
     if (p.doing_decay && !s.fortran_compat && !hadronDecays) {
         char b[320];
         std::snprintf(b, sizeof b,

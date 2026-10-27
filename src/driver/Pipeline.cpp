@@ -96,6 +96,8 @@ PipelineConfig PipelineConfig::Defaults(const RunSetup& s) {
         p.physics.type = "delta";   // physics_delta.f:peedelta (l.1512)
     } else if (f.doing_semi && !f.doing_phsp) {
         p.physics.type = "sidis";   // semi_physics.f:peepiX (l.1521)
+    } else if (f.doing_rho && !f.doing_phsp) {
+        p.physics.type = "rho";   // rho_physics.f:peerho (l.1516); the rho reaction is task P13.2
     } else {
         p.physics.type = "sigep";
     }
