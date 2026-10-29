@@ -24,8 +24,8 @@ Each sink accepts an optional JSON config `{"file": "..."}`.
 - Implemented layouts: the (e,e'p) family (`doing_hyd_elast`, `doing_deuterium`, `doing_heavy`), 46 columns. This includes
   `doing_phsp`, which keeps `doing_hyd_elast`, so the acceptance runs also have these 46 columns. Exclusive pion production
   (`doing_pion`, P9.2): 53 columns, 65 with `doing_pizero` (§1b). Kaon production (`doing_kaon`, P10.2): 55 columns (§1c).
-  Delta region (`doing_delta`, P11.1): the 53 pion columns (§1d). SIDIS (`doing_semi`, P12.2): 56 columns (§1e). The rho
-  layout (NtupleInit.f l.191-295) will come with that reaction; `beginRun` throws for it (and for `using_tgt_field` and π0 SIDIS). The layout is chosen from the run
+  Delta region (`doing_delta`, P11.1): the 53 pion columns (§1d). SIDIS (`doing_semi`, P12.2): 56 columns (§1e). Rho
+  (`doing_rho`, P13.2): 59 columns (§1f). `beginRun` throws for `using_tgt_field` and π0 SIDIS. The layout is chosen from the run
   flags (`NtupleColumnsFor(setup)`, `FillNtuple`).
 - **Arm assignment** (results_write.f:64 and 89): `hs*` = the spectrometer on the beam **right** (HMS, HRSR) and `ss*` = the
   one on the **left** (SOS, HRSL, SHMS).
@@ -186,6 +186,29 @@ Columns 1-33 as the (e,e'p) layout, then:
 | 56 | `phipqi` | `main.phi_pq` | rad |
 
 The two SIDIS captures prove the 56 columns bit for bit (`l1_simcrun_replay_semi_{h,d}`).
+
+### 1f. Rho layout (doing_rho; NtupleInit.f:192-264, results_write.f:187-229; task P13.2)
+
+The 56 SIDIS columns (§1e, same code: results_write.f:187-215 is shared by doing_semi and doing_rho) with the rho meaning
+below, then 3 more (D-057 F14):
+
+| # | branch | source (rho) | units |
+|---|---|---|---|
+| 9-24 | P-arm `*i` columns | `orig.p`: the detected DECAY PION (rho_decay) | |
+| 36 | `t` | `main.ntup.t/1e6`: the PION t (complete_recon_ev with Mh2 = Mpi2) | GeV² |
+| 39 | `siglab` | `main.sigcc` = peerho of the RHO vertex | µb/MeV/sr² |
+| 40, 45, 47, 55 | `sigcent`, `zi`, `pt2i`, `xfermi` | never assigned for rho: 0 | |
+| 43 | `Mhadron` | `sqrt(Mh2_final)` = Mpi (139.57018) | MeV |
+| 51 | `sighad` | `main.ntup.sigcm` = peerho dσ/dΩ_cm | µb/sr |
+| 52, 53 | `jacobian`, `centjac` | `main.davejac` (not applied), `main.johnjac` (peerho) | |
+| 54 | `pfermi` | NaN for every H event in fortran_compat (D-051 F3; 0 in the default mode), ±0 for D/³He (pfer = 0, D-057 F4) | GeV/c |
+| 56 | `phipqi` | `main.phi_pq` of the rho | rad |
+| 57 | `Mrho` | `main.ntup.rhomass`: the Breit-Wigner rho mass of the try (generate_rho.f:79) | MeV |
+| 58 | `Thrho` | `main.ntup.rhotheta`: the decay polar angle in the rho rest frame w.r.t. the LAB z axis (rho_decay.f:66; D-057 F8) | rad |
+| 59 | `mmnuc` | `main.ntup.mmA/1000` (missing mass, nucleus) | GeV |
+
+With `using_tgt_field` the Fortran adds 8 columns before Mrho (not ported). The two rho captures (and the full-run
+RANLUX replays) prove the 59 columns bit for bit (`l1_simcrun_replay_rho_{h,d}`).
 
 ## 2. Run summary JSON (RunSummarySink, hist2json)
 

@@ -12,7 +12,7 @@ pion electroproduction (π+/π−/π0 on H, D and A, quasifree, coherent and π 
 decay in flight or survival weight; task P10), (e,e'p)π in the Delta region (`doing_delta`, H, and D/A in the corrected
 mode; task P11), with and without radiation, and phase-space (`doing_phsp`) runs, HMS and SHMS arms. Semi-inclusive
 (e,e'π±)X and (e,e'K±)X on H, D and A (`doing_semi`; semi_physics.f:peepiX with CTEQ5M, fDSS and F1F2IN21; physics model
-`sidis`, P12.1, reaction `sidis_production`, P12.2) is ported; π0 SIDIS waits for the calorimeter arm (P14). Exclusive ρ0 (`doing_rho`): the physics model `rho` (rho_physics.f:peerho) and the generate_rho/rho_decay kernels are ported (P13.1); the reaction is P13.2. Other reactions and the
+`sidis`, P12.1, reaction `sidis_production`, P12.2) is ported; π0 SIDIS waits for the calorimeter arm (P14). Exclusive ρ0 electroproduction, ρ0 → π+π− with one detected pion (`doing_rho`, H/D/³He; model `rho` = rho_physics.f:peerho, P13.1; reaction `rho_production`, P13.2) is ported. The
 SOS/HRS/calorimeter arms are refused with a `NotPorted` error (later phases).
 
 **Delta runs: the weight contains no cross section.** As in the Fortran (physics_delta.f:132, "Need new xsec model."),
@@ -96,7 +96,7 @@ ctest -L unit | -L l1 | -L replay | -L cli | -L regression | -L examples
 
 * `l1`: routine-level tables against the Fortran harness (`reference/functions/`).
 * `replay`: the complete driver fed with captured Fortran random streams reproduces the Fortran outputs bit for bit.
-* `regression`: the outputs of the standard runs (seed 4242; H(e,e'p), D/Fe(e,e'p), π+ H, π− D, K+Λ H, K+Σ− D, H(e,e'p)π Delta, H(e,e'π+)X) must equal the baseline outputs of
+* `regression`: the outputs of the standard runs (seed 4242; H(e,e'p), D/Fe(e,e'p), π+ H, π− D, K+Λ H, K+Σ− D, H(e,e'p)π Delta, H(e,e'π+)X, H(e,e'π+)[ρ]) must equal the baseline outputs of
   their reference commits (`SIMC++_Project/baselines/<commit>_*`), in both modes: every tree branch and entry bitwise, the text outputs apart from time stamps.
   Every refactor must keep these green.
 * `tools/check_all.sh [--commit REV]`: a clean build of everything plus both test suites, logged in

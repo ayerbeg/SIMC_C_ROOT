@@ -92,7 +92,7 @@ finish: Normalise → RunReport → RunSummary → sinks (endRun; IReportSink::w
 |---|---|
 | l.53-101 min_max_init, dbase_read, radc_init, targetfac, luminosity | `BuildRunSetup` (P2) in `SimcRun::initialise` |
 | l.85 calculate_central (l.1143-1309) | `driver::calculateCentral` (Central.h); central%rad = `IRadiator::currentValues()` |
-| l.105-110 sgrnd(random_seed) | the `rng` stage (`mt64`, seeded with random_seed) |
+| l.105-110 sgrnd(random_seed) | the `rng` stage (`mt64`, seeded with random_seed; or `ranlux`, the Fortran RANLUX stream itself, P13.2) |
 | l.169-352 loop | `SimcRun::step` (one try) |
 | l.203 generate | `reactions::generateEvent(beam, reaction, ...)` |
 | l.211 montecarlo | `MonteCarlo::run` |
