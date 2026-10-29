@@ -40,6 +40,7 @@ void GenHistSink::book(const std::string& name, const HistAxis& ax) {
 
 void GenHistSink::beginRun(const RunSetup& setup) {
     setup_ = setup;
+    rhoGenFromOrig_ = setup.flags.doing_rho && !setup.fortran_compat;   // D-057 F18
     if (file_.empty()) file_ = setup.output_dir + "/" + setup.run_name + ".gen.root";
     const auto& H = setup.hist;
     for (const char* set : {"geni", "gen", "recon"}) {
@@ -67,15 +68,18 @@ void GenHistSink::inc(const std::string& name, double val, double weight) {
     h->SetEntries(entries + 1);   // SetBinContent changes fEntries; keep "number of inc() calls counted"
 }
 
-void GenHistSink::fill(const MainEvent& main, const Event& vertex, const Event& /*orig*/, const Event& recon,
+void GenHistSink::fill(const MainEvent& main, const Event& vertex, const Event& orig, const Event& recon,
                        bool success) {
+    // FORTRAN-BUG(D-057 F18): original Fortran simc.f:259-261, 283-285 fill the P-arm histograms with vertex%p, which for
+    // doing_rho is the rho (its lab theta/phi in the slope fields); corrected: the decay pion (orig%p).
+    const ArmFull& hp = GeneratedHadronArm(rhoGenFromOrig_, vertex, orig);
     // simc.f:253-262 — every tried event
     inc("geni_e_delta", vertex.e.delta, 1.0);
     inc("geni_e_yptar", vertex.e.yptar, 1.0);
     inc("geni_e_xptar", -vertex.e.xptar, 1.0);
-    inc("geni_p_delta", vertex.p.delta, 1.0);
-    inc("geni_p_yptar", vertex.p.yptar, 1.0);
-    inc("geni_p_xptar", -vertex.p.xptar, 1.0);
+    inc("geni_p_delta", hp.delta, 1.0);
+    inc("geni_p_yptar", hp.yptar, 1.0);
+    inc("geni_p_xptar", -hp.xptar, 1.0);
     inc("geni_Em", vertex.Em, 1.0);
     inc("geni_Pm", vertex.Pm, 1.0);
     if (!success) return;
@@ -93,9 +97,9 @@ void GenHistSink::fill(const MainEvent& main, const Event& vertex, const Event& 
     inc("gen_e_delta", vertex.e.delta, 1.0);
     inc("gen_e_yptar", vertex.e.yptar, 1.0);
     inc("gen_e_xptar", -vertex.e.xptar, 1.0);
-    inc("gen_p_delta", vertex.p.delta, 1.0);
-    inc("gen_p_yptar", vertex.p.yptar, 1.0);
-    inc("gen_p_xptar", -vertex.p.xptar, 1.0);
+    inc("gen_p_delta", hp.delta, 1.0);
+    inc("gen_p_yptar", hp.yptar, 1.0);
+    inc("gen_p_xptar", -hp.xptar, 1.0);
     inc("gen_Em", vertex.Em, 1.0);
 }
 

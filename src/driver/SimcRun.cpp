@@ -278,7 +278,10 @@ void SimcRun::step() {
             T.wtcontribute = T.wtcontribute + main.weight;
             const double de = r.e.delta - main.SP.e.delta, xe = r.e.xptar - v.e.xptar, ye = r.e.yptar - v.e.yptar,
                          ze = r.e.z - main.SP.e.z;
-            const double dp = r.p.delta - main.SP.p.delta, xp = r.p.xptar - v.p.xptar, yp = r.p.yptar - v.p.yptar,
+            // FORTRAN-BUG(D-057 F18): original Fortran simc.f:316-317, 324-325 use vertex%p%xptar/yptar, the RHO's lab
+            // theta/phi for doing_rho (the .hist 'Hadron arm' resolution lines); corrected: the decay pion (orig%p).
+            const ArmFull& hp = GeneratedHadronArm(S.flags.doing_rho && !S.fortran_compat, v, ev.orig);
+            const double dp = r.p.delta - main.SP.p.delta, xp = r.p.xptar - hp.xptar, yp = r.p.yptar - hp.yptar,
                          zp = r.p.z - main.SP.p.z;
             T.sumerr.e.delta = T.sumerr.e.delta + de;
             T.sumerr.e.xptar = T.sumerr.e.xptar + xe;
@@ -300,7 +303,7 @@ void SimcRun::step() {
         }
         // l.332-333 limits_update (Egamma_used from the radiator)
         reactions::limitsUpdate(main, ev.vertex, ev.orig, ev.recon, S.flags, radiator_->photonEnergies(), T.contrib,
-                                T.slop);
+                                T.slop, S.flags.doing_rho && !S.fortran_compat);   // D-057 F18
     }
 
     // l.341-347

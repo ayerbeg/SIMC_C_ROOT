@@ -22,6 +22,9 @@ std::vector<std::string> checkSupported(const RunSetup& s) {
     if (!f.doing_rho)
         v.push_back("rho: doing_rho is not set (the \"rho\" cross section is rho_physics.f:peerho; with doing_phsp the "
                     "Fortran switches doing_rho off, dbase.f:227-234)");
+    if (f.doing_rho && f.doing_pizero)
+        v.push_back("rho: doing_pizero with doing_rho: results_write.f:230-236 overwrites the rho ntuple columns Mrho, "
+                    "Thrho, mmnuc with the pi0 photons; set doing_pizero = 0");
     const int arm = s.params.hadron_arm;
     if (arm == 2 || arm == 3 || arm == 4)
         v.push_back(std::string(kNotPortedTag) + " rho: hadron_arm = " + std::to_string(arm) +

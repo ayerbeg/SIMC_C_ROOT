@@ -233,6 +233,13 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
     // P13.1: doing_rho together with another reaction flag. dbase.f:136-215 takes the first branch of its if-chain
     // (pion, kaon, delta, semi) but leaves doing_rho set, so event.f:420-421 still calls rho_decay on that hadron
     // (and complete_main uses the other cross section): no meaningful run. Refused in both modes (input error).
+    // FORTRAN-BUG(D-057 F16): original Fortran dbase.f:209-214, 875-876: no doing_*rho flag for nint(A) >= 4, so the run
+    // STOPs ('I don't have ANY idea what (e,e'rho) we're doing!!!', exit status 0) after printing E_bind = -1e10;
+    // refused here at input in both modes with a clear message (there is no rho model for A >= 4).
+    if (p.doing_rho && !p.doing_phsp && (A >= 4 || A < 1))
+        throw std::invalid_argument("doing_rho = 1 with targ%A = " + std::to_string(p.targ.A) +
+                                    ": exclusive rho production is only set up for H, D and 3He (dbase.f:209-214; the "
+                                    "Fortran STOPs at dbase.f:876 'I don't have ANY idea what (e,e'rho) we're doing!!!')");
     if (p.doing_rho && !p.doing_phsp && (p.doing_pion || p.doing_kaon || p.doing_delta || p.doing_semi))
         throw std::invalid_argument(
             "doing_rho = 1 together with doing_pion/doing_kaon/doing_delta/doing_semi: the Fortran runs the other "

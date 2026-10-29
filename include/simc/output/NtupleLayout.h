@@ -78,6 +78,13 @@ const std::vector<NtupleColumn>& SemiNtupleColumns();
 bool FillSemiNtuple(const RunSetup& setup, const MainEvent& main, const Event& vertex, const Event& orig,
                     const Event& recon, std::vector<double>& ntu);
 
+// ------------------------------------------------------------------------------------------- rho layout (P13.2)
+constexpr int kRhoNtupleSize = 59;   ///< NtupleInit.f:192-264 (doing_rho, no target field): the 56 semi + Mrho, Thrho, mmnuc
+const std::vector<NtupleColumn>& RhoNtupleColumns();
+/// results_ntu_write for doing_rho (results_write.f:187-228): FillSemiNtuple + ntup%rhomass, ntup%rhotheta, ntup%mmA/1000.
+bool FillRhoNtuple(const RunSetup& setup, const MainEvent& main, const Event& vertex, const Event& orig,
+                   const Event& recon, std::vector<double>& ntu);
+
 /// The layout of a run: the columns and the filler (FillEepNtuple or FillPionNtuple). Throws std::runtime_error for
 /// the layouts that are not implemented (semi/rho, kaon, delta, target field).
 const std::vector<NtupleColumn>& NtupleColumnsFor(const RunSetup& setup);

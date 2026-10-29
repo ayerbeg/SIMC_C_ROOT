@@ -37,3 +37,9 @@ target_compile_options(simcfw_reactions_delta PRIVATE -Wall -Wextra -pedantic)
 add_library(simcfw_reactions_sidis OBJECT sidis/SidisProduction.cpp)
 target_link_libraries(simcfw_reactions_sidis PUBLIC simcfw simcfw_reactions simcfw_reactions_pion simcfw_sidis)
 target_compile_options(simcfw_reactions_sidis PRIVATE -Wall -Wextra -pedantic)
+
+# simcfw_reactions_rho (task P13.2): IReaction "rho_production" (event.f doing_rho branches; the PionProduction plumbing
+# with generate_rho/rho_decay of simcfw_rho and the per-try COMMON /gnrl/ masses).
+add_library(simcfw_reactions_rho OBJECT rho/RhoProduction.cpp)
+target_link_libraries(simcfw_reactions_rho PUBLIC simcfw simcfw_reactions simcfw_reactions_pion simcfw_rho)
+target_compile_options(simcfw_reactions_rho PRIVATE -Wall -Wextra -pedantic)

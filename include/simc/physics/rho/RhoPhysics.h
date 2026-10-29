@@ -42,12 +42,9 @@
 namespace simc {
 namespace rho {
 
-/// Fortran: the mutable part of COMMON /gnrl/ (simulate.inc:42, 91) for doing_rho: Mh, Mh2 = INITIAL hadron mass
-/// (squared) and Mh2_final. dbase.f:210, 221-222 start them at Mrho; generate_rho sets the Breit-Wigner rho mass of the
-/// try, rho_decay the pion mass. The values persist from one try to the next (Fortran COMMON semantics).
-struct RhoMassState {
-    double Mh{0}, Mh2{0}, Mh2_final{0};
-};
+/// Fortran: the mutable part of COMMON /gnrl/ for doing_rho (core/Event.h HadronMass): generate_rho sets the
+/// Breit-Wigner rho mass of the try, rho_decay the pion mass; persistent from one try to the next.
+using RhoMassState = HadronMass;
 
 // --------------------------------------------------------------------------------------------- peerho
 /// The run constants peerho reads from COMMON blocks.

@@ -82,6 +82,8 @@ PipelineConfig PipelineConfig::Defaults(const RunSetup& s) {
         p.reaction.type = "delta_production";
     else if (f.doing_semi)   // (e,e'pi)X / (e,e'K)X on H, D, A (P12.2)
         p.reaction.type = "sidis_production";
+    else if (f.doing_rho)   // H/D/3He(e,e'rho), rho -> pi+ pi- (P13.2)
+        p.reaction.type = "rho_production";
     else
         p.reaction.type = "";   // not ported: SimcRun reports NotPorted with the reaction title
     // event.f:complete_main l.1444-1456
@@ -97,7 +99,7 @@ PipelineConfig PipelineConfig::Defaults(const RunSetup& s) {
     } else if (f.doing_semi && !f.doing_phsp) {
         p.physics.type = "sidis";   // semi_physics.f:peepiX (l.1521)
     } else if (f.doing_rho && !f.doing_phsp) {
-        p.physics.type = "rho";   // rho_physics.f:peerho (l.1516); the rho reaction is task P13.2
+        p.physics.type = "rho";   // rho_physics.f:peerho (l.1516)
     } else {
         p.physics.type = "sigep";
     }

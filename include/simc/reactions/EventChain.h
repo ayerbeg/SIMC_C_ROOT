@@ -64,8 +64,10 @@ void updateRange(double val, Range& range);
 void updateSlopRange(double val, SlopItem& slop);
 /// Fortran: event.f:limits_update (l.1-91). Egamma_used = IRadiator::photonEnergies() (Fortran Egamma_used(1:3) at
 /// [0..2]).
+/// rho_gen_from_orig: D-057 F18 (doing_rho, corrected mode): the GENERATION P-arm values from orig%p (the decay pion).
 void limitsUpdate(const MainEvent& main, const Event& vertex, const Event& orig, const Event& recon,
-                  const ReactionFlags& f, const std::array<double, 3>& Egamma_used, Contrib& contrib, Slops& slop);
+                  const ReactionFlags& f, const std::array<double, 3>& Egamma_used, Contrib& contrib, Slops& slop,
+                  bool rho_gen_from_orig = false);
 
 /// Outputs of jacobians.f:transform_to_cm.
 struct CmTransform {

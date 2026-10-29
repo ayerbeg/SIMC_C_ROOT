@@ -454,8 +454,11 @@ bool generateRad(const RadcRun& run, RadcState& st, MainEvent& main, Event& vert
     orig.e.P = orig.e.E;
     orig.e.delta = (orig.e.P - run.spec_e_P) / run.spec_e_P * 100.;
     orig.p.E = vertex.p.E - st.Egamma_used[3];
-    if (orig.p.E <= run.Mh) return false;
-    orig.p.P = std::sqrt(sq(orig.p.E) - run.Mh2);
+    // COMMON /gnrl/ Mh, Mh2: per try for doing_rho (the Breit-Wigner rho mass of generate_rho; task P13.2)
+    const double Mh = main.gnrl_per_event ? main.gnrl.Mh : run.Mh;
+    const double Mh2 = main.gnrl_per_event ? main.gnrl.Mh2 : run.Mh2;
+    if (orig.p.E <= Mh) return false;
+    orig.p.P = std::sqrt(sq(orig.p.E) - Mh2);
     orig.p.delta = (orig.p.P - run.spec_p_P) / run.spec_p_P * 100.;
 
     // l.503-508

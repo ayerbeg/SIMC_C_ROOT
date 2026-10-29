@@ -94,14 +94,16 @@ protected:
     bool kaon_{false};                 ///< doing_kaon instead of doing_pion (KaonProduction)
     bool doingDelta_{false};           ///< doing_delta instead of doing_pion (DeltaProduction, task P11.1)
     bool doingSemi_{false};            ///< doing_semi instead of doing_pion (SidisProduction, task P12.2)
+    bool doingRho_{false};             ///< doing_rho instead of doing_pion (RhoProduction, task P13.2)
 
-    /// event.f:720-786: main%W, epsilon, theta_pq, t, tmin, q2, phi_pq from the completed vertex.
+    /// event.f:720-786: main%W, epsilon, theta_pq, t, tmin, q2, phi_pq from the completed vertex (COMMON Mh2 = setup).
     void pionMainKinematics(MainEvent& main, const Event& vertex) const;
-
-private:
-
+    /// The same with the COMMON Mh2 given (doing_rho: the Breit-Wigner mass of the try).
+    void pionMainKinematics(MainEvent& main, const Event& vertex, double Mh2) const;
     std::string dataDir_;
     bool verbose_{true};
+
+private:
     double mrecStruck_{0};             ///< COMMON targ%Mrec_struck (overwritten per call for Delta final states)
     DeltaMassTable delta_;
     std::unique_ptr<nuclear::SfTable> sf_;   ///< doing_hepi: sf_lookup_init table for generate_em

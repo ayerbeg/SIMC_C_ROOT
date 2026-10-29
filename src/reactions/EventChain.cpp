@@ -75,14 +75,19 @@ void updateSlopRange(double val, SlopItem& slop) {
 
 // Fortran: event.f:limits_update (l.1-91)
 void limitsUpdate(const MainEvent& main, const Event& vertex, const Event& orig, const Event& recon,
-                  const ReactionFlags& f, const std::array<double, 3>& Egamma_used, Contrib& contrib, Slops& slop) {
+                  const ReactionFlags& f, const std::array<double, 3>& Egamma_used, Contrib& contrib, Slops& slop,
+                  bool rho_gen_from_orig) {
+    // FORTRAN-BUG(D-057 F18): original Fortran event.f:22-24 update_range(vertex%p%delta/yptar/xptar, contrib%gen%p ...):
+    // for doing_rho vertex%p is the rho with its lab theta/phi in the slope fields ('Limiting VERTEX P arm' lines of
+    // the .hist); corrected: the decay pion (orig%p).
+    const ArmFull& hp = GeneratedHadronArm(rho_gen_from_orig, vertex, orig);
     // GENERATION values
     updateRange(vertex.e.delta, contrib.gen.e.delta);
     updateRange(vertex.e.yptar, contrib.gen.e.yptar);
     updateRange(vertex.e.xptar, contrib.gen.e.xptar);
-    updateRange(vertex.p.delta, contrib.gen.p.delta);
-    updateRange(vertex.p.yptar, contrib.gen.p.yptar);
-    updateRange(vertex.p.xptar, contrib.gen.p.xptar);
+    updateRange(hp.delta, contrib.gen.p.delta);
+    updateRange(hp.yptar, contrib.gen.p.yptar);
+    updateRange(hp.xptar, contrib.gen.p.xptar);
     updateRange(main.Trec, contrib.gen.Trec);
     if (f.doing_deuterium || f.doing_pion || f.doing_kaon || f.doing_delta || f.doing_rho)
         updateRange(vertex.e.E - main.Ein_shift, contrib.gen.sumEgen);

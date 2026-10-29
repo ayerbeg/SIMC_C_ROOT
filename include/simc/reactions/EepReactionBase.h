@@ -81,6 +81,10 @@ public:
     long ntried() const { return ntried_; }
 
 protected:
+    /// COMMON /gnrl/ Mh2 as complete_recon_ev sees it (event.f:1329 ntup%t): the set-up value; the rho reaction returns
+    /// the per-try value (the decay pion, task P13.2).
+    virtual double commonMh2() const { return setup().Mh2; }
+
     explicit EepReactionBase(std::string name);
     const RunSetup& setup() const;
 

@@ -107,9 +107,11 @@ void PionProduction::configure(const Json& config, const SimcParameters& params)
 void PionProduction::init(const StageContext& ctx) {
     const RunSetup& s = ctx.setup;
     const ReactionFlags& f = s.flags;
-    if (doingSemi_ ? !f.doing_semi : (doingDelta_ ? !f.doing_delta : (kaon_ ? !f.doing_kaon : !f.doing_pion)))
+    if (doingRho_ ? !f.doing_rho
+                  : (doingSemi_ ? !f.doing_semi : (doingDelta_ ? !f.doing_delta : (kaon_ ? !f.doing_kaon : !f.doing_pion))))
         throw std::invalid_argument("reaction '" + name_ + "': the input is not " +
-                                    (doingSemi_ ? std::string("semi-inclusive production (doing_semi)") :
+                                    (doingRho_ ? std::string("exclusive rho production (doing_rho)") :
+                                     doingSemi_ ? std::string("semi-inclusive production (doing_semi)") :
                                      doingDelta_ ? std::string("(e,e'p)pi in the Delta region (doing_delta)")
                                             : (kaon_ ? std::string("kaon production (doing_kaon)")
                                                      : std::string("exclusive pion production (doing_pion)"))));
@@ -245,6 +247,10 @@ bool PionProduction::generate(MainEvent& main, Event& vertex, Event& orig, IRand
 
 // Fortran: event.f:720-786 (pion/kaon block of complete_ev, without the polarized-target angles)
 void PionProduction::pionMainKinematics(MainEvent& main, const Event& vertex) const {
+    pionMainKinematics(main, vertex, setup().Mh2);
+}
+
+void PionProduction::pionMainKinematics(MainEvent& main, const Event& vertex, double Mh2) const {
     using constants::pi;
     const RunSetup& s = setup();
     const double Mts = s.targ.Mtar_struck;
@@ -252,8 +258,8 @@ void PionProduction::pionMainKinematics(MainEvent& main, const Event& vertex) co
     main.w = std::sqrt(std::fabs(W2)) * W2 / std::fabs(W2);
     main.epsilon = 1. / (1. + 2. * (1 + sq(vertex.nu) / vertex.Q2) * sq(std::tan(vertex.e.theta / 2.)));
     main.theta_pq = std::acos(vertex.up.x * vertex.uq.x + vertex.up.y * vertex.uq.y + vertex.up.z * vertex.uq.z);
-    main.t = vertex.Q2 - s.Mh2 + 2 * vertex.nu * vertex.p.E - 2 * vertex.p.P * vertex.q * std::cos(main.theta_pq);
-    main.tmin = vertex.Q2 - s.Mh2 + 2 * vertex.p.E * vertex.nu - 2 * vertex.p.P * vertex.q;
+    main.t = vertex.Q2 - Mh2 + 2 * vertex.nu * vertex.p.E - 2 * vertex.p.P * vertex.q * std::cos(main.theta_pq);
+    main.tmin = vertex.Q2 - Mh2 + 2 * vertex.p.E * vertex.nu - 2 * vertex.p.P * vertex.q;
     main.q2 = vertex.Q2;
 
     // phi between the scattering and the reaction plane, in the 'replay' coordinate system (l.761-786)

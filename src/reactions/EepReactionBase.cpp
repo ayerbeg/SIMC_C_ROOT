@@ -352,7 +352,7 @@ bool EepReactionBase::completeRecon(Event& recon) {
         const double mm = std::sqrt(std::fabs(mm2)) * std::fabs(mm2) / mm2;
         const double mmA2 = sq(recon.nu + s.targ.M - recon.p.E) - sq(recon.Pm);
         const double mmA = std::sqrt(std::fabs(mmA2)) * std::fabs(mmA2) / mmA2;
-        const double t = recon.Q2 - s.Mh2 + 2 * (recon.nu * recon.p.E - recon.p.P * recon.q * std::cos(recon.theta_pq));
+        const double t = recon.Q2 - commonMh2() + 2 * (recon.nu * recon.p.E - recon.p.P * recon.q * std::cos(recon.theta_pq));
         reconNtup_ = {mm, mmA, t};
     }
     if (f.doing_semi || f.doing_rho) {

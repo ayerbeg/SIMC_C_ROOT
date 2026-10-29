@@ -47,6 +47,7 @@ public:
     const TH1D* hist(const std::string& name) const;
 
 private:
+    bool rhoGenFromOrig_{false};   ///< D-057 F18
     void book(const std::string& name, const HistAxis& ax);
     void inc(const std::string& name, double val, double weight);
 

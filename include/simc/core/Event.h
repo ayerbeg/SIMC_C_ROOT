@@ -97,6 +97,13 @@ struct FermiMomentum {
     double pfer{0}, pferx{0}, pfery{0}, pferz{0}, efer{0};
 };
 
+/// Fortran: the mutable part of COMMON /gnrl/ (simulate.inc:42, 91): Mh, Mh2 = the hadron mass (squared) and Mh2_final.
+/// dbase.f sets them once for every reaction except doing_rho, where generate_rho (the Breit-Wigner rho mass of the try)
+/// and rho_decay (the pion) change them per try (task P13.2). Persistent across tries (COMMON semantics).
+struct HadronMass {
+    double Mh{0}, Mh2{0}, Mh2_final{0};
+};
+
 /// Fortran: type event_main
 struct MainEvent {
     double weight{0}, SF_weight{0}, gen_weight{0}, jacobian{0};
@@ -112,7 +119,20 @@ struct MainEvent {
     double Trec{0};
     NtupVars ntup;   ///< COMMON /ntuple_variables/ values for this event
     FermiMomentum pfermi;   ///< COMMON /pfermi/ of this event (task P9.1)
+    /// COMMON /gnrl/ Mh, Mh2, Mh2_final when they change per try (doing_rho, task P13.2): used by the radiation
+    /// (generate_rad), the montecarlo (spectrometer mass, recon energy, Eloss) instead of the set-up values when
+    /// gnrl_per_event is true (set by the reaction).
+    HadronMass gnrl;
+    bool gnrl_per_event{false};
 };
+
+/// The hadron-arm values the report histograms and limits take as "generated" (simc.f:259-261, 283-285, 316-317,
+/// event.f:limits_update l.22-24): vertex%p, except for doing_rho in the corrected mode, where vertex%p holds the RHO
+/// (with its lab theta/phi in the slope fields, generate_rho.f:123-124) and the detected particle is the decay pion in
+/// orig%p (FORTRAN-BUG D-057 F18; fortran_compat: vertex%p as the Fortran).
+inline const ArmFull& GeneratedHadronArm(bool rho_corrected, const Event& vertex, const Event& orig) {
+    return rho_corrected ? orig.p : vertex.p;
+}
 
 }  // namespace simc
 

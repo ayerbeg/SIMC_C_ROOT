@@ -127,6 +127,13 @@ void reactionLines(Out& o, const RunSetup& s) {
         }
     } else if (f.doing_rho) {
         if (A == 1) o.list("              ****--------  H(e,e'rho)  --------****");
+        else if (!s.fortran_compat && f.doing_deutrho)
+            // FORTRAN-BUG(D-057 F15): original Fortran simc.f:721-725: `write(iun,*) 'I am not set up for anything else
+            // yet!'` for every target but H; corrected because D and 3He rho runs are set up and run (dbase.f:867-871
+            // announces them): the reaction title is written.
+            o.list("              ****--------  D(e,e'rho)  --------****");
+        else if (!s.fortran_compat && f.doing_herho)
+            o.list("              ****--------  A(e,e'rho)  --------****");
         else o.list("I am not set up for anything else yet!");
     } else if (f.doing_delta) {
         // FORTRAN-BUG(D-018): original Fortran simc.f:727-732: `write(6,*) ' ****--------  H(e,e''p)pi  --------****'`

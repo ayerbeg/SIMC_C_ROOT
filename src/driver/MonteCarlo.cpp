@@ -95,6 +95,9 @@ bool MonteCarlo::run(const Event& orig, MainEvent& main, Event& recon, IRandom& 
     const SpecArm& se = S.spec.e;
     const bool mc_smear = S.sw.mc_smear;
     info_ = MonteCarloInfo{};
+    // COMMON /gnrl/ Mh, Mh2: the set-up values, or the per-try values of doing_rho (the decay pion, task P13.2)
+    const double Mh = main.gnrl_per_event ? main.gnrl.Mh : S.Mh;
+    const double Mh2 = main.gnrl_per_event ? main.gnrl.Mh2 : S.Mh2;
 
     // Prepare the event for the Monte Carlo's and/or spectrometer cuts
     bool success = false;
@@ -118,7 +121,7 @@ bool MonteCarlo::run(const Event& orig, MainEvent& main, Event& recon, IRandom& 
     //____ P arm ________________
     if (S.sw.using_Eloss) {
         const double d = orig.p.E - main.target.Eloss[2];
-        main.SP.p.delta = (std::sqrt(std::fabs(d * d - S.Mh2)) - sp.P) / sp.P * 100.;
+        main.SP.p.delta = (std::sqrt(std::fabs(d * d - Mh2)) - sp.P) / sp.P * 100.;
     } else {
         main.SP.p.delta = orig.p.delta;
     }
@@ -166,7 +169,7 @@ bool MonteCarlo::run(const Event& orig, MainEvent& main, Event& recon, IRandom& 
         in.z = z_P_arm;
         in.dxdz = dx_P_arm;
         in.dydz = dy_P_arm;
-        in.m2 = S.Mh2;
+        in.m2 = Mh2;
         in.ms_flag = mc_smear;
         in.wcs_flag = mc_smear;
         in.decay_flag = S.params.doing_decay;
@@ -205,7 +208,7 @@ bool MonteCarlo::run(const Event& orig, MainEvent& main, Event& recon, IRandom& 
     recon.p.xptar = main.RECON.p.xptar;
     recon.p.z = main.RECON.p.z;
     recon.p.P = sp.P * (1. + recon.p.delta / 100.);
-    recon.p.E = std::sqrt(recon.p.P * recon.p.P + S.Mh2);
+    recon.p.E = std::sqrt(recon.p.P * recon.p.P + Mh2);
     {
         const double dx_tmp = recon.p.xptar + sp.offset.xptar;
         const double dy_tmp = recon.p.yptar + sp.offset.yptar;
@@ -214,11 +217,11 @@ bool MonteCarlo::run(const Event& orig, MainEvent& main, Event& recon, IRandom& 
     // ... correct for energy loss - use most probable (last flag = 4)
     if (S.sw.correct_Eloss) {
         const double eloss_P_arm =
-            target_.tripThruTarget(ITarget::kHadron, zero, recon.p.E, recon.p.theta, S.Mh, ITarget::kMostProbable, rng)
+            target_.tripThruTarget(ITarget::kHadron, zero, recon.p.E, recon.p.theta, Mh, ITarget::kMostProbable, rng)
                 .eloss;
         recon.p.E = recon.p.E + eloss_P_arm;
-        recon.p.E = std::max(recon.p.E, std::sqrt(S.Mh2 + 0.000001));
-        recon.p.P = std::sqrt(recon.p.E * recon.p.E - S.Mh2);
+        recon.p.E = std::max(recon.p.E, std::sqrt(Mh2 + 0.000001));
+        recon.p.P = std::sqrt(recon.p.E * recon.p.E - Mh2);
     }
 
     //___ E arm ______________

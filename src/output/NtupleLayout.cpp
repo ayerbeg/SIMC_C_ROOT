@@ -303,6 +303,42 @@ bool FillSemiNtuple(const RunSetup& s, const MainEvent& main, const Event& verte
     return side != ArmSide::Unknown;
 }
 
+// NtupleInit.f:192-264 (doing_rho, no target field; task P13.2)
+const std::vector<NtupleColumn>& RhoNtupleColumns() {
+    static const std::vector<NtupleColumn> rho = [] {
+        std::vector<NtupleColumn> c = SemiNtupleColumns();
+        c[35].source = "main.ntup.t/1e6 (recon, the detected decay pion: Mh2 = Mpi2)";
+        c[38].source = "main.sigcc (peerho of the rho vertex)";
+        c[39].source = "main.sigcent (never assigned: 0)";
+        c[44].source = "vertex.zhad (never assigned for rho: 0)";
+        c[46].source = "vertex.pt2/1e6 (never assigned for rho: 0)";
+        c[50].source = "main.ntup.sigcm (peerho dsigma/dOmega_cm)";
+        c[51].source = "main.davejac (peerho, not applied)";
+        c[52].source = "main.johnjac (peerho)";
+        c[54].source = "main.ntup.xfermi (never assigned for rho: 0)";
+        c[55].source = "main.phi_pq (of the rho)";
+        const std::vector<NtupleColumn> tail = {
+            {"Mrho", "main.ntup.rhomass (Breit-Wigner rho mass, generate_rho.f:79)", "MeV", "results_write.f:227"},
+            {"Thrho", "main.ntup.rhotheta (decay theta in the rho rest frame w.r.t. the lab z axis, rho_decay.f:66)",
+             "rad", "results_write.f:228"},
+            {"mmnuc", "main.ntup.mmA/1000 (missing mass, nucleus)", "GeV", "results_write.f:229"},
+        };
+        c.insert(c.end(), tail.begin(), tail.end());
+        return c;
+    }();
+    return rho;
+}
+
+// Fortran: results_write.f:187-229 (doing_rho; no target field)
+bool FillRhoNtuple(const RunSetup& s, const MainEvent& main, const Event& vertex, const Event& orig, const Event& recon,
+                   std::vector<double>& ntu) {
+    const bool ok = FillSemiNtuple(s, main, vertex, orig, recon, ntu);
+    ntu[56] = main.ntup.rhomass;
+    ntu[57] = main.ntup.rhotheta;
+    ntu[58] = main.ntup.mmA / 1000.;
+    return ok;
+}
+
 const std::vector<NtupleColumn>& NtupleColumnsFor(const RunSetup& s) {
     // NtupleInit.f:101: doing_pion .or. doing_kaon .or. doing_delta share the 53 columns (doing_delta: task P11.1)
     if ((s.flags.doing_pion || s.flags.doing_delta) && !s.flags.using_tgt_field && !s.params.using_tgt_field)
@@ -310,6 +346,8 @@ const std::vector<NtupleColumn>& NtupleColumnsFor(const RunSetup& s) {
     if (s.flags.doing_kaon && !s.flags.using_tgt_field && !s.params.using_tgt_field) return KaonNtupleColumns();
     if (s.flags.doing_semi && !s.flags.doing_pizero && !s.flags.using_tgt_field && !s.params.using_tgt_field)
         return SemiNtupleColumns();
+    if (s.flags.doing_rho && !s.flags.doing_pizero && !s.flags.using_tgt_field && !s.params.using_tgt_field)
+        return RhoNtupleColumns();
     if (UsesEepLayout(s.flags)) return EepNtupleColumns();
     throw std::runtime_error("ntuple: only the (e,e'p)/phase-space (NtupleInit.f:296-321), the exclusive pion and the "
                              "kaon/delta (NtupleInit.f:101-190, no target field) and the SIDIS (NtupleInit.f:192-237, no target "
@@ -321,6 +359,7 @@ bool FillNtuple(const RunSetup& s, const MainEvent& main, const Event& vertex, c
     if (s.flags.doing_pion || s.flags.doing_kaon || s.flags.doing_delta)
         return FillPionNtuple(s, main, vertex, orig, recon, ntu);
     if (s.flags.doing_semi) return FillSemiNtuple(s, main, vertex, orig, recon, ntu);
+    if (s.flags.doing_rho) return FillRhoNtuple(s, main, vertex, orig, recon, ntu);
     std::array<double, kEepNtupleSize> a{};
     std::copy(ntu.begin(), ntu.begin() + std::min<std::size_t>(ntu.size(), kEepNtupleSize), a.begin());
     const bool ok = FillEepNtuple(s, main, vertex, orig, recon, a);

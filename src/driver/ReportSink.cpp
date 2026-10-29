@@ -22,6 +22,7 @@ void FortranHistSink::configure(const Json& config, const SimcParameters&) {
 }
 
 void FortranHistSink::beginRun(const RunSetup& setup) {
+    rhoGenFromOrig_ = setup.flags.doing_rho && !setup.fortran_compat;   // D-057 F18
     if (hist_.empty()) hist_ = setup.output_dir + "/" + setup.run_name + ".hist";
     if (geniFile_.empty()) geniFile_ = setup.output_dir + "/" + setup.run_name + ".geni";
     if (genFile_.empty()) genFile_ = setup.output_dir + "/" + setup.run_name + ".gen";
@@ -49,14 +50,16 @@ void FortranHistSink::Inc(Hist& h, double val, double weight) {
 }
 
 // Fortran: simc.f l.250-287
-void FortranHistSink::fill(const MainEvent& main, const Event& vertex, const Event&, const Event& recon, bool success) {
+void FortranHistSink::fill(const MainEvent& main, const Event& vertex, const Event& orig, const Event& recon,
+                           bool success) {
+    const ArmFull& hp = GeneratedHadronArm(rhoGenFromOrig_, vertex, orig);   // FORTRAN-BUG(D-057 F18), GenHistSink
     const double one = 1.0;
     Inc(geni_.e.delta, vertex.e.delta, one);
     Inc(geni_.e.yptar, vertex.e.yptar, one);
     Inc(geni_.e.xptar, -vertex.e.xptar, one);
-    Inc(geni_.p.delta, vertex.p.delta, one);
-    Inc(geni_.p.yptar, vertex.p.yptar, one);
-    Inc(geni_.p.xptar, -vertex.p.xptar, one);
+    Inc(geni_.p.delta, hp.delta, one);
+    Inc(geni_.p.yptar, hp.yptar, one);
+    Inc(geni_.p.xptar, -hp.xptar, one);
     Inc(geni_.Em, vertex.Em, one);
     Inc(geni_.Pm, vertex.Pm, one);
     if (!success) return;
@@ -71,9 +74,9 @@ void FortranHistSink::fill(const MainEvent& main, const Event& vertex, const Eve
     Inc(gen_.e.delta, vertex.e.delta, one);
     Inc(gen_.e.yptar, vertex.e.yptar, one);
     Inc(gen_.e.xptar, -vertex.e.xptar, one);
-    Inc(gen_.p.delta, vertex.p.delta, one);
-    Inc(gen_.p.yptar, vertex.p.yptar, one);
-    Inc(gen_.p.xptar, -vertex.p.xptar, one);
+    Inc(gen_.p.delta, hp.delta, one);
+    Inc(gen_.p.yptar, hp.yptar, one);
+    Inc(gen_.p.xptar, -hp.xptar, one);
     Inc(gen_.Em, vertex.Em, one);
 }
 

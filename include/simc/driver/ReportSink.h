@@ -67,6 +67,7 @@ public:
     const std::string& genFile() const { return genFile_; }
 
 private:
+    bool rhoGenFromOrig_{false};   ///< D-057 F18
     std::string hist_, geniFile_, genFile_;
     HistSet RECON_, gen_, geni_;
 };
