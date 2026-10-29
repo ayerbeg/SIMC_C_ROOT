@@ -247,13 +247,15 @@ int replay(const std::string& capdir, const std::string& rundir, const std::stri
         check(cs, "spec_p_phi", setup.spec.p.phi, f("spec_p_phi"), 0);
         check(cs, "spec_p_cos_th", setup.spec.p.cos_th, f("spec_p_cos_th"), 0);
         check(cs, "spec_p_sin_th", setup.spec.p.sin_th, f("spec_p_sin_th"), 0);
-        check(cs, "Mh2", setup.Mh2, f("Mh2"), 0);
+        // rho (P13.2): cap_final records the COMMON Mh2 as the run ends: the decay pion's Mpi2 (rho_decay of the last
+        // event), not the dbase.f Mrho2
+        check(cs, "Mh2", setup.flags.doing_rho ? constants::Mpi2 : setup.Mh2, f("Mh2"), 0);
         check(cs, "Ebeam", setup.Ebeam, f("Ebeam"), 0);
     }
     bool okSetup = report("setup vs cap_final:", cs);
 
     const bool pion = setup.flags.doing_pion || setup.flags.doing_kaon || setup.flags.doing_delta ||
-                      setup.flags.doing_semi;   // P9.2 pion, P10.2 kaon, P11.1 delta, P12.2 semi captures
+                      setup.flags.doing_semi || setup.flags.doing_rho;   // P9.2 pion ... P12.2 semi, P13.2 rho captures
     const bool hadronIsHms = p.hadron_arm == 1;
     // ---- indices
     std::map<long, std::size_t> genRow, recRow;
@@ -310,6 +312,11 @@ int replay(const std::string& capdir, const std::string& rundir, const std::stri
         main.ntup.resfac = 0.0;   // simc.f:178
         main.ntup.decdist = 0.0;  // simc.f:177
         main.ntup.Mh2_final = setup.Mh2;
+        if (setup.flags.doing_rho) {   // COMMON /gnrl/ as rho_decay left it (the decay pion; P13.2)
+            main.gnrl = HadronMass{g("Mh"), g("Mh2"), g("Mh2_final")};
+            main.gnrl_per_event = true;
+            main.ntup.Mh2_final = g("Mh2_final");
+        }
         auto s = stream[nt];
         srng.load(s.first, s.second);
 
@@ -398,7 +405,7 @@ int replay(const std::string& capdir, const std::string& rundir, const std::stri
     bool okBin = true;
     std::vector<std::string> recs;
     if (pion) {
-        std::printf("  .bin: the 53 pion/delta / 55 kaon / 56 semi columns are checked by the full-run replay (l1_simcrun_replay_{pion,kaon,delta,semi}_*)\n");
+        std::printf("  .bin: the 53 pion/delta / 55 kaon / 56 semi / 59 rho columns are checked by the full-run replay (l1_simcrun_replay_{pion,kaon,delta,semi,rho}_*)\n");
     } else if (!readRecords(bin, recs) || recs.empty()) {
         std::printf("  .bin: cannot read %s\n", bin.c_str());
         okBin = false;

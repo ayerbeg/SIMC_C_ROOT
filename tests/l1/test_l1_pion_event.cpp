@@ -53,6 +53,8 @@
 #include "simc/reactions/KaonProduction.h"
 #include "simc/reactions/PionProduction.h"
 #include "simc/reactions/SidisProduction.h"
+#include "simc/reactions/RhoProduction.h"
+#include "simc/core/SimcConstants.h"
 #include "simc/physics/sidis/SidisModel.h"
 #include "simc/reactions/StandardBeam.h"
 #include "simc/setup/KinematicsUtils.h"
@@ -75,9 +77,17 @@ bool gDelta = false;            // the Delta tables (P11.1)
 bool isDelta() { return gDelta; }
 std::string gSidis;             // data/sidis: non-empty = the SIDIS tables (P12.2)
 bool isSemi() { return !gSidis.empty(); }
+bool gRho = false;              // the rho tables (P13.2)
+bool isRho() { return gRho; }
 
 /// cfg -> SIMC input file (reference/functions/pion_state/configs.txt)
 std::string cfgInp(const std::string& inpdir, int cfg) {
+    if (isRho()) {   // reference/functions/rho/rho_state/configs.txt
+        static const char* d[] = {"",          "p13f1_rh_k1_rad_cap", "p13f1_rd_k1_rad_cap", "l1_h_k1_norad",
+                                  "l1_h_k1_pim", "l1_h_k2_rad",        "l1_he3_k1_rad",       "l1_h_k1_dec1"};
+        if (cfg < 1 || cfg > 7) throw std::runtime_error("bad cfg " + std::to_string(cfg));
+        return inpdir + "/" + d[cfg] + ".inp";
+    }
     if (isSemi()) {   // reference/functions/sidis/sidis_state/configs.txt
         static const char* d[] = {"",
                                   "p12f1_sh_k1_pip_rad_cap",
@@ -309,11 +319,14 @@ std::unique_ptr<Process> makeProcess(const std::string& inp, bool compat = true)
     sc.radiator = &P->rad;
     P->beam.configure(Json::object(), P->params);
     P->beam.init(sc);
-    P->model = Registry<IPhysicsModel>::create(isSemi() ? "sidis" : (isDelta() ? "delta" : (isKaon() ? "kaon" : "pion")));
+    P->model = Registry<IPhysicsModel>::create(
+        isRho() ? "rho" : (isSemi() ? "sidis" : (isDelta() ? "delta" : (isKaon() ? "kaon" : "pion"))));
     P->model->configure(Json{{"data_dir", isSemi() ? gSidis : (isKaon() ? gKaon : gPion)}, {"verbose", false}}, P->params);
     P->model->init(sc);
     sc.physics = P->model.get();
-    if (isSemi())
+    if (isRho())
+        P->reaction = std::make_unique<reactions::RhoProduction>();
+    else if (isSemi())
         P->reaction = std::make_unique<reactions::SidisProduction>();
     else if (isDelta())
         P->reaction = std::make_unique<reactions::DeltaProduction>();
@@ -327,7 +340,9 @@ std::unique_ptr<Process> makeProcess(const std::string& inp, bool compat = true)
     // delta (P11.1): es_init ends with calculate_central, whose radc_init_ev leaves the COMMON /radccom/ values that a
     // row whose complete_ev fails before radc_init_ev reports (cfg 6, which_pion 2: every row fails)
     // semi (P12.2): es_init's calculate_central also runs the central peepiX (SAVEd zaero, survivalprob, PDF warnings)
-    if (isDelta() || isSemi()) P->centralNtup = driver::calculateCentral(P->setup, *P->reaction, P->rad, *P->model).main0.ntup;
+    // rho (P13.2): es_init's calculate_central also leaves the radiative COMMON of its radc_init_ev
+    if (isDelta() || isSemi() || isRho())
+        P->centralNtup = driver::calculateCentral(P->setup, *P->reaction, P->rad, *P->model).main0.ntup;
     return P;
 }
 
@@ -340,6 +355,8 @@ int runAuto(const std::string& title, const std::string& dir, double tol, const 
         return 77;
     }
     std::set<std::string> inNames(in.names.begin(), in.names.end());
+    // rho (P13.F1): the drivers group the output rows by cfg; output.txt echoes every input column -> it is the input
+    if (isRho() && in.rows.size() == ref.rows.size()) in = ref;
     std::vector<ColumnSpec> cols;
     for (const auto& n : ref.names)
         if (!inNames.count(n)) cols.push_back({n, tol, 0.0});
@@ -374,6 +391,20 @@ bool runGenerate(Process& P, long ntried, MainEvent& m, Event& v, Event& o, Scri
     const bool ok = reactions::generateEvent(P.beam, *P.reaction, m, v, o, rng);
     out["success"] = ok;
     out["fail_stage"] = ok ? 0 : (P.rad.called ? 2 : 1);
+    if (isRho()) {
+        auto& R = dynamic_cast<reactions::RhoProduction&>(*P.reaction);
+        // fail_stage as drv_generate13: 1 = generate_rad not called (complete_ev failed, or rho_decay failed without
+        // radiation), 2 = generate_rad called (and it or rho_decay failed)
+        out["rad_success"] = R.lastRadSuccess();
+        out["Mh"] = m.gnrl.Mh;
+        out["Mh2"] = m.gnrl.Mh2;
+        out["Mh2_final"] = m.gnrl.Mh2_final;
+        out["ntup_rhomass"] = m.ntup.rhomass;
+        out["ntup_rhotheta"] = m.ntup.rhotheta;
+        out["rho_decay_called"] = R.lastDecayCalled();
+        out["rho_decay_success"] = R.lastDecaySuccess();
+        out["rho_decay_n_unif"] = R.lastDecayNUnif();
+    }
     out["rad_called"] = P.rad.called;
     out["n_unif"] = static_cast<double>(rng.nUniform());
     out["n_gauss"] = static_cast<double>(rng.nGauss());
@@ -424,6 +455,13 @@ void loadCompleteEvInputs(const Process& P, const Row& r, MainEvent& m, Event& v
     m.target.teff[0] = r["t_teff_1"];
 }
 
+void putRhoGnrl(const MainEvent& m, Outputs& o) {
+    o["Mh"] = m.gnrl.Mh;
+    o["Mh2"] = m.gnrl.Mh2;
+    o["Mh2_final"] = m.gnrl.Mh2_final;
+    o["ntup_rhomass"] = m.ntup.rhomass;
+}
+
 void putCompleteEv(Process& P, bool ok, const MainEvent& m, const Event& v, const ScriptedRandom& rng, Outputs& o) {
     o["success"] = ok;
     o["n_gauss"] = static_cast<double>(rng.nGauss());
@@ -468,7 +506,7 @@ bool doCompleteMain(Process& P, const Row& r, Outputs& o) {
     getPfermi(r, m.pfermi);
     if (r.has("in_ntup_sigcm1")) m.ntup.sigcm1 = r["in_ntup_sigcm1"];
     if (r.has("in_ntup_sigcm2")) m.ntup.sigcm2 = r["in_ntup_sigcm2"];
-    m.ntup.sigcm = r["in_ntup_sigcm"];
+    if (r.has("in_ntup_sigcm")) m.ntup.sigcm = r["in_ntup_sigcm"];
     reactions::MainContext ctx = P.ctx;
     if (r.has("ov_coulomb") && iv(r, "ov_coulomb") == 1) {
         ctx.using_Coulomb = iv(r, "ov_using_coulomb") != 0;
@@ -563,14 +601,63 @@ bool doCompleteMain(Process& P, const Row& r, Outputs& o) {
     o["ntup_sigcm1"] = m.ntup.sigcm1;
     o["ntup_sigcm2"] = m.ntup.sigcm2;
     o["ntup_sigcm"] = m.ntup.sigcm;
+    o["efer_out"] = m.pfermi.efer;   // rho: peerho writes the COMMON efer (D-057 F6)
+    o["m_w"] = m.w;
+    o["m_t"] = m.t;
     o["eff_using_Coulomb"] = ctx.using_Coulomb ? 1. : 0.;
     o["eff_coulomb_ave"] = ctx.Coulomb_ave;
     const double c = 1.0 + ctx.Coulomb_ave / ctx.Ebeam;
     o["hx_coul_fac"] = ctx.using_Coulomb ? c * c : 1.0;
     const double hp = m.SF_weight * m.jacobian * m.gen_weight * m.sigcc;
     o["hx_prod"] = hp;
-    o[(isKaon() || isDelta() || isSemi()) ? "hx_ratio" : "hx_tgtweight"] = hp != 0.0 ? m.weight / hp : 0.0;
+    o[(isKaon() || isDelta() || isSemi() || isRho()) ? "hx_ratio" : "hx_tgtweight"] = hp != 0.0 ? m.weight / hp : 0.0;
     return ok;
+}
+
+// rho (P13.2): the stale state a try of the SIMC main loop starts from (drv_generate13 / the capture): the previous rho's
+// lab theta/phi in vertex%p%xptar/yptar, COMMON /gnrl/ Mh, Mh2, ntup%rhomass, rhotheta and (table only) orig.
+void setRhoStale(const Row& r, MainEvent& m, Event& v, Event& orig) {
+    v.p.xptar = r["in_v_p_xptar"];
+    v.p.yptar = r["in_v_p_yptar"];
+    m.gnrl = HadronMass{r["in_Mh"], r["in_Mh2"], r.has("in_Mh2_final") ? r["in_Mh2_final"] : r["in_Mh2"]};
+    m.gnrl_per_event = true;
+    m.ntup.rhomass = r["in_rhomass"];
+    m.ntup.rhotheta = r["in_rhotheta"];
+    if (r.has("in_o_Ein")) getEvent("in_o_", r, orig);
+}
+
+/// rho complete_ev inputs as generate leaves them (drv_complete_ev13.f / the capture).
+void loadCompleteEvInputsRho(const Process& P, const Row& r, MainEvent& m, Event& v, bool calcAngles) {
+    const RunSetup& s = P.setup;
+    v.Ein = r["Ein"];
+    v.e.xptar = r["e_xptar"];
+    v.e.yptar = r["e_yptar"];
+    v.e.theta = r["e_theta"];
+    v.e.phi = r["e_phi"];
+    v.e.E = r["e_E"];
+    v.e.P = r["e_P"];
+    v.e.delta = r["e_delta"];
+    v.p.xptar = r["in_p_xptar"];
+    v.p.yptar = r["in_p_yptar"];
+    v.p.theta = r["p_theta"];
+    v.p.phi = r["p_phi"];
+    v.p.E = r["in_p_E"];
+    v.p.P = r["in_p_P"];
+    v.p.delta = r["in_p_delta"];
+    v.up = {r["in_up_x"], r["in_up_y"], r["in_up_z"]};
+    v.Em = r["v_Em_in"];
+    v.Pm = r["in_v_Pm"];
+    v.Mrec = r["in_v_Mrec"];
+    if (calcAngles) {
+        PhysicsAngles(s.spec.e.theta, s.spec.e.phi, v.e.xptar, v.e.yptar, v.e.theta, v.e.phi);
+        PhysicsAngles(s.spec.p.theta, s.spec.p.phi, v.p.xptar, v.p.yptar, v.p.theta, v.p.phi);
+    }
+    getPfermi(r, m.pfermi);
+    m.target.z = r["t_z"];
+    m.target.teff[0] = r["t_teff_1"];
+    m.gnrl = HadronMass{r["in_Mh"], r["in_Mh2"], r["in_Mh2"]};
+    m.gnrl_per_event = true;
+    m.ntup.rhomass = r["in_rhomass"];
 }
 
 int runEventTable(const std::string& name, const std::string& dir, const std::string& inpdir, double tol) {
@@ -588,6 +675,7 @@ int runEventTable(const std::string& name, const std::string& dir, const std::st
                            if (isSemi()) m.ntup.xfermi = P.centralNtup.xfermi;   // COMMON ntup%xfermi of the central peepiX
                            Event v, orig;
                            v.Pm = r["in_v_Pm"];
+                           if (isRho()) setRhoStale(r, m, v, orig);
                            for (int i = 1; i <= 3; ++i)
                                P.rad.inner.state().Egamma_min[static_cast<std::size_t>(i)] =
                                    P.rad.inner.state().Egamma_max[static_cast<std::size_t>(i)] = 0.;
@@ -606,7 +694,10 @@ int runEventTable(const std::string& name, const std::string& dir, const std::st
             P.reaction->setMrecStruck(P.setup.targ.Mrec_struck);   // drv_complete_ev9: restored before every row
             MainEvent m;
             Event v;
-            loadCompleteEvInputs(P, r, m, v, iv(r, "calc_angles") == 1);
+            if (isRho())
+                loadCompleteEvInputsRho(P, r, m, v, iv(r, "calc_angles") == 1);
+            else
+                loadCompleteEvInputs(P, r, m, v, iv(r, "calc_angles") == 1);
             o["in_e_theta"] = v.e.theta;
             o["in_e_phi"] = v.e.phi;
             o["in_p_theta"] = v.p.theta;
@@ -619,6 +710,7 @@ int runEventTable(const std::string& name, const std::string& dir, const std::st
             P.reaction->beginTry(iv(r, "gen_ntried"));
             const bool ok = P.reaction->completeEv(m, v, rng);
             putCompleteEv(P, ok, m, v, rng, o);
+            if (isRho()) putRhoGnrl(m, o);
         });
     }
     if (name == "complete_recon_ev") {
@@ -627,6 +719,7 @@ int runEventTable(const std::string& name, const std::string& dir, const std::st
             Event rec;
             getArm("in_e_", r, rec.e);
             getArm("in_p_", r, rec.p);
+            if (isRho()) dynamic_cast<reactions::RhoProduction&>(*P.reaction).setReconMh2(r["in_Mh2"]);
             o["success"] = P.reaction->completeRecon(rec);
             putEvent("r_", rec, o);
             o["ntup_mm"] = P.reaction->reconNtup().mm;
@@ -770,6 +863,8 @@ int runPionState(const std::string& dir, const std::string& inpdir, double tol) 
             pipe = Json{{"sinks", Json::array()},
                         {"physics", {{"type", "delta"}}},
                         {"reaction", {{"type", "delta_production"}, {"data_dir", gPion}}}};
+        if (isRho())
+            pipe = Json{{"sinks", Json::array()}, {"physics", {{"type", "rho"}}}, {"reaction", {{"type", "rho_production"}}}};
         // pi0 configurations use the HMS/SHMS as hadron arm in the L1 inputs (the calorimeter is P14)
         driver::SimcRun run(p, pipe, opt);
         run.initialise();
@@ -778,6 +873,13 @@ int runPionState(const std::string& dir, const std::string& inpdir, double tol) 
         const ReactionFlags& f = s.flags;
         Outputs o;
         o["doing_pion"] = f.doing_pion;
+        o["doing_rho"] = f.doing_rho;
+        o["doing_hydrho"] = f.doing_hydrho;
+        o["doing_deutrho"] = f.doing_deutrho;
+        o["doing_herho"] = f.doing_herho;
+        o["doing_hplus"] = f.doing_hplus;
+        o["doing_semi"] = f.doing_semi;
+        o["do_fermi"] = f.do_fermi;
         o["doing_delta"] = f.doing_delta;
         o["doing_hyddelta"] = f.doing_hyddelta;
         o["doing_deutdelta"] = f.doing_deutdelta;
@@ -883,6 +985,27 @@ int runPionState(const std::string& dir, const std::string& inpdir, double tol) 
         putEvent("v0_", run.central().vertex0, o);
         o["c_decdist"] = m0.ntup.decdist;   // COMMON decdist after the central peeK (kaon)
         o["c_ntup_krel"] = m0.ntup.krel;
+        o["c_ntup_rhomass"] = m0.ntup.rhomass;
+        o["c_ntup_rhotheta"] = m0.ntup.rhotheta;
+        o["c_ntup_t"] = m0.ntup.t;
+        o["c_ntup_mm"] = m0.ntup.mm;
+        o["c_ntup_mmA"] = m0.ntup.mmA;
+        o["c_pfer"] = m0.pfermi.pfer;
+        // rho (P13.2): no 3He spectral function / Em table is loaded (dbase.f:594, D-057 F4)
+        o["nume"] = 0.;
+        o["sf_numEm"] = 0.;
+        o["sf_numPm"] = 0.;
+        o["spec_e_P"] = s.spec.e.P;
+        o["spec_e_theta"] = s.spec.e.theta;
+        o["spec_e_phi"] = s.spec.e.phi;
+        o["spec_p_P"] = s.spec.p.P;
+        o["spec_p_theta"] = s.spec.p.theta;
+        o["spec_p_phi"] = s.spec.p.phi;
+        o["SPedge_p_delta_min"] = s.SPedge.p.delta.min;
+        o["SPedge_p_delta_max"] = s.SPedge.p.delta.max;
+        o["SPedge_e_delta_min"] = s.SPedge.e.delta.min;
+        o["SPedge_e_delta_max"] = s.SPedge.e.delta.max;
+        o["dE_edge_test"] = s.params.dE_edge_test;
         if (isKaon()) {   // spot values of /sigkaon/ (the kaon model's tables)
             const kaon::SaghaiTables& T = dynamic_cast<const kaon::KaonModel&>(run.model()).tables();
             o["weightc_1_1"] = T.wc(1, 1);
@@ -949,6 +1072,30 @@ int runPionState(const std::string& dir, const std::string& inpdir, double tol) 
                         kv.second, kv.first);
     }
 
+    if (isRho()) {
+        // stops.txt (4He and C-12 (e,e'rho): STOP at dbase.f:876): refused at input in both modes (D-057 F16)
+        int nref = 0;
+        for (const double A : {4.0, 12.0}) {
+            for (const bool compat : {true, false}) {
+                SimcParameters p;
+                InpReader rd(p);
+                rd.loadRun(cfgInp(inpdir, 1));
+                p.targ.A = A;
+                SetupOptions so;
+                so.fortran_compat = compat;
+                so.data_dir = gSpectral;
+                try {
+                    BuildRunSetup(p, so);
+                } catch (const std::invalid_argument& e) {
+                    if (std::string(e.what()).find("only set up for H, D and 3He") != std::string::npos) ++nref;
+                }
+            }
+        }
+        std::printf("  STOP configurations A = 4, 12 (dbase.f:876): refused at input in both modes: %d of 4\n", nref);
+        ok = ok && nref == 4;
+        std::printf("pion_state: %s\n", ok ? "PASS" : "FAIL");
+        return ok ? 0 : 1;
+    }
     // STOP configurations (stops.txt): the set-up must stop with the Fortran message in fortran_compat mode
     std::ifstream sf(dir + "/stops.txt");
     int nstop = 0, badstop = 0;
@@ -1095,7 +1242,10 @@ int runCapture(const std::string& capdir, const std::string& inp, double tol) {
         for (const auto& r : rngT.rows) {
             const int ph = static_cast<int>(r[static_cast<std::size_t>(cP)]);
             // semi (P12.F1 captures): phase 9 = the gauss1 of the tail-1 complete_ev re-call inside generate_rad
-            if (ph != 1 && ph != 6 && !(isSemi() && ph == 9)) continue;
+            // rho (P13.F1): 12 generate_rho, 13 rho_decay, 9/15 the tail-1 complete_ev re-call and its generate_rho
+            if (ph != 1 && ph != 6 && !(isSemi() && ph == 9) &&
+                !(isRho() && (ph == 9 || ph == 12 || ph == 13 || ph == 15)))
+                continue;
             auto& q = stream[std::lround(r[static_cast<std::size_t>(cN)])];
             (static_cast<int>(r[static_cast<std::size_t>(cK)]) == 1 ? q.first : q.second)
                 .push_back(r[static_cast<std::size_t>(cV)]);
@@ -1109,10 +1259,26 @@ int runCapture(const std::string& capdir, const std::string& inp, double tol) {
         Event v, orig;
         CaptureCompare cc{"generate", tol};
         std::size_t leftover = 0;
-        const std::set<std::string> excl = {"ntried", "nevent", "n_unif_rad", "n_gauss_rad", "n_int", "in_v_Pm"};
+        const std::set<std::string> excl = {"ntried", "nevent", "n_unif_rad", "n_gauss_rad", "n_int", "in_v_Pm",
+                                            "in_v_p_xptar", "in_v_p_yptar", "in_Mh", "in_Mh2", "in_Mh2_final",
+                                            "in_rhomass", "in_rhotheta"};
+        // rho (two-pass captures: gaps between the full-logged tries): the stale state comes from the record; orig is not
+        // recorded at entry, so the o_* fields of failed tries are not compared, nor (fail_stage 1) the fields that
+        // complete_ev / generate_rho leave unassigned (checks.txt of the capture)
+        std::set<std::string> rhoSkipFail, rhoSkipCev;
+        for (const auto& n : genT.names)
+            if (n.rfind("o_", 0) == 0) rhoSkipFail.insert(n);
+        rhoSkipCev = rhoSkipFail;
+        for (const char* n : {"v_Pmx", "v_Pmy", "v_Pmz", "v_Pmiss", "v_Emiss", "v_PmPar", "v_PmOop", "v_PmPer", "v_Trec",
+                              "v_p_E", "v_p_P", "v_p_delta", "t_Eloss_2", "t_Eloss_3", "t_teff_2", "t_teff_3", "m_Trec",
+                              "m_w", "m_t", "m_tmin", "m_q2", "m_epsilon", "m_theta_pq", "m_phi_pq", "ntup_krel", "v_up_x",
+                              "v_up_y", "v_up_z", "v_p_xptar", "v_p_yptar", "ntup_rhomass", "Mh", "Mh2", "Mh2_final",
+                              "hardcorfac", "ntup_rhotheta"})
+            rhoSkipCev.insert(n);
         for (std::size_t i = 0; i < genT.rows.size(); ++i) {
             Row r(genT, i);
             const long nt = std::lround(r["ntried"]);
+            if (isRho()) setRhoStale(r, m, v, orig);
             const auto& q = stream[nt];
             ScriptedRandom rng;
             rng.load(q.second, q.first);
@@ -1127,7 +1293,10 @@ int runCapture(const std::string& capdir, const std::string& inp, double tol) {
             o["hardcorfac"] = P->rad.inner.state().hardcorfac;
             for (int k = 1; k <= 3; ++k)
                 o["Egamma_used_" + std::to_string(k)] = P->rad.inner.state().Egamma_used[static_cast<std::size_t>(k)];
-            cc.row(r, genT, o, excl);
+            if (isRho() && r["success"] == 0)
+                cc.row(r, genT, o, excl, r["fail_stage"] == 1 ? &rhoSkipCev : &rhoSkipFail);
+            else
+                cc.row(r, genT, o, excl);
         }
         fail += cc.report() ? 0 : 1;
         std::printf("      tries whose captured random numbers were not consumed exactly: %zu\n", leftover);
@@ -1148,7 +1317,10 @@ int runCapture(const std::string& capdir, const std::string& inp, double tol) {
             Row r(cevT, i);
             MainEvent m;
             Event v;
-            loadCompleteEvInputs(*P, r, m, v, false);
+            if (isRho())
+                loadCompleteEvInputsRho(*P, r, m, v, false);
+            else
+                loadCompleteEvInputs(*P, r, m, v, false);
             std::vector<double> g, u;
             for (int k = 1; k <= iv(r, "ng"); ++k) g.push_back(r["g" + std::to_string(k)]);
             for (int k = 1; k <= 4; ++k) u.push_back(r["u" + std::to_string(k)]);
@@ -1158,7 +1330,14 @@ int runCapture(const std::string& capdir, const std::string& inp, double tol) {
             Outputs o;
             const bool ok = P->reaction->completeEv(m, v, rng);
             putCompleteEv(*P, ok, m, v, rng, o);
-            cc.row(r, cevT, o, {"ntried", "in_v_Pm", "n_unif_ph1", "gen_weight"}, ok ? nullptr : &staleOnFail);
+            if (isRho()) putRhoGnrl(m, o);
+            std::set<std::string> skipFail = staleOnFail;
+            if (isRho() && !ok)   // checks.txt: v_*, r_* and the stale-prone fields of failed complete_ev calls
+                for (const auto& n : cevT.names)
+                    if (n.rfind("v_", 0) == 0 || n.rfind("r_", 0) == 0 || n == "ntup_rhomass" || n == "Mh" ||
+                        n == "Mh2" || n == "Mh2_final" || n == "jacobian")
+                        skipFail.insert(n);
+            cc.row(r, cevT, o, {"ntried", "in_v_Pm", "n_unif_ph1", "gen_weight"}, ok ? nullptr : &skipFail);
         }
         fail += cc.report() ? 0 : 1;
     }
@@ -1171,6 +1350,9 @@ int runCapture(const std::string& capdir, const std::string& inp, double tol) {
             Event rec;
             getArm("in_e_", r, rec.e);
             getArm("in_p_", r, rec.p);
+            if (isRho())   // COMMON Mh2: Mrho2 for calculate_central (ntried 0), the decay pion's Mpi2 for every event
+                dynamic_cast<reactions::RhoProduction&>(*P->reaction)
+                    .setReconMh2(std::lround(r["ntried"]) == 0 ? P->setup.Mh2 : constants::Mpi2);
             Outputs o;
             o["success"] = P->reaction->completeRecon(rec);
             putEvent("r_", rec, o);
@@ -1203,6 +1385,7 @@ int main(int argc, char** argv) {
     if (argc > 8 && std::string(argv[7]) == "kaon") gKaon = argv[8];
     if (argc > 7 && std::string(argv[7]) == "delta") gDelta = true;
     if (argc > 8 && std::string(argv[7]) == "semi") gSidis = argv[8];
+    if (argc > 7 && std::string(argv[7]) == "rho") gRho = true;
     const double tol = std::atof(argv[6]);
     try {
         if (what == "pion_state") return runPionState(argv[2], argv[3], tol);
