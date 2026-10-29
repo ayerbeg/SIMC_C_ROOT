@@ -11,6 +11,7 @@
 #include "simc/core/Errors.h"
 #include "simc/core/Registry.h"
 #include "simc/core/random/Mt64Random.h"
+#include "simc/core/random/RanluxRandom.h"
 #include "simc/driver/FortranWriter.h"
 #include "simc/driver/ReportSink.h"
 #include "simc/setup/SetupBuilder.h"
@@ -126,6 +127,8 @@ void SimcRun::initialise() {
         // object file, hence its SIMC_REGISTER(IRandom, "mt64") registration.
         if (pipe_.rng.type == "mt64" && !Registry<IRandom>::contains("mt64"))
             rng_ = std::make_unique<Mt64Random>();
+        else if (pipe_.rng.type == "ranlux" && !Registry<IRandom>::contains("ranlux"))
+            rng_ = std::make_unique<RanluxRandom>();   // (same reason: simcfw_random is STATIC; task P13.2)
         else
             rng_ = Registry<IRandom>::create(pipe_.rng.type);
         rng_->configure(pipe_.rng.config, params_);

@@ -22,6 +22,9 @@
 #include "simc/core/SimcConstants.h"
 #include "simc/core/SimcParameters.h"
 #include "simc/core/random/ScriptedRandom.h"
+#include "simc/core/random/RanluxRandom.h"
+#include <cstring>
+#include <fstream>
 #include "simc/driver/Pipeline.h"
 #include "simc/input/InpReader.h"
 #include "simc/physics/rho/RhoModel.h"
@@ -640,6 +643,41 @@ int runRhoDecay(const std::string& dir, SetupCache& sc, double tol) {
     return (rc == 0 && nstop == 2) ? 0 : (rc == 77 ? 77 : 1);
 }
 
+// The RANLUX port (IRandom "ranlux") against the random stream of a capture: every grnd / gauss1 value handed out in the
+// contiguous full-logged tries (cap_rng.txt, ntried 1..nmax) must be reproduced bitwise from sgrnd(seed).
+int runRanluxStream(const std::string& capdir, int seed, long nmax) {
+    const std::string path = capdir + "/cap_rng.txt";
+    std::string cmd = std::ifstream(path) ? "cat '" + path + "'" : "xz -dc '" + path + ".xz'";
+    FILE* f = popen(cmd.c_str(), "r");
+    if (!f) return 77;
+    char line[512];
+    if (!std::fgets(line, sizeof line, f)) {
+        pclose(f);
+        std::printf("ranlux stream: SKIP (no %s[.xz])\n", path.c_str());
+        return 77;
+    }
+    RanluxRandom r;
+    r.seed(static_cast<std::uint64_t>(seed));
+    long n = 0, bad = 0, nu = 0, ng = 0;
+    while (std::fgets(line, sizeof line, f)) {
+        long nt, ph, sq, kind, nint;
+        double v, nsig;
+        if (std::sscanf(line, "%ld %ld %ld %ld %lf %lf %ld", &nt, &ph, &sq, &kind, &v, &nsig, &nint) != 7) continue;
+        if (nt > nmax) break;
+        const double c = kind == 2 ? r.gauss1(nsig) : r.uniform();
+        (kind == 2 ? ng : nu)++;
+        ++n;
+        if (std::memcmp(&c, &v, sizeof c) != 0) {
+            if (bad < 5) std::printf("  try %ld phase %ld seq %ld kind %ld: ref %.17g cpp %.17g\n", nt, ph, sq, kind, v, c);
+            ++bad;
+        }
+    }
+    pclose(f);
+    std::printf("ranlux stream vs %s (tries 1..%ld): %ld values (%ld grnd, %ld gauss1), %ld differ -> %s\n", path.c_str(),
+                nmax, n, nu, ng, bad, (bad == 0 && n > 0) ? "PASS" : "FAIL");
+    return (bad == 0 && n > 0) ? 0 : 1;
+}
+
 int setup(const std::string& inp) {
     std::printf("rho set-up (P13.1) from %s\n", inp.c_str());
     SimcParameters p;
@@ -730,6 +768,7 @@ int main(int argc, char** argv) {
     try {
         if (what == "sanity") return sanity();
         if (what == "fortran_diff") return fortranDiff();
+        if (what == "ranlux_stream" && argc > 4) return runRanluxStream(argv[2], std::atoi(argv[3]), std::atol(argv[4]));
         if (argc > 5) {
             SetupCache sc{argv[3], argv[4], {}};
             const double tol = std::atof(argv[5]);

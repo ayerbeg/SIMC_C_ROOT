@@ -21,3 +21,6 @@ add_test(NAME l1_peerho COMMAND test_l1_rho peerho ${_rfn}/peerho ${_rinp} ${_rs
 add_test(NAME l1_generate_rho_fixedrng COMMAND test_l1_rho generate_rho ${_rfn}/generate_rho_fixedrng ${_rinp} ${_rsp} 0)
 add_test(NAME l1_rho_decay_fixedrng COMMAND test_l1_rho rho_decay ${_rfn}/rho_decay_fixedrng ${_rinp} ${_rsp} 0)
 set_tests_properties(l1_peerho l1_generate_rho_fixedrng l1_rho_decay_fixedrng PROPERTIES SKIP_RETURN_CODE 77 LABELS l1)
+# the RANLUX port (IRandom "ranlux", P13.2) against the captured RANLUX stream (tries 1..3000 are fully logged)
+add_test(NAME l1_ranlux_stream_rho_h COMMAND test_l1_rho ranlux_stream ${_rfn}/event_capture_rho/cap_h 12345 3000)
+set_tests_properties(l1_ranlux_stream_rho_h PROPERTIES SKIP_RETURN_CODE 77 LABELS l1)

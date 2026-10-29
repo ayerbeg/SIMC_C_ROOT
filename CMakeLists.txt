@@ -88,6 +88,7 @@ target_compile_options(simcfw_physics PRIVATE -Wall -Wextra -pedantic)
 add_library(simcfw_random STATIC
     src/core/random/Gauss1.cpp
     src/core/random/Mt64Random.cpp
+    src/core/random/RanluxRandom.cpp                 # IRandom "ranlux": the Fortran RANLUX/grnd stream (P13.2)
     src/core/random/ScriptedRandom.cpp
 )
 target_link_libraries(simcfw_random PUBLIC simcfw)
