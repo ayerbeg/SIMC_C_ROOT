@@ -28,7 +28,7 @@ std::vector<std::string> checkSupported(const RunSetup& s) {
                     " (SOS/HRS): these spectrometers are not ported yet (task P14); use 1 = HMS or 5 = SHMS");
     else if (arm != 1 && arm != 5)
         v.push_back("rho: hadron_arm = " + std::to_string(arm) +
-                    ": rho_decay.f:223-230 handles only the arms 1-5 (the Fortran STOPs with 'Unknown spectrometer "
+                    ": rho_decay.f:92-99 handles only the arms 1-5 (the Fortran STOPs with 'Unknown spectrometer "
                     "setup dude!' at the first decay); use 1 = HMS or 5 = SHMS");
     return v;
 }
@@ -41,7 +41,8 @@ PeerhoConfig makePeerhoConfig(const RunSetup& s) {
     c.targ_M = s.targ.M;
     c.doing_deutpi = s.flags.doing_deutpi;   // rho_physics.f:89 (false in a rho run)
     c.doing_hepi = s.flags.doing_hepi;
-    c.efer_from_common = !s.fortran_compat;   // P13.1 R1
+    c.efer_from_common = !s.fortran_compat;   // D-057 F6
+    c.nan_guard = !s.fortran_compat;          // D-057 F20
     return c;
 }
 
@@ -49,7 +50,7 @@ GenerateRhoConfig makeGenerateRhoConfig(const RunSetup& s) {
     GenerateRhoConfig c;
     c.Mrec_struck = s.targ.Mrec_struck;
     c.spec_p_P = s.spec.p.P;
-    c.mh2_final_fixed = !s.fortran_compat;   // P13.1 R2
+    c.mh2_final_fixed = !s.fortran_compat;   // D-057 F3
     return c;
 }
 
@@ -58,6 +59,8 @@ RhoDecayConfig makeRhoDecayConfig(const RunSetup& s) {
     c.hadron_arm = s.params.hadron_arm;
     c.spec_p_theta = s.spec.p.theta;
     c.spec_p_phi = s.spec.p.phi;
+    c.yptar_sign_fixed = !s.fortran_compat;   // D-057 F9
+    c.acos_clamp = !s.fortran_compat;         // D-057 F21
     return c;
 }
 

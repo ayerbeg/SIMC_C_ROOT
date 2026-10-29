@@ -85,7 +85,7 @@ struct NtupVars {
     /// pi0 photon positions at the calorimeter [cm] (simc.f:1500-1560, mc_calo only; never written with HMS/SHMS)
     double xcal_gamma1{0}, ycal_gamma1{0}, xcal_gamma2{0}, ycal_gamma2{0};
     /// rho: the Breit-Wigner rho mass of the try [MeV] (generate_rho.f:79 ntup%rhomass = Mh; ntuple column Mrho) and
-    /// the decay polar angle in the rho rest frame [rad] (rho_decay.f:197 ntup%rhotheta; column Thrho). Task P13.1.
+    /// the decay polar angle in the rho rest frame [rad] (rho_decay.f:66 ntup%rhotheta; column Thrho). Task P13.1.
     double rhomass{0}, rhotheta{0};
 };
 

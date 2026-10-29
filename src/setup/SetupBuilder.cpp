@@ -273,7 +273,7 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
     // configuration is rejected here with a clear message (and project/transp never check a non-pi/K particle for
     // decay). fortran_compat keeps the Fortran (simc::FortranStop at the first decay).
     // (the same pi/K test as optics::decaysInFlight and project.f:78-79)
-    // doing_rho (P13.1): the detected hadron is the pi+/pi- of rho_decay.f (Mh2 = Mpi2 after the decay, rho_decay.f:279-282),
+    // doing_rho (P13.1): the detected hadron is the pi+/pi- of rho_decay.f (Mh2 = Mpi2 after the decay, rho_decay.f:148-151),
     // which is what project.f/transp.f see at the decay test.
     const bool hadronDecays = std::fabs(std::sqrt(s.Mh2) - K::Mpi) < 2 || std::fabs(std::sqrt(s.Mh2) - K::Mk) < 2 ||
                               (f0.doing_rho && !p.doing_phsp);

@@ -3,7 +3,7 @@
 // Exclusive rho0 electroproduction of the Fortran SIMC (task P13.1), bit-for-bit ports:
 //   peerho      rho_physics.f:1-402    d5sigma/dEe'dOmega_e'dOmega_rho [ub/MeV/sr^2] (PYTHIA/HERMES-type model)
 //   generateRho generate_rho.f:1-128   the rho in 4pi in the photon-nucleon CM (Breit-Wigner mass), boosted to the lab
-//   rhoDecay    rho_decay.f:132-291    rho0 -> pi+ pi-: the detected pion, thrown in the rho rest frame
+//   rhoDecay    rho_decay.f:1-160       rho0 -> pi+ pi-: the detected pion, thrown in the rho rest frame
 // The reaction plug-in that calls generateRho / rhoDecay (event.f:701-705, 420-421) is task P13.2.
 //
 // Numerics (D-010, D-024): rho_physics.f, generate_rho.f and rho_decay.f are compiled with -fdefault-real-8, so every
@@ -17,29 +17,20 @@
 //                                         generate_rho, the pion mass after rho_decay; owned by the P13.2 reaction)
 //   ntup%rhomass, ntup%rhotheta, ntup%sigcm -> NtupVars
 //
-// Fortran findings of this port (docs/FORTRAN_DIFFERENCES.md; provisional ids P13.1 Rn until the director assigns a D-xxx):
-//   R1 FORTRAN-BUG   rho_physics.f:88-93   efer: peerho recomputes the COMMON efer on shell, sqrt(pfer^2+Mtar_struck^2),
-//                    with the pion flags doing_deutpi/doing_hepi (always false in a rho run), and writes it back to
-//                    COMMON /pfermi/. For D/3He the generation (event.f:366-371, generate_rho.f) used the off-shell
-//                    efer = targ%M - sqrt(m_spec^2 + pfer^2). Corrected: peerho uses the COMMON efer as generated and
-//                    does not overwrite it (PeerhoConfig::efer_from_common). H: identical (pfer = 0, efer = Mp).
-//   R2 FORTRAN-BUG   generate_rho.f:80     `Mh2_final = Mh` (a mass, not a mass squared). Corrected: Mh2_final = Mh2.
-//                    Not observable in a SIMC run (simc.f:174 resets it and rho_decay sets it on every success).
-//   R3 FORTRAN-DIFF-CANDIDATE generate_rho.f:72  s = -Q2 + efer^2 + 2 nu efer has no Fermi-momentum terms
-//                    (-2 q.pfer - pfer^2), although the boost uses (q + pfer)/(nu + efer). D/3He only. Kept.
-//   R4 FORTRAN-DIFF-CANDIDATE rho_physics.f:115, 233  t and tmin use the nominal Mrho2, not the generated Breit-Wigner
-//                    mass Mh2 of the event (complete_ev's main%t uses Mh2). Kept.
-//   R5 FORTRAN-QUIRK rho_physics.f:113, 117  peerho overwrites main%w and main%t in GeV units (complete_ev set them
-//                    in MeV). Kept (ntuple/report consumers see the GeV values, as the Fortran).
-//   R6 FORTRAN-QUIRK rho_decay.f:132-291 does not set success = .true.: the incoming success is returned on every path
-//                    that is not a failure (rhoDecay takes success_in).
-//   R7 FORTRAN-QUIRK the write(222,...) diagnostics (fort.222) of rho_physics.f:252, 262, 293, 390 go to the optional
-//                    `diag` stream (no fort.222 file is written by SIMC++).
-//   R8 FORTRAN-DIFF-CANDIDATE rho_decay.f:241, 273  xptar = tan(asin(px/p)) = px/sqrt(py^2+pz^2), which is the slope
-//                    dx/dz' times cos(in-plane offset to the spectrometer axis) (-0.1 % at 45 mr). Kept.
-//   R9 FORTRAN-DIFF-CANDIDATE rho_decay.f:188-208  the decay angle theta* (distribution sin^2 + 2 eps R cos^2) and phi*
-//                    are thrown in the rho rest frame with respect to the LAB z (beam) and x axes, not the helicity
-//                    axis (rho direction in the photon-nucleon CM) of the s-channel-helicity-conserving form. Kept.
+// Fortran findings (D-057; P13.F1 ids F1..F22, reference/P13.F1_report.md; docs/FORTRAN_DIFFERENCES.md). Corrected by
+// default, kept by fortran_compat:
+//   F3  generate_rho.f:80        `Mh2_final = Mh` (a mass, not a mass squared) -> Mh2 (GenerateRhoConfig).
+//   F6  rho_physics.f:88-93      peerho recomputes the COMMON efer on shell (the A > 1 branch tests the PION flags) and
+//                                writes it back -> the generated efer is used and kept (PeerhoConfig::efer_from_common).
+//   F9  rho_decay.f:123-124      beam-left arm, pion on the far side of the beam: yptar with the wrong sign.
+//   F20 rho_physics.f:388-389    NaN passes the 'crazy sigma' guard -> 0.
+//   F21 rho_decay.f:111-112      acos of a rounding-overflowed cosine gives a NaN yptar that is accepted -> clamped.
+// Kept in both modes (expert list): F5 generate_rho.f:72 s without the Fermi terms; F7 rho_physics.f:115, 233 t and
+//   tmin with the nominal Mrho2 and main%w/t overwritten in GeV; F8 rho_decay.f:57-64 decay angles w.r.t. the lab axes
+//   (not the helicity frame); F10 rho_decay.f:110, 142 xptar = tan(asin(px/p)).
+// Faithful: F2 (rho_decay never sets success = .true.; the call after a failed try is the reaction's business, P13.2),
+//   F22 (dlen unused, the 'going backwards' test unreachable), the write(222,...) diagnostics of rho_physics.f:252, 262,
+//   293, 390 go to the optional `diag` stream (no fort.222 file).
 #ifndef SIMC_PHYSICS_RHO_RHOPHYSICS_H
 #define SIMC_PHYSICS_RHO_RHOPHYSICS_H
 
@@ -65,9 +56,11 @@ struct PeerhoConfig {
     double targ_M{0};             ///< targ%M [MeV] (only for the doing_deutpi/doing_hepi branch)
     bool doing_deutpi{false};     ///< rho_physics.f:89 tests the PION flags (always false in a rho run)
     bool doing_hepi{false};
-    /// R1 (FORTRAN-BUG): false = the Fortran (fortran_compat): efer recomputed on shell and written back to
+    /// D-057 F6 (FORTRAN-BUG): false = the Fortran (fortran_compat): efer recomputed on shell and written back to
     /// main.pfermi.efer; true = corrected: the COMMON efer of the generation is used and left unchanged.
     bool efer_from_common{true};
+    /// D-057 F20 (FORTRAN-BUG): true = a NaN cross section is set to 0 like the other 'crazy' values.
+    bool nan_guard{true};
 };
 
 /// The intermediate quantities of one peerho call (for the L1 tests; the Fortran returns only peerho).
@@ -91,7 +84,7 @@ double peerho(const Event& vertex, MainEvent& main, const PeerhoConfig& cfg, std
 struct GenerateRhoConfig {
     double Mrec_struck{0};          ///< targ%Mrec_struck [MeV] (= Mp, dbase.f:317)
     double spec_p_P{0};             ///< spec%p%P [MeV/c] (central hadron momentum)
-    /// R2 (FORTRAN-BUG): false = the Fortran `Mh2_final = Mh` (fortran_compat); true = corrected Mh2_final = Mh2.
+    /// D-057 F3 (FORTRAN-BUG): false = the Fortran `Mh2_final = Mh` (fortran_compat); true = corrected Mh2_final = Mh2.
     bool mh2_final_fixed{true};
 };
 
@@ -115,6 +108,8 @@ struct RhoDecayConfig {
     int hadron_arm{0};          ///< 1 HMS, 3 HRS-R: beam right; 2 SOS, 4 HRS-L, 5 SHMS: beam left; else STOP
     double spec_p_theta{0};     ///< spec%p%theta [rad]
     double spec_p_phi{0};       ///< spec%p%phi [rad] (physics_angles)
+    bool yptar_sign_fixed{true};   ///< D-057 F9 (FORTRAN-BUG): false = the Fortran sign for far-side pions, left arms
+    bool acos_clamp{true};         ///< D-057 F21 (FORTRAN-BUG): false = the Fortran acos of an argument > 1 (NaN)
 };
 
 struct RhoDecayResult {
@@ -123,18 +118,18 @@ struct RhoDecayResult {
     int n_trials{0};      ///< accept-reject trials of the decay angle
 };
 
-/// Fortran: rho_decay.f:rho_decay (l.132-291). The rho in `orig` (p%P, up, Q2) decays into the detected pion:
+/// Fortran: rho_decay.f:rho_decay (l.1-160). The rho in `orig` (p%P, up, Q2) decays into the detected pion:
 /// cos(theta*) from sin^2 + 2 eps R cos^2 (R = 0.33 (Q2/Mrho2)^0.61, accept-reject), phi* flat, E* = rhomass/2.
 /// gnrl.Mh2 (the rho mass squared of generate_rho) gives the boost; on success orig%up, xptar, yptar, delta, P, E, theta,
 /// phi become the pion's and gnrl = (Mpi, Mpi2, Mpi2). ntup.rhotheta is written after the accept-reject loop; ntup.rhomass
-/// is read. success_in is returned unchanged when no failure occurs (R6: the Fortran never sets success = .true.).
+/// is read. success_in is returned unchanged when no failure occurs (D-057 F2: the Fortran never sets success = .true.).
 /// Random numbers: phi* = 2 pi u1; then per trial cos(theta*) = 2 u - 1 and norm = (1 + 2 eps R) u'.
-/// hadron_arm outside 1..5 -> simc::FortranStop ('Unknown spectrometer setup dude!', rho_decay.f:227-229).
+/// hadron_arm outside 1..5 -> simc::FortranStop ('Unknown spectrometer setup dude!', rho_decay.f:96-98).
 /// The 'Decay pion going backwards - fahgettaboutit!' message (l.264) goes to `log` (if non-null).
 RhoDecayResult rhoDecay(Event& orig, double p_spec, double epsilon, bool success_in, RhoMassState& gnrl,
                         NtupVars& ntup, const RhoDecayConfig& cfg, IRandom& rng, std::ostream* log = nullptr);
 
-/// R = sigma_L/sigma_T = 0.33 (Q2/Mrho2)^0.61 (rho_physics.f:250, rho_decay.f:179), Q2 in MeV^2.
+/// R = sigma_L/sigma_T = 0.33 (Q2/Mrho2)^0.61 (rho_physics.f:250, rho_decay.f:48), Q2 in MeV^2.
 double rhoR(double Q2);
 
 }  // namespace rho

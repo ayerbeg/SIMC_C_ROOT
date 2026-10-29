@@ -1,5 +1,5 @@
 // src/physics/rho/RhoPhysics.cpp — rho_physics.f:peerho, generate_rho.f:generate_rho, rho_decay.f:rho_decay (task P13.1).
-// See include/simc/physics/rho/RhoPhysics.h for the numerics and the Fortran findings R1..R7.
+// See include/simc/physics/rho/RhoPhysics.h for the numerics and the Fortran findings (D-057).
 #include "simc/physics/rho/RhoPhysics.h"
 
 #include <cmath>
@@ -21,7 +21,7 @@ using constants::pi;
 // x/1.d+06 and x/1.d3 with a REAL(16) literal: binary128 division (__divtf3), rounded to REAL*8 on assignment.
 inline double divQuad(double x, double d) { return static_cast<double>(static_cast<quad>(x) / static_cast<quad>(d)); }
 
-// Fortran e12.3 / e10.2 / e12.4 edit descriptors for the fort.222 diagnostics (R7): 0.ddddE+xx right-aligned.
+// Fortran e12.3 / e10.2 / e12.4 edit descriptors for the fort.222 diagnostics (D-057 R7): 0.ddddE+xx right-aligned.
 std::string fe(double v, int w, int d) {
     char buf[64];
     if (v == 0.0 || !std::isfinite(v)) {
@@ -64,7 +64,7 @@ double peerho(const Event& vertex, MainEvent& main, const PeerhoConfig& cfg, std
     // l.88-93: energy of the struck nucleon
     double efer;
     if (cfg.efer_from_common) {
-        // FORTRAN-BUG(P13.1 R1): original Fortran rho_physics.f:88-92: `efer = sqrt(pfer**2+targ%Mtar_struck**2)`,
+        // FORTRAN-BUG(D-057 F6): original Fortran rho_physics.f:88-92: `efer = sqrt(pfer**2+targ%Mtar_struck**2)`,
         // `if(doing_deutpi.or.doing_hepi) then efer = targ%M-sqrt(Mn2+pfer**2) ...` (efer is COMMON /pfermi/, so the
         // on-shell value is also written back); corrected because the comment (l.83-86) asks for "the same assumptions
         // that go into calculating the pion angle/momentum (in event.f)", but the test uses the PION flags, which are
@@ -97,10 +97,10 @@ double peerho(const Event& vertex, MainEvent& main, const PeerhoConfig& cfg, std
     const double nu_eq = (s - (sq(efer) - sq(pfer))) / 2. / (efer - pfer * tfcos);   // equiv. photon energy (unused)
 
     s = s / 1.e6;   // (GeV)**2
-    // FORTRAN-QUIRK(P13.1 R5): main%w and main%t are overwritten in GeV units.
+    // FORTRAN-QUIRK(D-057 F7): main%w and main%t are overwritten in GeV units.
     main.w = std::sqrt(s);
 
-    // FORTRAN-DIFF-CANDIDATE(P13.1 R4): t (and tmin, l.233) use the nominal Mrho2, not the Breit-Wigner mass of the
+    // FORTRAN-DIFF-CANDIDATE(D-057 F7): t (and tmin, l.233) use the nominal Mrho2, not the Breit-Wigner mass of the
     // event. Question: intended (model defined at the pole mass) or should Mh2 be used as in complete_ev's main%t?
     double t = vertex.Q2 - Mrho2 + 2. * vertex.nu * vertex.p.E - 2. * vertex.p.P * vertex.q * tcos;
     t = t / 1.e6;   // (GeV/c)**2
@@ -306,7 +306,10 @@ double peerho(const Event& vertex, MainEvent& main, const PeerhoConfig& cfg, std
     const double davesig = gtpr * sig;
     double sigma_eerho = divQuad(davesig, 1.e3);   // davesig/1.d3: REAL(16) literal; ub/GeV-sr --> ub/MeV-sr
     bool crazy = false;
-    if (sigma_eerho > 1.E10 || sigma_eerho < 0.) {
+    // FORTRAN-BUG(D-057 F20): original Fortran rho_physics.f:388-389 `if(sigma_eerho.gt.1.E10.or.sigma_eerho.lt.0.)`:
+    // a NaN cross section (e.g. s < 0) passes the guard; corrected because the guard is meant to remove unphysical
+    // values: NaN is set to 0 too (PeerhoConfig::nan_guard).
+    if (sigma_eerho > 1.E10 || sigma_eerho < 0. || (cfg.nan_guard && std::isnan(sigma_eerho))) {
         if (diag) *diag << "crazy sigma_rho" << fe(gtpr, 12, 4) << fe(sig, 12, 4) << fe(sigma_eerho, 12, 4) << "\n";
         sigma_eerho = 0.;
         crazy = true;
@@ -374,7 +377,7 @@ GenerateRhoResult generateRho(Event& vertex, const FermiMomentum& pf, RhoMassSta
     }
     const double gammacm = 1. / std::sqrt(1.0 - sq(betacm));
 
-    // l.72. FORTRAN-DIFF-CANDIDATE(P13.1 R3): "W2 in cm - including possible Fermi motion effects", but the
+    // l.72. FORTRAN-DIFF-CANDIDATE(D-057 F5): "W2 in cm - including possible Fermi motion effects", but the
     // -2 q.pfer - pfer**2 terms of (nu+efer)**2 - |q+pfer|**2 are missing (D/3He only; the boost above includes them).
     // Question: intended approximation? Kept.
     const double s = -Q2 + sq(efer) + 2. * nu * efer;
@@ -386,8 +389,8 @@ GenerateRhoResult generateRho(Event& vertex, const FermiMomentum& pf, RhoMassSta
     gnrl.Mh2 = gnrl.Mh * gnrl.Mh;
     ntup_rhomass = gnrl.Mh;
     if (cfg.mh2_final_fixed) {
-        // FORTRAN-BUG(P13.1 R2): original Fortran generate_rho.f:80: `Mh2_final = Mh`; corrected because Mh2_final is
-        // a mass squared (dbase.f:222, rho_decay.f:282). Not observable in a run (simc.f:174 / rho_decay reset it).
+        // FORTRAN-BUG(D-057 F3): original Fortran generate_rho.f:80: `Mh2_final = Mh`; corrected because Mh2_final is
+        // a mass squared (dbase.f:222, rho_decay.f:151). Not observable in a run (simc.f:174 / rho_decay reset it).
         gnrl.Mh2_final = gnrl.Mh2;
     } else {
         gnrl.Mh2_final = gnrl.Mh;
@@ -432,22 +435,22 @@ GenerateRhoResult generateRho(Event& vertex, const FermiMomentum& pf, RhoMassSta
 }
 
 // ============================================================================================ rho_decay
-// Fortran: rho_decay.f:rho_decay (l.132-291)
+// Fortran: rho_decay.f:rho_decay (l.1-160)
 RhoDecayResult rhoDecay(Event& orig, double p_spec, double epsilon, bool success_in, RhoMassState& gnrl,
                         NtupVars& ntup, const RhoDecayConfig& cfg, IRandom& rng, std::ostream* log) {
     RhoDecayResult res;
-    res.success = success_in;   // FORTRAN-QUIRK(P13.1 R6): never set to .true. by rho_decay
+    res.success = success_in;   // FORTRAN-QUIRK(D-057 F2): never set to .true. by rho_decay
 
-    // l.179: R = sigma_L/sigma_T (the same parameterisation as rho_physics.f:250)
+    // l.48: R = sigma_L/sigma_T (the same parameterisation as rho_physics.f:250)
     const double R_rho = 0.33 * std::pow(orig.Q2 / constants::Mrho2, 0.61);
 
-    // l.182-185 (dlen = ctaurho*beta*gamma is not used)
+    // l.51-54 (dlen = ctaurho*beta*gamma is not used, D-057 F22)
     const double ph = orig.p.P;
     const double beta = ph / std::sqrt(sq(ph) + gnrl.Mh2);
     const double gamma = 1. / std::sqrt(1. - beta * beta);
 
-    // l.188-195: phi* flat; cos(theta*) by accept-reject from sin**2 + 2 eps R cos**2.
-    // FORTRAN-DIFF-CANDIDATE(P13.1 R9): theta*, phi* are taken w.r.t. the LAB z and x axes in the rho rest frame (the
+    // l.57-64: phi* flat; cos(theta*) by accept-reject from sin**2 + 2 eps R cos**2.
+    // FORTRAN-DIFF-CANDIDATE(D-057 F8): theta*, phi* are taken w.r.t. the LAB z and x axes in the rho rest frame (the
     // pion is boosted with -beta*up below), not w.r.t. the helicity axis (rho direction in the photon-nucleon CM) in
     // which sin**2 + 2 eps R cos**2 is the s-channel-helicity-conserving decay distribution. Question: intended
     // approximation? Kept.
@@ -463,9 +466,9 @@ RhoDecayResult rhoDecay(Event& orig, double p_spec, double epsilon, bool success
         const double dist = sq(std::sin(rth)) + 2.0 * epsilon * R_rho * sq(std::cos(rth));
         if (!(dist < norm)) break;   // `if(dist.lt.norm) goto 100`
     }
-    ntup.rhotheta = rth;
+    ntup.rhotheta = rth;   // l.66
 
-    // l.200-208: the pion in the rho rest frame
+    // l.69-77: the pion in the rho rest frame
     const double er = ntup.rhomass / 2.0;
     if (er < constants::Mpi) {
         res.success = false;
@@ -476,14 +479,14 @@ RhoDecayResult rhoDecay(Event& orig, double p_spec, double epsilon, bool success
     const double pyr = pr * std::sin(rth) * std::sin(rph);
     const double pzr = pr * std::cos(rth);
 
-    // l.212-215: boost to the lab
+    // l.81-84: boost to the lab
     const double bx = -beta * orig.up.x;
     const double by = -beta * orig.up.y;
     const double bz = -beta * orig.up.z;
     const LorenResult L = Loren(gamma, bx, by, bz, er, pxr, pyr, pzr);
     const double pxf = L.pxf, pyf = L.pyf, pzf = L.pzf, pf = L.pf1;
 
-    // l.223-237: is the pion going toward the spectrometer? (rotate by theta_spec about x)
+    // l.92-106: is the pion going toward the spectrometer? (rotate by theta_spec about x)
     const int arm = cfg.hadron_arm;
     const bool right = arm == 1 || arm == 3;
     const bool left = arm == 2 || arm == 4 || arm == 5;
@@ -494,18 +497,26 @@ RhoDecayResult rhoDecay(Event& orig, double p_spec, double epsilon, bool success
     else if (left)
         pzprime = pzf * std::cos(th) + pyf * std::sin(th);
     else
-        throw FortranStop("rho_decay.f:228-229: Unknown spectrometer setup dude! (hadron_arm = " + std::to_string(arm) +
+        throw FortranStop("rho_decay.f:97-98: Unknown spectrometer setup dude! (hadron_arm = " + std::to_string(arm) +
                           ")");
     if (pzprime < 0.0) {
         res.success = false;
         return res;
     }
 
-    // l.241-259: xptar and yptar.
-    // FORTRAN-DIFF-CANDIDATE(P13.1 R8): xptar = tan(th_oop) = px/sqrt(py**2+pz**2) is dx/dz' * cos(in-plane offset)
-    // (the exact spectrometer slope is px/pz'); -0.1 % at 45 mr. Question: approximation accepted? Kept.
+    // l.110-128: xptar and yptar.
+    // FORTRAN-DIFF-CANDIDATE(D-057 F10): xptar = tan(th_oop) = px/sqrt(py**2+pz**2) is dx/dz' * cos(in-plane offset)
+    // (the exact spectrometer slope is px/pz'). Question: approximation accepted? Kept.
     const double th_oop = std::asin(pxf / pf);
-    const double cos_th_inp = pzf / pf / std::cos(th_oop);
+    double cos_th_inp = pzf / pf / std::cos(th_oop);
+    if (cfg.acos_clamp) {
+        // FORTRAN-BUG(D-057 F21): original Fortran rho_decay.f:111-112: `cos_th_inp = pzf/pf/cos(th_oop)`,
+        // `th_inp = acos(cos_th_inp)`; corrected because rounding can push the argument above 1 for a pion in the
+        // x-z plane: acos gives NaN, the NaN yptar passes every later test (mc_shms, pass_cuts) and the event
+        // contributes with a NaN reconstruction (1 per 1e5 events). The argument is clamped to [-1, 1].
+        if (cos_th_inp > 1.0) cos_th_inp = 1.0;
+        if (cos_th_inp < -1.0) cos_th_inp = -1.0;
+    }
     double th_inp = std::acos(cos_th_inp);
     if (right) {
         if (pyf < 0.0)
@@ -515,18 +526,25 @@ RhoDecayResult rhoDecay(Event& orig, double p_spec, double epsilon, bool success
     } else {
         if (pyf > 0.0)
             th_inp = th_inp - th;
+        else if (cfg.yptar_sign_fixed)
+            // FORTRAN-BUG(D-057 F9): original Fortran rho_decay.f:123-124: `th_inp = th_inp + spec%p%theta` for a
+            // beam-left arm and a pion on the far side of the beam (pyf <= 0); corrected because the in-plane offset
+            // from the spectrometer axis is then -(alpha + theta_spec) (the right-arm branch, l.115-119, gets the
+            // sign right): yptar had the wrong sign. These pions are far outside the acceptance (|yptar| >= tan
+            // theta_spec); only the .geni/.hist P-arm entries and orig%p%theta/phi of such tries change.
+            th_inp = -(th_inp + th);
         else
             th_inp = th_inp + th;
     }
 
-    // l.263-267 ("This should never happen!!!")
+    // l.132-136 ("This should never happen!!!"; unreachable after the pzprime test, D-057 F22)
     if ((th_inp > pi / 2.) || (th_oop > pi / 2.)) {
         if (log) *log << " Decay pion going backwards - fahgettaboutit!\n";
         res.success = false;
         return res;
     }
 
-    // l.269-288
+    // l.138-157
     orig.up.x = pxf / pf;
     orig.up.y = pyf / pf;
     orig.up.z = pzf / pf;

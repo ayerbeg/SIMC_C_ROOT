@@ -6,10 +6,10 @@
 //     main%sigcc_recon = 1.0                     (sigccRecon)
 //     tgtweight        = targ%Z + targ%N         (applied by the reaction, P13.2)
 // peerho also writes main%w [GeV], main%t [GeV^2], main%pcm, thetacm, phicm, davejac, johnjac and ntup%sigcm, and in
-// the Fortran mode the COMMON efer (main.pfermi.efer, P13.1 R1).
+// the Fortran mode the COMMON efer (main.pfermi.efer, D-057 F6).
 //
 // JSON config (all optional): { "verbose": true }. No data files.
-// Run state read from the set-up: targ%Mtar_struck, targ%M, the reaction flags, fortran_compat (R1). Unsupported input
+// Run state read from the set-up: targ%Mtar_struck, targ%M, the reaction flags, fortran_compat (D-057 F6, F20). Unsupported input
 // combinations are refused in init() (rho::checkSupported). docs/FORTRAN_DIFFERENCES.md.
 #ifndef SIMC_PHYSICS_RHO_RHOMODEL_H
 #define SIMC_PHYSICS_RHO_RHOMODEL_H
@@ -30,11 +30,11 @@ namespace rho {
 /// The rho input combinations SIMC++ refuses (each entry is an error message); empty = supported.
 /// Checked: doing_rho set (and not switched off by doing_phsp); the hadron arm is HMS (1) or SHMS (5): SOS (2) and
 /// HRS (3, 4) wait for task P14 (NotPorted), the calorimeter arms (7, 8) make rho_decay STOP ('Unknown spectrometer
-/// setup dude!', rho_decay.f:227-229).
+/// setup dude!', rho_decay.f:96-98).
 std::vector<std::string> checkSupported(const RunSetup& s);
 /// true if a checkSupported problem is a NotPorted feature (SOS/HRS hadron arm) rather than an input error.
 bool isNotPortedProblem(const std::string& problem);
-/// PeerhoConfig from the set-up (fortran_compat selects the R1 switch).
+/// PeerhoConfig from the set-up (fortran_compat selects the D-057 F6, F20 switches).
 PeerhoConfig makePeerhoConfig(const RunSetup& s);
 /// GenerateRhoConfig / RhoDecayConfig from the set-up, for the reaction (P13.2) and the tests.
 GenerateRhoConfig makeGenerateRhoConfig(const RunSetup& s);
@@ -57,7 +57,7 @@ public:
 
     const PeerhoConfig& config() const { return cfg_; }
     PeerhoConfig& config() { return cfg_; }   ///< test hook
-    /// The fort.222 diagnostics (rho_physics.f:252, 262, 293, 390) written so far (P13.1 R7: not a file in SIMC++).
+    /// The fort.222 diagnostics (rho_physics.f:252, 262, 293, 390) written so far (not a file in SIMC++).
     std::string diagnostics() const { return diag_.str(); }
 
 private:
