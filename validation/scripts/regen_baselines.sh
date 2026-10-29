@@ -65,6 +65,12 @@ for t in h_k1_pip_rad; do
             "corrected_sidis_${t}_n20k_s4242|$REF/runs/sidis_${t}_A/sidis_${t}_A.inp|--ngen 20000|dir_sidis_${t}_s4242|regression_corrected_sidis_${t} (new in P12.2)")
 done
 
+# P13.2: exclusive rho H(e,e'pi+)[rho], K1 (HMS e-, SHMS pi), rad; 1000 events (rho generation is slow: ~2.9e6 tries)
+for t in h_k1_rad; do
+  CONFIGS+=("rho_${t}_n1k_s4242|$REF/runs/rho_${t}_A/rho_${t}_A.inp|--fortran-compat --ngen 1000|dir_rho_${t}_s4242|regression_identity_rho_${t} (new in P13.2)"
+            "corrected_rho_${t}_n1k_s4242|$REF/runs/rho_${t}_A/rho_${t}_A.inp|--ngen 1000|dir_rho_${t}_s4242|regression_corrected_rho_${t} (new in P13.2)")
+done
+
 WT="$(mktemp -d "${TMPDIR:-/tmp}/simc_regen_wt.XXXXXX")"
 cleanup() { git -C "$SRC_DIR" worktree remove --force "$WT" >/dev/null 2>&1; git -C "$SRC_DIR" worktree prune; rm -rf "$WT.build"; }
 trap cleanup EXIT
