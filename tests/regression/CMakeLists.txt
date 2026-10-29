@@ -144,3 +144,23 @@ foreach(_tag h_k1_pip_rad)
     set_tests_properties(regression_identity_sidis_${_tag} regression_corrected_sidis_${_tag} PROPERTIES
                          SKIP_RETURN_CODE 77 TIMEOUT 1200 LABELS regression)
 endforeach()
+
+# P13.2: exclusive rho H(e,e'pi+)[rho] (K1: HMS e-, SHMS pi; rad, seed 4242, 1000 events: ~2.9e6 tries) against the
+# baselines of commit e6feaf0 (glibc 2.43 / gcc 16.2.1 / ROOT 6.40.04), in both modes
+# (SIMC_BASELINE_DIR/e6feaf0_glibc243_[corrected_]rho_h_k1_rad_n1k_s4242/, validation/scripts/regen_baselines.sh --only rho).
+set(SIMC_RHO_BASELINE_COMMIT "e6feaf0_glibc243" CACHE STRING "Commit whose rho outputs are the identity baseline")
+foreach(_tag h_k1_rad)
+    set(_inp ${SIMC_REFERENCE_DIR}/runs/rho_${_tag}_A/rho_${_tag}_A.inp)
+    add_test(NAME regression_identity_rho_${_tag}
+             COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/output_identity.sh $<TARGET_FILE:simcpp> $<TARGET_FILE:simc_root_identity>
+                     ${_inp} 4242 dir_rho_${_tag}_s4242
+                     ${SIMC_BASELINE_DIR}/${SIMC_RHO_BASELINE_COMMIT}_rho_${_tag}_n1k_s4242
+                     ${CMAKE_CURRENT_BINARY_DIR}/identity_rho_${_tag} --fortran-compat --ngen 1000)
+    add_test(NAME regression_corrected_rho_${_tag}
+             COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/output_identity.sh $<TARGET_FILE:simcpp> $<TARGET_FILE:simc_root_identity>
+                     ${_inp} 4242 dir_rho_${_tag}_s4242
+                     ${SIMC_BASELINE_DIR}/${SIMC_RHO_BASELINE_COMMIT}_corrected_rho_${_tag}_n1k_s4242
+                     ${CMAKE_CURRENT_BINARY_DIR}/corrected_rho_${_tag} --ngen 1000)
+    set_tests_properties(regression_identity_rho_${_tag} regression_corrected_rho_${_tag} PROPERTIES
+                         SKIP_RETURN_CODE 77 TIMEOUT 1200 LABELS regression)
+endforeach()
