@@ -9,9 +9,9 @@ target_compile_options(test_l1_rho PRIVATE -Wall -Wextra -pedantic)
 add_test(NAME rho_sanity COMMAND test_l1_rho sanity)
 add_test(NAME rho_setup COMMAND test_l1_rho setup ${SIMC_REFERENCE_DIR}/runs/pion_h_k1_rad_dec1_A/pion_h_k1_rad_dec1_A.inp)
 set_tests_properties(rho_sanity rho_setup PROPERTIES SKIP_RETURN_CODE 77 LABELS unit)
-# P13.1 R1/R2 (FORTRAN-BUG, corrected by default): both modes
-add_test(NAME fortran_diff_P131_R1_R2_rho COMMAND test_l1_rho fortran_diff)
-set_tests_properties(fortran_diff_P131_R1_R2_rho PROPERTIES LABELS "fortran_diff;unit")
+# D-057 F3, F6, F9, F20, F21 (FORTRAN-BUG, corrected by default): both modes on the kernels
+add_test(NAME fortran_diff_D057_rho_kernels COMMAND test_l1_rho fortran_diff)
+set_tests_properties(fortran_diff_D057_rho_kernels PROPERTIES LABELS "fortran_diff;unit")
 
 # Bitwise L1 against the P13.F1 kernel tables (fortran_compat, tolerance 0)
 set(_rfn ${SIMC_REFERENCE_DIR}/functions/rho)
@@ -58,3 +58,13 @@ foreach(_tag h d)
     set_tests_properties(l1_replay_event_capture_rho_${_tag} l1_simcrun_replay_rho_${_tag}
         l1_montecarlo_replay_rho_${_tag} PROPERTIES LABELS "l1;replay")
 endforeach()
+# D-057 F1 (stale hadron angle) and F2 (rho_decay after a failed generate_rad): both modes on the H capture tries
+add_test(NAME fortran_diff_D057_F1_F2_rho
+         COMMAND test_l1_pion_event fortran_diff_rho ${_rfn}/generate_rho_branch_fixedrng ${_rinp} ${_rsp} ${_rpd} 0 rho)
+set_tests_properties(fortran_diff_D057_F1_F2_rho PROPERTIES SKIP_RETURN_CODE 77 LABELS "fortran_diff;l1")
+# D-057 F15 (.hist title for D/3He) and F18 (P-arm report quantities from the decay pion): short runs in both modes
+set(_rfd ${CMAKE_CURRENT_BINARY_DIR}/fortran_diff_rho_report)
+file(MAKE_DIRECTORY ${_rfd})
+add_test(NAME fortran_diff_D057_F15_F18_rho
+         COMMAND test_l1_rho fortran_diff_report ${SIMC_REFERENCE_DIR}/runs/p13f1_rd_k1_rad_cap/p13f1_rd_k1_rad_cap.inp ${_rfd})
+set_tests_properties(fortran_diff_D057_F15_F18_rho PROPERTIES SKIP_RETURN_CODE 77 LABELS "fortran_diff;l1")

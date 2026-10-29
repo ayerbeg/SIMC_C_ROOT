@@ -1371,6 +1371,69 @@ int runCapture(const std::string& capdir, const std::string& inp, double tol) {
     return fail ? 1 : 0;
 }
 
+// D-057 F1 and F2 (FORTRAN-BUG, corrected by default) on the generate_rho_branch_fixedrng rows of the H capture (cfg 1):
+// both modes from the same inputs. F1: compat uses the stale hadron angle (physics_angles of the previous rho's lab
+// theta/phi) in trip_thru_target(3), corrected the rho's own lab angles. F2: compat calls rho_decay after a failed
+// generate_rad (drawing its uniforms), corrected does not; the outcome (success) is the same.
+int runFortranDiffRho(const std::string& dir, const std::string& inpdir) {
+    simcl1::Table t;
+    std::string err;
+    if (!t.load(dir + "/output.txt", err)) {
+        std::printf("fortran_diff D-057 F1/F2: SKIP (%s)\n", err.c_str());
+        return 77;
+    }
+    auto Pc = makeProcess(cfgInp(inpdir, 1), true), Pk = makeProcess(cfgInp(inpdir, 1), false);
+    long rows = 0, f1diff = 0, f1ok = 0, f1bad = 0, f2rows = 0, f2ok = 0, f2bad = 0, outcomeBad = 0;
+    for (std::size_t i = 0; i < t.rows.size(); ++i) {
+        Row r(t, i);
+        if (iv(r, "cfg") != 1 || iv(r, "gen_src") != 1) continue;
+        ++rows;
+        Outputs oc, ok;
+        MainEvent mc, mk;
+        Event vc, vk, occ, okk;
+        vc.Pm = vk.Pm = r["in_v_Pm"];
+        setRhoStale(r, mc, vc, occ);
+        setRhoStale(r, mk, vk, okk);
+        std::vector<double> u, g;
+        for (int k = 1; r.has("u" + std::to_string(k)); ++k) u.push_back(r["u" + std::to_string(k)]);
+        for (int k = 1; r.has("g" + std::to_string(k)); ++k) g.push_back(r["g" + std::to_string(k)]);
+        for (Process* P : {Pc.get(), Pk.get()})
+            for (int k = 1; k <= 3; ++k)
+                P->rad.inner.state().Egamma_min[static_cast<std::size_t>(k)] =
+                    P->rad.inner.state().Egamma_max[static_cast<std::size_t>(k)] = 0.;
+        ScriptedRandom rc, rk;
+        rc.load(g, u);
+        rk.load(g, u);
+        const bool sc = runGenerate(*Pc, iv(r, "gen_ntried"), mc, vc, occ, rc, oc);
+        const bool sk = runGenerate(*Pk, iv(r, "gen_ntried"), mk, vk, okk, rk, ok);
+        auto& Rk = dynamic_cast<reactions::RhoProduction&>(*Pk->reaction);
+        auto& Rc = dynamic_cast<reactions::RhoProduction&>(*Pc->reaction);
+        if (Rc.lastCompleteEvOk()) {
+            // F1: corrected trip_thru_target(3) angle = the rho's lab theta (generate_rho.f:123 stores it in xptar)
+            const bool corrAngle = vk.p.theta == vk.p.xptar;
+            const bool compatAngle = vc.p.theta != vc.p.xptar || r["in_v_p_xptar"] == vc.p.xptar;
+            (corrAngle && compatAngle) ? ++f1ok : ++f1bad;
+            if (oc["t_teff_3"] != ok["t_teff_3"]) ++f1diff;
+        }
+        if (Rc.lastCompleteEvOk() && !Rc.lastRadSuccess() && oc["rad_called"] == 1) {
+            // F2: generate_rad failed: compat decays the stale orig, corrected does not
+            ++f2rows;
+            const bool good = Rc.lastDecayCalled() && !Rk.lastDecayCalled() &&
+                              rc.nUniform() == rk.nUniform() + static_cast<std::size_t>(Rc.lastDecayNUnif());
+            good ? ++f2ok : ++f2bad;
+        }
+        if (sc != sk) ++outcomeBad;
+    }
+    std::printf("fortran_diff D-057 F1/F2 on %ld H capture tries (cfg 1, gen_src 1)\n", rows);
+    std::printf("  F1 stale hadron angle: %ld tries checked (%ld bad); teff(3) changes in %ld\n", f1ok + f1bad, f1bad, f1diff);
+    std::printf("  F2 rho_decay after a failed generate_rad: %ld tries (%ld bad: compat must draw the decay uniforms, "
+                "corrected not)\n", f2rows, f2bad);
+    std::printf("  generate outcome (success) differs between the modes: %ld tries\n", outcomeBad);
+    const bool pass = rows > 0 && f1bad == 0 && f2bad == 0 && f2rows > 0 && f1diff > 0;
+    std::printf("fortran_diff D-057 F1/F2: %s\n", pass ? "PASS" : "FAIL");
+    return pass ? 0 : 1;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -1393,6 +1456,7 @@ int main(int argc, char** argv) {
             what == "peedelta")
             return runEventTable(what, argv[2], argv[3], tol);
         if (what == "capture") return runCapture(argv[2], argv[3], tol);
+        if (what == "fortran_diff_rho") return runFortranDiffRho(argv[2], argv[3]);
     } catch (const std::exception& e) {
         std::printf("EXCEPTION: %s\n", e.what());
         return 1;

@@ -26,6 +26,8 @@
 #include <cstring>
 #include <fstream>
 #include "simc/driver/Pipeline.h"
+#include "simc/driver/SimcRun.h"
+#include "simc/reactions/EventChain.h"
 #include "simc/input/InpReader.h"
 #include "simc/physics/rho/RhoModel.h"
 #include "simc/physics/rho/RhoPhysics.h"
@@ -344,7 +346,7 @@ int sanity() {
 
 // D-057 F6 and F3 (FORTRAN-BUG, corrected by default): both modes on a D-like and an H event.
 int fortranDiff() {
-    std::printf("rho fortran_diff D-057 F6/F3 (P13.1 R1/R2)\n");
+    std::printf("rho fortran_diff D-057 F3, F6, F9, F20, F21\n");
     const Event v0 = electronVertex(10600., 6000., 12.0 / K::degrad);
     rho::GenerateRhoConfig gc;
     gc.Mrec_struck = K::Mp;
@@ -394,6 +396,76 @@ int fortranDiff() {
     std::printf("  D-like event: corrected %.10g, compat %.10g (ratio %.6f)\n", sc, sd, sc / sd);
     check(sc != sd && c.pfermi.efer == mD.pfermi.efer && d.pfermi.efer == std::sqrt(200. * 200. + K::Mp2),
           "F6 D: corrected keeps the generated efer, compat writes the on-shell efer back");
+
+    // F20: a NaN cross section (s < 0: nu + efer < q) passes the Fortran guard; corrected 0
+    {
+        Event vn = v;
+        vn.nu = 10.;   // nu + Mp < q -> s < 0 -> NaN
+        MainEvent a2 = mH, b2 = mH;
+        const double sn = rho::peerho(vn, a2, corr), sf = rho::peerho(vn, b2, compat);
+        rho::PeerhoConfig noguard = corr;
+        noguard.nan_guard = false;
+        MainEvent c2 = mH;
+        const double sg = rho::peerho(vn, c2, noguard);
+        check(std::isnan(sg) && sn == 0.0 && (std::isnan(sf) || sf == 0.0),
+              "F20 rho_physics.f:388-389: NaN cross section -> 0 (corrected), NaN without the guard");
+    }
+    // F9: beam-left arm (SHMS), decay pion on the far side of the beam (pyf < 0): yptar sign
+    {
+        rho::RhoDecayConfig dc;
+        dc.hadron_arm = 5;
+        dc.spec_p_theta = 0.2;
+        dc.spec_p_phi = K::pi / 2;
+        int found = 0, okSign = 0;
+        for (int k = 0; k < 200 && found < 20; ++k) {
+            Event o;
+            o.Q2 = 2.0e6;
+            o.p.P = 4000.;
+            const double a = -0.05 + 0.0005 * k;   // rho near the beam, slightly on either side
+            o.up = {0.0, std::sin(a), std::cos(a)};
+            rho::RhoMassState g0{K::Mrho, K::Mrho2, K::Mrho2};
+            NtupVars n0;
+            n0.rhomass = K::Mrho;
+            for (const double u1 : {0.1, 0.6}) {
+                Event oc = o, ok = o;
+                rho::RhoMassState gc = g0, gk = g0;
+                NtupVars nc = n0, nk = n0;
+                rho::RhoDecayConfig cc = dc, kk = dc;
+                cc.yptar_sign_fixed = false;
+                cc.acos_clamp = false;
+                ScriptedRandom rc, rk;
+                rc.load({}, {u1, 0.5, 0.0});
+                rk.load({}, {u1, 0.5, 0.0});
+                const auto res_c = rho::rhoDecay(oc, 3000., 0.8, true, gc, nc, cc, rc);
+                const auto res_k = rho::rhoDecay(ok, 3000., 0.8, true, gk, nk, kk, rk);
+                if (!res_k.success || ok.up.y > 0) continue;
+                ++found;
+                // true in-plane offset from the SHMS axis: atan2(py, pz) - theta (negative on the far side)
+                const double truth = std::atan2(ok.up.y, ok.up.z) - dc.spec_p_theta;
+                if (near(ok.p.yptar, std::tan(truth), 1e-9) && (!res_c.success || oc.p.yptar == -ok.p.yptar)) ++okSign;
+            }
+        }
+        check(found > 0 && okSign == found,
+              "F9 rho_decay.f:123-124: far-side pion, left arm: corrected yptar = tan(in-plane offset), compat the "
+              "opposite sign (" + std::to_string(okSign) + "/" + std::to_string(found) + ")");
+    }
+    // F21: a pion in the x-z plane (py = 0): pz/p/cos(asin(px/p)) can round above 1 -> acos NaN (compat), clamped
+    {
+        int nanCompat = 0, finiteCorr = 0, tried = 0;
+        for (int k = 1; k <= 4000 && nanCompat < 3; ++k) {
+            const double px = 1e-3 * k, pz = 3000.;
+            const double pf = std::sqrt(px * px + pz * pz);
+            const double c = pz / pf / std::cos(std::asin(px / pf));
+            if (!(c > 1.0)) continue;
+            ++tried;
+            // drive rho_decay to exactly this lab momentum is impractical; check the kernel arithmetic it uses
+            if (std::isnan(std::acos(c))) ++nanCompat;
+            if (std::isfinite(std::acos(std::min(1.0, c)))) ++finiteCorr;
+        }
+        check(tried > 0 && nanCompat == tried && finiteCorr == tried,
+              "F21 rho_decay.f:111-112: cos_th_inp > 1 by rounding exists (" + std::to_string(tried) +
+                  " cases), acos -> NaN unclamped, finite clamped");
+    }
     std::printf("%s (%d failure%s)\n", nfail ? "FAIL" : "PASS", nfail, nfail == 1 ? "" : "s");
     return nfail ? 1 : 0;
 }
@@ -678,6 +750,60 @@ int runRanluxStream(const std::string& capdir, int seed, long nmax) {
     return (bad == 0 && n > 0) ? 0 : 1;
 }
 
+// D-057 F15 (.hist title for D/3He) and F18 (P-arm report quantities from the decay pion): short SimcRun runs on the
+// D capture input in both modes (ranlux stream, 20 events), and limits_update on a fabricated event.
+int fortranDiffReport(const std::string& inpD, const std::string& outdir) {
+    std::printf("rho fortran_diff D-057 F15, F18\n");
+    SimcParameters p;
+    InpReader rd(p);
+    if (!rd.loadRun(inpD)) {
+        std::printf("SKIP: cannot read %s\n", inpD.c_str());
+        return 77;
+    }
+    for (const bool compat : {true, false}) {
+        driver::RunOptions opt;
+        opt.fortran_compat = compat;
+        opt.run_name = compat ? "rho_d_compat" : "rho_d_corrected";
+        opt.output_dir = outdir;
+        opt.quiet_stages = true;
+        opt.override_ngen = true;
+        opt.ngen = 20;
+        std::ostringstream log;
+        opt.log = &log;
+        driver::SimcRun sr(p, Json{{"rng", {{"type", "ranlux"}}}}, opt);
+        sr.run();
+        std::ifstream h(outdir + "/" + opt.run_name + ".hist");
+        std::stringstream ss;
+        ss << h.rdbuf();
+        const std::string t = ss.str();
+        const bool fortranTitle = t.find("I am not set up for anything else yet!") != std::string::npos;
+        const bool dTitle = t.find("D(e,e'rho)") != std::string::npos;
+        check(compat ? (fortranTitle && !dTitle) : (dTitle && !fortranTitle),
+              std::string("F15 simc.f:721-725 D(e,e'rho) .hist title, ") + (compat ? "compat: Fortran text" : "corrected"));
+    }
+    // F18: limits_update GENERATION P-arm values: vertex%p (compat) or orig%p (corrected, doing_rho)
+    {
+        MainEvent m;
+        Event v, o, r;
+        v.p.delta = 7.0;
+        v.p.yptar = 2.2;   // the rho's lab phi in the slope field
+        v.p.xptar = 0.4;   // the rho's lab theta
+        o.p.delta = 1.0;
+        o.p.yptar = 0.01;
+        o.p.xptar = -0.02;
+        ReactionFlags f;
+        f.doing_rho = true;
+        reactions::Contrib cc{}, ck{};
+        Slops sc{}, sk{};
+        reactions::limitsUpdate(m, v, o, r, f, {0., 0., 0.}, cc, sc, false);
+        reactions::limitsUpdate(m, v, o, r, f, {0., 0., 0.}, ck, sk, true);
+        check(cc.gen.p.yptar.hi == 2.2 && ck.gen.p.yptar.hi == 0.01 && ck.gen.p.xptar.lo == -0.02 && ck.gen.p.delta.hi == 1.0,
+              "F18 event.f:22-24 limits_update GENERATION P arm: vertex%p (compat), the decay pion orig%p (corrected)");
+    }
+    std::printf("%s (%d failure%s)\n", nfail ? "FAIL" : "PASS", nfail, nfail == 1 ? "" : "s");
+    return nfail ? 1 : 0;
+}
+
 int setup(const std::string& inp) {
     std::printf("rho set-up (P13.1) from %s\n", inp.c_str());
     SimcParameters p;
@@ -768,6 +894,7 @@ int main(int argc, char** argv) {
     try {
         if (what == "sanity") return sanity();
         if (what == "fortran_diff") return fortranDiff();
+        if (what == "fortran_diff_report" && argc > 3) return fortranDiffReport(argv[2], argv[3]);
         if (what == "ranlux_stream" && argc > 4) return runRanluxStream(argv[2], std::atoi(argv[3]), std::atol(argv[4]));
         if (argc > 5) {
             SetupCache sc{argv[3], argv[4], {}};
