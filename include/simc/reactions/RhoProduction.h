@@ -57,6 +57,13 @@ public:
     void setReconMh2(double m) { reconMh2_ = m; }
     rho::GenerateRhoConfig& generateConfig() { return gcfg_; }
     rho::RhoDecayConfig& decayConfig() { return dcfg_; }
+    /// What the last generate() did (L1 tables): complete_ev succeeded, generate_rad succeeded (false if not called),
+    /// rho_decay called / succeeded / uniforms drawn.
+    bool lastCompleteEvOk() const { return lastCompleteEvOk_; }
+    bool lastRadSuccess() const { return lastRadSuccess_; }
+    bool lastDecayCalled() const { return lastDecayCalled_; }
+    bool lastDecaySuccess() const { return lastDecaySuccess_; }
+    int lastDecayNUnif() const { return lastDecayNUnif_; }
     /// Make main.gnrl the per-try COMMON /gnrl/ (initialised from the set-up the first time, dbase.f:210-222).
     void initGnrl(MainEvent& main) const;
 
@@ -69,6 +76,8 @@ private:
     double reconMh2_{0};
     bool fixStaleAngle_{true};   ///< D-057 F1
     bool decayOnlyOnSuccess_{true};   ///< D-057 F2
+    bool lastCompleteEvOk_{false}, lastRadSuccess_{false}, lastDecayCalled_{false}, lastDecaySuccess_{false};
+    int lastDecayNUnif_{0};
 };
 
 }  // namespace reactions

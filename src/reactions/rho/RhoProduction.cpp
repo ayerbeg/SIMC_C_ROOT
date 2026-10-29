@@ -62,6 +62,8 @@ bool RhoProduction::generate(MainEvent& main, Event& vertex, Event& orig, IRando
 
     bool success = false;
     main.gen_weight = 1.0;   // l.216-217
+    lastCompleteEvOk_ = lastRadSuccess_ = lastDecayCalled_ = lastDecaySuccess_ = false;
+    lastDecayNUnif_ = 0;
 
     // Generate Electron Angles (l.276-277). No hadron angles for doing_rho (l.280-286).
     vertex.e.yptar = gen.e.yptar.min + rng.uniform() * (gen.e.yptar.max - gen.e.yptar.min);
@@ -126,12 +128,14 @@ bool RhoProduction::generate(MainEvent& main, Event& vertex, Event& orig, IRando
     success = completeEv(main, vertex, rng);
     main.sigcc = 1.0;
     if (!success) return false;   // goto 100 (no rho_decay)
+    lastCompleteEvOk_ = true;
     main.Trec = vertex.Trec;
 
     // l.400-415
     if (s.sw.using_rad) {
         // FORTRAN-DIFF-CANDIDATE(D-024): orig keeps the previous try's values when generate_rad fails.
         success = radiator_->radiate(main, vertex, orig, rng, completeEvFn());
+        lastRadSuccess_ = success;
     } else {
         success = true;
         orig = vertex;
@@ -155,6 +159,9 @@ bool RhoProduction::decay(MainEvent& main, Event& orig, bool success, IRandom& r
     }
     const rho::RhoDecayResult r =
         rho::rhoDecay(orig, setup().spec.p.P, main.epsilon, success, main.gnrl, main.ntup, dcfg_, rng, log_);
+    lastDecayCalled_ = true;
+    lastDecaySuccess_ = r.success;
+    lastDecayNUnif_ = r.n_uniform;
     return r.success;
 }
 
