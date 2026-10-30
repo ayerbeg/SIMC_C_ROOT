@@ -835,8 +835,8 @@ int setup(const std::string& inp) {
                   s.sign_hadron == 1.0,
               "Mh = Mrho, Mtar_struck = Mrec_struck = Mp, sign_hadron (dbase.f:210, 315-321)" + m);
         const driver::PipelineConfig pc = driver::PipelineConfig::Defaults(s);
-        check(pc.physics.type == "rho" && pc.reaction.type.empty(),
-              "default pipeline: physics \"rho\", reaction not ported yet (P13.2)" + m);
+        check(pc.physics.type == "rho" && pc.reaction.type == "rho_production",
+              "default pipeline: physics \"rho\", reaction \"rho_production\"" + m);
         auto model = Registry<IPhysicsModel>::create("rho");
         model->configure(Json::object(), s.params);
         bool ok = true;
