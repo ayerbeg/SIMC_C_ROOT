@@ -488,3 +488,31 @@ Explanation of the corrected-mode differences (every one is a documented correct
   pass_cuts subset (validation/README.md). Re-compared (simc_runs/20261024_012401_P12.3_wtcontr_recompare/table.tsv): H π+
   K1 rad compat wtcontr pull −2.74 → −1.93 (σ 0.415 → 0.586), H π− −2.74 → −1.94, D π+ +2.28 → +1.61, H K+ −3.22 → −2.27;
   the director's seeds 5201-5204 give −0.07, −0.23, −2.01, −0.36.
+
+## 13. Exclusive rho: L2 in both modes and the effect of the corrections (task P13.2)
+
+SIMC++ 75f8dbd, seed 4242, ngen 100000 (as the references), vs the P13.F1 Fortran runs A (simc_compare with --mode-b;
+runs in simc_runs/20261029_014541_P13.2_L2_*). wtcontr = the .hist wtcontr (A: Fortran; B: SIMC++).
+
+| config | compat verdict (F/N) | wtcontr A / compat (pull) | corrected verdict (F/N, gross) | wtcontr corrected / compat | wall (s) compat / corr |
+|---|---|---|---|---|---|
+| h_k1_rad | PASS 3/279 (vs B: wtcontr pull +0.24) | 52.966 / 53.054 (−0.19) | 2/280, 2 gross | 70.001 (×1.319) | 6911 / 6851 |
+| h_k1_norad | FAIL 13/275 (see below) | 61.987 / 61.769 (+0.44) | 13/276, 2 gross | 84.109 (×1.362) | 2871 / 2916 |
+| h_k1_pim_rad | PASS 3/279 | 52.966 / 53.054 (−0.19) | 2/280, 2 gross | 70.001 (×1.319) | 6378 / 6353 |
+| d_k1_rad | PASS 6/279 | 123.388 / 123.558 (−0.16) | 4/279, 2 gross | 163.480 (×1.323) | 6386 / 6491 |
+| he3_k1_rad | PASS 2/279 | 57.206 / 57.763 (−1.13) | 2/279, 2 gross | 75.154 (×1.301) | 6388 / 6359 |
+| h_k1_dec1_rad | PASS 3/289 | 50.824 / 51.009 (−0.42) | 3/289, 2 gross | 66.954 (×1.313) | 6527 / 6554 |
+| h_k2_rad | PASS 2/280 | 21.286 / 21.407 (−0.63) | 4/281, 2 gross | 32.404 (×1.514) | 7443 / 7423 |
+
+* The two gross failures of every corrected run are the intended corrections: wtcontr (D-006, the hadron delta upper cut
+  of pass_cuts: ×1.30–1.51, the Fortran's own −24 … −34 % of D-057 F19 inverted) and the constant `pfermi` column
+  (D-051 F3: NaN for every H event in the Fortran, 0 corrected). The other corrections (F1, F2, F3, F6, F9, F15, F18, F20,
+  F21) change no tree distribution beyond the statistical tests (F = 2–4 corrected vs 2–6 compat); F2 changes the random
+  stream (the corrected and compat trees differ event by event after the first failed generate_rad), F6 has no effect at
+  pfer = 0 (D/³He: efer = Md − Mn vs Mp; corrected D AVERAGE.sigcc 5.78e-7 vs Fortran 5.75e-7, −1.2σ).
+* h_k1_norad compat F = 13: the failing variables are all functions of the electron energy (hsdelta, hsxpfp, hsyfp,
+  hsypfp, hsdeltai, nu, W, epsilon, siglab, Weight, sighad; p = 0.002–0.01) plus phipq, i.e. one correlated fluctuation.
+  Two fresh seeds pass (1111: F = 3, P = 0.52; 2222: F = 9, P = 2.0e-3), and the compat run with the RANLUX stream and the
+  Fortran seed 12345 (IRandom "ranlux") is BITWISE IDENTICAL to rho_h_k1_norad_A (100000 events, 59 columns, .hist,
+  .geni, .gen; simc_runs/20261030_191250_P13.2_norad_check_ranlux_fseed): the seed-4242 result is a statistical
+  fluctuation (of the C++ sample or of Fortran A), not a code difference.
