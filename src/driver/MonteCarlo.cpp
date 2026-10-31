@@ -29,14 +29,14 @@ MonteCarlo::ArmChoice MonteCarlo::DefaultArm(int code) {
     ArmChoice c;
     switch (*id) {
         case SpectrometerId::HMS:
-        case SpectrometerId::SHMS:
-            c.type = Key(*id);   // plug-ins "hms", "shms"
-            break;
         case SpectrometerId::SOS:
+        case SpectrometerId::SHMS:
+            c.type = Key(*id);   // plug-ins "hms", "sos" (P14.1), "shms"
+            break;
         case SpectrometerId::HRSR:
         case SpectrometerId::HRSL:
             throw NotPorted(std::string("montecarlo: ") + Label(*id) + " (arm code " + std::to_string(code) +
-                            ") not yet ported (P14)");
+                            ") not yet ported (P14.2)");
         case SpectrometerId::CALO_HMS_SIDE:
         case SpectrometerId::CALO_SHMS_SIDE:
             throw NotPorted(std::string("montecarlo: ") + Label(*id) + " (arm code " + std::to_string(code) +
@@ -110,8 +110,7 @@ bool MonteCarlo::run(const Event& orig, MainEvent& main, Event& recon, IRandom& 
         fry = 0.0;
         frx = 0.0;
     }
-    (void)fry;   // passed to SOS/HRS/calo only (not ported); HMS/SHMS get xtar_init
-    (void)frx;
+    // fry is the recon argument of mc_sos/mc_hrs* (SpecInput::raster_fry); HMS/SHMS get xtar_init (SpecInput::fry)
 
     // Beam multiple scattering
     // dang_in.dyptar: yp offset, goes directly to yp of both arms; dang_in.dxptar: xp offset, mult. by cos_th
@@ -174,6 +173,8 @@ bool MonteCarlo::run(const Event& orig, MainEvent& main, Event& recon, IRandom& 
         in.wcs_flag = mc_smear;
         in.decay_flag = S.params.doing_decay;
         in.fry = xtar_init_P;
+        in.raster_fry = fry;   // mc_sos/mc_hrs* (simc.f:1472, 1477, 1482)
+        in.raster_frx = frx;
         info_.p_called = true;
         const SpecResult r = pArm_->transport(in, rng);
         // the resmult argument IS ntup%resfac: written only when the routine writes it
@@ -269,6 +270,8 @@ bool MonteCarlo::run(const Event& orig, MainEvent& main, Event& recon, IRandom& 
         in.wcs_flag = mc_smear;
         in.decay_flag = false;
         in.fry = xtar_init_E;
+        in.raster_fry = fry;   // mc_sos/mc_hrs* (simc.f:1738, 1743, 1748)
+        in.raster_frx = frx;
         info_.e_called = true;
         const SpecResult r = eArm_->transport(in, rng);
         // FORTRAN-DIFF-CANDIDATE(D-015): simc.f:1334 tmpfact is a SAVEd local; when the arm routine did not reach the hut

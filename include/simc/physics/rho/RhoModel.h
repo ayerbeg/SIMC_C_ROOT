@@ -28,11 +28,11 @@ struct RunSetup;
 namespace rho {
 
 /// The rho input combinations SIMC++ refuses (each entry is an error message); empty = supported.
-/// Checked: doing_rho set (and not switched off by doing_phsp); the hadron arm is HMS (1) or SHMS (5): SOS (2) and
-/// HRS (3, 4) wait for task P14 (NotPorted), the calorimeter arms (7, 8) make rho_decay STOP ('Unknown spectrometer
+/// Checked: doing_rho set (and not switched off by doing_phsp); the hadron arm is HMS (1), SOS (2, P14.1) or SHMS (5):
+/// HRS (3, 4) waits for task P14.2 (NotPorted), the calorimeter arms (7, 8) make rho_decay STOP ('Unknown spectrometer
 /// setup dude!', rho_decay.f:96-98).
 std::vector<std::string> checkSupported(const RunSetup& s);
-/// true if a checkSupported problem is a NotPorted feature (SOS/HRS hadron arm) rather than an input error.
+/// true if a checkSupported problem is a NotPorted feature (HRS hadron arm) rather than an input error.
 bool isNotPortedProblem(const std::string& problem);
 /// PeerhoConfig from the set-up (fortran_compat selects the D-057 F6, F20 switches).
 PeerhoConfig makePeerhoConfig(const RunSetup& s);
@@ -44,7 +44,7 @@ class RhoModel : public IPhysicsModel {
 public:
     std::string name() const override { return "rho"; }
     void configure(const Json& config, const SimcParameters& params) override;
-    /// Checks the inputs (checkSupported: simc::NotPorted for SOS/HRS, std::invalid_argument otherwise).
+    /// Checks the inputs (checkSupported: simc::NotPorted for HRS, std::invalid_argument otherwise).
     void init(const StageContext& ctx) override;
 
     /// peerho(vertex, main) on a copy of main (nothing written).

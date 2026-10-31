@@ -4,8 +4,9 @@
 // Fortran: simc.f:montecarlo(orig,main,recon,success) (l.1310-1853).
 //   * beam multiple scattering (target_musc with teff(1)) when mc_smear;
 //   * hadron arm first (l.1374-1662): SP quantities (Eloss, target_musc with teff(3)), the conversion to
-//     TRANSPORT coordinates (spectrometer phi, offsets, drift back to z = 0, xtar_init passed as fry), the
-//     single-arm MC (ISpectrometer "hms"/"shms" by hadron_arm), RECON/FP, then the recon arm quantities
+//     TRANSPORT coordinates (spectrometer phi, offsets, drift back to z = 0, xtar_init passed as fry to HMS/SHMS, the
+//     raster fry to SOS), the single-arm MC (ISpectrometer "hms"/"sos"/"shms" by hadron_arm), RECON/FP, then the
+//     recon arm quantities
 //     (physics_angles, optional most-probable energy-loss correction);
 //   * electron arm (l.1664-1849): the same with Eloss(2), Coulomb, teff(2), m2 = me2, decay off;
 //   * success = .true. only if both arms pass.
@@ -17,7 +18,7 @@
 // earlier tries; main.ntup.resfac is reset here (simc.f:1352) and must also be reset by the loop (simc.f:178).
 // main.ntup.decdist / Mh2_final are set from the hadron arm (the loop resets them per event, simc.f:174-177).
 //
-// Not ported (throw simc::NotPorted): SOS / HRS arms (codes 2-4, task P14), the calorimeter arms 7/8
+// Not ported (throw simc::NotPorted): HRS arms (codes 3-4, task P14.2), the calorimeter arms 7/8
 // (mc_calo), the polarized-target field (using_tgt_field: track_from_tgt / track_to_tgt). Arm code 6 (SHMS LSA)
 // reaches mc_shms, which STOPs (simc::FortranStop).
 //
@@ -25,7 +26,7 @@
 //   * the electron-arm resmult goes through the SAVEd local tmpfact (simc.f:1334): if the electron-arm MC stops
 //     before writing it (HMS before the hut), ntup%resfac gets the value of an EARLIER call; it is added before
 //     the ok check, so it also happens for failed electron arms;
-//   * the hadron-arm resmult is the argument ntup%resfac itself: left at 0 if the HMS hut is not reached;
+//   * the hadron-arm resmult is the argument ntup%resfac itself: left at 0 if the HMS/SOS hut is not reached;
 //   * RECON%p%z / RECON%e%z are not written when the arm Monte Carlo is off (using_*_arm_montecarlo false): the
 //     recon z keeps the previous value;
 //   * recon%e%E is not corrected for Coulomb (l.1840-1842).
@@ -67,13 +68,13 @@ public:
         Json config = Json::object();   ///< merged over the default config of the arm code
     };
     /// The Fortran choice for an arm code (simc.f:montecarlo dispatch, core/SpectrometerId.h): HMS -> "hms",
-    /// SHMS -> "shms". Throws NotPorted for SOS/HRS (P14) and the calorimeters (mc_calo), std::invalid_argument for a
+    /// SOS -> "sos", SHMS -> "shms". Throws NotPorted for HRS (P14.2) and the calorimeters (mc_calo), std::invalid_argument for a
     /// code that is not a spectrometer.
     static ArmChoice DefaultArm(int code);
 
     /// Creates (through Registry<ISpectrometer>) and initialises the arm spectrometers of setup.params
     /// (electron_arm, hadron_arm). `target` provides target_musc and trip_thru_target (correct_Eloss).
-    /// Throws NotPorted for arms other than HMS and SHMS, or for using_tgt_field.
+    /// Throws NotPorted for arms other than HMS, SOS and SHMS, or for using_tgt_field.
     MonteCarlo(const RunSetup& setup, ITarget& target);
     /// P7.2 (additive): the same with the arm plug-ins chosen explicitly (e.g. from the JSON "pipeline").
     /// Arms with the same type and the same (merged) config share one object (one Fortran COMMON block of counters);
