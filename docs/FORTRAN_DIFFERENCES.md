@@ -53,6 +53,7 @@ P7.F1 (K2–K4). §6 has the L2 numbers.
 | D-006 pass_cuts | simc.f:237 | the hadron delta upper cut uses `SPedge%e%delta%max` | `SPedge%p%delta%max` (`driver::PassCuts`) | `pass_cuts` → npasscuts, `wtcontribute` (.hist wtcontr), resolution sums; with `hard_cuts` also the accepted events. Only events with recon hadron delta between the two limits are affected. K3 (HMS hadron at 423 MeV/c, limits 10 % vs 22 %): 42 of 200000 accepted events (norad) and 722 of 200000 (rad) no longer pass, .hist wtcontr −0.013 % / −0.230 % and the RECON SUMMARY resolutions change in the 4th digit (the Fortran trees give the same fractions: 27 and 755 events). P1.2, K2, K4: 0 events (no hadron recon delta in the window; in K2 the hadron limit is the larger one). | `fortran_diff_D006_pass_cuts` |
 | D-006 kaon decay | shared/transp.f:158 | K → ππ decay in the first half of an element gives the product the kaon mass (`m_final = Mk`) | `Mpi`, as transp.f:251 and project.f:88 | kaons with `doing_decay` only (P10): mass and momentum of the decay product. No effect on H(e,e'p). | `fortran_diff_D006_kaon_decay_mass` |
 | D-011 .geni Q3 | simc.f:519-520 | the SHMS "Q3 … mid" column prints `shmsSTOP_q2_mid` | prints `shmsSTOP_q3_mid` | `.geni` text only (the summary JSON keeps `q2_mid_dup` for the comparison with Fortran .geni files). 0 = 0 in the P1.2 runs. | `fortran_diff_D011_D018_report_formats` |
+| D-011 .geni SOS slit | simc.f:477 | the SOS "Slit hor/vert/corners" line prints `sSTOP_slit_vert, sSTOP_slit_hor, sSTOP_slit_oct` (horizontal and vertical swapped against the label and the HMS/SHMS lines) | prints slit_hor, slit_vert, slit_oct (`FormatGeni`, P14.1) | `.geni` text of SOS runs only (eep_h_test_pctnames: "1313 18 21" → "18 1313 21") | `l1_simcrun_ranlux_sos_eep_h_test_pctnames` (both modes) |
 | D-011 .geni DC | simc.f:526 | label "DC1, DC2, Scin, Cal" with two values | label "DC1, DC2" | `.geni` text only (every SHMS run). | same |
 | D-018 offsets | simc.f:815-818 | `xptar/yptar offset` printed in rad under the unit `mr` | printed in mr (×1000) | `.hist` text, only when a spectrometer angle offset is non-zero (0 in all validation runs). | same |
 | D-018 L format | simc.f:897-898, 907, 927 | the integers `deForest_flag`, `use_first_cer`, `use_expon` written with the L edit descriptor (T/F; −1 and +1 both "T") | written as integers (i2, i2, i3) | `.hist` text of every run (2 or 3 lines). D-018 quoted l.896/906/925; the lines are 898/907/927. | same |
@@ -114,7 +115,7 @@ P7.F1 (K2–K4). §6 has the L2 numbers.
 | id | Fortran | bug | C++ now | to do |
 |---|---|---|---|---|
 | D-006 tgt field | simc.f:139 | `ang_targ_parm = +1*sin(phi)*(targ_Bangle-theta)` (the e-arm line l.125 has `theta-targ_Bangle`) | `using_tgt_field` is NotPorted | when the target field is ported |
-| D-011 SOS/HRS .geni | simc.f:477, 489, 501 | "Slit hor/vert" prints `slit_vert` first | the C++ writes no SOS/HRS block yet; the Fortran-.geni parser maps by meaning | P14 |
+| D-011 HRS .geni | simc.f:489, 501 | "Slit hor/vert" prints `slit_vert` first | the C++ writes no HRS block yet; the Fortran-.geni parser maps by meaning | P14.2 |
 | D-012 F4 calo windows | target.f:80-131, 200-247 | no window branch for the calorimeter arms 7/8: stale `s_air, s_kevlar, s_mylar, forward_path` | `hallc_cryo` refuses arms 7/8 | P14 |
 
 ## 3. Class c: acceptance mode, open with the user (D-031 flag 1)
@@ -186,6 +187,8 @@ P7.F1 (K2–K4). §6 has the L2 numbers.
 | D-057 F10 rho xptar | rho_decay.f:110, 142 | xptar = tan(asin(px/p)) instead of px/pz′ (up to 4.3e-4 inside ±0.1; orig%p%theta/phi differ from orig%up by ≤ 0.42 mr) | approximation accepted? | decay-pion xptar |
 | D-057 F11 rho tail 3 | radc.f:386-387; init.f:231-232 | tail-3 radiation of the NEUTRAL rho, with limits from the hadron edges computed with Mrho: 70 % of tail-3 tries fail at the limits (91682 / 131589 H tries) | should the rho radiate, and with which limits? | rad efficiency (rad/norad wtcontr 0.854); accepted events have Egamma(3) up to 1.5 GeV |
 | D-057 F12 rho tail 1 | radc.f:324 | a tail-1 photon re-calls complete_ev, which generates a NEW rho (new BW mass and CM angles; as D-038 F9) | intended? | rad events of tail 1 (393 of 1000 capture events) |
+| P14.1 SOS 7.62 cm | mc_sos.f:337-340, 349-360 | the last 7.62 cm to the new exit window are a straight line without `project`: no pathlength (FP path −7.62 cm), no decay check over that segment; the code comment says "WE REALLY NEED TO FIX THIS UP" | include the 7.62 cm in pathlen / decay? | SOS FP path (TOF), decay ON runs |
+| P14.1 SOS recon fry | simc.f:1349-1355, 1472, 1738 | mc_sos (and mc_hrs*) receive the raster `fry` (−rastery, 0 without correct_raster) as the recon vertical position; mc_hms/mc_shms receive xtar_init (the true x at z = 0) | intended difference (SOS/HRS matrices fitted with the raster), or a leftover? | SOS ytar/delta recon with an extended beam spot |
 
 ## 5. Class d: faithful Fortran behaviour, not a bug (kept, `FORTRAN-QUIRK`)
 
@@ -197,6 +200,10 @@ P7.F1 (K2–K4). §6 has the L2 numbers.
 | D-015 F1 / D-021 lfit | cern/lfit.f, mc_*_hut.f | focal plane real*4, accumulators real*8, a hit at exactly 0.0 ignored (KEY = 0) | CERNLIB behaviour |
 | D-015 F3 closure | COSY maps | forward→recon closure not exact (HMS xptar RMS 1 mr) | optics |
 | D-015 fry | mc_hms_recon.f:118, mc_shms_recon.f:136 | fry = 0 replaced by 1e-30 | avoids 0**0 |
+| P14.1 SOS recon guard | mc_sos_recon.f:120-122 | every hut value (xfp, xpfp, yfp, ypfp, fry) with \|v\| ≤ 1e-30 is replaced by 1e-30 (HMS/SHMS: only fry) | `CosyEngine::recon(2, ...)` |
+| P14.1 SOS hut start | mc_sos_hut.f:283-284, mc_sos.f:369 | the hut starts at zinit = −3.206267 cm, after the exit foil at −3.22 cm: the first drift is negative and clamped to 0.001 cm | faithful (`McSosHut.cpp`) |
+| P14.1 SOS cal | mc_sos_hut.f:519-525, 535-539 | the calorimeter aperture and fiducial cuts are commented out: sSTOP_cal is never incremented | faithful |
+| P14.1 SOS BM01 | mc_sos.f:234-235 | the BM01 entrance test is asymmetric in y (`yt > w_bm01` or `-yt > w_bm01-0.05*2.54`) | faithful (deliberate-looking 0.05 inch) |
 | D-019 gamma | radc.f:100-115 | the polynomial `gamma()` is dead code (callers bind to libm tgamma); wrong for x ≥ 2 | `std::tgamma` used, as the binary |
 | P5.F1 Q6, Q8-Q10 | radc.f, brem.f | basicrad itail overwrite, schwinger's exp convention (only dhard used), brem/bremos kinematic simplifications, spen ≤ 101 terms, one-time warnings, a TAB in a message | no effect / physics model |
 | D-012 F2 | enerloss_new.f, gauss1.f | gauss1 = 0 for u1 = 0.5 exactly; −2 ln 0 replaced by 1e5 | guard; rate ~0 with the 53-bit RNG |
@@ -273,7 +280,7 @@ P7.F1 (K2–K4). §6 has the L2 numbers.
 | D-005 STOP | `STOP` exits with status 0 | `simc::FortranStop`, exit status 3; rejected inputs exit 2 |
 | D-003 input | CTP .inp, `%` names only (obsolete `.` names silently ignored) | .inp (same CTP semantics, unknown names reported like CTP) or JSON; `inp2json` |
 | D-032 | arm codes as raw integers, 6 half-supported | one `SpectrometerId` table; 6 rejected (see §2) |
-| not ported | SOS/HRS/calorimeter arms (π0 with the calorimeter, also π0 SIDIS, rho with an SOS/HRS hadron arm), target field | `simc::NotPorted` at start-up (P14) |
+| not ported | HRS/calorimeter arms (π0 with the calorimeter, also π0 SIDIS, rho with an HRS hadron arm), target field | `simc::NotPorted` at start-up (P14.2/P14.3); the SOS (arm 2) is ported (P14.1) |
 | D-057 F16 rho A ≥ 4 | dbase.f:209-214, 875-876: no doing_*rho flag for nint(A) ≥ 4, the run STOPs (exit 0) after printing E_bind = −1e10; hadron_arm 6/7/8 STOP in rho_decay | refused at input in both modes (std::invalid_argument; A ≥ 4: SetupBuilder; arms 7/8: the "rho" model; 6 is rejected for every run, D-032) |
 | P13.1 rho + other reaction | dbase.f:136-215 takes the first branch of its if-chain (pion, kaon, delta, semi) and leaves doing_rho set, so event.f:420-421 decays that hadron as a rho | doing_rho together with doing_pion/kaon/delta/semi is refused at start-up (std::invalid_argument, both modes); doing_rho with doing_pizero too (results_write.f:230-236 overwrites the rho columns) |
 | P13.2 RANLUX | grnd = RANLUX luxury 3 (cern/ranlux.f, call_ranlux.f: 999 of every block of 1000), gauss1.f | besides the default `mt64` (D-002), the IRandom `"rng": {"type": "ranlux"}` reproduces the Fortran stream bit for bit from random_seed (or `"state"`: the 25 integers of *_start_random_state.dat): with `--fortran-compat` a SIMC++ run can then be identical to a Fortran run (both P13.F1 rho captures: every try, tree, .hist/.geni/.gen) |

@@ -175,7 +175,8 @@ std::string slurp(const std::string& p, bool& ok) {
 
 int runFiles(const std::string& mdir, const std::string& simc) {
     int fail = 0;
-    for (const char* f : {"hms/forward_cosy.dat", "hms/recon_cosy.dat", "shms/shms_forward.dat", "shms/shms_recon.dat"}) {
+    for (const char* f : {"hms/forward_cosy.dat", "hms/recon_cosy.dat", "shms/shms_forward.dat", "shms/shms_recon.dat",
+                          "sos/forward_cosy.dat", "sos/recon_cosy.dat"}) {
         bool a, b;
         std::string x = slurp(mdir + "/" + f, a), y = slurp(simc + "/" + f, b);
         if (!b) {
