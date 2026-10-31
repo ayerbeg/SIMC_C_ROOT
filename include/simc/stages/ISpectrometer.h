@@ -26,7 +26,13 @@ struct SpecInput {
     bool ms_flag{false};   ///< multiple scattering (mc_smear)
     bool wcs_flag{false};  ///< wire-chamber smearing (mc_smear)
     bool decay_flag{false};
-    double fry{0};         ///< vertical beam position for raster reconstruction (cm)
+    /// Recon argument `fry` of mc_hms/mc_shms: simc.f passes xtar_init (= x at z = 0, simc.f:1441/1462) (cm).
+    double fry{0};
+    /// simc.f:montecarlo l.1349-1355 fry / frx: the fast-raster position (-main%target%rastery / -rasterx if
+    /// correct_raster, else 0; cm). mc_sos (simc.f:1472/1738) and mc_hrsr/mc_hrsl receive raster_fry as their recon
+    /// argument `fry` (task P14.1).
+    double raster_fry{0};
+    double raster_frx{0};
 };
 
 /// Output of the single-arm MC.
