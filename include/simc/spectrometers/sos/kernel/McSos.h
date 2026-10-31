@@ -159,6 +159,14 @@ public:
     void setTransportTrace(optics::TransportTrace* t) { transportTrace_ = t; }
     material::SimcMaterial& materialModel() { return mat_; }
 
+    /// L1 hook (reference/functions/sos/hut_sos): mc_sos_hut alone. The ray is the COMMON /track/ (setTrack); `d`
+    /// carries m2, p, dflag, decay_flag and the decay COMMON; `a` the flags, resmult, pathlen and the focal-plane outputs.
+    /// Returns 0 (ok_hut) or the StopCode of the hut counter incremented.
+    int mcSosHutDirect(optics::DecayState& d, McSosArgs& a, double zinit, IRandom& rng, McSosDetail& det) {
+        return mcSosHut(d, a, zinit, rng, det);
+    }
+    void setTrack(const optics::Track& t) { track_ = t; }
+
 private:
     int body(McSosArgs& a, optics::DecayState& d, IRandom& rng, McSosDetail& det);
     /// Returns 0 (ok_hut) or the StopCode of the hut counter incremented (dc1, dc2, scin).

@@ -76,6 +76,9 @@ int runMc(const std::string& dir, double tol) {
     for (const char* n : {"xs_end", "ys_end", "dxdzs_end", "dydzs_end", "dpps_end"}) known.push_back({n, tol, 0.0});
     for (const char* n : {"decdist", "Mh2_final"}) known.push_back({n, tol, 0.0});
     for (const char* n : {"n_gauss", "n_unif", "rng_err", "nsig_last", "row"}) known.push_back({n, 0.0, 0.0});
+    // stop_where/x_stop/y_stop: -1 for the SOS (no such COMMON); d_k = change of word k of COMMON /spectrometer2/
+    for (const char* n : {"stop_where", "x_stop", "y_stop"}) known.push_back({n, 0.0, 0.0});
+    for (int k = 1; k <= 21; ++k) known.push_back({"d_" + std::to_string(k), 0.0, 0.0});
     std::vector<ColumnSpec> c;
     for (const auto& k : known)
         if (ref.col(k.name) >= 0) c.push_back(k);
@@ -105,9 +108,14 @@ int runMc(const std::string& dir, double tol) {
         a.decdist = r.has("decdist_in") ? r["decdist_in"] : 0.;
         a.Mh2_final = r.has("Mh2_final_in") ? r["Mh2_final_in"] : a.m2;
         a.x_fp = a.dx_fp = a.y_fp = a.dy_fp = kUnset;
-        a.resmult = kUnset;
+        a.resmult = r.has("resmult_in") ? r["resmult_in"] : kUnset;   // drv_mc_sh.f: resmult = resmult_in
         a.pathlen = 0.;
+        const sos::SosCounters before = sos.counters();
         const McSosDetail det = sos.mcSos(a, rng);
+        for (int k = 1; k <= 21; ++k)
+            o["d_" + std::to_string(k)] =
+                k <= sos::kNumCounters ? static_cast<double>(sos.counters()[k] - before[k]) : 0.;
+        o["stop_where"] = o["x_stop"] = o["y_stop"] = -1.;
         codes.push_back(det.stop_code);
         o["ok"] = a.ok_spec ? 1. : 0.;
         o["stop_code"] = det.stop_code;
@@ -182,6 +190,239 @@ int runMc(const std::string& dir, double tol) {
     }
     std::printf("  stop reasons / counters: %s\n", okc ? "PASS" : "FAIL");
     return (rc == 0 && okc) ? 0 : 1;
+}
+
+// ---------------------------------------------------------------------------------------------- transp / chain / recon / hut
+std::vector<ColumnSpec> present(const std::string& dir, const std::vector<ColumnSpec>& known) {
+    simcl1::Table ref;
+    std::string err;
+    std::vector<ColumnSpec> c;
+    if (!ref.load(dir + "/output.txt", err)) return c;
+    for (const auto& k : known)
+        if (ref.col(k.name) >= 0) c.push_back(k);
+    return c;
+}
+
+// reference/functions/sos/transp_sos: one COSY class alone (shared/transp.f, no decay)
+int runTransp(const std::string& dir, double tol) {
+    optics::CosyEngine eng;
+    eng.setFortranCompat(true);
+    std::ostringstream log;
+    eng.setLog(&log);
+    eng.initForward(2, McSos::defaultMatrixDir());
+    std::vector<ColumnSpec> known;
+    for (const char* n : {"xs_out", "dxdzs_out", "ys_out", "dydzs_out", "dpps_out", "pathlen", "delta_z", "driftdist"})
+        known.push_back({n, tol, 0.0});
+    known.push_back({"adrift", 0.0, 0.0});
+    const int rc = simcl1::run("transp_sos (" + dir + ")", dir, present(dir, known), [&](const Row& r, Outputs& o) {
+        const int sp = static_cast<int>(std::lround(r["spectr"])), cls = static_cast<int>(std::lround(r["class"]));
+        optics::Track t;
+        t.xs = r["xs"];
+        t.dxdzs = r["dxdzs"];
+        t.ys = r["ys"];
+        t.dydzs = r["dydzs"];
+        t.dpps = r["dpps"];
+        double pathlen = 0.;
+        const double dz = eng.transp(sp, cls, t, r["zd"], pathlen, nullptr);
+        o["xs_out"] = t.xs;
+        o["dxdzs_out"] = t.dxdzs;
+        o["ys_out"] = t.ys;
+        o["dydzs_out"] = t.dydzs;
+        o["dpps_out"] = t.dpps;
+        o["pathlen"] = pathlen;
+        (void)dz;
+        o["delta_z"] = pathlen - r["zd"];   // the table's definition (README: delta_z = pathlen - zd)
+        o["adrift"] = eng.adrift(sp, cls) ? 1. : 0.;
+        o["driftdist"] = eng.driftdist(sp, cls);
+    });
+    if (rc == 0 && !log.str().empty()) std::printf("  messages:\n%s", log.str().c_str());
+    return rc;
+}
+
+// reference/functions/sos/transp_sos_chain: the aperture-free project/transp/rotate_haxis sequence of mc_sos.f
+int runChain(const std::string& dir, double tol) {
+    optics::CosyEngine eng;
+    eng.setFortranCompat(true);
+    std::ostringstream log;
+    eng.setLog(&log);
+    eng.initForward(2, McSos::defaultMatrixDir());
+    const char* steps[] = {"coll_ent", "coll_ext", "quad_in", "quad_mid", "quad_out", "bm01_in", "bm01_out",
+                           "bm02_in", "bm02_out", "exit_old", "exit_new", "exit_win", "hut_in", "fp"};
+    std::vector<ColumnSpec> known;
+    for (const char* st : steps)
+        for (const char* q : {"_x", "_y", "_dxdz", "_dydz", "_path", "_xt", "_yt"})
+            known.push_back({std::string(st) + q, tol, 0.0});
+    for (const char* n : {"cosy_x", "cosy_dxdz", "cosy_y", "cosy_dydz", "cosy_dz"}) known.push_back({n, tol, 0.0});
+    constexpr double z_entr = 126.3e0, z_exit = z_entr + 6.3e0;   // mc_sos.f:66-67
+    return simcl1::run("transp_sos_chain (" + dir + ")", dir, present(dir, known), [&](const Row& r, Outputs& o) {
+        optics::Track t;
+        t.xs = r["x"];
+        t.ys = r["y"];
+        t.dxdzs = r["dxdz"];
+        t.dydzs = r["dydz"];
+        t.dpps = r["dpp"];
+        double path = 0.;
+        auto rec = [&](const std::string& st, double xt, double yt) {
+            o[st + "_x"] = t.xs;
+            o[st + "_y"] = t.ys;
+            o[st + "_dxdz"] = t.dxdzs;
+            o[st + "_dydz"] = t.dydzs;
+            o[st + "_path"] = path;
+            o[st + "_xt"] = xt;
+            o[st + "_yt"] = yt;
+        };
+        auto rot = [&](const std::string& st, double ang) {
+            double xt = t.xs, yt = t.ys;
+            optics::rotateHaxis(t, ang, xt, yt, true);
+            rec(st, xt, yt);
+        };
+        optics::project(t, z_entr, path);
+        rec("coll_ent", t.xs, t.ys);
+        optics::project(t, z_exit - z_entr, path);
+        rec("coll_ext", t.xs, t.ys);
+        optics::project(t, eng.driftdist(2, 1) - z_exit, path);
+        rec("quad_in", t.xs, t.ys);
+        eng.transp(2, 2, t, 35.0e0, path);
+        rec("quad_mid", t.xs, t.ys);
+        eng.transp(2, 3, t, 35.0e0, path);
+        rec("quad_out", t.xs, t.ys);
+        eng.transp(2, 4, t, 80.0e0, path);
+        rot("bm01_in", -45.0e0);
+        eng.transp(2, 5, t, 169.52e0, path);
+        rot("bm01_out", 45.0e0);
+        eng.transp(2, 6, t, 80.80e0, path);
+        rot("bm02_in", 49.0e0);
+        eng.transp(2, 7, t, 77.06e0, path);
+        rot("bm02_out", 57.0e0);
+        eng.transp(2, 8, t, 43.82e0, path);
+        rot("exit_old", 45.0e0);
+        eng.transp(2, 9, t, 44.34e0, path);
+        rec("exit_new", t.xs, t.ys);
+        t.xs = t.xs + 7.62 * t.dxdzs;
+        t.ys = t.ys + 7.62 * t.dydzs;
+        rec("exit_win", t.xs, t.ys);
+        rec("hut_in", -3.206267e0, 0.0);   // the harness records xt = zinit, yt = 0 (no rotated plane)
+        optics::project(t, 3.22, path);
+        rec("fp", t.xs, t.ys);
+        optics::Track c;
+        c.xs = r["x"];
+        c.ys = r["y"];
+        c.dxdzs = r["dxdz"];
+        c.dydzs = r["dydz"];
+        c.dpps = r["dpp"];
+        double p2 = 0., dz = 0.;
+        for (int k = 1; k <= eng.nClasses(2); ++k) dz = dz + eng.transp(2, k, c, 0.0, p2);
+        o["cosy_x"] = c.xs;
+        o["cosy_dxdz"] = c.dxdzs;
+        o["cosy_y"] = c.ys;
+        o["cosy_dydz"] = c.dydzs;
+        o["cosy_dz"] = dz;
+    });
+}
+
+// reference/functions/sos/recon_sos: mc_sos_recon.f
+int runRecon(const std::string& dir, double tol) {
+    optics::CosyEngine eng;
+    eng.initRecon(2, McSos::defaultMatrixDir());
+    std::vector<ColumnSpec> known;
+    for (const char* n : {"dpp_recon", "dph_recon", "dth_recon", "y_recon"}) known.push_back({n, tol, 0.0});
+    return simcl1::run("recon_sos (" + dir + ")", dir, present(dir, known), [&](const Row& r, Outputs& o) {
+        optics::Track t;
+        t.xs = r["xfp"];
+        t.dxdzs = r["xpfp"];
+        t.ys = r["yfp"];
+        t.dydzs = r["ypfp"];
+        double dpp, dth, dph, y;
+        eng.recon(2, t, r["fry"], dpp, dth, dph, y);
+        o["dpp_recon"] = dpp;
+        o["dph_recon"] = dph;
+        o["dth_recon"] = dth;
+        o["y_recon"] = y;
+    });
+}
+
+// reference/functions/sos/hut_sos: mc_sos_hut.f alone (scripted RNG)
+int runHut(const std::string& dir, double tol) {
+    McSos sos;
+    sos.setFortranCompat(true);
+    std::ostringstream log;
+    sos.setLog(&log);
+    ScriptedRandom rng(ScriptedRandom::GaussMode::Scripted);
+    std::vector<ColumnSpec> known;
+    for (const char* n : {"ok_hut", "stop_code", "x_fp", "dx_fp", "y_fp", "dy_fp", "resmult", "dflag_out"})
+        known.push_back({n, 0.0, 0.0});
+    for (const char* n : {"pathlen", "m2_out", "p_out", "xs_end", "ys_end", "dxdzs_end", "dydzs_end", "dpps_end", "decdist",
+                          "Mh2_final"})
+        known.push_back({n, tol, 0.0});
+    for (const char* n : {"stop_where", "x_stop", "y_stop", "n_gauss", "n_unif", "rng_err", "nsig_last", "row"})
+        known.push_back({n, 0.0, 0.0});
+    for (int k = 1; k <= 21; ++k) known.push_back({"d_" + std::to_string(k), 0.0, 0.0});
+    const int rc = simcl1::run("hut_sos (" + dir + ")", dir, present(dir, known), [&](const Row& r, Outputs& o) {
+        std::vector<double> g, u;
+        for (int k = 1; r.has("g" + std::to_string(k)); ++k) g.push_back(r["g" + std::to_string(k)]);
+        for (int k = 1; r.has("u" + std::to_string(k)); ++k) u.push_back(r["u" + std::to_string(k)]);
+        rng.load(g, u);
+        optics::Track t;
+        t.xs = r["xs"];
+        t.ys = r["ys"];
+        t.dxdzs = r["dxdzs"];
+        t.dydzs = r["dydzs"];
+        t.dpps = r["dpps"];
+        sos.setTrack(t);
+        McSosArgs a;
+        a.ms_flag = std::lround(r["ms_flag"]) != 0;
+        a.wcs_flag = std::lround(r["wcs_flag"]) != 0;
+        a.decay_flag = std::lround(r["decay_flag"]) != 0;
+        a.resmult = r["resmult_in"];
+        a.pathlen = r["pathlen_in"];
+        a.x_fp = a.dx_fp = a.y_fp = a.dy_fp = kUnset;
+        optics::DecayState d;
+        d.decay_flag = a.decay_flag;
+        d.dflag = std::lround(r["dflag_in"]) != 0;
+        d.m2 = r["m2"];
+        d.ph = r["p"];
+        d.ctau = r["ctau"];
+        d.decdist = r["decdist_in"];
+        d.Mh2_final = r["Mh2_final_in"];
+        d.rng = &rng;
+        d.fortran_compat = true;
+        McSosDetail det;
+        const sos::SosCounters before = sos.counters();
+        const int code = sos.mcSosHutDirect(d, a, r["zinit"], rng, det);
+        o["ok_hut"] = code == 0 ? 1. : 0.;
+        o["stop_code"] = code == 0 ? -1. : static_cast<double>(code);
+        o["x_fp"] = a.x_fp;
+        o["dx_fp"] = a.dx_fp;
+        o["y_fp"] = a.y_fp;
+        o["dy_fp"] = a.dy_fp;
+        o["resmult"] = a.resmult;
+        o["pathlen"] = a.pathlen;
+        o["m2_out"] = d.m2;
+        o["p_out"] = d.ph;
+        o["dflag_out"] = d.dflag ? 1. : 0.;
+        const optics::Track& e = sos.track();
+        o["xs_end"] = e.xs;
+        o["ys_end"] = e.ys;
+        o["dxdzs_end"] = e.dxdzs;
+        o["dydzs_end"] = e.dydzs;
+        o["dpps_end"] = e.dpps;
+        o["stop_where"] = o["x_stop"] = o["y_stop"] = -1.;
+        o["decdist"] = d.decdist;
+        o["Mh2_final"] = d.Mh2_final;
+        o["n_gauss"] = static_cast<double>(rng.nGauss());
+        o["n_unif"] = static_cast<double>(rng.nUniform());
+        o["rng_err"] = rng.error() ? 1. : 0.;
+        o["nsig_last"] = rng.lastNsig();
+        for (int k = 1; k <= 21; ++k)
+            o["d_" + std::to_string(k)] =
+                k <= sos::kNumCounters ? static_cast<double>(sos.counters()[k] - before[k]) : 0.;
+        o["row"] = static_cast<double>(r.number());
+    });
+    if (rc != 77 && !log.str().empty()) {
+        std::printf("  unexpected messages:\n%s", log.str().c_str());
+        return 1;
+    }
+    return rc;
 }
 
 // ---------------------------------------------------------------------------------------------- selftest
@@ -453,13 +694,18 @@ int runSelftest() {
 
 int main(int argc, char** argv) {
     if (argc < 2) {
-        std::fprintf(stderr, "usage: %s mc <table_dir> [rel_tol] | selftest\n", argv[0]);
+        std::fprintf(stderr, "usage: %s mc|transp|chain|recon|hut <table_dir> [rel_tol] | selftest\n", argv[0]);
         return 2;
     }
     const std::string mode = argv[1];
     try {
         if (mode == "selftest") return runSelftest();
-        if (mode == "mc" && argc > 2) return runMc(argv[2], argc > 3 ? std::atof(argv[3]) : 1e-12);
+        const double tol = argc > 3 ? std::atof(argv[3]) : 1e-12;
+        if (mode == "mc" && argc > 2) return runMc(argv[2], tol);
+        if (mode == "transp" && argc > 2) return runTransp(argv[2], tol);
+        if (mode == "chain" && argc > 2) return runChain(argv[2], tol);
+        if (mode == "recon" && argc > 2) return runRecon(argv[2], tol);
+        if (mode == "hut" && argc > 2) return runHut(argv[2], tol);
     } catch (const std::exception& e) {
         std::printf("exception: %s\n", e.what());
         return 1;
