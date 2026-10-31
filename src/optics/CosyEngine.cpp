@@ -418,12 +418,13 @@ std::string CosyEngine::defaultForwardFile(int spectr) {
     }
 }
 
-// Fortran: mc_hms_recon.f:73, mc_shms_recon.f:79
+// Fortran: mc_hms_recon.f:73, mc_sos_recon.f:73, mc_shms_recon.f:79
 std::string CosyEngine::defaultReconFile(int spectr) {
     if (spectr == 1) return "hms/recon_cosy.dat";
+    if (spectr == 2) return "sos/recon_cosy.dat";
     if (spectr == 5) return "shms/shms_recon.dat";
     // (mc_shms_recon.f also STOPs for the retired SHMS LSA tune; the input rejects that arm code, D-032.)
-    throw FortranStop("recon for spectrometer " + std::to_string(spectr) + " not ported (HMS 1, SHMS 5 only)");
+    throw FortranStop("recon for spectrometer " + std::to_string(spectr) + " not ported (HMS 1, SOS 2, SHMS 5 only)");
 }
 
 int CosyEngine::initForward(int spectr, const std::string& simcDir) {
@@ -681,7 +682,9 @@ double CosyEngine::transp(int spectr, int cls, Track& t, double zd, double& path
     return delta_z;
 }
 
-// Fortran: hms/mc_hms_recon.f (l.95-129), shms/mc_shms_recon.f (l.121-155) — identical arithmetic.
+// Fortran: hms/mc_hms_recon.f (l.95-129), shms/mc_shms_recon.f (l.121-155), sos/mc_sos_recon.f (l.104-141) — identical
+// arithmetic, except the zero guard: HMS/SHMS replace only hut(5) (fry) by 1e-30, SOS all five hut values
+// (mc_sos_recon.f:120-122).
 void CosyEngine::recon(int spectr, const Track& t, double fry, double& delta_p, double& delta_t, double& delta_phi,
                        double& y_tgt) const {
     const std::vector<ReconTerm>& terms = reconTerms(spectr);
@@ -692,7 +695,13 @@ void CosyEngine::recon(int spectr, const Track& t, double fry, double& delta_p, 
     hut[2] = t.ys / 100.;   // cm --> m
     hut[3] = t.dydzs;       // slope
     hut[4] = fry / 100.;    // vert. position at target (cm --> m)
-    if (std::fabs(hut[4]) <= 1.e-30) hut[4] = 1.e-30;   // FORTRAN-QUIRK (D-015): avoid 0.0**0
+    if (spectr == 2) {
+        // mc_sos_recon.f:120-122: do i=1,5; if (abs(hut(i)).le.1.e-30) hut(i)=1.e-30
+        for (int i = 0; i < 5; ++i)
+            if (std::fabs(hut[i]) <= 1.e-30) hut[i] = 1.e-30;
+    } else {
+        if (std::fabs(hut[4]) <= 1.e-30) hut[4] = 1.e-30;   // FORTRAN-QUIRK (D-015): avoid 0.0**0
+    }
     for (const ReconTerm& e : terms) {
         const double term = powi(hut[0], e.expon[0]) * powi(hut[1], e.expon[1]) * powi(hut[2], e.expon[2]) *
                             powi(hut[3], e.expon[3]) * powi(hut[4], e.expon[4]);

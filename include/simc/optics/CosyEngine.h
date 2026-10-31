@@ -3,7 +3,7 @@
 // Spectrometer-independent COSY transport engine (task P6.1). Ports:
 //   transp()        Fortran: shared/transp.f:transp (l.1-281)          one forward class (map or drift)
 //   loadForward()   Fortran: shared/transp.f:transp_init / transp_init_file (entries, l.285-478)
-//   recon()         Fortran: hms/mc_hms_recon.f (l.1-146), shms/mc_shms_recon.f (l.1-166)
+//   recon()         Fortran: hms/mc_hms_recon.f (l.1-146), shms/mc_shms_recon.f (l.1-166), sos/mc_sos_recon.f (l.1-150)
 //   project()       Fortran: shared/project.f (l.1-127)                 field-free drift
 //   rotateHaxis()   Fortran: shared/rotate_haxis.f                      (raddeg = 0.017453292, D-015)
 //   rotateVaxis()   Fortran: shared/rotate_vaxis.f
@@ -113,7 +113,7 @@ public:
 
     /// Default forward file of transp_init (relative to the SIMC directory), transp.f:300-314.
     static std::string defaultForwardFile(int spectr);
-    /// Default recon file (mc_hms_recon.f / mc_shms_recon.f). Only 1 (HMS) and 5 (SHMS) are ported.
+    /// Default recon file (mc_hms_recon.f / mc_sos_recon.f / mc_shms_recon.f). 1 (HMS), 2 (SOS) and 5 (SHMS) are ported.
     static std::string defaultReconFile(int spectr);
 
     /// Fortran: transp_init_file(file, n_classes) for spectrometer `spectr`. Returns n_classes.
@@ -139,7 +139,8 @@ public:
 
     /// Fortran: mc_hms_recon / mc_shms_recon(delta_p,delta_t,delta_phi,y_tgt,fry[,spectr]) on the focal-plane
     /// track t (xs, dxdzs, ys, dydzs). Outputs: delta_p [%], delta_t = yptar, delta_phi = xptar [slopes], y_tgt [cm].
-    /// FORTRAN-QUIRK (D-015): |fry/100| <= 1e-30 is replaced by 1e-30 (avoid 0**0).
+    /// FORTRAN-QUIRK (D-015): |fry/100| <= 1e-30 is replaced by 1e-30 (avoid 0**0); for the SOS (spectr 2,
+    /// mc_sos_recon.f:120-122) every one of the five hut values.
     void recon(int spectr, const Track& t, double fry, double& delta_p, double& delta_t, double& delta_phi,
                double& y_tgt) const;
 
