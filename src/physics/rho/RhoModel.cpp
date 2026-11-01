@@ -26,13 +26,10 @@ std::vector<std::string> checkSupported(const RunSetup& s) {
         v.push_back("rho: doing_pizero with doing_rho: results_write.f:230-236 overwrites the rho ntuple columns Mrho, "
                     "Thrho, mmnuc with the pi0 photons; set doing_pizero = 0");
     const int arm = s.params.hadron_arm;
-    if (arm == 3 || arm == 4)
-        v.push_back(std::string(kNotPortedTag) + " rho: hadron_arm = " + std::to_string(arm) +
-                    " (HRS): these spectrometers are not ported yet (task P14.2); use 1 = HMS, 2 = SOS or 5 = SHMS");
-    else if (arm != 1 && arm != 2 && arm != 5)
+    if (arm < 1 || arm > 5)
         v.push_back("rho: hadron_arm = " + std::to_string(arm) +
                     ": rho_decay.f:92-99 handles only the arms 1-5 (the Fortran STOPs with 'Unknown spectrometer "
-                    "setup dude!' at the first decay); use 1 = HMS, 2 = SOS or 5 = SHMS");
+                    "setup dude!' at the first decay); use 1 = HMS, 2 = SOS, 3 = HRS-R, 4 = HRS-L or 5 = SHMS");
     return v;
 }
 

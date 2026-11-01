@@ -30,13 +30,11 @@ MonteCarlo::ArmChoice MonteCarlo::DefaultArm(int code) {
     switch (*id) {
         case SpectrometerId::HMS:
         case SpectrometerId::SOS:
-        case SpectrometerId::SHMS:
-            c.type = Key(*id);   // plug-ins "hms", "sos" (P14.1), "shms"
-            break;
         case SpectrometerId::HRSR:
         case SpectrometerId::HRSL:
-            throw NotPorted(std::string("montecarlo: ") + Label(*id) + " (arm code " + std::to_string(code) +
-                            ") not yet ported (P14.2)");
+        case SpectrometerId::SHMS:
+            c.type = Key(*id);   // plug-ins "hms", "sos" (P14.1), "hrsr", "hrsl" (P14.2), "shms"
+            break;
         case SpectrometerId::CALO_HMS_SIDE:
         case SpectrometerId::CALO_SHMS_SIDE:
             throw NotPorted(std::string("montecarlo: ") + Label(*id) + " (arm code " + std::to_string(code) +

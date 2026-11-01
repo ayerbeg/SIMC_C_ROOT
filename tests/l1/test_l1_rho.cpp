@@ -867,8 +867,8 @@ int setup(const std::string& inp) {
             } catch (const std::invalid_argument&) {
                 kind = "invalid_argument";
             }
-            // SOS (2) is ported (P14.1); HRS (3, 4) waits for P14.2; 7/8 make rho_decay STOP (input error)
-            check(kind == (arm == 2 ? "none" : arm <= 4 ? "NotPorted" : "invalid_argument"),
+            // SOS (2, P14.1) and HRS (3, 4, P14.2) are ported; 7/8 make rho_decay STOP (input error)
+            check(kind == (arm <= 4 ? "none" : "invalid_argument"),   // SOS P14.1, HRS P14.2
                   "RhoModel::init hadron_arm " + std::to_string(arm) + " -> " + kind + m);
         }
         RunSetup s3 = s;

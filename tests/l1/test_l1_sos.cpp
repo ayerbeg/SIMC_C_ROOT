@@ -677,13 +677,12 @@ int runSelftest() {
             std::printf("  %s\n", e.what());
         }
         check(ok, "MonteCarlo::DefaultArm(2) = \"sos\"");
-        bool np = false;
+        bool hrs = false;
         try {
-            driver::MonteCarlo::DefaultArm(3);
-        } catch (const NotPorted&) {
-            np = true;
+            hrs = driver::MonteCarlo::DefaultArm(3).type == "hrsr" && driver::MonteCarlo::DefaultArm(4).type == "hrsl";
+        } catch (const std::exception&) {
         }
-        check(np, "MonteCarlo::DefaultArm(3) (HRS-R) still NotPorted (P14.2)");
+        check(hrs, "MonteCarlo::DefaultArm(3/4) = \"hrsr\"/\"hrsl\" (P14.2)");
     }
 
     std::printf("selftest: %s (%d failures)\n", nfail ? "FAIL" : "PASS", nfail);

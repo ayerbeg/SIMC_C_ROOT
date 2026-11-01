@@ -28,9 +28,8 @@ struct RunSetup;
 namespace rho {
 
 /// The rho input combinations SIMC++ refuses (each entry is an error message); empty = supported.
-/// Checked: doing_rho set (and not switched off by doing_phsp); the hadron arm is HMS (1), SOS (2, P14.1) or SHMS (5):
-/// HRS (3, 4) waits for task P14.2 (NotPorted), the calorimeter arms (7, 8) make rho_decay STOP ('Unknown spectrometer
-/// setup dude!', rho_decay.f:96-98).
+/// Checked: doing_rho set (and not switched off by doing_phsp); the hadron arm is 1-5 (HMS, SOS, HRS-R, HRS-L, SHMS):
+/// the calorimeter arms (7, 8) make rho_decay STOP ('Unknown spectrometer setup dude!', rho_decay.f:96-98).
 std::vector<std::string> checkSupported(const RunSetup& s);
 /// true if a checkSupported problem is a NotPorted feature (HRS hadron arm) rather than an input error.
 bool isNotPortedProblem(const std::string& problem);

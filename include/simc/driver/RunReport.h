@@ -71,7 +71,7 @@ Normalisation Normalise(const RunSetup& setup, const RunTotals& t, double genvol
 /// Throws std::runtime_error where the Fortran report STOPs (unknown reaction).
 std::string FormatHist(const RunSetup& setup, const RunReport& r);
 
-/// Fortran: simc.f l.462-532 (.geni). The HMS, SOS and SHMS blocks are printed in the Fortran format (HRS/calo arms are
+/// Fortran: simc.f l.462-532 (.geni). The HMS, SOS, HRS-R/L and SHMS blocks are printed in the Fortran format (calo arms are
 /// not supported by the driver yet); any other ISpectrometer plug-in gets a generic "key value" block.
 std::string FormatGeni(const RunSetup& setup, const RunReport& r);
 

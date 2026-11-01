@@ -676,6 +676,25 @@ std::string FormatGeni(const RunSetup& s, const RunReport& r) {
         row("Successes             ", "sos", {"successes"});
         o.line("");
     }
+    // simc.f:487-509 (task P14.2): HRS-R then HRS-L. The HRS-L block has no trailing blank line, neither block a
+    // "Successes" line (Fortran format kept). The "S1, S2, Cal" label contains a TAB (simc.f:496, 508).
+    auto hrsBlock = [&](const char* key, const char* trials, bool blank) {
+        row(trials, key, {"trials"});
+        // FORTRAN-BUG(D-011): original Fortran simc.f:489/501: `write(7,*) 'Slit hor/vert         ',rSTOP_slit_vert,
+        // rSTOP_slit_hor`; corrected because the label puts slit_hor first. fortran_compat writes the Fortran order.
+        row("Slit hor/vert         ", key,
+            {s.fortran_compat ? "slit_vert" : "slit_hor", s.fortran_compat ? "slit_hor" : "slit_vert"});
+        row("Q1 entrance/mid/exit  ", key, {"Q1_in", "Q1_mid", "Q1_out"});
+        row("Q2 entrance/mid/exit  ", key, {"Q2_in", "Q2_mid", "Q2_out"});
+        row("Dipole entrance/exit  ", key, {"D1_in", "D1_out"});
+        row("Q3 entrance/mid/exit  ", key, {"Q3_in", "Q3_mid", "Q3_out"});
+        row("Events reaching hut   ", key, {"hut"});
+        row("VDC1, VDC2            ", key, {"dc1", "dc2"});
+        row("S1, S2, Cal\t    ", key, {"s1", "s2", "cal"});
+        if (blank) o.line("");
+    };
+    if (uses(SpectrometerId::HRSR) && has(r, "hrsr")) hrsBlock("hrsr", "HRSr Trials:          ", true);
+    if (uses(SpectrometerId::HRSL) && has(r, "hrsl")) hrsBlock("hrsl", "HRSl Trials:          ", false);
     if (uses(SpectrometerId::SHMS) && has(r, "shms")) {   // simc.f:510-511 also lists the retired code 6
         row("SHMS Trials:          ", "shms", {"trials"});
         row("HB phys entrance/mag entr/mag exit/phys exit  ", "shms", {"hb_in", "hb_men", "hb_mex", "hb_out"});
@@ -700,10 +719,11 @@ std::string FormatGeni(const RunSetup& s, const RunReport& r) {
         row("Successes             ", "shms", {"successes"});
         o.line("");
     }
-    // HRS/calorimeter arms (codes 3, 4, 7, 8) have no Fortran-format block yet (P14.2/P14.3); without a plug-in they
-    // are refused at initialise (MonteCarlo::DefaultArm). Every non-Fortran spectrometer: one "key value" line per counter.
+    // The calorimeter arms (codes 7, 8) have no Fortran-format block yet (P14.3); without a plug-in they are refused at initialise (MonteCarlo::DefaultArm). Every non-Fortran spectrometer: one "key value" line per counter.
     for (const auto& sc : r.stops) {
-        if (sc.spectrometer == "hms" || sc.spectrometer == "shms" || sc.spectrometer == "sos") continue;
+        if (sc.spectrometer == "hms" || sc.spectrometer == "shms" || sc.spectrometer == "sos" || sc.spectrometer == "hrsr" ||
+            sc.spectrometer == "hrsl")
+            continue;
         o.list(sc.spectrometer + " stop counters (" + sc.role + " arm, SIMC++ plug-in):");
         for (const auto& kv : sc.counts) {
             Record x = List(" " + kv.first);
