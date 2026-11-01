@@ -422,9 +422,11 @@ std::string CosyEngine::defaultForwardFile(int spectr) {
 std::string CosyEngine::defaultReconFile(int spectr) {
     if (spectr == 1) return "hms/recon_cosy.dat";
     if (spectr == 2) return "sos/recon_cosy.dat";
+    if (spectr == 3) return "hrsr/hrs_recon_cosy.dat";   // mc_hrsr_recon.f:73
+    if (spectr == 4) return "hrsl/hrs_recon_cosy.dat";   // mc_hrsl_recon.f:74
     if (spectr == 5) return "shms/shms_recon.dat";
     // (mc_shms_recon.f also STOPs for the retired SHMS LSA tune; the input rejects that arm code, D-032.)
-    throw FortranStop("recon for spectrometer " + std::to_string(spectr) + " not ported (HMS 1, SOS 2, SHMS 5 only)");
+    throw FortranStop("recon for spectrometer " + std::to_string(spectr) + " not ported");
 }
 
 int CosyEngine::initForward(int spectr, const std::string& simcDir) {
@@ -684,7 +686,7 @@ double CosyEngine::transp(int spectr, int cls, Track& t, double zd, double& path
 
 // Fortran: hms/mc_hms_recon.f (l.95-129), shms/mc_shms_recon.f (l.121-155), sos/mc_sos_recon.f (l.104-141) — identical
 // arithmetic, except the zero guard: HMS/SHMS replace only hut(5) (fry) by 1e-30, SOS all five hut values
-// (mc_sos_recon.f:120-122).
+// (mc_sos_recon.f:120-122), HRS-R/L (mc_hrs*_recon.f:118) only hut(5), with the REAL(16) literal 1.d-30.
 void CosyEngine::recon(int spectr, const Track& t, double fry, double& delta_p, double& delta_t, double& delta_phi,
                        double& y_tgt) const {
     const std::vector<ReconTerm>& terms = reconTerms(spectr);
@@ -699,6 +701,14 @@ void CosyEngine::recon(int spectr, const Track& t, double fry, double& delta_p, 
         // mc_sos_recon.f:120-122: do i=1,5; if (abs(hut(i)).le.1.e-30) hut(i)=1.e-30
         for (int i = 0; i < 5; ++i)
             if (std::fabs(hut[i]) <= 1.e-30) hut[i] = 1.e-30;
+    } else if (spectr == 3 || spectr == 4) {
+        // mc_hrs*_recon.f:118: if (abs(hut(5)).le.1.d-30) hut(5)=1.d-30 — 1.d-30 is REAL(16) under -fdefault-real-8:
+        // the comparison is done in binary128, the assignment rounds the quad 1e-30 to real*8.
+        __extension__ typedef __float128 quad;
+        // 1e30 = 5^30 * 2^30 (70 significant bits): exact in a quad, so the quotient is the correctly rounded quad 1e-30
+        const quad five15 = static_cast<quad>(30517578125ULL);   // 5^15
+        const quad q1em30 = static_cast<quad>(1) / (five15 * five15 * static_cast<quad>(1073741824ULL));
+        if (static_cast<quad>(std::fabs(hut[4])) <= q1em30) hut[4] = static_cast<double>(q1em30);
     } else {
         if (std::fabs(hut[4]) <= 1.e-30) hut[4] = 1.e-30;   // FORTRAN-QUIRK (D-015): avoid 0.0**0
     }
