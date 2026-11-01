@@ -34,5 +34,14 @@ if grep -q "SOS Trials" "$work/corrected/$run.geni"; then
     if [ "$want" = "$got" ]; then echo "  corrected .geni SOS slit hor/vert/corners = summary ($got)"
     else echo "  corrected .geni SOS slit line '$got' != summary '$want'"; fail=1; fi
 fi
+for blk in "HRSr Trials:hrsr" "HRSl Trials:hrsl"; do   # P14.2: HRS "Slit hor/vert" (FORTRAN-BUG D-011)
+    lab=${blk%%:*}; key=${blk##*:}
+    if grep -q "$lab" "$work/corrected/$run.geni"; then
+        want=$(python3 -I -c "import json,sys; s=json.load(open(sys.argv[1]))['stops'][sys.argv[2]]; print(s['slit_hor'], s['slit_vert'])" "$sj" "$key")
+        got=$(awk -v l="$lab" 'index($0,l){f=1} f && /Slit hor\/vert/{print $3, $4; exit}' "$work/corrected/$run.geni")
+        if [ "$want" = "$got" ]; then echo "  corrected .geni $key slit hor/vert = summary ($got)"
+        else echo "  corrected .geni $key slit line '$got' != summary '$want'"; fail=1; fi
+    fi
+done
 [ $fail = 0 ] && echo "PASS" || echo "FAIL"
 exit $fail

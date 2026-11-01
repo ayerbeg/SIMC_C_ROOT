@@ -19,6 +19,7 @@
 #include <iterator>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "L1Runner.h"
@@ -175,16 +176,22 @@ std::string slurp(const std::string& p, bool& ok) {
 
 int runFiles(const std::string& mdir, const std::string& simc) {
     int fail = 0;
-    for (const char* f : {"hms/forward_cosy.dat", "hms/recon_cosy.dat", "shms/shms_forward.dat", "shms/shms_recon.dat",
-                          "sos/forward_cosy.dat", "sos/recon_cosy.dat"}) {
+    // {repository copy, Fortran file}; the HRS maps are kept once (P14.2): hrsl/ and hrsr/ files are byte-identical
+    const std::pair<const char*, const char*> files[] = {
+        {"hms/forward_cosy.dat", "hms/forward_cosy.dat"},   {"hms/recon_cosy.dat", "hms/recon_cosy.dat"},
+        {"shms/shms_forward.dat", "shms/shms_forward.dat"}, {"shms/shms_recon.dat", "shms/shms_recon.dat"},
+        {"sos/forward_cosy.dat", "sos/forward_cosy.dat"},   {"sos/recon_cosy.dat", "sos/recon_cosy.dat"},
+        {"hrs/hrs_forward_cosy.dat", "hrsl/hrs_forward_cosy.dat"}, {"hrs/hrs_forward_cosy.dat", "hrsr/hrs_forward_cosy.dat"},
+        {"hrs/hrs_recon_cosy.dat", "hrsl/hrs_recon_cosy.dat"},     {"hrs/hrs_recon_cosy.dat", "hrsr/hrs_recon_cosy.dat"}};
+    for (const auto& f : files) {
         bool a, b;
-        std::string x = slurp(mdir + "/" + f, a), y = slurp(simc + "/" + f, b);
+        std::string x = slurp(mdir + "/" + f.first, a), y = slurp(simc + "/" + f.second, b);
         if (!b) {
-            std::printf("  %s: Fortran copy missing, SKIP\n", f);
+            std::printf("  %s: Fortran copy missing, SKIP\n", f.second);
             return 77;
         }
         bool same = a && x == y;
-        std::printf("  %-24s %zu bytes  %s\n", f, x.size(), same ? "identical" : "DIFFERENT");
+        std::printf("  %-26s = %-26s %zu bytes  %s\n", f.first, f.second, x.size(), same ? "identical" : "DIFFERENT");
         if (!same) ++fail;
     }
     return fail ? 1 : 0;
