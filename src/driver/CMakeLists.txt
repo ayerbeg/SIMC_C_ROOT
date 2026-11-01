@@ -29,6 +29,6 @@ target_compile_options(simcfw_driver_sinks PRIVATE -Wall -Wextra -pedantic)
 # Everything a complete run links (OBJECT libraries must be linked directly by the executable).
 set(SIMC_DRIVER_LIBS simcfw_driver simcfw_driver_sinks simcfw_reactions simcfw_reactions_pion simcfw_reactions_kaon simcfw_reactions_delta simcfw_reactions_sidis simcfw_reactions_rho simcfw_radiation
     simcfw_physics simcfw_pion simcfw_kaon simcfw_delta simcfw_sidis simcfw_rho simcfw_root
-    simcfw_hms simcfw_shms simcfw_sos simcfw_optics simcfw_setup simcfw_material simcfw_kinematics simcfw_random simcfw
+    simcfw_hms simcfw_shms simcfw_sos simcfw_hrs simcfw_optics simcfw_setup simcfw_material simcfw_kinematics simcfw_random simcfw
     CACHE INTERNAL "libraries of a complete SIMC++ run")
 # The command line simc++ is defined in the top-level CMakeLists.txt (it also links the example plug-ins).

@@ -104,6 +104,7 @@ add_subdirectory(src/optics)      # shared COSY engine: transp, project, rotate_
 add_subdirectory(src/spectrometers/hms)   # ISpectrometer "hms" (P6.2)
 add_subdirectory(src/spectrometers/shms)  # ISpectrometer "shms" (P6.3)
 add_subdirectory(src/spectrometers/sos)   # ISpectrometer "sos" (P14.1)
+add_subdirectory(src/spectrometers/hrs)   # ISpectrometer "hrsr", "hrsl" (P14.2)
 add_subdirectory(src/physics/pion)        # pion cross-section models, transform_to_cm, pizero_decay (P9.1)
 add_subdirectory(src/physics/kaon)        # kaon cross sections (peeK, Saghai/factorized, fint), "kaon" model (P10.1)
 add_subdirectory(src/physics/delta)       # doing_delta: peedelta, "delta" model (P11.1)
