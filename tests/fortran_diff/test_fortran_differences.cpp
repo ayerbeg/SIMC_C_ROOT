@@ -46,6 +46,8 @@
 #include "simc/setup/SetupBuilder.h"
 #include "simc/spectrometers/hms/kernel/McHms.h"
 #include "simc/spectrometers/shms/kernel/McShms.h"
+#include "simc/spectrometers/hrs/kernel/McHrs.h"
+#include "simc/stages/IOutputSink.h"
 
 using namespace simc;
 
@@ -1651,9 +1653,118 @@ int testSemiHistTitles() {
     return 0;
 }
 
+
+// ------------------------------------------------------------------------------------------------ D-061 (P14.2)
+// F1: mc_hrs*.f pass REAL(16) transport lengths to transp's real*8 zd: FP path = -3.134165696542769E+232 and the HRS kaon
+// survival weight +Inf (reference/runs/p14f1_kaon_hrs_probe: Weight = +Inf for every event). Corrected: the real lengths.
+struct WeightSink : IOutputSink {
+    std::vector<double> w, path;
+    std::string name() const override { return "weights"; }
+    void configure(const Json&, const SimcParameters&) override {}
+    void init(const StageContext&) override {}
+    void beginRun(const RunSetup&) override {}
+    void fill(const MainEvent& m, const Event&, const Event&, const Event&, bool success) override {
+        if (success) {
+            w.push_back(m.weight);
+            path.push_back(m.FP.p.path);
+        }
+    }
+    void endRun(const RunSummary&) override {}
+};
+
+int testHrsTranspLengths() {
+    // kernel: one near-central ray through HRS-R and HRS-L
+    for (hrs::Side side : {hrs::Side::Right, hrs::Side::Left}) {
+        double path[2] = {0, 0};
+        bool ok[2] = {false, false};
+        for (int compat = 0; compat < 2; ++compat) {
+            hrs::McHrs k(side);
+            k.setLog(nullptr);
+            k.setFortranCompat(compat == 1);
+            hrs::McHrsArgs a;
+            a.p_spec = 2500.;
+            a.dpp = 0.3;
+            a.x = 0.02;
+            a.y = -0.01;
+            a.dxdz = 0.002;
+            a.dydz = -0.003;
+            a.m2 = 938.27231 * 938.27231;
+            a.Mh2_final = a.m2;
+            Mt64Random rng(1);
+            k.mcHrs(a, rng);
+            path[compat] = a.pathlen;
+            ok[compat] = a.ok_spec;
+        }
+        const std::string nm = hrs::sideParams(side).name;
+        expect(ok[1] && sameBits(path[1], -3.134165696542769E+232),
+               nm + " compat: FP path = -3.134165696542769E+232 (the REAL(16) 121.77333333d0 read as real*8)");
+        expect(ok[0] && path[0] > 2000. && path[0] < 3500., nm + " corrected: FP path " + std::to_string(path[0]) + " cm");
+    }
+    // full run: HRS kaon (K+ Lambda, HRS-L e-, HRS-R K+, doing_decay = 0)
+    const std::string inp = g_ref + "/runs/p14f1_kaon_hrs_probe/p14f1_kaon_hrs_probe.inp";
+    if (!std::ifstream(inp)) {
+        std::printf("SKIP: %s missing\n", inp.c_str());
+        return 77;
+    }
+    SimcParameters p;
+    InpReader rd(p);
+    if (!rd.loadRun(inp)) return 1;
+    p.ngen = 30;
+    for (int compat = 0; compat < 2; ++compat) {
+        driver::RunOptions opt;
+        opt.quiet_stages = true;
+        opt.fortran_compat = compat == 1;
+        std::ostringstream log;
+        opt.log = &log;
+        driver::SimcRun run(p, Json{{"sinks", Json::array()}}, opt);
+        auto* sink = static_cast<WeightSink*>(&run.addSink(std::make_unique<WeightSink>()));
+        run.run();
+        long ninf = 0, nfin = 0;
+        for (double x : sink->w) (std::isinf(x) && x > 0 ? ninf : nfin) += std::isfinite(x) || std::isinf(x) ? 1 : 0;
+        const std::string what = std::to_string(sink->w.size()) + " events: " + std::to_string(ninf) + " +Inf, " +
+                                 std::to_string(nfin) + " finite";
+        if (compat)
+            expect(!sink->w.empty() && ninf == static_cast<long>(sink->w.size()),
+                   "compat: HRS kaon Weight = +Inf for every event, as the Fortran probe run (" + what + ")");
+        else
+            expect(!sink->w.empty() && nfin == static_cast<long>(sink->w.size()),
+                   "corrected: HRS kaon Weight finite for every event (" + what + ")");
+    }
+    return 0;
+}
+
+// F1e: rotate_haxis(45.0d0) receives +0.0 (REAL(16) literal): the VDC test is not rotated. A ray starting at y = 12.8 cm (13.2 at VDC1, 14.2 at VDC2) with
+// dy/dz = 0.02 at x = 100 cm passes the unrotated VDC tests (|y| <= 14.4) and fails the 45 degree one (yt = y + 2.0).
+int testHrsVdcRotation() {
+    int code[2] = {-1, -1};
+    for (int compat = 0; compat < 2; ++compat) {
+        hrs::McHrs k(hrs::Side::Left);
+        k.setLog(nullptr);
+        k.setFortranCompat(compat == 1);
+        optics::Track t;
+        t.xs = 100.;
+        t.ys = 12.8;
+        t.dxdzs = 0.;
+        t.dydzs = 0.02;
+        k.setTrack(t);
+        hrs::McHrsArgs a;
+        optics::DecayState d;
+        d.m2 = 0.51099906 * 0.51099906;
+        d.ph = 2700.;
+        hrs::McHrsDetail det;
+        ScriptedRandom rng;
+        code[compat] = k.mcHrsHutDirect(d, a, -15.522000000000105, rng, det);
+    }
+    expect(code[1] == hrs::kSuccess, "compat: no rotation, the ray passes the VDCs (code " + std::to_string(code[1]) + ")");
+    expect(code[0] == hrs::kDc1, "corrected: 45 degree rotation, the ray stops at VDC1 (code " + std::to_string(code[0]) + ")");
+    return 0;
+}
+
 const std::map<std::string, std::function<int()>>& items() {
     static const std::map<std::string, std::function<int()>> m = {
         {"D032_spectrometer_id", testSpectrometerId},
+        {"D061_F1_hrs_transp_lengths", testHrsTranspLengths},
+        {"D061_F1e_hrs_vdc_rotation", testHrsVdcRotation},
         {"D006_pass_cuts", testPassCuts},
         {"D017_extreme_trip_hadron_angle", testExtremeTrip},
         {"D014_deforest_cos_phi_warning", testDeForestWarning},

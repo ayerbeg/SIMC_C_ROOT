@@ -217,7 +217,7 @@ int McSos::body(McSosArgs& a, optics::DecayState& d, IRandom& rng, McSosDetail& 
     if ((std::fabs(t.xs) > 37.694) || std::fabs(t.ys) > tmpwidth) return stop(kExit);
 
     // Go to window at -3.22 cm (from -10.84 to -3.22 is 7.62 cm), mc_sos.f:339-347.
-    // FORTRAN-DIFF-CANDIDATE(D-059 P14.1): a straight line WITHOUT project (the project call is commented out, l.337):
+    // FORTRAN-DIFF-CANDIDATE(D-060, D-061 F2): a straight line WITHOUT project (the project call is commented out, l.337):
     // no pathlength, no decay check over these 7.62 cm, zs unchanged; the hut then starts at -3.206267 (mc_sos.f:349-360
     // "WE REALLY NEED TO FIX THIS UP"). Question: should pathlen include the 7.62 cm (FP path / time of flight)?
     t.xs = t.xs + 7.62 * t.dxdzs;

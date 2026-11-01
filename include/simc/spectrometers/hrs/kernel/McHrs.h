@@ -28,11 +28,11 @@
 // ms = wcs = on: success 176 gauss1(99), dc1 stop 70, dc2 140, s1 146; decay: grnd in project/transp.
 //
 // REAL(16) quirks (-fdefault-real-8 promotes the d0 literals to binary128; reference/functions/hrsl/*/README.txt):
-//   * FORTRAN-BUG(P14.2 H1): mc_hrs*.f:248, 259, 307, 318, 388, 455, 466 pass transport lengths like 62.75333333d0 to the
+//   * FORTRAN-BUG(D-061 F1): mc_hrs*.f:248, 259, 307, 318, 388, 455, 466 pass transport lengths like 62.75333333d0 to the
 //     real*8 dummy zd of transp, which reads the first 8 bytes of the 16-byte constant: zd = garbage (-1.3e-41 ...
 //     -3.1e+232). transp uses zd for the pathlength (FP path = -3.134e+232 for every ray past Q2), the decay test and the
 //     length warning (printed at every call). Corrected: the intended lengths. fortran_compat: the garbage values.
-//   * FORTRAN-BUG(P14.2 H2): mc_hrs*_hut.f:293, 356 call rotate_haxis(45.0d0,...): the dummy reads +0.0 (low 8 bytes of
+//   * FORTRAN-BUG(D-061 F1e): mc_hrs*_hut.f:293, 356 call rotate_haxis(45.0d0,...): the dummy reads +0.0 (low 8 bytes of
 //     the quad 45.0), so the VDC acceptance test is done WITHOUT the 45 degree rotation. Corrected: 45 degrees.
 //   * z_entr = 110.9d0 / 110.0d0 + z_off and z_exit = z_entr + 8.0d0 are PARAMETERs declared real*8: the quad values are
 //     rounded to real*8 (no garbage); mc_hrs*_recon.f:118 compares with the quad 1.d-30 (CosyEngine::recon).
@@ -110,7 +110,7 @@ struct HrsSideParams {
 const HrsSideParams& sideParams(Side s);
 
 /// The transp length arguments of mc_hrs*.f (classes 2, 3, 5, 6, 8, 10, 11): the intended value (the decimal literal) and
-/// what transp reads from the REAL(16) constant (its low 8 bytes, P14.2 H1).
+/// what transp reads from the REAL(16) constant (its low 8 bytes, D-061 F1).
 struct TranspLength {
     int cls;
     double intended;
@@ -179,7 +179,7 @@ public:
     int mcHrsHutDirect(optics::DecayState& d, McHrsArgs& a, double zinit, IRandom& rng, McHrsDetail& det) {
         return mcHrsHut(d, a, zinit, rng, det);
     }
-    /// The zd passed to transp for class `cls` (P14.2 H1: garbage with fortran_compat).
+    /// The zd passed to transp for class `cls` (D-061 F1: garbage with fortran_compat).
     double transpLength(int cls) const;
 
 private:

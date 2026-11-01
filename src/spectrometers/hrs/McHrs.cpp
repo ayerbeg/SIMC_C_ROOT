@@ -219,7 +219,7 @@ int McHrs::body(McHrsArgs& a, optics::DecayState& d, IRandom& rng, McHrsDetail& 
     project(zdrift);
     if ((t.xs * t.xs + t.ys * t.ys) > r_Q1 * r_Q1) return stopHere(kQ1In, 5.);
 
-    // Check aperture at 2/3 of Q1 / Q1 OUT (l.248-266). FORTRAN-BUG(P14.2 H1): REAL(16) length literals.
+    // Check aperture at 2/3 of Q1 / Q1 OUT (l.248-266). FORTRAN-BUG(D-061 F1): REAL(16) length literals.
     eng.transp(spectr, 2, t, transpLength(2), pathlen, &d);
     if ((t.xs * t.xs + t.ys * t.ys) > r_Q1 * r_Q1) return stopHere(kQ1Mid, 6.);
     eng.transp(spectr, 3, t, transpLength(3), pathlen, &d);

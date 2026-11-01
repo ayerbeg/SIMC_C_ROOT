@@ -152,7 +152,7 @@ int McSos::mcSosHut(optics::DecayState& d, McSosArgs& a, double zinit, IRandom& 
 
     // Go to spectrometer exit foil. (Drift forwards from zinit.) (mc_sos_hut.f:282-287)
     // Approximation is used in calculating xt = x at foil crossing.
-    // FORTRAN-QUIRK(D-059 P14.1): zinit = -3.206267 lies after the foil at -3.22, so drift < 0 and is clamped to
+    // FORTRAN-QUIRK(D-061 F2): zinit = -3.206267 lies after the foil at -3.22, so drift < 0 and is clamped to
     // 0.001 cm (l.284).
     const double xt = t.xs + t.dxdzs * sfoil_exit_zpos;
     drift = (sfoil_exit_zpos + xt * std::tan(sfoil_exit_ang)) - zinit;
@@ -319,7 +319,7 @@ int McSos::mcSosHut(optics::DecayState& d, McSosArgs& a, double zinit, IRandom& 
     project(drift);
     muscExt(radw, drift);
 
-    // FORTRAN-QUIRK(D-059 P14.1): the calorimeter aperture cut (l.519-525) and the fiducial cut on the fitted track
+    // FORTRAN-QUIRK(D-061 F7): the calorimeter aperture cut (l.519-525) and the fiducial cut on the fitted track
     // (l.535-539) are commented out, so sSTOP_cal is never incremented; xcal/ycal (l.533-534) are computed but unused.
     return kSuccess;   // ok_hut = .true.
 }

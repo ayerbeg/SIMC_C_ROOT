@@ -3,7 +3,7 @@
 // Tests of the ISpectrometers "hrsr" / "hrsl" (task P14.2: hrsr/mc_hrsr.f, hrsl/mc_hrsl.f, *_hut.f, *_recon.f) against the
 // P14.F1 tables reference/functions/hrs{r,l}/ (drv_*_sh.f formats, as the SOS tables of test_l1_sos.cpp). The side
 // follows from the spectr column (3 = HRS-R, 4 = HRS-L). The Fortran tables are compared with fortran_compat (the
-// REAL(16) quirks P14.2 H1 transp lengths, H2 rotate_haxis(45.0d0)).
+// REAL(16) quirks D-061 F1 transp lengths, H2 rotate_haxis(45.0d0)).
 //   mc|transp|chain|recon|hut <table_dir> [rel_tol]
 //   selftest : the REAL(16) garbage lengths (README values), side constants, RNG use, counters, corrected mode, plug-ins.
 // Exit: 0 pass, 1 fail, 77 table missing.
@@ -191,7 +191,7 @@ int runMc(const std::string& dir, double tol) {
     std::printf("  counters: trials %ld (rows %zu), successes %ld (ref %ld)\n", cn[hrs::kTrials], ref.rows.size(),
                 cn[hrs::kSuccesses], nref[0]);
     if (cn[hrs::kTrials] != static_cast<long>(ref.rows.size()) || cn[hrs::kSuccesses] != nref[0]) okc = false;
-    // transp prints 'PROBLEM WITH TRANSFORMATION' for every REAL(16) length (P14.2 H1): expected, not checked here
+    // transp prints 'PROBLEM WITH TRANSFORMATION' for every REAL(16) length (D-061 F1): expected, not checked here
     std::printf("  stop reasons / counters: %s\n", okc ? "PASS" : "FAIL");
     return (rc == 0 && okc) ? 0 : 1;
 }
@@ -478,8 +478,8 @@ int runSelftest() {
             std::printf("    class %2d: intended %.10g, REAL(16) read as real*8 %.16e\n", hrs::transpLengths()[i].cls,
                         hrs::transpLengths()[i].intended, c);
         }
-        check(same, "REAL(16) transp lengths read as real*8 = the P14.F1 values (P14.2 H1)");
-        check(hrs::low8(static_cast<hrs::Quad>(45)) == 0.0, "rotate_haxis(45.0d0): the real*8 dummy reads +0.0 (P14.2 H2)");
+        check(same, "REAL(16) transp lengths read as real*8 = the P14.F1 values (D-061 F1)");
+        check(hrs::low8(static_cast<hrs::Quad>(45)) == 0.0, "rotate_haxis(45.0d0): the real*8 dummy reads +0.0 (D-061 F1e)");
         const auto& R = hrs::sideParams(Side::Right);
         const auto& L = hrs::sideParams(Side::Left);
         check(R.spectr == 3 && L.spectr == 4 && R.z_entr == 110.0 && L.z_entr == 110.9 && R.z_exit == 118.0 &&

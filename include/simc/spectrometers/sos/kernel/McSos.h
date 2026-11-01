@@ -30,7 +30,7 @@
 //   * decay: grnd() in project/transp (optics::project, CosyEngine::transp);
 //   * the mock sieve (use_sieve, a compile-time .false. in mc_sos.f:50): 2 grnd per call.
 //
-// Fortran behaviour (see the .cpp for file:line and the marker; docs/FORTRAN_DIFFERENCES.md, D-059 P14.1):
+// Fortran behaviour (see the .cpp for file:line and the marker; docs/FORTRAN_DIFFERENCES.md, D-060, D-061):
 //   * the calorimeter cuts are commented out (mc_sos_hut.f:519-525, 535-539): sSTOP_cal is never incremented;
 //   * the last 7.62 cm to the new exit window are a straight line WITHOUT project (mc_sos.f:339-340): no pathlength,
 //     no decay check, zs unchanged;

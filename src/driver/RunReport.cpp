@@ -662,7 +662,7 @@ std::string FormatGeni(const RunSetup& s, const RunReport& r) {
     }
     if (uses(SpectrometerId::SOS) && has(r, "sos")) {   // simc.f:475-486 (task P14.1)
         row("SOS Trials:           ", "sos", {"trials"});
-        // FORTRAN-BUG(D-011): original Fortran simc.f:477: `write(7,*) 'Slit hor/vert/corners ',sSTOP_slit_vert,
+        // FORTRAN-BUG(D-011, D-061 F8): original Fortran simc.f:477: `write(7,*) 'Slit hor/vert/corners ',sSTOP_slit_vert,
         // sSTOP_slit_hor,sSTOP_slit_oct`; corrected because the label (and the HMS/SHMS lines) put slit_hor first: the
         // SOS horizontal and vertical slit stops were printed swapped. fortran_compat writes the Fortran order.
         row("Slit hor/vert/corners ", "sos",
@@ -676,11 +676,12 @@ std::string FormatGeni(const RunSetup& s, const RunReport& r) {
         row("Successes             ", "sos", {"successes"});
         o.line("");
     }
-    // simc.f:487-509 (task P14.2): HRS-R then HRS-L. The HRS-L block has no trailing blank line, neither block a
-    // "Successes" line (Fortran format kept). The "S1, S2, Cal" label contains a TAB (simc.f:496, 508).
+    // simc.f:487-509 (task P14.2): HRS-R then HRS-L. The "S1, S2, Cal" label contains a TAB (simc.f:496, 508; kept).
+    // FORTRAN-BUG(D-061 F8): the Fortran HRS blocks have no "Successes" line and the HRS-L block no trailing blank line;
+    // corrected: both added (as in the HMS/SOS/SHMS blocks). fortran_compat writes the Fortran blocks.
     auto hrsBlock = [&](const char* key, const char* trials, bool blank) {
         row(trials, key, {"trials"});
-        // FORTRAN-BUG(D-011): original Fortran simc.f:489/501: `write(7,*) 'Slit hor/vert         ',rSTOP_slit_vert,
+        // FORTRAN-BUG(D-011, D-061 F8): original Fortran simc.f:489/501: `write(7,*) 'Slit hor/vert         ',rSTOP_slit_vert,
         // rSTOP_slit_hor`; corrected because the label puts slit_hor first. fortran_compat writes the Fortran order.
         row("Slit hor/vert         ", key,
             {s.fortran_compat ? "slit_vert" : "slit_hor", s.fortran_compat ? "slit_hor" : "slit_vert"});
@@ -691,7 +692,8 @@ std::string FormatGeni(const RunSetup& s, const RunReport& r) {
         row("Events reaching hut   ", key, {"hut"});
         row("VDC1, VDC2            ", key, {"dc1", "dc2"});
         row("S1, S2, Cal\t    ", key, {"s1", "s2", "cal"});
-        if (blank) o.line("");
+        if (!s.fortran_compat) row("Successes             ", key, {"successes"});
+        if (blank || !s.fortran_compat) o.line("");
     };
     if (uses(SpectrometerId::HRSR) && has(r, "hrsr")) hrsBlock("hrsr", "HRSr Trials:          ", true);
     if (uses(SpectrometerId::HRSL) && has(r, "hrsl")) hrsBlock("hrsl", "HRSl Trials:          ", false);

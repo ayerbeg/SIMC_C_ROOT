@@ -95,7 +95,7 @@ int McHrs::mcHrsHut(optics::DecayState& d, McHrsArgs& a, double zinit, IRandom& 
     };
     auto project = [&](double drift) { optics::project(t, drift, pathlen, &d); };
     auto stopHere = [&](int code, double where) { return stop(code, where, t.xs, t.ys); };
-    // rotate_haxis(45.0d0,xt,yt) (l.291-293, 354-356). FORTRAN-BUG(P14.2 H2): 45.0d0 is REAL(16); the real*8 dummy rotang
+    // rotate_haxis(45.0d0,xt,yt) (l.291-293, 354-356). FORTRAN-BUG(D-061 F1e): 45.0d0 is REAL(16); the real*8 dummy rotang
     // reads its low 8 bytes, +0.0, so the Fortran applies NO rotation (rotate_haxis with 0 degrees returns xt, yt
     // unchanged). Corrected: 45 degrees as written. fortran_compat: 0 degrees.
     const double vdcRot = fortranCompat() ? low8(static_cast<Quad>(45)) : 45.0;
@@ -252,7 +252,7 @@ int McHrs::mcHrsHut(optics::DecayState& d, McHrsArgs& a, double zinit, IRandom& 
     project(drift);
     muscExt(radw, drift);
 
-    // FORTRAN-QUIRK(P14.2): the calorimeter aperture and fiducial cuts are commented out (l.463-470, 480-487): the cal
+    // FORTRAN-QUIRK(D-061 F7): the calorimeter aperture and fiducial cuts are commented out (l.463-470, 480-487): the cal
     // counter is never incremented; xcal/ycal (l.477-478) are unused.
     return kSuccess;   // ok_hut = .true.
 }

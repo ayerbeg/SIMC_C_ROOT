@@ -38,6 +38,8 @@ set(SIMC_FORTRAN_DIFF_ITEMS
     D048_F9_central_sigcc_delta
     D051_F3_F9_semi_pfermi_pmper
     D051_F12_F14_semi_hist_titles
+    D061_F1_hrs_transp_lengths
+    D061_F1e_hrs_vdc_rotation
 )
 foreach(_item ${SIMC_FORTRAN_DIFF_ITEMS})
     add_test(NAME fortran_diff_${_item}

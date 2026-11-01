@@ -43,5 +43,11 @@ for blk in "HRSr Trials:hrsr" "HRSl Trials:hrsl"; do   # P14.2: HRS "Slit hor/ve
         else echo "  corrected .geni $key slit line '$got' != summary '$want'"; fail=1; fi
     fi
 done
+nh=$(grep -c "HRS[rl] Trials" "$work/corrected/$run.geni"); ns=$(grep -c "Successes" "$work/corrected/$run.geni")
+nt=$(grep -c "Trials" "$work/corrected/$run.geni")
+if [ "$nh" -gt 0 ]; then   # D-061 F8: every block of the corrected .geni has its Successes line
+    if [ "$ns" = "$nt" ]; then echo "  corrected .geni: a Successes line in each of the $nt blocks"
+    else echo "  corrected .geni: $ns Successes lines for $nt blocks"; fail=1; fi
+fi
 [ $fail = 0 ] && echo "PASS" || echo "FAIL"
 exit $fail
