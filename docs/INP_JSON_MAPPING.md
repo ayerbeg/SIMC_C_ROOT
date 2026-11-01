@@ -170,7 +170,7 @@ rho_physics.f:peerho). The inputs are the standard ones; no rho-specific variabl
 | `doing_rho=1`, nint(`targ%A`) ≥ 4 | no flag: STOP at dbase.f:876 | refused at input in both modes (D-057 F16) |
 | `doing_hplus=1` / `0` | sign_hadron = +1 / −1 (l.318-322): the detected pion is π+ / π− | same (the rho kinematics do not depend on it) |
 | `doing_decay=1`, `ctau` | the decay pion decays in flight in the spectrometer (Mh2 = Mpi2 after rho_decay) | accepted (the set-up check of D-037 F9 treats the rho run as a pion run) |
-| `hadron_arm` | rho_decay.f:92-128: 1, 3 beam right; 2, 4, 5 beam left; anything else STOPs | 1 (HMS), 2 (SOS, P14.1) and 5 (SHMS); 3/4 (HRS) → `NotPorted` (P14.2); 7/8 → input error |
+| `hadron_arm` | rho_decay.f:92-128: 1, 3 beam right; 2, 4, 5 beam left; anything else STOPs | 1 (HMS), 2 (SOS, P14.1), 3/4 (HRS-R/L, P14.2) and 5 (SHMS); 7/8 → input error |
 | `doing_phsp=1` | doing_rho is switched off (l.233): a phase-space run with the rho mass | as the Fortran (no rho model) |
 | `doing_rho=1` with `doing_pion`/`doing_kaon`/`doing_delta`/`doing_semi` | the other reaction runs and its hadron is still "decayed" as a rho (event.f:420-421) | refused at start-up (std::invalid_argument) |
 | `doing_rho=1` with `doing_pizero=1` | the rho ntuple columns 57-59 are overwritten with the pi0 photons (results_write.f:230-236) | refused (the "rho" model) |

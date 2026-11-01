@@ -274,7 +274,7 @@ Fortran `.geni` label bugs (simc.f; docs/FORTRAN_DIFFERENCES.md D-011):
   by default and `q2_mid` with `--fortran-compat`.
 - **l.477, 489, 501**: the SOS "Slit hor/vert/corners" line and the HRS "Slit hor/vert" line print `slit_vert` first. The
   counters are stored under their physical keys. The C++ SOS block (P14.1) prints slit_hor first by default and the Fortran
-  order with `--fortran-compat` (the C++ does not write HRS blocks yet, P14.2).
+  order with `--fortran-compat`; the HRS blocks (P14.2) the same (and, as the Fortran, no "Successes" line).
 - **l.526**: SHMS "DC1, DC2, Scin, Cal" prints only dc1 and dc2. The C++ label is "DC1, DC2" by default, the Fortran one
   with `--fortran-compat`.
 

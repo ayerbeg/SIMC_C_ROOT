@@ -70,7 +70,7 @@ not there yet), `std::invalid_argument` (bad configuration) or `std::logic_error
 
 ```cpp
 struct SpecInput  { double p_spec, th_spec, delta, x, y, z, dxdz, dydz, m2; bool ms_flag, wcs_flag, decay_flag;
-                    double fry, raster_fry, raster_frx; };   // fry = xtar_init (HMS/SHMS); raster_* = simc.f fry/frx (SOS)
+                    double fry, raster_fry, raster_frx; };   // fry = xtar_init (HMS/SHMS); raster_* = simc.f fry/frx (SOS, HRS)
 struct SpecResult { bool ok; std::string stop_reason; double x_fp, dx_fp, y_fp, dy_fp;
                     double delta_recon, dxdz_recon, dydz_recon, y_recon, pathlen;
                     std::optional<double> resolution_factor; double m2_final, decay_distance, Mh2_final; };
@@ -115,7 +115,7 @@ does the same through `simc++ --pipeline`.
 Notes:
 
 * The arm **codes** of the input (`electron_arm`, `hadron_arm`) still select the default plug-in (through the single
-  table `core/SpectrometerId.h`, D-032: 1 → `hms`, 2 → `sos`, 5 → `shms`; 6 is rejected at input). They also select the Fortran target-window materials in `hallc_cryo` (trip_thru_target) and the
+  table `core/SpectrometerId.h`, D-032: 1 → `hms`, 2 → `sos`, 3 → `hrsr`, 4 → `hrsl`, 5 → `shms`; 6 is rejected at input). They also select the Fortran target-window materials in `hallc_cryo` (trip_thru_target) and the
   Fortran `.geni` blocks. A plug-in replaces the single-arm Monte Carlo only.
 * To reuse the HMS/SHMS optics in a new spectrometer, use the COSY engine `optics::CosyEngine`
   (`include/simc/optics/`; transp, project, recon with the Fortran map files).

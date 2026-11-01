@@ -13,8 +13,8 @@ decay in flight or survival weight; task P10), (e,e'p)π in the Delta region (`d
 mode; task P11), with and without radiation, and phase-space (`doing_phsp`) runs, HMS and SHMS arms. Semi-inclusive
 (e,e'π±)X and (e,e'K±)X on H, D and A (`doing_semi`; semi_physics.f:peepiX with CTEQ5M, fDSS and F1F2IN21; physics model
 `sidis`, P12.1, reaction `sidis_production`, P12.2) is ported; π0 SIDIS waits for the calorimeter arm (P14). Exclusive ρ0 electroproduction, ρ0 → π+π− with one detected pion (`doing_rho`, H/D/³He; model `rho` = rho_physics.f:peerho, P13.1; reaction `rho_production`, P13.2) is ported. The
-SOS spectrometer (arm 2, `sos/mc_sos.f`, plug-in `sos`, P14.1) is ported; the HRS/calorimeter arms are refused with a
-`NotPorted` error (P14.2/P14.3).
+SOS (arm 2, plug-in `sos`, P14.1) and the Hall A HRS-R/HRS-L (arms 3/4, plug-ins `hrsr`/`hrsl`, P14.2) are ported; the
+calorimeter arms are refused with a `NotPorted` error (P14.3).
 
 **Delta runs: the weight contains no cross section.** As in the Fortran (physics_delta.f:132, "Need new xsec model."),
 the `doing_delta` event weight is phase space × virtual-photon flux × the proton CM→lab jacobian; the model cross section

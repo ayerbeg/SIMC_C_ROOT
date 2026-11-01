@@ -72,7 +72,7 @@ Life cycle: `Registry<I>::create(name)` → `configure(json, params)` → `init(
 | `ISpectralFunction` | `weight(vertex)` = main%SF_weight (event.f:complete_main l.1397-1430); a component of the D/A(e,e'p) reactions | `theory` (init.f theory files), `benhar` (sf_lookup.f) |
 | `IRadiator` | `initEvent` (radc_init_ev), `radiate` (generate_rad); read-back `currentValues`, `photonEnergies`, `hadronRadiates` | `simc_rad` |
 | `IPhysicsModel` | `sigcc`, `sigccRecon` (physics_*.f, called by complete_main) | `sigep`, `deforest`, `deforest_cc1/cc2/cc1_onshell`, `pion` (physics_pion.f:peepi; `sigccMain` also writes main%thetacm ... and ntup%sigcm*), `kaon` (physics_kaon.f:peeK, Saghai + factorized models, CERNLIB fint; P10.1), `delta` (physics_delta.f:peedelta: phase space × flux, NO cross section, D-048 F4; P11.1), `sidis` (semi_physics.f:peepiX: CTEQ5M PDFs × Bosted π / fDSS K fragmentation functions × F1F2IN21 (Christy 2021); `sigccMain` writes main%davejac, ntup%sigcm, xfermi, decdist; P12.1), `rho` (rho_physics.f:peerho; `sigccMain` writes main%w, t [GeV units], pcm, thetacm, phicm, davejac, johnjac, ntup%sigcm; P13.1; kernels `rho::generateRho`, `rho::rhoDecay` called by `rho_production`) |
-| `ISpectrometer` | `transport(SpecInput) → SpecResult`, `stopCounters()` (mc_*.f) | `hms`, `shms`, `sos` (P14.1), `ideal_box` (example) |
+| `ISpectrometer` | `transport(SpecInput) → SpecResult`, `stopCounters()` (mc_*.f) | `hms`, `shms`, `sos` (P14.1), `hrsr`, `hrsl` (P14.2), `ideal_box` (example) |
 | `IMaterialModel` | energy loss, musc, musc_ext (enerloss_new.f, musc*.f) | `simc_material` (inside `hallc_cryo`) |
 | `IOutputSink` | `beginRun`, `fill` (every try), `endRun` (+ optional `driver::IReportSink`) | `root_tree`, `run_summary`, `gen_hist`, `fortran_hist` |
 
