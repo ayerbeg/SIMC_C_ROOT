@@ -30,25 +30,32 @@ inline bool isPiMinus(int which_pion) { return which_pion == 1 || which_pion == 
 // Fortran: physics_pion.f:sig_blok (l.404-465)
 double sigBlok(double thetacm, double phicm, double t, double q2_gev, double s_gev, double eps, double mtar_gev,
                int which_pion) {
-    double sigl = 27.8 * std::exp(-11.5 * std::fabs(t));
-    double sigt = 10.0 * (5. * std::fabs(t)) * std::exp(-5. * std::fabs(t));
+    // exp(-11.5*abs(t)) is compiled as exp(-(abs(t)*11.5)) (mulsd, then xorpd): same value, and for t = NaN the
+    // argument is -NaN (the C++ -11.5*fabs(t) would be +NaN), which glibc exp returns unchanged (P14.2).
+    double sigl = 27.8 * std::exp(-(std::fabs(t) * 11.5));
+    double sigt = 10.0 * (5. * std::fabs(t)) * std::exp(-(std::fabs(t) * 5.));
     const double siglt = 0.0 * std::sin(thetacm);
-    double sigtt = -(4.0 * sigl + 0.5 * sigt) * sq(std::sin(thetacm));
+    // -(a)*b as the object code computes it: the product first, then the sign flip (xorpd after mulsd, physics_pion.o);
+    // identical for finite values, and gives the Fortran sign of a NaN (D-048 F3 garbage arguments, P14.2).
+    double sigtt = -((4.0 * sigl + 0.5 * sigt) * sq(std::sin(thetacm)));
 
     if (isPiMinus(which_pion)) {
-        sigt = sigt * 0.25 * (1. + 3. * std::exp(-10. * std::fabs(t)));
-        sigtt = sigtt * 0.25 * (1. + 3. * std::exp(-10. * std::fabs(t)));
+        sigt = sigt * 0.25 * (1. + 3. * std::exp(-(std::fabs(t) * 10.)));
+        sigtt = sigtt * 0.25 * (1. + 3. * std::exp(-(std::fabs(t) * 10.)));
     }
     // mrho_emp = 0.712 is set but not used (l.437)
     const double fpi = 1. / (1. + 1.65 * q2_gev + 0.5 * sq(q2_gev));
     const double fpi2 = sq(fpi);
 
-    sigl = sigl * (fpi2 * q2_gev) / 0.1215;
+    // Operand order of the object code (physics_pion.o, sig_blok__): identical values for finite numbers (commuted
+    // products/sums), and the Fortran sign of a NaN (x86 returns the first operand's NaN when both are NaN; D-048 F3
+    // garbage arguments give NaN for ~0.05 % of the SOS Delta events, P14.2).
+    sigl = ((fpi2 * q2_gev) * sigl) / 0.1215;
     sigt = sigt / (0.3 + q2_gev);
     sigtt = sigtt / (0.3 + q2_gev);
 
     const double sig219 =
-        (sigt + eps * sigl + eps * std::cos(2. * phicm) * sigtt + std::sqrt(2.0 * eps * (1. + eps)) * std::cos(phicm) * siglt) /
+        (((sigl * eps + sigt) + (eps * std::cos(2. * phicm)) * sigtt) + (std::sqrt(2.0 * eps * (1. + eps)) * std::cos(phicm)) * siglt) /
         1.e0;
     double sig = sig219 * 15.333 / sq(s_gev - sq(mtar_gev));
     sig = sig / 2. / pi / 1.e+06;
