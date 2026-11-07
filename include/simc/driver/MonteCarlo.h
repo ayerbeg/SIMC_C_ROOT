@@ -18,8 +18,9 @@
 // earlier tries; main.ntup.resfac is reset here (simc.f:1352) and must also be reset by the loop (simc.f:178).
 // main.ntup.decdist / Mh2_final are set from the hadron arm (the loop resets them per event, simc.f:174-177).
 //
-// Not ported (throw simc::NotPorted): the calorimeter arms 7/8
-// (mc_calo), the polarized-target field (using_tgt_field: track_from_tgt / track_to_tgt). Arm code 6 (SHMS LSA)
+// Calorimeter arms 7/8 (P14.3): "calo"; with doing_pizero the two photons go through driver::PizeroCalorimeter.
+// Not ported (throw simc::NotPorted):
+// the polarized-target field (using_tgt_field: track_from_tgt / track_to_tgt). Arm code 6 (SHMS LSA)
 // reaches mc_shms, which STOPs (simc::FortranStop).
 //
 // Fortran behaviour reproduced (docs/FORTRAN_DIFFERENCES.md):
@@ -68,13 +69,13 @@ public:
         Json config = Json::object();   ///< merged over the default config of the arm code
     };
     /// The Fortran choice for an arm code (simc.f:montecarlo dispatch, core/SpectrometerId.h): HMS -> "hms",
-    /// SOS -> "sos", HRS-R/L -> "hrsr"/"hrsl", SHMS -> "shms". Throws NotPorted for the calorimeters (mc_calo), std::invalid_argument for a
+    /// SOS -> "sos", HRS-R/L -> "hrsr"/"hrsl", SHMS -> "shms", calorimeter 7/8 -> "calo". std::invalid_argument for a
     /// code that is not a spectrometer.
     static ArmChoice DefaultArm(int code);
 
     /// Creates (through Registry<ISpectrometer>) and initialises the arm spectrometers of setup.params
     /// (electron_arm, hadron_arm). `target` provides target_musc and trip_thru_target (correct_Eloss).
-    /// Throws NotPorted for the calorimeter arms, or for using_tgt_field.
+    /// Throws NotPorted for using_tgt_field.
     MonteCarlo(const RunSetup& setup, ITarget& target);
     /// P7.2 (additive): the same with the arm plug-ins chosen explicitly (e.g. from the JSON "pipeline").
     /// Arms with the same type and the same (merged) config share one object (one Fortran COMMON block of counters);

@@ -8,13 +8,13 @@ chosen by name from a JSON pipeline.
 
 Current scope: H(e,e'p) elastic, D(e,e'p) and A(e,e'p) (theory-file or Benhar spectral functions; task P8), exclusive
 pion electroproduction (π+/π−/π0 on H, D and A, quasifree, coherent and π Δ final states, decay in flight; task P9; the
-π0 runs with the calorimeter arm wait for P14), kaon electroproduction (K+Λ/Σ0/Σ− on H, D and A, quasifree and coherent,
+π0 runs with the calorimeter arm: P14.3), kaon electroproduction (K+Λ/Σ0/Σ− on H, D and A, quasifree and coherent,
 decay in flight or survival weight; task P10), (e,e'p)π in the Delta region (`doing_delta`, H, and D/A in the corrected
 mode; task P11), with and without radiation, and phase-space (`doing_phsp`) runs, HMS and SHMS arms. Semi-inclusive
 (e,e'π±)X and (e,e'K±)X on H, D and A (`doing_semi`; semi_physics.f:peepiX with CTEQ5M, fDSS and F1F2IN21; physics model
-`sidis`, P12.1, reaction `sidis_production`, P12.2) is ported; π0 SIDIS waits for the calorimeter arm (P14). Exclusive ρ0 electroproduction, ρ0 → π+π− with one detected pion (`doing_rho`, H/D/³He; model `rho` = rho_physics.f:peerho, P13.1; reaction `rho_production`, P13.2) is ported. The
-SOS (arm 2, plug-in `sos`, P14.1) and the Hall A HRS-R/HRS-L (arms 3/4, plug-ins `hrsr`/`hrsl`, P14.2) are ported; the
-calorimeter arms are refused with a `NotPorted` error (P14.3).
+`sidis`, P12.1, reaction `sidis_production`, P12.2) is ported, π0 SIDIS with the calorimeter arm (P14.3). Exclusive ρ0 electroproduction, ρ0 → π+π− with one detected pion (`doing_rho`, H/D/³He; model `rho` = rho_physics.f:peerho, P13.1; reaction `rho_production`, P13.2) is ported. The
+SOS (arm 2, plug-in `sos`, P14.1), the Hall A HRS-R/HRS-L (arms 3/4, plug-ins `hrsr`/`hrsl`, P14.2) and the calorimeter
+(arms 7/8, NPS-like, plug-in `calo`, with the π0 → 2γ detection of `driver::PizeroCalorimeter`, P14.3) are ported.
 
 **Delta runs: the weight contains no cross section.** As in the Fortran (physics_delta.f:132, "Need new xsec model."),
 the `doing_delta` event weight is phase space × virtual-photon flux × the proton CM→lab jacobian; the model cross section

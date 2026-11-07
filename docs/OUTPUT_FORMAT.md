@@ -24,8 +24,8 @@ Each sink accepts an optional JSON config `{"file": "..."}`.
 - Implemented layouts: the (e,e'p) family (`doing_hyd_elast`, `doing_deuterium`, `doing_heavy`), 46 columns. This includes
   `doing_phsp`, which keeps `doing_hyd_elast`, so the acceptance runs also have these 46 columns. Exclusive pion production
   (`doing_pion`, P9.2): 53 columns, 65 with `doing_pizero` (§1b). Kaon production (`doing_kaon`, P10.2): 55 columns (§1c).
-  Delta region (`doing_delta`, P11.1): the 53 pion columns (§1d). SIDIS (`doing_semi`, P12.2): 56 columns (§1e). Rho
-  (`doing_rho`, P13.2): 59 columns (§1f). `beginRun` throws for `using_tgt_field` and π0 SIDIS. The layout is chosen from the run
+  Delta region (`doing_delta`, P11.1): the 53 pion columns (§1d). SIDIS (`doing_semi`, P12.2): 56 columns (§1e), 68 with `doing_pizero` (the 12 photon columns of §1b appended, P14.3). Rho
+  (`doing_rho`, P13.2): 59 columns (§1f). `beginRun` throws for `using_tgt_field`. The layout is chosen from the run
   flags (`NtupleColumnsFor(setup)`, `FillNtuple`).
 - **Arm assignment** (results_write.f:64 and 89): `hs*` = the spectrometer on the beam **right** (HMS, HRSR) and `ss*` = the
   one on the **left** (SOS, HRSL, SHMS).
@@ -119,7 +119,7 @@ Columns 1-33 are those of the table above (same arm assignment). Then:
 | 51 | `Wi` | `main.w/1000` (vertex, Mtar_struck) | GeV | results_write.f:153 |
 | 52 | `ti` | `main.t/1e6` (vertex) | GeV² | results_write.f:154 |
 | 53 | `phipqi` | `main.phi_pq` (vertex) | rad | results_write.f:155 |
-| 54-65 | `xcal_gamma1`, `ycal_gamma1`, `Egamma1`, `Pgamma1x/y/z`, `xcal_gamma2`, `ycal_gamma2`, `Egamma2`, `Pgamma2x/y/z` | doing_pizero only: the calorimeter positions (written only by mc_calo, not ported: 0) and the lab photons of pizero_decay (MeV) | cm, MeV | results_write.f:172-185 |
+| 54-65 | `xcal_gamma1`, `ycal_gamma1`, `Egamma1`, `Pgamma1x/y/z`, `xcal_gamma2`, `ycal_gamma2`, `Egamma2`, `Pgamma2x/y/z` | doing_pizero only: the calorimeter positions (written by the calorimeter arm, P14.3; −1e10 for a missed photon, 0 with HMS/SHMS) and the lab photons of pizero_decay (MeV) | cm, MeV | results_write.f:172-185 |
 
 `pfer`, `pferx..z` are COMMON /pfermi/ (`MainEvent::pfermi`) of the event. The validation captures prove the 53 columns
 bit for bit (`l1_simcrun_replay_pion_*`).

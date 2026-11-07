@@ -118,6 +118,5 @@ finish: Normalise → RunReport → RunSummary → sinks (endRun; IReportSink::w
 ## 5. Not supported yet
 
 Reactions other than H/D/A(e,e'p), exclusive pion (P9.2), kaon (P10.2) and Delta-region (e,e'p)pi (P11.1) production and
-`doing_phsp` (rho, semi-inclusive: NotPorted at initialise), calorimeter arms (codes 7-8; P14.3: the pi0 runs with
-the calorimeter; SOS, code 2, P14.1, and HRS, codes 3/4, P14.2, are ported), `using_tgt_field`, `random_state_file`, the semi/rho ntuple layouts, the kaon layout with the target field,
-the `.geni` block of the calorimeter.
+`doing_phsp` (rho, semi-inclusive: NotPorted at initialise), `using_tgt_field`, `random_state_file`, the semi/rho ntuple layouts, the kaon layout with the target field,
+(all spectrometer arms are ported: SOS P14.1, HRS P14.2, calorimeter + pi0 P14.3).

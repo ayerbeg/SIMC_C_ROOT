@@ -142,7 +142,7 @@ dbase.f:125-132 does it (the species flag is switched off afterwards, so the exc
 |---|---|---|---|---|
 | `doing_semi=1 doing_pion=1 doing_hplus=1` | doing_semipi, Mh = Mpi | π+ | CTEQ5M × P. Bosted's 2021 π FF fit | ported (model P12.1, reaction `sidis_production` P12.2) |
 | `doing_semi=1 doing_pion=1 doing_hplus=0` | doing_semipi | π− | same, favoured/unfavoured swapped | as above |
-| `doing_semi=1 doing_pion=1 doing_pizero=1` | doing_semipi, Mh = Mpi0 | π0 | π+/π− average (D-051 F4) | **refused** (`NotPorted`): the π0 photons need the calorimeter arm (P14) |
+| `doing_semi=1 doing_pion=1 doing_pizero=1` | doing_semipi, Mh = Mpi0 | π0 | π+/π− average (D-051 F4) | supported with the calorimeter arm (P14.3; 68-column ntuple) |
 | `doing_semi=1 doing_kaon=1 doing_hplus=1/0` | doing_semika, Mh = Mk | K+ / K− | CTEQ5M × fDSS NLO (fdss/KANLO.GRID) | ported (model P12.1, reaction `sidis_production` P12.2) |
 | `doing_semi=1` alone | neither doing_semipi nor doing_semika | — | — | the set-up STOPs as dbase.f:776 ('I don't have ANY idea what (e,e'm)X we're doing!!!'); the model refuses it too |
 | `doing_semi=1 doing_phsp=1` | phsp keeps doing_semi (dbase.f:227-234): SIDIS generation, sigcc = 1 (event.f:1446) | — | none | the "sidis" model refuses it (std::invalid_argument); the phase-space SIDIS generation (sigcc = 1) is not ported |
