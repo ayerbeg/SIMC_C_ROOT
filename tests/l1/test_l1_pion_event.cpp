@@ -76,12 +76,33 @@ bool isKaon() { return !gKaon.empty(); }
 bool gDelta = false;            // the Delta tables (P11.1)
 bool isDelta() { return gDelta; }
 std::string gSidis;             // data/sidis: non-empty = the SIDIS tables (P12.2)
-bool isSemi() { return !gSidis.empty(); }
+bool gCaloSemi = false;         // calo tables (P14.3): the current configuration is SIDIS (cfg 2)
+bool isSemi() { return !gSidis.empty() || gCaloSemi; }
+/// data/sidis (the calo tables derive it from data/pion)
+std::string sidisData() {
+    if (!gSidis.empty()) return gSidis;
+    std::string d = gPion;
+    const auto k = d.rfind("pion");
+    return k == std::string::npos ? d : d.substr(0, k) + "sidis";
+}
 bool gRho = false;              // the rho tables (P13.2)
 bool isRho() { return gRho; }
+bool gCalo = false;             // the pi0/calorimeter tables reference/functions/calo/*_pi0calo (P14.3)
+bool isCalo() { return gCalo; }
 
 /// cfg -> SIMC input file (reference/functions/pion_state/configs.txt)
 std::string cfgInp(const std::string& inpdir, int cfg) {
+    if (isCalo()) {   // reference/functions/calo/pi0calo_state/configs.txt; inpdir = reference/runs (<run>/<run>.inp)
+        static const char* d[] = {"",
+                                  "p14f2_excl_h_ng2_cap",
+                                  "p14f2_sidis_h_cap",
+                                  "p14f2_excl_h_ng1_A",
+                                  "p14f2_excl_d_p_A",
+                                  "p14f2_excl_d_n_A",
+                                  "p14f2_delta_h_A"};
+        if (cfg < 1 || cfg > 6) throw std::runtime_error("bad cfg " + std::to_string(cfg));
+        return inpdir + "/" + d[cfg] + "/" + d[cfg] + ".inp";
+    }
     if (isRho()) {   // reference/functions/rho/rho_state/configs.txt
         static const char* d[] = {"",          "p13f1_rh_k1_rad_cap", "p13f1_rd_k1_rad_cap", "l1_h_k1_norad",
                                   "l1_h_k1_pim", "l1_h_k2_rad",        "l1_he3_k1_rad",       "l1_h_k1_dec1"};
@@ -321,7 +342,7 @@ std::unique_ptr<Process> makeProcess(const std::string& inp, bool compat = true)
     P->beam.init(sc);
     P->model = Registry<IPhysicsModel>::create(
         isRho() ? "rho" : (isSemi() ? "sidis" : (isDelta() ? "delta" : (isKaon() ? "kaon" : "pion"))));
-    P->model->configure(Json{{"data_dir", isSemi() ? gSidis : (isKaon() ? gKaon : gPion)}, {"verbose", false}}, P->params);
+    P->model->configure(Json{{"data_dir", isSemi() ? sidisData() : (isKaon() ? gKaon : gPion)}, {"verbose", false}}, P->params);
     P->model->init(sc);
     sc.physics = P->model.get();
     if (isRho())
@@ -341,7 +362,8 @@ std::unique_ptr<Process> makeProcess(const std::string& inp, bool compat = true)
     // row whose complete_ev fails before radc_init_ev reports (cfg 6, which_pion 2: every row fails)
     // semi (P12.2): es_init's calculate_central also runs the central peepiX (SAVEd zaero, survivalprob, PDF warnings)
     // rho (P13.2): es_init's calculate_central also leaves the radiative COMMON of its radc_init_ev
-    if (isDelta() || isSemi() || isRho())
+    // calo (P14.3): the P14.F2 drivers (estate14.f) also end es_init with calculate_central
+    if (isDelta() || isSemi() || isRho() || isCalo())
         P->centralNtup = driver::calculateCentral(P->setup, *P->reaction, P->rad, *P->model).main0.ntup;
     return P;
 }
@@ -664,6 +686,7 @@ int runEventTable(const std::string& name, const std::string& dir, const std::st
     std::map<int, std::unique_ptr<Process>> procs;   // one Fortran process per cfg
     auto proc = [&](int cfg) -> Process& {
         auto& P = procs[cfg];
+        if (gCalo) gCaloSemi = (cfg == 2);   // calo configs: cfg 2 is H(e,e'pi0)X (pi0calo_state/configs.txt)
         if (!P) P = makeProcess(cfgInp(inpdir, cfg));
         return *P;
     };
@@ -865,6 +888,10 @@ int runPionState(const std::string& dir, const std::string& inpdir, double tol) 
                         {"reaction", {{"type", "delta_production"}, {"data_dir", gPion}}}};
         if (isRho())
             pipe = Json{{"sinks", Json::array()}, {"physics", {{"type", "rho"}}}, {"reaction", {{"type", "rho_production"}}}};
+        if (gCalo && p.doing_semi)   // calo cfg 2: H(e,e'pi0)X
+            pipe = Json{{"sinks", Json::array()},
+                        {"physics", {{"type", "sidis"}, {"data_dir", sidisData()}}},
+                        {"reaction", {{"type", "sidis_production"}}}};
         // pi0 configurations use the HMS/SHMS as hadron arm in the L1 inputs (the calorimeter is P14)
         driver::SimcRun run(p, pipe, opt);
         run.initialise();
@@ -1127,7 +1154,7 @@ int runPionState(const std::string& dir, const std::string& inpdir, double tol) 
         if (!eq) ++badstop;
     }
     std::printf("  STOP configurations: %d, %d differ\n", nstop, badstop);
-    ok = ok && nstop == (isDelta() ? 3 : (isKaon() ? 4 : 8)) && badstop == 0;
+    ok = ok && nstop == (isCalo() ? 0 : (isDelta() ? 3 : (isKaon() ? 4 : 8))) && badstop == 0;   // calo: no STOP configuration
     std::printf("pion_state: %s\n", ok ? "PASS" : "FAIL");
     return ok ? 0 : 1;
 }
@@ -1449,6 +1476,7 @@ int main(int argc, char** argv) {
     if (argc > 7 && std::string(argv[7]) == "delta") gDelta = true;
     if (argc > 8 && std::string(argv[7]) == "semi") gSidis = argv[8];
     if (argc > 7 && std::string(argv[7]) == "rho") gRho = true;
+    if (argc > 7 && std::string(argv[7]) == "calo") gCalo = true;
     const double tol = std::atof(argv[6]);
     try {
         if (what == "pion_state") return runPionState(argv[2], argv[3], tol);

@@ -529,15 +529,15 @@ int runSanity(const std::string& dataDir) {
         // refused combinations
         RunSetup s0 = s;
         s0.flags.doing_pizero = true;
-        bool np = false;
+        bool np = true;
         try {
             auto m0 = Registry<IPhysicsModel>::create("sidis");
             m0->configure(Json{{"data_dir", dataDir}, {"verbose", false}}, p);
             m0->init(StageContext(s0));
-        } catch (const NotPorted&) {
-            np = true;
+        } catch (const std::exception&) {
+            np = false;
         }
-        check(np, "pi0 SIDIS refused (NotPorted)");
+        check(np, "pi0 SIDIS accepted (calorimeter arm, P14.3)");
         RunSetup s1 = s;
         s1.flags.doing_semipi = false;
         bool ia = false;
