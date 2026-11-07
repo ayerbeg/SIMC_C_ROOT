@@ -23,9 +23,6 @@ std::vector<std::string> checkSupported(const RunSetup& s) {
     if (f.doing_semi && f.doing_semipi == f.doing_semika)
         v.push_back("sidis: doing_semi needs doing_pion = 1 (pi+-, (e,e'pi)X) or doing_kaon = 1 (K+-, (e,e'K)X) "
                     "(dbase.f:125-132; the Fortran STOPs with 'I don't have ANY idea what (e,e'm)X we're doing!!!')");
-    if (f.doing_semi && f.doing_pizero)
-        v.push_back("sidis: doing_pizero with doing_semi (pi0 SIDIS) is not supported yet: the pi0 photons are detected "
-                    "with the calorimeter arm (task P14)");
     if (f.doing_semi && f.doing_phsp)
         v.push_back("sidis: doing_phsp with doing_semi: the Fortran weight of a phase-space run uses sigcc = 1 "
                     "(event.f:1446-1448), not peepiX; the \"sidis\" model does not apply");
@@ -87,7 +84,6 @@ void SidisModel::init(const StageContext& ctx) {
     if (!problems.empty()) {
         std::string m;
         for (const auto& p : problems) m += (m.empty() ? "" : "; ") + p;
-        if (s.flags.doing_semi && s.flags.doing_pizero) throw NotPorted(m);
         throw std::invalid_argument(m);
     }
     cfg_ = makeConfig(s);

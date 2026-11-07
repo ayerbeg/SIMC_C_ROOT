@@ -721,10 +721,17 @@ std::string FormatGeni(const RunSetup& s, const RunReport& r) {
         row("Successes             ", "shms", {"successes"});
         o.line("");
     }
-    // The calorimeter arms (codes 7, 8) have no Fortran-format block yet (P14.3); without a plug-in they are refused at initialise (MonteCarlo::DefaultArm). Every non-Fortran spectrometer: one "key value" line per counter.
+    // simc.f:531-535 (task P14.3): the calorimeter (either side); 'Calo Trials' counts mc_calo calls, i.e. PHOTONS for a
+    // pi0 hadron arm. No blank line after it (the Fortran block has none).
+    if ((uses(SpectrometerId::CALO_HMS_SIDE) || uses(SpectrometerId::CALO_SHMS_SIDE)) && has(r, "calo")) {
+        row("Calo Trials:          ", "calo", {"trials"});
+        row("Extent hor/vert       ", "calo", {"slit_hor", "slit_vert"});
+        row("Successes             ", "calo", {"successes"});
+    }
+    // Every non-Fortran spectrometer: one "key value" line per counter.
     for (const auto& sc : r.stops) {
         if (sc.spectrometer == "hms" || sc.spectrometer == "shms" || sc.spectrometer == "sos" || sc.spectrometer == "hrsr" ||
-            sc.spectrometer == "hrsl")
+            sc.spectrometer == "hrsl" || sc.spectrometer == "calo")
             continue;
         o.list(sc.spectrometer + " stop counters (" + sc.role + " arm, SIMC++ plug-in):");
         for (const auto& kv : sc.counts) {

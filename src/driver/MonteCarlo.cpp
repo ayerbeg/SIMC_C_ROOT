@@ -12,6 +12,7 @@
 #include "simc/core/SimcConstants.h"
 #include "simc/core/SpectrometerId.h"
 #include "simc/setup/KinematicsUtils.h"
+#include "simc/driver/PizeroCalorimeter.h"
 #include "simc/stages/IRandom.h"
 
 namespace simc {
@@ -37,8 +38,8 @@ MonteCarlo::ArmChoice MonteCarlo::DefaultArm(int code) {
             break;
         case SpectrometerId::CALO_HMS_SIDE:
         case SpectrometerId::CALO_SHMS_SIDE:
-            throw NotPorted(std::string("montecarlo: ") + Label(*id) + " (arm code " + std::to_string(code) +
-                            ", mc_calo) not ported");
+            c.type = "calo";   // one plug-in for both sides (mc_calo ignores spect_side, D-062 G7; P14.3)
+            break;
     }
     return c;
 }
@@ -174,26 +175,58 @@ bool MonteCarlo::run(const Event& orig, MainEvent& main, Event& recon, IRandom& 
         in.raster_fry = fry;   // mc_sos/mc_hrs* (simc.f:1472, 1477, 1482)
         in.raster_frx = frx;
         info_.p_called = true;
-        const SpecResult r = pArm_->transport(in, rng);
-        // the resmult argument IS ntup%resfac: written only when the routine writes it
-        if (r.resolution_factor) main.ntup.resfac = *r.resolution_factor;
-        main.ntup.decdist = r.decay_distance;
-        main.ntup.Mh2_final = r.Mh2_final;
-        info_.p_stop = r.stop_reason;
-        if (!r.ok) {
-            info_.fail_arm = 1;
-            return false;
+        const int harm = S.params.hadron_arm;
+        const bool caloArm = Is(harm, SpectrometerId::CALO_HMS_SIDE) || Is(harm, SpectrometerId::CALO_SHMS_SIDE);
+        if (caloArm && S.flags.doing_pizero) {
+            // simc.f:1489-1556: the two pi0 photons through the calorimeter (PizeroCalorimeter, D-062 G1/G3/G4)
+            const PizeroCalorimeter pc(harm, S.params.pizero_ngamma, S.fortran_compat);
+            const PizeroCaloResult g = pc.detect(*pArm_, in, main.ntup.gamma1, main.ntup.gamma2, rng);
+            main.ntup.xcal_gamma1 = g.xcal_gamma1;
+            main.ntup.ycal_gamma1 = g.ycal_gamma1;
+            main.ntup.xcal_gamma2 = g.xcal_gamma2;
+            main.ntup.ycal_gamma2 = g.ycal_gamma2;
+            info_.p_stop = g.stop_reason;
+            if (!g.ok) {
+                info_.fail_arm = 1;
+                return false;
+            }
+            // simc.f:1597-1609: RECON%p%z = y_P_arm, FP%p = the last photon hit, FP%p%path = pathlen; no pi0
+            // reconstruction: RECON%p = SP%p
+            main.RECON.p.z = y_P_arm;
+            main.FP.p.x = g.fp.x_fp;
+            main.FP.p.dx = g.fp.dx_fp;
+            main.FP.p.y = g.fp.y_fp;
+            main.FP.p.dy = g.fp.dy_fp;
+            main.FP.p.path = g.pathlen;
+            main.RECON.p.delta = main.SP.p.delta;
+            main.RECON.p.yptar = main.SP.p.yptar;
+            main.RECON.p.xptar = main.SP.p.xptar;
+        } else {
+            const SpecResult r = pArm_->transport(in, rng);
+            // the resmult argument IS ntup%resfac: written only when the routine writes it
+            if (r.resolution_factor) main.ntup.resfac = *r.resolution_factor;
+            main.ntup.decdist = r.decay_distance;
+            main.ntup.Mh2_final = r.Mh2_final;
+            info_.p_stop = r.stop_reason;
+            if (!r.ok) {
+                info_.fail_arm = 1;
+                return false;
+            }
+            main.RECON.p.delta = r.delta_recon;
+            main.RECON.p.yptar = r.dydz_recon;
+            main.RECON.p.xptar = r.dxdz_recon;
+            main.RECON.p.z = r.y_recon;
+            main.FP.p.x = r.x_fp;
+            main.FP.p.dx = r.dx_fp;
+            main.FP.p.y = r.y_fp;
+            main.FP.p.dy = r.dy_fp;
+            main.FP.p.path = r.pathlen;
+            if (S.flags.doing_pizero) {   // simc.f:1605-1609 (no pi0 reconstruction yet)
+                main.RECON.p.delta = main.SP.p.delta;
+                main.RECON.p.yptar = main.SP.p.yptar;
+                main.RECON.p.xptar = main.SP.p.xptar;
+            }
         }
-        main.RECON.p.delta = r.delta_recon;
-        main.RECON.p.yptar = r.dydz_recon;
-        main.RECON.p.xptar = r.dxdz_recon;
-        main.RECON.p.z = r.y_recon;
-        main.FP.p.x = r.x_fp;
-        main.FP.p.dx = r.dx_fp;
-        main.FP.p.y = r.y_fp;
-        main.FP.p.dy = r.dy_fp;
-        main.FP.p.path = r.pathlen;
-        // (doing_pizero: calorimeter only — not reachable here)
     } else {
         // CASE 2: Not using the detailed Monte Carlo, just copy the IN event to the OUT record
         main.RECON.p.delta = main.SP.p.delta;
@@ -267,6 +300,12 @@ bool MonteCarlo::run(const Event& orig, MainEvent& main, Event& recon, IRandom& 
         in.ms_flag = mc_smear;
         in.wcs_flag = mc_smear;
         in.decay_flag = false;
+        if (S.fortran_compat &&
+            (Is(S.params.electron_arm, SpectrometerId::CALO_HMS_SIDE) || Is(S.params.electron_arm, SpectrometerId::CALO_SHMS_SIDE)))
+            // FORTRAN-BUG(D-062 G2): original Fortran simc.f:1761-1765: the calorimeter electron arm passes `doing_decay`
+            // (every other electron arm .false.), so with doing_decay = 1 the electron can "decay" and project.f STOPs;
+            // corrected: .false. as for the other electron arms. fortran_compat keeps doing_decay.
+            in.decay_flag = S.params.doing_decay;
         in.fry = xtar_init_E;
         in.raster_fry = fry;   // mc_sos/mc_hrs* (simc.f:1738, 1743, 1748)
         in.raster_frx = frx;

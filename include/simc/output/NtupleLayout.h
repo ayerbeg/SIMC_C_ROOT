@@ -73,6 +73,8 @@ bool FillPionNtuple(const RunSetup& setup, const MainEvent& main, const Event& v
 constexpr int kSemiNtupleSize = 56;   ///< NtupleInit.f:192-237 (doing_semi, no target field, no pi0)
 /// The SIDIS columns (56) in Fortran order; columns 1-33 are those of the (e,e'p) layout.
 const std::vector<NtupleColumn>& SemiNtupleColumns();
+constexpr int kSemiPizeroNtupleSize = 68;   ///< doing_semi with doing_pizero: + xcal/ycal/E/p of both photons (P14.3)
+const std::vector<NtupleColumn>& SemiPizeroNtupleColumns();
 /// results_ntu_write for doing_semi (results_write.f:187-215). `ntu` must have 56 elements. setup.fortran_compat
 /// selects the Fortran pfermi = 0/0 for pfer = 0 (D-051 F3); the default guards the division as the pion block.
 bool FillSemiNtuple(const RunSetup& setup, const MainEvent& main, const Event& vertex, const Event& orig,

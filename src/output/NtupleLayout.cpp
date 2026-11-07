@@ -300,7 +300,26 @@ bool FillSemiNtuple(const RunSetup& s, const MainEvent& main, const Event& verte
     ntu[53] = F.pfer / 1000. * std::fabs(dummy) / dummy;
     ntu[54] = main.ntup.xfermi;
     ntu[55] = main.phi_pq;
+    if (s.flags.doing_pizero && ntu.size() >= static_cast<std::size_t>(kSemiPizeroNtupleSize)) {   // l.230-243 (P14.3)
+        ntu[56] = main.ntup.xcal_gamma1;
+        ntu[57] = main.ntup.ycal_gamma1;
+        for (int i = 0; i < 4; ++i) ntu[static_cast<std::size_t>(58 + i)] = main.ntup.gamma1[static_cast<std::size_t>(i)];
+        ntu[62] = main.ntup.xcal_gamma2;
+        ntu[63] = main.ntup.ycal_gamma2;
+        for (int i = 0; i < 4; ++i) ntu[static_cast<std::size_t>(64 + i)] = main.ntup.gamma2[static_cast<std::size_t>(i)];
+    }
     return side != ArmSide::Unknown;
+}
+
+// NtupleInit.f (doing_semi with doing_pizero, no target field): the 56 SIDIS columns + the 12 photon columns (P14.3)
+const std::vector<NtupleColumn>& SemiPizeroNtupleColumns() {
+    static const std::vector<NtupleColumn> c = [] {
+        std::vector<NtupleColumn> v = SemiNtupleColumns();
+        const std::vector<NtupleColumn>& pi0 = PionNtupleColumns(true);
+        v.insert(v.end(), pi0.end() - 12, pi0.end());   // same tags and sources (the semi lines are results_write.f:230-243)
+        return v;
+    }();
+    return c;
 }
 
 // NtupleInit.f:192-264 (doing_rho, no target field; task P13.2)
@@ -344,8 +363,8 @@ const std::vector<NtupleColumn>& NtupleColumnsFor(const RunSetup& s) {
     if ((s.flags.doing_pion || s.flags.doing_delta) && !s.flags.using_tgt_field && !s.params.using_tgt_field)
         return PionNtupleColumns(s.flags.doing_pizero);
     if (s.flags.doing_kaon && !s.flags.using_tgt_field && !s.params.using_tgt_field) return KaonNtupleColumns();
-    if (s.flags.doing_semi && !s.flags.doing_pizero && !s.flags.using_tgt_field && !s.params.using_tgt_field)
-        return SemiNtupleColumns();
+    if (s.flags.doing_semi && !s.flags.using_tgt_field && !s.params.using_tgt_field)
+        return s.flags.doing_pizero ? SemiPizeroNtupleColumns() : SemiNtupleColumns();
     if (s.flags.doing_rho && !s.flags.doing_pizero && !s.flags.using_tgt_field && !s.params.using_tgt_field)
         return RhoNtupleColumns();
     if (UsesEepLayout(s.flags)) return EepNtupleColumns();

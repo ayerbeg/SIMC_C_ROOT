@@ -37,7 +37,7 @@ namespace sidis {
 
 /// The SIDIS input combinations SIMC++ refuses (each entry is an error message); empty = supported.
 /// Checked: doing_semi set, exactly one of doing_semipi/doing_semika (dbase.f:125-132), no doing_pizero (pi0 SIDIS:
-/// the photons need the calorimeter arm, task P14), no doing_phsp (sigcc = 1 there, event.f:1446).
+/// pi0 SIDIS is supported since P14.3, with the calorimeter arm), no doing_phsp (sigcc = 1 there, event.f:1446).
 std::vector<std::string> checkSupported(const RunSetup& s);
 /// The warnings for SIDIS inputs that the Fortran reads and ignores (pt_b_param, sigc_*).
 std::vector<std::string> ignoredInputNotes(const RunSetup& s);
