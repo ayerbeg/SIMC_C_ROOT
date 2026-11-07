@@ -71,6 +71,12 @@ for t in h_k1_rad; do
             "corrected_rho_${t}_n1k_s4242|$REF/runs/rho_${t}_A/rho_${t}_A.inp|--ngen 1000|dir_rho_${t}_s4242|regression_corrected_rho_${t} (new in P13.2)")
 done
 
+# P14.3: exclusive H(e,e'pi0)p, HMS e- + calorimeter (arm 8, NPS-like, pizero_ngamma 2); 2000 events (~5.7e5 tries)
+for t in excl_h_ng2; do
+  CONFIGS+=("calo_${t}_n2k_s4242|$REF/runs/p14f2_${t}_A/p14f2_${t}_A.inp|--fortran-compat --ngen 2000|dir_calo_${t}_s4242|regression_identity_calo_${t} (new in P14.3)"
+            "corrected_calo_${t}_n2k_s4242|$REF/runs/p14f2_${t}_A/p14f2_${t}_A.inp|--ngen 2000|dir_calo_${t}_s4242|regression_corrected_calo_${t} (new in P14.3)")
+done
+
 WT="$(mktemp -d "${TMPDIR:-/tmp}/simc_regen_wt.XXXXXX")"
 cleanup() { git -C "$SRC_DIR" worktree remove --force "$WT" >/dev/null 2>&1; git -C "$SRC_DIR" worktree prune; rm -rf "$WT.build"; }
 trap cleanup EXIT
