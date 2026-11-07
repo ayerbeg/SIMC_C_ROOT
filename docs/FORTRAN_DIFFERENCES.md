@@ -531,3 +531,31 @@ runs in simc_runs/20261029_014541_P13.2_L2_*). wtcontr = the .hist wtcontr (A: F
   Fortran seed 12345 (IRandom "ranlux") is BITWISE IDENTICAL to rho_h_k1_norad_A (100000 events, 59 columns, .hist,
   .geni, .gen; simc_runs/20261030_191250_P13.2_norad_check_ranlux_fseed): the seed-4242 result is a statistical
   fluctuation (of the C++ sample or of Fortran A), not a code difference.
+
+## 14. SOS and HRS: L1, full-run identity and L2 in both modes (tasks P14.1, P14.2)
+
+* **L1** (reference/functions/{sos,hrsr,hrsl}/, P14.F1): all 21 tables (mc, mc_smear, mc_decay, transp, transp_chain, recon,
+  hut per spectrometer) bitwise with `fortran_compat` (tolerance 0), including the stop codes, the counter deltas, the
+  random-number consumption, COMMON /track/ and /g_dump_all_*/.
+* **Full-run identity** (RANLUX port + `--fortran-compat`, seed 12345, `tests/l1/ranlux_fullrun.sh`): .hist (except the
+  time lines), .geni, .gen and the h10 tree identical to the Fortran for p14f1_eep_sos_cap, p14f1_hrs_LeRp_rad_cap and
+  the 100k L2 runs p14f1_{eep,pion,delta,kaon,sidis}_sos_A, p14f1_hrs_{LeRp_rad_A, LeRp_rad_B, LeRp_norad_A, ReLp_rad_A}
+  (p14f1_rho_sos_A, 2.9e8 tries, not run). The delta SOS run first differed in the sign of 55 sigcm NaNs (D-048 F3
+  garbage arguments of sig_blok): fixed by the operand order of the object code in `pion::sigBlok` (P14.2, finite values
+  unchanged); the Delta regression baselines moved to 51e86c2_glibc243 (only those 9 NaN signs differ from 074cced).
+* **L2** (seed 4242, 1e5 events, validation/scripts/p14_sos_hrs_l2.sh, simc_runs/20261101_004418_P14_L2_*, build ac389e6):
+
+| run | compat vs A (F/N) | compat wtcontr A / C++ (pull) | corrected vs A (F/N) | corrected wtcontr | explanation of the corrected-mode differences |
+|---|---|---|---|---|---|
+| eep_sos (HMS e, SOS p) | PASS 0/220 | 244.50 / 246.08 (−1.6) | PASS 0/220 | 246.08 | no correction acts (SOS .geni slit order only) |
+| pion_sos | PASS 2/249 | 33.54 / 33.67 (−0.5) | FAIL 4/249 | 57.72 (×1.72) | D-006 pass_cuts (hadron δ cut) on wtcontr, D-038 F5 CENTRAL.sigcc; the sequences diverge after an early acceptance change (as P9) |
+| delta_sos | PASS 1/244 | 1.2016e7 / 1.2055e7 (−0.7) | FAIL 178/244 | 2.50e7 (×2.08) | D-048 corrections (acceptance per try 0.00521 → 0.01003, as the ×1.7–1.8 of P11) |
+| kaon_sos | PASS 0/252 | 5.298 / 5.254 (+1.8) | FAIL 128/255 | 5.495 | D-043 kaon corrections: Weight, decdist, saghai differ in every event (ΣWeight −2.2 %, Pm-dependent), as P10 |
+| sidis_sos | PASS 0/252 | 14.92 / 14.95 (−0.4) | FAIL 2/253 | 14.71 (pull 2.9) | D-051 F3 pfermi column; 4 % of the events diverge after an acceptance change |
+| hrs_LeRp_rad (HRS-L e, HRS-R p) | PASS 0/216 (vs B: PASS) | 1551.8 / 1558.9 (−1.1) | PASS 0/216 | 1558.9 | tree identical to compat: the eep layout has no FP path (D-061 F1) and no ray reaches the VDC limits in either mode (D-061 F1e) |
+| hrs_LeRp_norad | PASS 0/212 | 2019.3 / 2025.4 (−0.7) | PASS 0/212 | 2025.4 | same |
+| hrs_ReLp_rad | PASS 0/216 | 1543.6 / 1530.1 (+2.1) | PASS 0/216 | 1530.1 | same |
+
+  The corrected-mode FAILs are the documented corrections of the reaction phases (P9–P12), not SOS/HRS effects: the SOS
+  and HRS corrections (D-011/D-061 F8 .geni, F1 path length, F1e VDC rotation) do not change these trees. D-061 F1 shows
+  in the HRS kaon/SIDIS-kaon weight (`fortran_diff_D061_F1_hrs_transp_lengths`: +Inf in compat, finite corrected).
