@@ -106,9 +106,10 @@ foreach(_tag h_k1_rad_dec1 d_k1_sigm_rad_dec1)
 endforeach()
 
 # P11.1: Delta region H(e,e'p)pi (D1: SHMS e-, HMS p; rad, seed 4242, 20000 events) against the baselines of commit 074cced
-# (glibc 2.43 / gcc 16.2.1 / ROOT 6.40.04), in both modes (SIMC_BASELINE_DIR/074cced_glibc243_[corrected_]delta_h_d1_rad_n20k_s4242/,
+# (glibc 2.43 / gcc 16.2.1 / ROOT 6.40.04), in both modes (SIMC_BASELINE_DIR/51e86c2_glibc243_[corrected_]delta_h_d1_rad_n20k_s4242/ since P14.2: the 074cced compat
+# baseline differs only in the sign of 9 sigcm NaNs, now the Fortran sign (sig_blok operand order, commit 51e86c2);
 # validation/scripts/regen_baselines.sh --only delta). Input: the P11.F1 L2 input in reference/runs.
-set(SIMC_DELTA_BASELINE_COMMIT "074cced_glibc243" CACHE STRING "Commit whose Delta outputs are the identity baseline")
+set(SIMC_DELTA_BASELINE_COMMIT "51e86c2_glibc243" CACHE STRING "Commit whose Delta outputs are the identity baseline")
 foreach(_tag h_d1_rad)
     set(_inp ${SIMC_REFERENCE_DIR}/runs/delta_${_tag}_A/delta_${_tag}_A.inp)
     add_test(NAME regression_identity_delta_${_tag}

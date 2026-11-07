@@ -24,3 +24,10 @@ add_test(NAME l1_simcrun_ranlux_hrs_LeRp_rad_cap
                  ${SIMC_REFERENCE_DIR}/runs/p14f1_hrs_LeRp_rad_cap p14f1_hrs_LeRp_rad_cap
                  ${CMAKE_CURRENT_BINARY_DIR}/ranlux_hrs_LeRp_rad_cap)
 set_tests_properties(l1_simcrun_ranlux_hrs_LeRp_rad_cap PROPERTIES LABELS "l1;replay" SKIP_RETURN_CODE 77 TIMEOUT 600)
+# P14.2 L2 evidence: complete 100k-event P14.F1 L2 runs (seed 12345) reproduced bitwise with RANLUX + --fortran-compat
+foreach(_r p14f1_eep_sos_A p14f1_hrs_LeRp_rad_A)
+    add_test(NAME l1_simcrun_ranlux_${_r}
+             COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/ranlux_fullrun.sh $<TARGET_FILE:simcpp> $<TARGET_FILE:simc_root_identity>
+                     ${SIMC_REFERENCE_DIR}/runs/${_r} ${_r} ${CMAKE_CURRENT_BINARY_DIR}/ranlux_${_r})
+    set_tests_properties(l1_simcrun_ranlux_${_r} PROPERTIES LABELS "l1;replay;slow" SKIP_RETURN_CODE 77 TIMEOUT 1800)
+endforeach()
