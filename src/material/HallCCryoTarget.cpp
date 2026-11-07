@@ -176,14 +176,17 @@ void HallCCryoTarget::trip(int narm, double zpos, double energy, double theta, d
     // Fortran also lists the retired code 6 with the SHMS (target.f:97/217); the input rejects 6.
     const int arm = (narm == 2) ? electron_arm_ : hadron_arm_;
     const std::optional<SpectrometerId> spec = SpectrometerFromCode(arm);
-    if (!spec || *spec == SpectrometerId::CALO_HMS_SIDE || *spec == SpectrometerId::CALO_SHMS_SIDE) {
-        // FORTRAN-BUG(D-012 F4), path not ported: target.f:80-131/200-247 have no branch for the calorimeter arms (7/8),
-        // so s_air, s_kevlar, s_mylar and forward_path keep the previous call's values. SIMC++ refuses these arms here
-        // (both modes); the calorimeter port (P14) must give them their own windows.
+    if (!spec) {
         throw std::invalid_argument("hallc_cryo trip_thru_target: " + std::string(narm == 2 ? "electron" : "hadron") +
-                                    "_arm = " + std::to_string(arm) +
-                                    " not supported (HMS, SOS, HRS-R, HRS-L, SHMS only; calorimeter arms: P14)");
+                                    "_arm = " + std::to_string(arm) + " is not a spectrometer");
     }
+    // FORTRAN-DIFF-CANDIDATE(D-012 F4, P14.3): no branch for the calorimeter arms 7/8 (target.f:73-102/189-222): s_air,
+    // s_kevlar, s_mylar and forward_path keep the previous narm 2/3 call's values (static locals); s_Al = 0 (l.20).
+    // Kept in both modes (the calorimeter windows need the NPS geometry). Question for the user/expert.
+    s_air = win_air_;
+    s_kevlar = win_kevlar_;
+    s_mylar = win_mylar_;
+    forward_path = win_forward_;
     switch (*spec) {
         case SpectrometerId::HMS:
             s_Al = 0.016 * inch_cm;
@@ -215,8 +218,12 @@ void HallCCryoTarget::trip(int narm, double zpos, double energy, double theta, d
             forward_path = (targ.length / 2. - zpos) / std::fabs(std::cos(theta - targ.angle));
             break;
         default:
-            break;   // calorimeters: refused above
+            break;   // calorimeters: the stale values set above
     }
+    win_air_ = s_air;
+    win_kevlar_ = s_kevlar;
+    win_mylar_ = s_mylar;
+    win_forward_ = forward_path;
     s_target = forward_path;
 
     if (liquid) {

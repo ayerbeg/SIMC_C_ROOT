@@ -33,6 +33,9 @@ struct SpecInput {
     /// argument `fry` (task P14.1).
     double raster_fry{0};
     double raster_frx{0};
+    /// Path length already accumulated when the routine is called (simc.f passes `pathlen` in/out; 0 for a normal arm
+    /// call, simc.f:1462/1727). Used by the pi0 two-photon calorimeter logic in fortran_compat (D-062 G3).
+    double pathlen_start{0};
 };
 
 /// Output of the single-arm MC.

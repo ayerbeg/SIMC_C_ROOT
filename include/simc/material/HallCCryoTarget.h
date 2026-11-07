@@ -20,9 +20,11 @@
 //   * FORTRAN-DIFF-CANDIDATE(D-012 F4): th_can of the pudding can (can 2) is a static local. When
 //     |z_can/R| > 1 + 1e-6 it is NOT updated (only a warning is printed) and the previous call's value
 //     is used. Reproduced (member thCan_, initially 0).
-//   * FORTRAN-BUG(D-012 F4), path not ported: electron_arm/hadron_arm 7/8 (calorimeter) leave s_air, s_kevlar,
-//     s_mylar and forward_path stale. Out of scope until P14: trip() throws std::invalid_argument
-//     for the calorimeter arms and for codes that are not spectrometers (core/SpectrometerId.h, D-032).
+//   * FORTRAN-DIFF-CANDIDATE(D-012 F4, P14.3): target.f:73-102/189-222 have no window branch for the calorimeter
+//     arms 7/8, so s_air, s_kevlar, s_mylar and forward_path keep the values of the previous narm 2/3 call (static locals,
+//     -fno-automatic; init.f:53-56 target_init makes the first calls), s_Al is reset to 0 (l.20). Reproduced in both
+//     modes (members win_*): which windows (and which path in the target) the calorimeter arm should get needs the NPS
+//     geometry. Codes that are not spectrometers still throw std::invalid_argument (core/SpectrometerId.h, D-032).
 //   * FORTRAN-QUIRK: `goto (10,20,30) narm` falls through to label 10 for narm outside 1..3,
 //     i.e. such a call is treated as the incoming beam. Reproduced.
 //   * FORTRAN-BUG(D-017), corrected unless fortran_compat: extreme_trip_thru_target, hadron, can 2/3 (target.f:501) uses
@@ -130,6 +132,8 @@ private:
     std::unique_ptr<IMaterialModel> material_;   ///< owned; default SimcMaterial ("simc_material")
     std::ostream* log_;
     double thCan_{0};   ///< target.f: th_can (static local, -fno-automatic)
+    /// target.f static locals s_air, s_kevlar, s_mylar, forward_path: reused by the calorimeter arms (D-012 F4)
+    double win_air_{0}, win_kevlar_{0}, win_mylar_{0}, win_forward_{0};
 };
 
 }  // namespace material
