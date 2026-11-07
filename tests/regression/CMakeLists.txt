@@ -165,3 +165,23 @@ foreach(_tag h_k1_rad)
     set_tests_properties(regression_identity_rho_${_tag} regression_corrected_rho_${_tag} PROPERTIES
                          SKIP_RETURN_CODE 77 TIMEOUT 1200 LABELS regression)
 endforeach()
+
+# P14.3: exclusive H(e,e'pi0)p with the calorimeter (HMS e-, NPS-like arm 8, pizero_ngamma 2; seed 4242, 2000 events) against
+# the baselines of commit 17310b4 (glibc 2.43 / gcc 16.2.1 / ROOT 6.40.04), in both modes
+# (SIMC_BASELINE_DIR/17310b4_glibc243_[corrected_]calo_excl_h_ng2_n2k_s4242/, validation/scripts/regen_baselines.sh --only calo).
+set(SIMC_CALO_BASELINE_COMMIT "17310b4_glibc243" CACHE STRING "Commit whose calorimeter outputs are the identity baseline")
+foreach(_tag excl_h_ng2)
+    set(_inp ${SIMC_REFERENCE_DIR}/runs/p14f2_${_tag}_A/p14f2_${_tag}_A.inp)
+    add_test(NAME regression_identity_calo_${_tag}
+             COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/output_identity.sh $<TARGET_FILE:simcpp> $<TARGET_FILE:simc_root_identity>
+                     ${_inp} 4242 dir_calo_${_tag}_s4242
+                     ${SIMC_BASELINE_DIR}/${SIMC_CALO_BASELINE_COMMIT}_calo_${_tag}_n2k_s4242
+                     ${CMAKE_CURRENT_BINARY_DIR}/identity_calo_${_tag} --fortran-compat --ngen 2000)
+    add_test(NAME regression_corrected_calo_${_tag}
+             COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/output_identity.sh $<TARGET_FILE:simcpp> $<TARGET_FILE:simc_root_identity>
+                     ${_inp} 4242 dir_calo_${_tag}_s4242
+                     ${SIMC_BASELINE_DIR}/${SIMC_CALO_BASELINE_COMMIT}_corrected_calo_${_tag}_n2k_s4242
+                     ${CMAKE_CURRENT_BINARY_DIR}/corrected_calo_${_tag} --ngen 2000)
+    set_tests_properties(regression_identity_calo_${_tag} regression_corrected_calo_${_tag} PROPERTIES
+                         SKIP_RETURN_CODE 77 TIMEOUT 1200 LABELS regression)
+endforeach()
