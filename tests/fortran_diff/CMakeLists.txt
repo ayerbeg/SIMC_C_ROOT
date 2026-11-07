@@ -40,6 +40,9 @@ set(SIMC_FORTRAN_DIFF_ITEMS
     D051_F12_F14_semi_hist_titles
     D061_F1_hrs_transp_lengths
     D061_F1e_hrs_vdc_rotation
+    D062_G1_pi0_photon_decay
+    D062_G2_calo_electron_decay
+    D062_G3_pi0_path_length
 )
 foreach(_item ${SIMC_FORTRAN_DIFF_ITEMS})
     add_test(NAME fortran_diff_${_item}

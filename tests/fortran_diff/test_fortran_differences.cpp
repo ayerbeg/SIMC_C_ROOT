@@ -1760,11 +1760,125 @@ int testHrsVdcRotation() {
     return 0;
 }
 
+
+// ------------------------------------------------------------------------------------------------ D-062 (P14.3)
+struct PathSink : IOutputSink {
+    std::vector<double> path, xcal1, xcal2;
+    std::string name() const override { return "paths"; }
+    void configure(const Json&, const SimcParameters&) override {}
+    void init(const StageContext&) override {}
+    void beginRun(const RunSetup&) override {}
+    void fill(const MainEvent& m, const Event&, const Event&, const Event&, bool success) override {
+        if (success) {
+            path.push_back(m.FP.p.path);
+            xcal1.push_back(m.ntup.xcal_gamma1);
+            xcal2.push_back(m.ntup.xcal_gamma2);
+        }
+    }
+    void endRun(const RunSummary&) override {}
+};
+
+/// Runs `inp` (after `edit`) in one mode; returns "" or the FortranStop message; `sink` gets the events.
+std::string runInp(SimcParameters p, bool compat, PathSink* sink, long* nevents = nullptr) {
+    driver::RunOptions opt;
+    opt.quiet_stages = true;
+    opt.fortran_compat = compat;
+    opt.data_dir = specDir();
+    std::ostringstream log;
+    opt.log = &log;
+    try {
+        driver::SimcRun run(p, Json{{"sinks", Json::array()}}, opt);
+        PathSink* own = sink;
+        if (own) {
+            auto s = std::make_unique<PathSink>();
+            PathSink* raw = s.get();
+            run.addSink(std::move(s));
+            run.run();
+            *own = *raw;
+        } else {
+            run.run();
+        }
+        if (nevents) *nevents = run.totals().nevent;
+    } catch (const FortranStop& e) {
+        return e.what();
+    }
+    return "";
+}
+
+bool loadRunInp(const std::string& run, SimcParameters& p) {
+    const std::string inp = g_ref + "/runs/" + run + "/" + run + ".inp";
+    if (!std::ifstream(inp)) {
+        std::printf("SKIP: %s missing\n", inp.c_str());
+        return false;
+    }
+    InpReader rd(p);
+    return rd.loadRun(inp);
+}
+
+// G1: pi0 photons are passed m2 = Mpi0^2 and doing_decay (simc.f:1518-1522/1535-1539): any doing_decay = 1 pi0 run STOPs
+// (reference/runs/p14f2_excl_h_dec1_probe: 'cannot decay particle with mass=  134.98' in the first event); corrected:
+// massless stable photons, the run completes.
+int testPi0PhotonDecay() {
+    SimcParameters p;
+    if (!loadRunInp("p14f2_excl_h_dec1_probe", p)) return 77;
+    p.ngen = 20;
+    const std::string c = runInp(p, true, nullptr);
+    expect(c.find("cannot decay particle with mass=  134.98") != std::string::npos, "compat: STOP '" + c + "'");
+    long n = 0;
+    const std::string k = runInp(p, false, nullptr, &n);
+    expect(k.empty() && n == 20, "corrected: doing_decay = 1 pi0 run completes (" + std::to_string(n) + " events" +
+                                     (k.empty() ? "" : ", STOP " + k) + ")");
+    return 0;
+}
+
+// G2: the calorimeter electron arm passes decay_flag = doing_decay (simc.f:1761-1765). pi+ H (pion_h_k1_rad_dec1_A) with
+// the electron in the calorimeter (arm 7, drift_to_cal 300 cm) and ctau = 0.001 cm: compat STOPs at the first electron
+// "decay" (mass 0.51); corrected: the electron never decays, the run completes.
+int testCaloElectronDecay() {
+    SimcParameters p;
+    if (!loadRunInp("pion_h_k1_rad_dec1_A", p)) return 77;
+    p.electron_arm = 7;
+    p.drift_to_cal = 300.;
+    p.ctau = 0.001;
+    p.ngen = -3000;
+    const std::string c = runInp(p, true, nullptr);
+    expect(c.find("cannot decay particle with mass=    0.51") != std::string::npos, "compat: STOP '" + c + "'");
+    const std::string k = runInp(p, false, nullptr);
+    expect(k.empty(), "corrected: the calorimeter electron does not decay, the run completes" + (k.empty() ? "" : " (" + k + ")"));
+    return 0;
+}
+
+// G3: pathlen is not reset for the second photon (simc.f:1462): FP%p%path = both photons (~2 x 300 cm); corrected: the
+// path of the photon reported in FP%p (~300 cm).
+int testPi0PathLength() {
+    SimcParameters p;
+    if (!loadRunInp("p14f2_excl_h_ng2_cap", p)) return 77;
+    p.ngen = 30;
+    PathSink a, b;
+    runInp(p, true, &a);
+    runInp(p, false, &b);
+    auto range = [](const std::vector<double>& v) {
+        double lo = 1e99, hi = -1e99;
+        for (double x : v) lo = std::min(lo, x), hi = std::max(hi, x);
+        return std::make_pair(lo, hi);
+    };
+    const auto ra = range(a.path), rb = range(b.path);
+    char m[200];
+    std::snprintf(m, sizeof m, "compat: FP%%p%%path in [%.2f, %.2f] cm (two photons, drift 300 cm)", ra.first, ra.second);
+    expect(!a.path.empty() && ra.first > 600. && ra.second < 620., m);
+    std::snprintf(m, sizeof m, "corrected: FP%%p%%path in [%.2f, %.2f] cm (one photon)", rb.first, rb.second);
+    expect(!b.path.empty() && rb.first > 300. && rb.second < 310., m);
+    return 0;
+}
+
 const std::map<std::string, std::function<int()>>& items() {
     static const std::map<std::string, std::function<int()>> m = {
         {"D032_spectrometer_id", testSpectrometerId},
         {"D061_F1_hrs_transp_lengths", testHrsTranspLengths},
         {"D061_F1e_hrs_vdc_rotation", testHrsVdcRotation},
+        {"D062_G1_pi0_photon_decay", testPi0PhotonDecay},
+        {"D062_G2_calo_electron_decay", testCaloElectronDecay},
+        {"D062_G3_pi0_path_length", testPi0PathLength},
         {"D006_pass_cuts", testPassCuts},
         {"D017_extreme_trip_hadron_angle", testExtremeTrip},
         {"D014_deforest_cos_phi_warning", testDeForestWarning},

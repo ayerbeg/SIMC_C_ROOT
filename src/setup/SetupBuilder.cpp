@@ -284,7 +284,9 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
     // which is what project.f/transp.f see at the decay test.
     const bool hadronDecays = std::fabs(std::sqrt(s.Mh2) - K::Mpi) < 2 || std::fabs(std::sqrt(s.Mh2) - K::Mk) < 2 ||
                               (f0.doing_rho && !p.doing_phsp);
-    if (p.doing_decay && !s.fortran_compat && !hadronDecays) {
+    // D-062 G1 (P14.3): with doing_pizero the detected particles are the decay photons, which the corrected mode tracks as
+    // massless and stable: doing_decay = 1 is accepted and has no effect (the Fortran STOPs at the first photon "decay").
+    if (p.doing_decay && !s.fortran_compat && !hadronDecays && !f0.doing_pizero) {
         char b[320];
         std::snprintf(b, sizeof b,
                       "doing_decay = 1, but the hadron (mass %.5f MeV) is neither a pion nor a kaon: only pi and K "
