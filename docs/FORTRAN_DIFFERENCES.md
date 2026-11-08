@@ -567,3 +567,27 @@ runs in simc_runs/20261029_014541_P13.2_L2_*). wtcontr = the .hist wtcontr (A: F
   The corrected-mode FAILs are the documented corrections of the reaction phases (P9–P12), not SOS/HRS effects: the SOS
   and HRS corrections (D-011/D-061 F8 .geni, F1 path length, F1e VDC rotation) do not change these trees. D-061 F1 shows
   in the HRS kaon/SIDIS-kaon weight (`fortran_diff_D061_F1_hrs_transp_lengths`: +Inf in compat, finite corrected).
+
+## 15. Calorimeter arms and π0 → 2γ: L1, full-run identity and L2 in both modes (task P14.3)
+
+* **L1** (reference/functions/calo/, P14.F2, `fortran_compat`, tolerance 0): mc_calo (3938 rows), mc_calo_stops (3 STOP rows,
+  same messages), mc_calo_recon (303), calo_frame_rotation (8000), pizero_decay_nps_fixedrng (6500), pi0calo_state (6 configs
+  + pdist), generate (4854 rows × 178 columns), complete_ev (2037 × 108), complete_recon_ev (1479 × 57), complete_main
+  (1474 × 21) — every value bitwise.
+* **Full-run identity** (RANLUX + `--fortran-compat`, seed 12345; .hist except the time lines, .geni, .gen, h10 tree): the two
+  captures p14f2_excl_h_ng2_cap and p14f2_sidis_h_cap, and all nine 100k L2 runs p14f2_{excl_h_ng2_A, excl_h_ng2_B, excl_h_ng1_A,
+  excl_d_p_A, excl_d_n_A, delta_h_A, sidis_h_A, eep_caloe_A} identical (2.9e7 tries for excl_h_ng2_A; 6.6e7 for sidis_h_A).
+* **L2** (seed 4242, 1e5 events, validation/scripts/p14_calo_l2.sh, simc_runs/20261107_232553_P14.3_L2_*, build 3d516b7):
+
+| run | compat vs A (F/N) | compat wtcontr A / C++ (pull) | corrected vs A (F/N) | explanation of the corrected-mode differences |
+|---|---|---|---|---|
+| excl_h_ng2 (HMS e, calo arm 8, 2 γ) | PASS 5/284 (vs B: PASS 2/284) | 113.81 / 113.33 (+0.6) | FAIL 6/284 | tree identical to compat; only CENTRAL.sigcc (D-038 F5, deterministic) |
+| excl_h_ng1 (1 γ) | PASS 4/284 | 168.02 / 169.30 (−0.7) | FAIL 5/284 | same (D-038 F5) |
+| excl_d_p | PASS 5/290 | 131.99 / 133.48 (−1.5) | FAIL 6/290 | same |
+| excl_d_n | PASS 3/290 | 131.55 / 132.62 (−1.1) | FAIL 4/290 | same |
+| delta_h (π0 Δ+) | PASS 2/284 | 34.28 / 34.00 (+1.2) | FAIL 3/284 | same |
+| sidis_h (H(e,e'π0)X) | PASS 1/292 | 1589.0 / 1598.3 (−0.8) | FAIL 6/293 | D-051 F4 (π0 fragmentation functions), F3 pfermi, decdist: siglab/Weight differ in 99964 events; wtcontr 1601.8 (pull −1.2) |
+| eep_caloe (e in calo arm 8, p in HMS) | PASS 6/210 | 213.02 / 212.56 (+0.5) | PASS 6/210 | tree identical to compat (no correction acts; the 6 correlated xptar tests also fail in compat, the RANLUX identity proves the algorithm) |
+
+  The calorimeter corrections themselves (D-062 G1/G2: no decay in these runs; G3: FP path is not an ntuple column) leave
+  these trees unchanged; they are proven by `fortran_diff_D062_G{1,2,3}_*`.
