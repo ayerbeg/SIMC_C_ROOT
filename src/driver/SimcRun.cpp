@@ -203,6 +203,7 @@ void SimcRun::initialise() {
     report_.run_name = opt_.run_name;
     report_.ngen = params_.ngen;
     report_.random_seed = params_.random_seed;
+    report_.rng_type = rngPtr_ ? rngPtr_->name() : std::string();
     report_.random_state_file = params_.random_state_file;
     report_.central = central_.central;
     report_.totals.slop = setup_.slop;   // slop%*%used from limits_init, lo/hi accumulated by limits_update

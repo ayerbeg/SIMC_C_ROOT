@@ -883,6 +883,8 @@ RunSummary MakeRunSummary(const RunSetup& s, const RunReport& r) {
     x["run"] = {{"tag", r.run_name},
                 {"producer", "simc++"},
                 {"random_seed", r.random_seed},
+                {"rng", r.rng_type},                  // D-054 (P15.1): the random source
+                {"fortran_compat", s.fortran_compat},  // D-054 (P15.1): simc_compare reads the pass_cuts mode
                 {"reaction", ReactionTitle(s.flags, s.params)},
                 {"begin_time", r.begin_time},
                 {"end_time", r.end_time}};

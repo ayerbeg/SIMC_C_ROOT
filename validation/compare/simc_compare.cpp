@@ -370,8 +370,17 @@ int main(int argc, char** argv) {
         fs::create_directories(outDir);
         RA = loadRun(specA, !preferHist);
         RB = loadRun(specB, !preferHist);
-        if (modeA != -2) RA.fortran_compat = modeA;
-        if (modeB != -2) RB.fortran_compat = modeB;
+        // D-054 (P15.1): the run summaries carry run.fortran_compat (a Fortran .hist is compat); an explicit --mode-a/-b
+        // overrides it, with a warning when the two disagree
+        auto applyMode = [&](RunSummary& R, int mode, const char* which) {
+            if (mode == -2) return;
+            if (R.fortran_compat >= 0 && R.fortran_compat != mode)
+                warnings.push_back(std::string("--mode-") + which + " " + (mode ? "compat" : "corrected") +
+                                   " overrides the run summary (" + (R.fortran_compat ? "compat" : "corrected") + ")");
+            R.fortran_compat = mode;
+        };
+        applyMode(RA, modeA, "a");
+        applyMode(RB, modeB, "b");
         for (auto& w : RA.warnings) warnings.push_back("A: " + w);
         for (auto& w : RB.warnings) warnings.push_back("B: " + w);
         if (!cfg.treeName.empty()) RA.treeName = RB.treeName = cfg.treeName;

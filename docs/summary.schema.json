@@ -61,6 +61,14 @@
         },
         "random_state_file": {
           "type": "string"
+        },
+        "fortran_compat": {
+          "type": "boolean",
+          "description": "D-054 (P15.1): the run option fortran_compat (true = exact Fortran behaviour); simc_compare takes the pass_cuts window from it"
+        },
+        "rng": {
+          "type": "string",
+          "description": "D-054 (P15.1): the IRandom of the run (mt64, ranlux, scripted ...)"
         }
       }
     },

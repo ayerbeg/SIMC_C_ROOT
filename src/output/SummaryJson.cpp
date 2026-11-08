@@ -124,6 +124,7 @@ Json BuildSummaryJson(const RunSetup& s, const RunSummary& r) {
     j["run"] = {{"tag", r.run_name.empty() ? s.run_name : r.run_name},
                 {"producer", "simc++"},
                 {"random_seed", r.random_seed},
+                {"fortran_compat", s.fortran_compat},   // D-054 (P15.1)
                 {"reaction", r.reaction_title.empty() ? ReactionTitle(s.flags, p) : r.reaction_title}};
 
     j["counters"] = {{"ngen", r.ngen},

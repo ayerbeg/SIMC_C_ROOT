@@ -57,6 +57,7 @@ struct RunReport {
     std::string begin_time, end_time;    ///< ctime() strings (simc.f:162, 357)
     long ngen{0};
     int random_seed{0};
+    std::string rng_type;   ///< IRandom::name() of the run (D-054, P15.1)
     std::string random_state_file;
     CentralEvent central;
     RunTotals totals;
