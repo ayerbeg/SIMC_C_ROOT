@@ -38,6 +38,7 @@
 #include "simc/core/random/Mt64Random.h"
 #include "simc/core/random/ScriptedRandom.h"
 #include "simc/material/HallCCryoTarget.h"
+#include "simc/material/MaterialConstants.h"
 #include "simc/material/SimcMaterial.h"
 
 using namespace simc;
@@ -609,17 +610,32 @@ int runSelftest() {
         bool zok = true;
         for (int i = 0; i < 10000; ++i) zok = zok && std::fabs(T->generateZ(r)) <= H->targ().length / 2.;
         expect(zok, "generateZ within +-length/2");
-        // calorimeter arm -> throw
-        H->setArms(7, 1);
-        bool thr = false;
-        double el, rl;
+        // calorimeter arm (D-012 F4, P14.3): no window branch in target.f, the previous narm 2/3 call's s_air, s_kevlar,
+        // s_mylar, forward_path are reused, s_Al is reset to 0 (target.f:20): after an HMS hadron trip at the same
+        // (zpos, theta) the calorimeter electron sees the HMS air/kevlar/mylar and path but no Al window; after an SOS
+        // hadron trip it sees the SOS ones. A code that is no spectrometer still throws.
+        double el, rl, eh, rh, eref, rref, es, rs;
         ScriptedRandom none;
+        H->setArms(1, 1);
+        H->trip(2, 0.3, 1000., 0.2, eref, rref, constants::Me, 4, none);   // HMS electron
+        H->setArms(7, 1);
+        H->trip(3, 0.3, 1000., 0.2, eh, rh, constants::Me, 4, none);      // HMS hadron: sets the static window values
+        H->trip(2, 0.3, 1000., 0.2, el, rl, constants::Me, 4, none);      // calorimeter electron: reuses them
+        const double alRadlen = 0.016 * 2.54 / material::X0_cm_Al;        // the HMS Al window (target.f:74)
+        expect(el < eref && std::fabs((rref - rl) / alRadlen - 1) < 1e-12,
+               "trip_thru_target electron_arm 7 = the HMS windows of the previous trip without its Al (D-012 F4)");
+        H->setArms(7, 2);
+        H->trip(3, 0.3, 1000., 0.2, eh, rh, constants::Me, 4, none);      // SOS hadron
+        H->trip(2, 0.3, 1000., 0.2, es, rs, constants::Me, 4, none);
+        expect(es != el, "trip_thru_target electron_arm 7 depends on the previous trip's arm (stale values)");
+        H->setArms(9, 1);
+        bool thr = false;
         try {
             H->trip(2, 0., 1000., 0.2, el, rl, constants::Me, 4, none);
         } catch (const std::invalid_argument&) {
             thr = true;
         }
-        expect(thr, "trip_thru_target electron_arm 7 -> invalid_argument (out of scope)");
+        expect(thr, "trip_thru_target electron_arm 9 (not a spectrometer) -> invalid_argument");
         // narm outside 1..3 behaves like the beam (computed GOTO fall-through)
         double e1, r1, e0, r0;
         H->trip(1, 0.1, 10600., 0., e1, r1, constants::Me, 4, none);
