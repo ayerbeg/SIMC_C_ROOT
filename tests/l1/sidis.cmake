@@ -69,3 +69,10 @@ foreach(_tag h d)
     set_tests_properties(l1_replay_event_capture_semi_${_tag} l1_simcrun_replay_semi_${_tag}
         l1_montecarlo_replay_semi_${_tag} PROPERTIES LABELS "l1;replay")
 endforeach()
+# P15.1: the SIDIS central-kinematics print of calculate_central (simc.f:1289-1303) equals the Fortran log
+foreach(_r sidis_h_k1_pip_rad_A p14f2_sidis_h_A)
+    add_test(NAME cli_sidis_central_log_${_r}
+             COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/sidis_central_log.sh $<TARGET_FILE:simcpp> ${SIMC_REFERENCE_DIR}/runs/${_r} ${_r}
+                     ${CMAKE_CURRENT_BINARY_DIR}/sidis_central_log_${_r})
+    set_tests_properties(cli_sidis_central_log_${_r} PROPERTIES LABELS "l1;cli" SKIP_RETURN_CODE 77)
+endforeach()

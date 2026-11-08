@@ -14,6 +14,7 @@
 #include "simc/core/random/RanluxRandom.h"
 #include "simc/driver/FortranWriter.h"
 #include "simc/driver/ReportSink.h"
+#include "simc/material/FortranFormat.h"
 #include "simc/setup/SetupBuilder.h"
 
 namespace simc {
@@ -178,6 +179,24 @@ void SimcRun::initialise() {
 
     // ---- simc.f:85 calculate_central (after radc_init; central%rad from the radiator, simc.f:1268-1281)
     central_ = calculateCentral(setup_, *reaction_, *radiator_, *model_);
+    if (setup_.flags.doing_semi) {
+        // simc.f:1289-1303 (calculate_central): the SIDIS central kinematics, list-directed (P15.1, D-051)
+        const Event& v0 = central_.vertex0;
+        auto item = [&](const char* label, double x) { log(" " + std::string(label) + " " + fortran::listReal(x)); };
+        log(" SIDIS: central event kinematics");
+        item("Pt", std::sqrt(v0.pt2) / 1.e3);
+        item("z", v0.zhad);
+        item("thpq", v0.theta_pq * 180.0 / 3.1415926536);
+        item("Q2", v0.Q2);
+        item("xbj", v0.xbj);
+        item("Ein", v0.Ein);
+        item("A", setup_.targ.A);
+        item("Eprime", v0.e.E);
+        item("Ppi", v0.p.P);
+        item("The", v0.e.theta);
+        item("multiplicity", central_.main0.ntup.sigcm);
+        item("lab cross section (nb/Gev2/sr2)", central_.central.sigcc * 1000.0 * 1000.0 * 1000.0);
+    }
 
     // ---- report bookkeeping
     report_ = RunReport{};
