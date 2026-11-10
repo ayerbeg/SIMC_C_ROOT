@@ -72,3 +72,10 @@ foreach(_c "kl_h;p10f1_kl_h_dec1_cap" "ksm_d;p10f1_ksm_d_dec1_cap")
     set_tests_properties(l1_simcrun_replay_kaon_${_tag} l1_montecarlo_replay_kaon_${_tag}
         PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 900 LABELS "l1;replay")
 endforeach()
+# P15.1 (D-058): the P10 L2 flag on kaon_h_k1_norad_dec0_A closed by a same-seed run: RANLUX + --fortran-compat reproduce the
+# 200000-event Fortran run exactly (.hist except the time lines, .geni, .gen, h10 tree)
+add_test(NAME l1_simcrun_ranlux_kaon_h_k1_norad_dec0_A
+         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/ranlux_fullrun.sh $<TARGET_FILE:simcpp> $<TARGET_FILE:simc_root_identity>
+                 ${SIMC_REFERENCE_DIR}/runs/kaon_h_k1_norad_dec0_A kaon_h_k1_norad_dec0_A
+                 ${CMAKE_CURRENT_BINARY_DIR}/ranlux_kaon_h_k1_norad_dec0_A)
+set_tests_properties(l1_simcrun_ranlux_kaon_h_k1_norad_dec0_A PROPERTIES LABELS "l1;replay;slow" SKIP_RETURN_CODE 77 TIMEOUT 1800)

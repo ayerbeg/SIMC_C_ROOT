@@ -410,6 +410,9 @@ in the corrected folders). Binary: commit 1275770 (numerically identical to the 
 * **compat**: every configuration agrees with the Fortran. h_k1_norad_dec0 at seed 4242 has 10 failures, all in correlated
   target-z / SHMS y-slope variables (hsytari, ssytari, ssyptari, ssypfp; worst p 1.9e-3, no gross failure); seeds 4243 and
   4244 give PASS 0/266 with those variables at p > 0.05: a fluctuation of seed 4242 (as P9.2 d_k1_pim).
+  **Closed (P15.1, D-058 policy):** a same-seed run (RANLUX port, `--fortran-compat`, the Fortran's random_seed) reproduces
+  reference/runs/kaon_h_k1_norad_dec0_A exactly: .hist (except the time lines), .geni and .gen identical, h10 tree identical in
+  all 200000 entries × 55 branches (`simc_root_identity`). The seed-4242 failures are a fluctuation.
 * **corrected**: in the decay-OFF runs the corrected and compat runs contain the SAME events (same Ntried; only Weight,
   decdist and saghai differ: `mode_diff_vs_compat.txt`); in the decay-ON runs the decay corrections change acceptance decisions
   and the random sequences diverge. The failures are the deterministic effects of the corrections, measured one by one with a
@@ -548,7 +551,8 @@ runs in simc_runs/20261029_014541_P13.2_L2_*). wtcontr = the .hist wtcontr (A: F
 * **Full-run identity** (RANLUX port + `--fortran-compat`, seed 12345, `tests/l1/ranlux_fullrun.sh`): .hist (except the
   time lines), .geni, .gen and the h10 tree identical to the Fortran for p14f1_eep_sos_cap, p14f1_hrs_LeRp_rad_cap and
   the 100k L2 runs p14f1_{eep,pion,delta,kaon,sidis}_sos_A, p14f1_hrs_{LeRp_rad_A, LeRp_rad_B, LeRp_norad_A, ReLp_rad_A}
-  (p14f1_rho_sos_A, 2.9e8 tries, not run). The delta SOS run first differed in the sign of 55 sigcm NaNs (D-048 F3
+  and, in P15.1, p14f1_rho_sos_A (HMS e, SOS π from the ρ; 2.87e8 tries, 72 min: .hist except the time lines, .geni,
+  .gen and the h10 tree with 100000 entries × 59 branches identical). The delta SOS run first differed in the sign of 55 sigcm NaNs (D-048 F3
   garbage arguments of sig_blok): fixed by the operand order of the object code in `pion::sigBlok` (P14.2, finite values
   unchanged); the Delta regression baselines moved to 51e86c2_glibc243 (only those 9 NaN signs differ from 074cced).
 * **L2** (seed 4242, 1e5 events, validation/scripts/p14_sos_hrs_l2.sh, simc_runs/20261101_004418_P14_L2_*, build ac389e6):

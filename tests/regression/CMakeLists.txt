@@ -8,6 +8,10 @@
 # glibc 2.43 / gcc 16.2.1 by commit 4408493 (validation/scripts/regen_baselines.sh) into NEW folders
 # <commit>_glibc243_<tag>; the *_COMMIT variables below therefore hold "4408493_glibc243". The original folders
 # (f9cea51_*, 08812e6_corrected_*, 508633a_*, 3b27d5c_*, 1275770_*) are kept; their README.txt explain the history.
+# P15.1 (D-054): every family was regenerated ONCE by commit 55cf7a0 (run.fortran_compat and run.rng added to the summary
+# JSON/text); validation/scripts/compare_baseline_sets.sh with p151_baseline_map.txt proves that the 27 new folders
+# 55cf7a0_glibc243_* differ from the previous ones (4408493, 51e86c2, 31b4232, e6feaf0, 17310b4) only by those keys.
+# The *_COMMIT variables below hold "55cf7a0_glibc243"; the earlier folders are kept.
 # On a failure, output_identity.sh prints the baseline toolchain (README.txt "toolchain:") next to this machine's.
 # P10.5: the baselines were made with ROOT 6.30.06; under ROOT 6.40.04 (C++20) every regression test passes unchanged
 # (contents identical; only ROOT metadata in the .root bytes differ, which simc_root_identity ignores), so they stay.
@@ -17,7 +21,7 @@ set_target_properties(simc_root_identity PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${C
 
 set(SIMC_BASELINE_DIR "/home/ayerbe/NewDisk/SIMC++_Project/baselines" CACHE PATH
     "Reference outputs of earlier commits for the output-identity tests")
-set(SIMC_BASELINE_COMMIT "4408493_glibc243" CACHE STRING "Commit whose outputs are the identity baseline")
+set(SIMC_BASELINE_COMMIT "55cf7a0_glibc243" CACHE STRING "Commit whose outputs are the identity baseline")
 
 foreach(_p "rad;eep_h_elastic_rad_A" "norad;eep_h_elastic_norad_A" "phsp;acc_phsp_hms_shms_A")
     list(GET _p 0 _tag)
@@ -33,7 +37,7 @@ endforeach()
 
 # P7.5 (D-031): the DEFAULT (corrected) mode against its own baselines, produced by commit 08812e6
 # (SIMC_BASELINE_DIR/<commit>_corrected_<tag>_s4242/, README.txt there lists the differences to the f9cea51 ones).
-set(SIMC_CORRECTED_BASELINE_COMMIT "4408493_glibc243" CACHE STRING "Commit whose corrected-mode outputs are the identity baseline")
+set(SIMC_CORRECTED_BASELINE_COMMIT "55cf7a0_glibc243" CACHE STRING "Commit whose corrected-mode outputs are the identity baseline")
 foreach(_p "rad;eep_h_elastic_rad_A" "norad;eep_h_elastic_norad_A" "phsp;acc_phsp_hms_shms_A")
     list(GET _p 0 _tag)
     list(GET _p 1 _inp)
@@ -48,7 +52,7 @@ endforeach()
 
 # P8.2: D(e,e'p) and Fe-56(e,e'p) (rad, seed 4242, 20000 events) against the baselines of commit 508633a, in both modes
 # (SIMC_BASELINE_DIR/508633a_[corrected_]eep_<tag>_n20k_s4242/). Inputs: the P8.F1 L2 inputs in reference/runs.
-set(SIMC_EEP_BASELINE_COMMIT "4408493_glibc243" CACHE STRING "Commit whose D/A(e,e'p) outputs are the identity baseline")
+set(SIMC_EEP_BASELINE_COMMIT "55cf7a0_glibc243" CACHE STRING "Commit whose D/A(e,e'p) outputs are the identity baseline")
 foreach(_tag d_rad fe56_rad)
     set(_inp ${SIMC_REFERENCE_DIR}/runs/eep_${_tag}_A/eep_${_tag}_A.inp)
     add_test(NAME regression_identity_eep_${_tag}
@@ -68,7 +72,7 @@ endforeach()
 # P9.2: exclusive pion production (pi+ H with decay in flight, pi- D; K1, rad, seed 4242, 20000 events) against the
 # baselines of commit 3b27d5c, in both modes (SIMC_BASELINE_DIR/3b27d5c_[corrected_]pion_<tag>_n20k_s4242/). Inputs: the
 # P9.F1 L2 inputs in reference/runs.
-set(SIMC_PION_BASELINE_COMMIT "4408493_glibc243" CACHE STRING "Commit whose pion outputs are the identity baseline")
+set(SIMC_PION_BASELINE_COMMIT "55cf7a0_glibc243" CACHE STRING "Commit whose pion outputs are the identity baseline")
 foreach(_tag h_k1_rad_dec1 d_k1_pim_rad_dec1)
     set(_inp ${SIMC_REFERENCE_DIR}/runs/pion_${_tag}_A/pion_${_tag}_A.inp)
     add_test(NAME regression_identity_pion_${_tag}
@@ -88,7 +92,7 @@ endforeach()
 # P10.2: kaon production (K+ Lambda H with decay in flight, K+ Sigma- D; K1, rad, seed 4242, 20000 events) against the
 # baselines of commit 1275770, in both modes (SIMC_BASELINE_DIR/1275770_[corrected_]kaon_<tag>_n20k_s4242/). Inputs: the
 # P10.F1 L2 inputs in reference/runs.
-set(SIMC_KAON_BASELINE_COMMIT "4408493_glibc243" CACHE STRING "Commit whose kaon outputs are the identity baseline")
+set(SIMC_KAON_BASELINE_COMMIT "55cf7a0_glibc243" CACHE STRING "Commit whose kaon outputs are the identity baseline")
 foreach(_tag h_k1_rad_dec1 d_k1_sigm_rad_dec1)
     set(_inp ${SIMC_REFERENCE_DIR}/runs/kaon_${_tag}_A/kaon_${_tag}_A.inp)
     add_test(NAME regression_identity_kaon_${_tag}
@@ -109,7 +113,7 @@ endforeach()
 # (glibc 2.43 / gcc 16.2.1 / ROOT 6.40.04), in both modes (SIMC_BASELINE_DIR/51e86c2_glibc243_[corrected_]delta_h_d1_rad_n20k_s4242/ since P14.2: the 074cced compat
 # baseline differs only in the sign of 9 sigcm NaNs, now the Fortran sign (sig_blok operand order, commit 51e86c2);
 # validation/scripts/regen_baselines.sh --only delta). Input: the P11.F1 L2 input in reference/runs.
-set(SIMC_DELTA_BASELINE_COMMIT "51e86c2_glibc243" CACHE STRING "Commit whose Delta outputs are the identity baseline")
+set(SIMC_DELTA_BASELINE_COMMIT "55cf7a0_glibc243" CACHE STRING "Commit whose Delta outputs are the identity baseline")
 foreach(_tag h_d1_rad)
     set(_inp ${SIMC_REFERENCE_DIR}/runs/delta_${_tag}_A/delta_${_tag}_A.inp)
     add_test(NAME regression_identity_delta_${_tag}
@@ -129,7 +133,7 @@ endforeach()
 # P12.2: SIDIS H(e,e'pi+)X (K1: HMS e-, SHMS pi+; rad, seed 4242, 20000 events) against the baselines of commit 31b4232
 # (glibc 2.43 / gcc 16.2.1 / ROOT 6.40.04), in both modes (SIMC_BASELINE_DIR/31b4232_glibc243_[corrected_]sidis_h_k1_pip_rad_n20k_s4242/,
 # validation/scripts/regen_baselines.sh --only sidis). Input: the P12.F1 L2 input in reference/runs.
-set(SIMC_SIDIS_BASELINE_COMMIT "31b4232_glibc243" CACHE STRING "Commit whose SIDIS outputs are the identity baseline")
+set(SIMC_SIDIS_BASELINE_COMMIT "55cf7a0_glibc243" CACHE STRING "Commit whose SIDIS outputs are the identity baseline")
 foreach(_tag h_k1_pip_rad)
     set(_inp ${SIMC_REFERENCE_DIR}/runs/sidis_${_tag}_A/sidis_${_tag}_A.inp)
     add_test(NAME regression_identity_sidis_${_tag}
@@ -149,7 +153,7 @@ endforeach()
 # P13.2: exclusive rho H(e,e'pi+)[rho] (K1: HMS e-, SHMS pi; rad, seed 4242, 1000 events: ~2.9e6 tries) against the
 # baselines of commit e6feaf0 (glibc 2.43 / gcc 16.2.1 / ROOT 6.40.04), in both modes
 # (SIMC_BASELINE_DIR/e6feaf0_glibc243_[corrected_]rho_h_k1_rad_n1k_s4242/, validation/scripts/regen_baselines.sh --only rho).
-set(SIMC_RHO_BASELINE_COMMIT "e6feaf0_glibc243" CACHE STRING "Commit whose rho outputs are the identity baseline")
+set(SIMC_RHO_BASELINE_COMMIT "55cf7a0_glibc243" CACHE STRING "Commit whose rho outputs are the identity baseline")
 foreach(_tag h_k1_rad)
     set(_inp ${SIMC_REFERENCE_DIR}/runs/rho_${_tag}_A/rho_${_tag}_A.inp)
     add_test(NAME regression_identity_rho_${_tag}
@@ -169,7 +173,7 @@ endforeach()
 # P14.3: exclusive H(e,e'pi0)p with the calorimeter (HMS e-, NPS-like arm 8, pizero_ngamma 2; seed 4242, 2000 events) against
 # the baselines of commit 17310b4 (glibc 2.43 / gcc 16.2.1 / ROOT 6.40.04), in both modes
 # (SIMC_BASELINE_DIR/17310b4_glibc243_[corrected_]calo_excl_h_ng2_n2k_s4242/, validation/scripts/regen_baselines.sh --only calo).
-set(SIMC_CALO_BASELINE_COMMIT "17310b4_glibc243" CACHE STRING "Commit whose calorimeter outputs are the identity baseline")
+set(SIMC_CALO_BASELINE_COMMIT "55cf7a0_glibc243" CACHE STRING "Commit whose calorimeter outputs are the identity baseline")
 foreach(_tag excl_h_ng2)
     set(_inp ${SIMC_REFERENCE_DIR}/runs/p14f2_${_tag}_A/p14f2_${_tag}_A.inp)
     add_test(NAME regression_identity_calo_${_tag}
