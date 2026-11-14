@@ -113,7 +113,7 @@ examples/       example plug-ins (ideal_box spectrometer) and their tests
 tests/          unit/ l1/ regression/
 tools/          simc++ main, inp2json, hist2json, check_all.sh
 validation/     simc_compare (L2)
-data/           COSY maps, spectral functions, pion, kaon and SIDIS model tables (copies of the Fortran files:
-                matrices/simc_fortran, spectral, pion, kaon, sidis),
-                tables, data/config/*.json
+data/           COSY maps, spectral functions, pion, kaon and SIDIS model tables, the target field map (copies of the
+                Fortran files, each directory with MD5SUMS: matrices/simc_fortran, spectral, pion, kaon, sidis, field),
+                data/config/*.json
 ```
