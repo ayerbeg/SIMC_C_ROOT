@@ -1,0 +1,15 @@
+# SIMCConfig.cmake — the SIMC++ CMake package (task P15.3).
+#   find_package(SIMC 2.0 REQUIRED)
+#   add_executable(my_simc main.cpp MyPlugin.cpp)
+#   target_link_libraries(my_simc PRIVATE SIMC::simc)
+# SIMC::simc links everything a complete run needs (headers in <prefix>/include). SIMC_DATA_DIR = the installed data
+# (COSY maps, spectral functions, model tables, field map).
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+find_dependency(nlohmann_json 3.9)
+find_dependency(ROOT 6.40 COMPONENTS Core Tree Hist RIO)
+
+include("${CMAKE_CURRENT_LIST_DIR}/SIMCTargets.cmake")
+set(SIMC_DATA_DIR "${PACKAGE_PREFIX_DIR}/share/simc/data")
+check_required_components(SIMC)

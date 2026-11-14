@@ -49,7 +49,7 @@ add_library(simcfw STATIC
     src/output/NtupleLayout.cpp
     src/output/SummaryJson.cpp
 )
-target_include_directories(simcfw PUBLIC ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(simcfw PUBLIC $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
 target_link_libraries(simcfw PUBLIC nlohmann_json::nlohmann_json)
 target_compile_options(simcfw PRIVATE -Wall -Wextra -pedantic)
 
@@ -143,9 +143,39 @@ add_subdirectory(tests/regression)     # C++ baselines: output_identity.sh print
 # ============================================================================
 # Programs, the public headers (core, stages, driver, io, plug-in classes; NOT the kernel/ headers, which are private
 # to their modules), the data files (COSY maps, tables, example configurations), the documentation and the examples.
-# The COSY map directory compiled into simc++ is the source tree's data/matrices/simc_fortran; an installed copy is
-# selected with the spectrometer JSON key "matrix_dir" (docs/EXTENDING.md).
+# The data directories compiled into the libraries are those of the SOURCE tree (data/...); an installed copy
+# (share/simc/data, SIMC_DATA_DIR of the package) is selected with --data-dir and the "matrix_dir"/"data_dir" JSON keys
+# of the stages (docs/EXTENDING.md).
 install(TARGETS simcpp inp2json hist2json simc_root_identity RUNTIME DESTINATION bin)
+
+# P15.3: the CMake package SIMC (find_package(SIMC)). SIMC::simc is an INTERFACE target that links every library of a
+# complete run (${SIMC_DRIVER_LIBS}); the OBJECT libraries are installed as object files (lib/simc/objects), so a
+# consumer gets every SIMC_REGISTER registration (built-in reactions, spectrometers, sinks) without whole-archive flags.
+# Its own plug-ins are linked into its own executable, which can call simc::driver::CommandLineMain (the simc++ command
+# line, include/simc/driver/CommandLine.h); see examples/out_of_tree_plugin and docs/EXTENDING.md.
+add_library(simc INTERFACE)
+target_link_libraries(simc INTERFACE ${SIMC_DRIVER_LIBS})
+# The objects of an OBJECT library are linked only into targets that link it DIRECTLY; through the INTERFACE target
+# they are passed explicitly (INTERFACE_SOURCES), so the consumer's executable gets every registration.
+foreach(_l ${SIMC_DRIVER_LIBS})
+    get_target_property(_type ${_l} TYPE)
+    if(_type STREQUAL "OBJECT_LIBRARY")
+        target_sources(simc INTERFACE $<BUILD_INTERFACE:$<TARGET_OBJECTS:${_l}>>
+                                      $<INSTALL_INTERFACE:$<TARGET_OBJECTS:SIMC::${_l}>>)
+    endif()
+endforeach()
+add_library(SIMC::simc ALIAS simc)
+install(TARGETS simc ${SIMC_DRIVER_LIBS} EXPORT SIMCTargets
+        ARCHIVE DESTINATION lib/simc
+        OBJECTS DESTINATION lib/simc/objects)
+install(EXPORT SIMCTargets NAMESPACE SIMC:: DESTINATION lib/cmake/SIMC)
+include(CMakePackageConfigHelpers)
+configure_package_config_file(${CMAKE_SOURCE_DIR}/cmake/SIMCConfig.cmake.in ${CMAKE_BINARY_DIR}/SIMCConfig.cmake
+                              INSTALL_DESTINATION lib/cmake/SIMC)
+write_basic_package_version_file(${CMAKE_BINARY_DIR}/SIMCConfigVersion.cmake VERSION ${PROJECT_VERSION}
+                                 COMPATIBILITY SameMajorVersion)
+install(FILES ${CMAKE_BINARY_DIR}/SIMCConfig.cmake ${CMAKE_BINARY_DIR}/SIMCConfigVersion.cmake
+        DESTINATION lib/cmake/SIMC)
 install(DIRECTORY include/simc DESTINATION include
         FILES_MATCHING PATTERN "*.h"
         PATTERN "kernel" EXCLUDE)

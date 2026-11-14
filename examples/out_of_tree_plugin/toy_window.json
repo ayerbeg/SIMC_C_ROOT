@@ -1,0 +1,4 @@
+{
+  "_comment": "examples/out_of_tree_plugin: the hadron arm is the out-of-tree plug-in toy_window. Use: my_simc <file.inp> --pipeline toy_window.json",
+  "pipeline": {"spectrometers": {"hadron": {"type": "toy_window", "delta_max": 8.0}}}
+}

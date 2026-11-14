@@ -13,6 +13,7 @@ add_library(simcfw_driver STATIC
     MonteCarlo.cpp
     PizeroCalorimeter.cpp
     Central.cpp
+    CommandLine.cpp         # the simc++ command line (CommandLineMain, P15.3)
     FortranWriter.cpp
     Pipeline.cpp
     RunReport.cpp           # normalisation, summary sections (P15.3 split:)

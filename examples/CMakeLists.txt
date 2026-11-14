@@ -24,3 +24,11 @@ add_test(NAME example_ideal_box_cli
          COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/ideal_box/cli_check.sh $<TARGET_FILE:simcpp> ${_inp}
                  ${CMAKE_CURRENT_SOURCE_DIR}/ideal_box/hadron_arm.json ${CMAKE_CURRENT_BINARY_DIR}/ideal_box_cli)
 set_tests_properties(example_ideal_box_cli PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 600 LABELS "examples;cli")
+
+# P15.3: the installable package + an out-of-tree plug-in (examples/out_of_tree_plugin): cmake --install into a
+# temporary prefix, find_package(SIMC) build of the example, a run that uses its plug-in (labels "examples;package").
+add_test(NAME package_out_of_tree_plugin
+         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/out_of_tree_plugin/package_check.sh ${CMAKE_BINARY_DIR}
+                 ${CMAKE_CURRENT_SOURCE_DIR}/out_of_tree_plugin ${CMAKE_CURRENT_BINARY_DIR}/out_of_tree_plugin ${_inp}
+                 ${ROOT_DIR})
+set_tests_properties(package_out_of_tree_plugin PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 900 LABELS "examples;package")
