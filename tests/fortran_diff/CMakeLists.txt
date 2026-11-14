@@ -43,6 +43,9 @@ set(SIMC_FORTRAN_DIFF_ITEMS
     D062_G1_pi0_photon_decay
     D062_G2_calo_electron_decay
     D062_G3_pi0_path_length
+    D067_T1_field_opposite_side
+    D067_T2_field_parm_sign
+    D067_T14_field_ntuple_columns
 )
 foreach(_item ${SIMC_FORTRAN_DIFF_ITEMS})
     add_test(NAME fortran_diff_${_item}

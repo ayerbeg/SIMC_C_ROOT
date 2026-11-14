@@ -27,9 +27,11 @@
 #include "simc/core/SimcParameters.h"
 #include "simc/core/Registry.h"
 #include "simc/core/SpectrometerId.h"
+#include "simc/core/Units.h"
 #include "simc/core/random/Mt64Random.h"
 #include "simc/core/random/ScriptedRandom.h"
 #include "simc/driver/FortranWriter.h"
+#include "simc/driver/TargetFieldAngles.h"
 #include "simc/driver/RunReport.h"
 #include "simc/driver/SimcRun.h"
 #include "simc/input/InpReader.h"
@@ -1871,6 +1873,107 @@ int testPi0PathLength() {
     return 0;
 }
 
+// ---- D-067 (P15.2b): polarized-target field
+// T1/T2: the arm angles of simc.f:120-151 for the shipped example and the probes p15f2_poltar_{bphi0,bangle5}; the
+// Fortran values are the "Angle between target and e-arm / p-arm" log lines of reference/runs/p15f2_poltar_*.
+int testFieldArmAngles(bool t1) {
+    using constants::degrad;
+    using constants::pi;
+    const double e_th = 15.25 / units::kDegPerRad, p_th = static_cast<double>(12.70f) / units::kDegPerRad;
+    const double e_ph = 3 * pi / 2., p_ph = pi / 2.;
+    auto run = [&](double Bangle, double Bphi, bool compat) {
+        return driver::TargetFieldArmAngles(Bangle / units::kDegPerRad, Bphi / units::kDegPerRad, e_th, e_ph, p_th, p_ph,
+                                            compat);
+    };
+    auto near = [](double a, double b) { return std::fabs(a - b) <= 1e-12 * std::max(1.0, std::fabs(b)); };
+    char m[240];
+    // the shipped example (targ_Bphi = 270): no correction acts
+    for (bool compat : {true, false}) {
+        const auto a = run(80., 270., compat);
+        std::snprintf(m, sizeof m, "%s, example: e %.15g p %.15g (Fortran 64.749999999999986 / 92.699999809265137)",
+                      compat ? "compat" : "corrected", a.earm * degrad, a.parm * degrad);
+        expect(near(a.earm * degrad, 64.749999999999986) && near(a.parm * degrad, 92.699999809265137), m);
+    }
+    if (t1) {   // probe bphi0: targ_Bphi = 0 (the CTP default)
+        const auto f = run(80., 0., true), c = run(80., 0., false);
+        std::snprintf(m, sizeof m, "compat (Fortran): e-arm error branch (0), p-arm dphi = 90 taken as opposite side: %.15g",
+                      f.parm * degrad);
+        expect(f.earm == 0.0 && near(f.parm * degrad, 92.699999809265137), m);
+        std::snprintf(m, sizeof m, "corrected: |dphi| = 270 and 90 are neither side: both arms error branch (%g, %g)",
+                      c.earm, c.parm);
+        expect(c.earm == 0.0 && c.parm == 0.0, m);
+        int errs = 0;
+        for (const auto& l : c.log) errs += l.find("Error determining angle") != std::string::npos;
+        expect(errs == 2, "corrected: two 'Error determining angle' messages");
+        const auto o = run(80., 90., false);
+        expect(near(o.earm * degrad, -95.25) && near(o.parm * degrad, -67.300000190734863),
+               "corrected, targ_Bphi = 90 (probe bphi90): opposite side for the e arm unchanged (-95.25 / -67.3)");
+    } else {    // probe bangle5: targ_Bphi = 90, targ_Bangle = 5 < theta_p
+        const auto f = run(5., 90., true), c = run(5., 90., false);
+        std::snprintf(m, sizeof m, "compat (Fortran): p-arm %.15g (-7.6999998092651367), e-arm %.15g (-20.25)",
+                      f.parm * degrad, f.earm * degrad);
+        expect(near(f.parm * degrad, -7.6999998092651367) && near(f.earm * degrad, -20.25), m);
+        std::snprintf(m, sizeof m, "corrected: p-arm %.15g = +(theta_p - Bangle) as the e-arm formula", c.parm * degrad);
+        expect(near(c.parm * degrad, 7.6999998092651367) && near(c.earm * degrad, -20.25), m);
+    }
+    return 0;
+}
+int testFieldOppositeSide() { return testFieldArmAngles(true); }
+int testFieldPArmSign() { return testFieldArmAngles(false); }
+
+// T14: the ntuple columns of pi0 + field (pion layout) and rho + field (mmnuc), in both modes
+int testFieldNtupleColumns() {
+    RunSetup s;
+    s.params.electron_arm = 1;
+    s.params.hadron_arm = 5;
+    s.flags.doing_pion = true;
+    s.flags.doing_pizero = true;
+    s.flags.using_tgt_field = true;
+    s.params.using_tgt_field = true;
+    MainEvent main;
+    Event vertex, orig, recon;
+    recon.theta_tarq = 0.11, recon.phi_targ = 0.12, recon.beta = 0.13, recon.phi_s = 0.14, recon.phi_c = 0.15;
+    main.beta = 0.16, vertex.phi_s = 0.17, vertex.phi_c = 0.18;
+    main.ntup.xcal_gamma1 = 1.1, main.ntup.ycal_gamma1 = 1.2, main.ntup.xcal_gamma2 = 2.1, main.ntup.ycal_gamma2 = 2.2;
+    for (std::size_t i = 0; i < 4; ++i) main.ntup.gamma1[i] = 10. + i, main.ntup.gamma2[i] = 20. + i;
+    const auto& cols = NtupleColumnsFor(s);
+    expect(cols.size() == 73 && std::string(cols[53].name) == "th_tarq" && std::string(cols[61].name) == "xcal_gamma1" &&
+               std::string(cols[72].name) == "Pgamma2z",
+           "pi0 + field: 73 tags, th_tarq = 54, xcal_gamma1 = 62, Pgamma2z = 73 (NtupleInit.f:142-191)");
+    for (bool compat : {true, false}) {
+        s.fortran_compat = compat;
+        std::vector<double> ntu(cols.size(), 0.0);
+        FillPionNtuple(s, main, vertex, orig, recon, ntu);
+        if (compat) {
+            expect(ntu[53] == 1.1 && ntu[54] == 1.2 && ntu[55] == 10. && ntu[64] == 23. && ntu[65] == 0. && ntu[72] == 0.,
+                   "compat (Fortran): photons in ntu(54..65) over the angles, tags 66-73 stay 0");
+        } else {
+            expect(ntu[53] == 0.11 && ntu[60] == 0.18 && ntu[61] == 1.1 && ntu[63] == 10. && ntu[72] == 23.,
+                   "corrected: angles in 54-61, photons in their tags 62-73");
+        }
+    }
+    RunSetup r;
+    r.params.electron_arm = 1;
+    r.params.hadron_arm = 5;
+    r.flags.doing_rho = true;
+    r.flags.using_tgt_field = true;
+    r.params.using_tgt_field = true;
+    MainEvent mr = main;
+    mr.ntup.rhomass = 770., mr.ntup.rhotheta = 0.5, mr.ntup.mmA = 1234.;
+    const auto& rc = NtupleColumnsFor(r);
+    expect(rc.size() == 67 && std::string(rc[56].name) == "th_tarq" && std::string(rc[66].name) == "mmnuc",
+           "rho + field: 67 tags, th_tarq = 57, mmnuc = 67");
+    for (bool compat : {true, false}) {
+        r.fortran_compat = compat;
+        std::vector<double> ntu(rc.size(), 0.0);
+        FillRhoNtuple(r, mr, vertex, orig, recon, ntu);
+        expect(ntu[56] == 0.11 && ntu[64] == 770. && ntu[65] == 0.5, "rho + field: angles 57-64, Mrho 65, Thrho 66");
+        expect(compat ? ntu[66] == 0.0 : ntu[66] == 1.234,
+               compat ? "compat (Fortran): mmnuc (67) never written: 0" : "corrected: mmnuc = ntup%mmA/1000");
+    }
+    return 0;
+}
+
 const std::map<std::string, std::function<int()>>& items() {
     static const std::map<std::string, std::function<int()>> m = {
         {"D032_spectrometer_id", testSpectrometerId},
@@ -1908,6 +2011,9 @@ const std::map<std::string, std::function<int()>>& items() {
         {"D048_F9_central_sigcc_delta", testCentralSigccDelta},
         {"D051_F3_F9_semi_pfermi_pmper", testSemiPfermiPmPer},
         {"D051_F12_F14_semi_hist_titles", testSemiHistTitles},
+        {"D067_T1_field_opposite_side", testFieldOppositeSide},
+        {"D067_T2_field_parm_sign", testFieldPArmSign},
+        {"D067_T14_field_ntuple_columns", testFieldNtupleColumns},
     };
     return m;
 }
