@@ -235,11 +235,9 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
     // (and complete_main uses the other cross section): no meaningful run. Refused in both modes (input error).
     // FORTRAN-BUG(D-057 F16): original Fortran dbase.f:209-214, 875-876: no doing_*rho flag for nint(A) >= 4, so the run
     // STOPs ('I don't have ANY idea what (e,e'rho) we're doing!!!', exit status 0) after printing E_bind = -1e10;
-    // refused here at input in both modes with a clear message (there is no rho model for A >= 4).
-    if (p.doing_rho && !p.doing_phsp && (A >= 4 || A < 1))
-        throw std::invalid_argument("doing_rho = 1 with targ%A = " + std::to_string(p.targ.A) +
-                                    ": exclusive rho production is only set up for H, D and 3He (dbase.f:209-214; the "
-                                    "Fortran STOPs at dbase.f:876 'I don't have ANY idea what (e,e'rho) we're doing!!!')");
+    // refused in both modes with a clear message (there is no rho model for A >= 4). P15.2: the refusal is made after the
+    // target-geometry STOPs of dbase.f:461/465 (below), which the Fortran reaches first (shipped rhotest.inp, legacy names:
+    // targ%A = 0 and targ%can = 0 -> 'bad targ.can value', reference/P15.F1_report.md §3).
     if (p.doing_rho && !p.doing_phsp && (p.doing_pion || p.doing_kaon || p.doing_delta || p.doing_semi))
         throw std::invalid_argument(
             "doing_rho = 1 together with doing_pion/doing_kaon/doing_delta/doing_semi: the Fortran runs the other "
@@ -477,6 +475,11 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
         stop("BAD targ.angle (0 is perp. to beam, +ve is rotated towards SOS)");
         return s;
     }
+    // D-057 F16 (see above): rho with nint(A) outside 1..3, refused after the dbase.f:461/465 STOPs (P15.2)
+    if (p.doing_rho && !p.doing_phsp && (A >= 4 || A < 1))
+        throw std::invalid_argument("doing_rho = 1 with targ%A = " + std::to_string(p.targ.A) +
+                                    ": exclusive rho production is only set up for H, D and 3He (dbase.f:209-214; the "
+                                    "Fortran STOPs at dbase.f:876 'I don't have ANY idea what (e,e'rho) we're doing!!!')");
 
     // ---- dbase.f:472-475 offsets mrad -> rad
     s.spec.e.offset.xptar = s.spec.e.offset.xptar / units::kMradPerRad;
@@ -526,6 +529,11 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
     // ---- dbase.f:531-547 flags
     sw.using_E_arm_montecarlo = p.spect_mode != 1 && p.spect_mode != -1;
     sw.using_P_arm_montecarlo = p.spect_mode != 1 && p.spect_mode != -2;
+    // P15.2 (D-065 S2): the Fortran accepts any spect_mode; every value other than 1/-1/-2 silently means "both arms on".
+    // Corrected mode says so (log only, the run continues as in the Fortran); fortran_compat prints nothing.
+    if (!s.fortran_compat && p.spect_mode != 0 && p.spect_mode != 1 && p.spect_mode != -1 && p.spect_mode != -2)
+        msg("WARNING (simc++): spect_mode = " + std::to_string(p.spect_mode) +
+            " is not one of 0, 1, -1, -2: running with BOTH arm Monte Carlos ON, as the Fortran does (dbase.f:531-532)");
     s.cuts.Em.min = p.cuts.Em.min;
     s.cuts.Em.max = p.cuts.Em.max;
     if (f.doing_pion || f.doing_kaon || f.doing_delta || (s.cuts.Em.min == s.cuts.Em.max)) {

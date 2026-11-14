@@ -60,3 +60,9 @@ add_test(NAME cli_decay_non_pik
          COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/cli_decay_non_pik.sh $<TARGET_FILE:simcpp> ${SIMC_REFERENCE_DIR}
                  ${CMAKE_CURRENT_BINARY_DIR}/cli_decay_non_pik)
 set_tests_properties(cli_decay_non_pik PROPERTIES LABELS "fortran_diff;cli" SKIP_RETURN_CODE 77)
+
+# P15.2 (D-065): shipped legacy-name inputs (same STOP as the Fortran + the ignored names), fpi12_deltapp, spect_mode warning
+add_test(NAME cli_shipped_inputs
+         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/cli_shipped_inputs.sh $<TARGET_FILE:simcpp> $<TARGET_FILE:simc_root_identity>
+                 ${SIMC_FORTRAN_DIR} ${SIMC_REFERENCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/cli_shipped_inputs)
+set_tests_properties(cli_shipped_inputs PROPERTIES LABELS "fortran_diff;cli" SKIP_RETURN_CODE 77 TIMEOUT 600)
