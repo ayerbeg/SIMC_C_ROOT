@@ -35,6 +35,13 @@ Each sink accepts an optional JSON config `{"file": "..."}`.
   - Any other value: columns 1-24 keep the previous event's values. This matches the static Fortran array, which the Fortran
     reports as "results_write not yet set up".
   - In the table, R and L are the right-side and left-side particle: `e` or `p` depending on the case above.
+- **Switched-off arm (`spect_mode`, D-065 S1, task P15.2)**: with `spect_mode` = 1 (both arms off), −1 (electron arm off) or
+  −2 (hadron arm off) the arm Monte Carlo is not called for that arm (simc.f:1612-1618 / 1806-1812). Its `*delta`, `*yptar`,
+  `*xptar` then hold the SP values (vertex after energy loss and multiple scattering, no aperture test), while its focal-plane
+  columns `*xfp`, `*xpfp`, `*yfp`, `*ypfp` and the reconstructed `*ytar` are **0.0 in every event** (the Fortran never writes
+  them; `main` is a zero-initialised SAVEd variable). SIMC++ writes the same 0.0 in both modes: these zeros are not
+  measurements and must be excluded from any FP/ytar analysis of such runs. Any other `spect_mode` value means "both arms
+  on" (dbase.f:531-532); the corrected mode warns about values outside {0, 1, −1, −2} (D-065 S2).
 - Units are those of the Fortran ntuple. The `!mr` comments in results_write.f are wrong: the stored values are slopes
   (rad), as the reference tree shows (hsyptar is about ±0.03).
 

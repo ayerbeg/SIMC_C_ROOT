@@ -189,3 +189,34 @@ foreach(_tag excl_h_ng2)
     set_tests_properties(regression_identity_calo_${_tag} regression_corrected_calo_${_tag} PROPERTIES
                          SKIP_RETURN_CODE 77 TIMEOUT 1200 LABELS regression)
 endforeach()
+
+# P15.2 (D-064/D-065): label "regression_shipped" — full-run identity of every runnable shipped input of simc_gfortran/infiles
+# (and the P15.F1 spect_mode / pi0-in-HMS/SHMS runs) against the Fortran archives in reference/runs: simc++ with the RANLUX
+# port (seeded from the .inp, as the Fortran) and --fortran-compat; .hist except the time lines, .geni, .gen text-identical,
+# h10 tree bitwise (validation/scripts/p15_shipped_regression.sh, one folder per test). Every run here takes < 10 min in
+# simc++ (longest p15f1_pi0_shms_A ~2 min), so all are full runs, no short captures. Folders that cover a shipped input:
+#   shipped_<name>[_pct]     the P15.F1 sweep (as shipped, or the convert_inputfile.sh renamed copy of a legacy input)
+#   nps_* (5), hms_shms_validation (test_hms_shms_validation), eep_h_test_pctnames (test_eep_h renamed).
+# Not repeated here to keep check_all short (the reaction families are covered by the shipped_*_pct SOS runs above); their
+# full-run identity is on disk (simc_runs/20261114_142803_P15.2_shipped_identity_other): p14f1_{sidis,delta,kaon,pion}_sos_A
+# (mc_neg_h_z85_zbin, test_delta_h, test_kaon_h, test_pion_h renamed, 1e5 events, 71-498 s). rhotest (p14f1_rho_sos_A) and
+# p14f1_eep_sos_A are the slow l1_simcrun_ranlux_* tests (kaon.cmake, hrs.cmake).
+# shipped_poltar_exclusivepion_example and shipped_inputfile_protoype_pct need using_tgt_field (trg_track.f, not ported):
+# their tests check the refusal ("not ported") until P15.2b. Labels "regression_shipped;slow"; skipped (77) without reference.
+set(SIMC_SHIPPED_FOLDERS
+    p15f1_eep_sm1_A p15f1_eep_smm1_A p15f1_eep_smm2_A p15f1_phsp_sm1_A p15f1_pion_sm1_A
+    p15f1_pi0_shms_A p15f1_pi0_hms_A p15f1_pi0_shms_cap
+    shipped_eep_hydrogen_q8 shipped_fpi12_test shipped_mc_neg_h_z37_ptbin shipped_test_eep_fe shipped_test_eep_fe_bh
+    shipped_poltar_exclusivepion_example shipped_inputfile_protoype_pct shipped_mc_neg_d_z85_zbin_pct
+    shipped_test_delta_pct shipped_test_delta2_pct shipped_test_delta_h2_pct shipped_test_eep_d_pct shipped_test_eep_fe_pct
+    shipped_test_eep_fe_bh_pct shipped_test_kaon_c12_pct shipped_test_kaon_d_pct shipped_test_kaon_he3_pct
+    shipped_test_kaon_he4_pct shipped_test_pion_d_pct shipped_test_pion_he_pct
+    nps_excl_pi0_test nps_excl_pi0_ld2_proton_test nps_excl_pi0_ld2_neutron_test nps_delta_pi0_test nps_sidis_pi0_test
+    hms_shms_validation eep_h_test_pctnames)
+foreach(_f ${SIMC_SHIPPED_FOLDERS})
+    add_test(NAME regression_shipped_${_f}
+             COMMAND ${CMAKE_SOURCE_DIR}/validation/scripts/p15_shipped_regression.sh $<TARGET_FILE:simcpp>
+                     $<TARGET_FILE:simc_root_identity> ${CMAKE_CURRENT_BINARY_DIR}/shipped_${_f} ${_f})
+    set_tests_properties(regression_shipped_${_f} PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 1200
+                         ENVIRONMENT "REF=${SIMC_REFERENCE_DIR}/runs;JOBS=1" LABELS "regression_shipped;slow")
+endforeach()

@@ -194,6 +194,7 @@ P7.F1 (K2–K4). §6 has the L2 numbers.
 | D-012 F4 calo windows | target.f:73-102, 189-222 | no window branch for the calorimeter arms 7/8: s_air, s_kevlar, s_mylar and forward_path keep the previous narm 2/3 call's values (static locals; the first ones from init.f:53-56 target_init), s_Al = 0 | which windows / target path should the calorimeter arm get (NPS geometry)? kept in both modes (`HallCCryoTarget`, members win_*) | energy loss and radiation length of the calorimeter-arm particle (π0 photons via the π0, the calorimeter electron) |
 | D-062 G5 drift_to_cal | dbase.f:1104 | `drift_to_cal` defaults to 0 and is not checked: arms 7/8 without it put the calorimeter face at the target plane | refuse 0? kept (`calo` plug-in) | calorimeter runs without drift_to_cal |
 | D-062 G8 π0 decay in tail 1 | event.f:899-901 (complete_ev), radc.f tail 1 | pizero_decay is called again when the radiative tail 1 re-calls complete_ev: a second, different photon pair per event (as D-038 F9) | keep the first pair? kept | π0 runs with radiation (photon pair of ~5 % of the events) |
+| D-065 P1 π0 in HMS/SHMS | simc.f:1403-1609, mc_hms/mc_shms | with doing_pizero and hadron_arm 1 or 5 the π0 itself (m2 = Mpi0²) is transported through the magnetic spectrometer like a charged particle (apertures, COSY maps, hut, multiple scattering); pizero_decay still fills the photon columns, which no spectrometer uses; RECON%p = SP%p (D-063). With doing_decay = 1 the π0 reaches the project/transp decay test and STOPs (as D-062 G1) | is "π0 kinematics in the HMS/SHMS acceptance" a meaningful mode, or should it be refused / use a neutral-particle acceptance? Kept in both modes; the corrected mode never decays the π0 in flight (doing_decay = 1 runs, D-037 F9), --fortran-compat STOPs | π0 runs with hadron_arm 1/5 only (reference/runs/p15f1_pi0_{shms,hms}_A); `cli_shipped_inputs` |
 | D-060/D-061 F2 SOS 7.62 cm | mc_sos.f:337-340, 349-360 | the last 7.62 cm to the new exit window are a straight line without `project`: no pathlength (FP path −7.62 cm), no decay check over that segment; the code comment says "WE REALLY NEED TO FIX THIS UP" | include the 7.62 cm in pathlen / decay? | SOS FP path (TOF), decay ON runs |
 | D-061 F3 SOS/HRS recon fry | simc.f:1349-1355, 1472, 1738 | mc_sos (and mc_hrs*) receive the raster `fry` (−rastery, 0 without correct_raster) as the recon vertical position; mc_hms/mc_shms receive xtar_init (the true x at z = 0) | intended difference (SOS/HRS matrices fitted with the raster), or a leftover? | SOS ytar/delta recon with an extended beam spot |
 | D-061 F6 HRS aerogel | physics_kaon.f:155-157, semi_physics.f:617-619 | the survival weight of HRS kaons uses zaero = −183 cm ("aero at 130cm, last project=313(S2)"), but mc_hrs*_hut ends the pathlength at the calorimeter back (432.3 cm; 432.3 − 183 = 249.3 ≠ 130) | which distance is intended? | HRS kaon / SIDIS-kaon weights without decay (only visible with D-061 F1 corrected) |
@@ -214,6 +215,10 @@ P7.F1 (K2–K4). §6 has the L2 numbers.
 | D-062 G4 π0 FP | simc.f:1599-1603 | FP%p (ntuple *fp of the hadron arm) = the last photon that hit (mc_calo writes x_fp only on success); RECON%p = SP%p (no π0 reconstruction); xcal/ycal_gamma = −1e10 for a missed photon | faithful (`driver::PizeroCalorimeter`) |
 | D-062 G6/G7 mc_calo | simc.f:1756; calo/mc_calo.f | dead test `abs(spec%p%phi-pi/2) .eq. 10.` (zhadron unused); mc_calo ignores ms_flag, wcs_flag, resmult, frx, fry, th_spec, spect_side (no smearing, no resolution factor: ntup%resfac stays 0 / the stale tmpfact for the electron arm); mc_calo_recon is never called | faithful; mc_calo_recon ported as a library function for its L1 table |
 | D-062 G9/G10 | infiles/nps_*.inp; calo/, pizero_decay.f | shipped NPS inputs have no random_seed and nps_sidis sets doing_pion and doing_semi (SIDIS wins); SIDIS π0 CENTRAL.sigcc = 0 (z = 1.0003); no REAL(16) argument literals in the calorimeter/π0 code | documented |
+| D-065 S1 off-arm columns | simc.f:1612-1618, 1806-1812 | with spect_mode 1/−1/−2 the switched-off arm gets RECON delta/yptar/xptar = SP, no aperture test, and its FP (`*xfp *xpfp *yfp *ypfp`) and recon `*ytar` columns stay 0.0 in every event; its .geni counters are 0 | faithful in both modes; docs/OUTPUT_FORMAT.md §1 |
+| D-065 S2 spect_mode values | dbase.f:531-532, 949-950 | any spect_mode other than 1/−1/−2 means "both arms on", unchecked | faithful; the corrected mode logs a WARNING for values outside {0, 1, −1, −2} (SetupBuilder, `cli_shipped_inputs`) |
+| D-065 S3 slop | init.f:159-200 | the MC slop is added to the generation window only for arms whose MC is on (genvol 0.0195475 vs 0.0224744 for eep_h_elastic_rad_A) | faithful |
+| D-065 W1-W3 shipped inputs | simc_gfortran/infiles | 18 of the 32 shipped main inputs use legacy `.` names: CTP ignores them (registered as dummy ints) and the run STOPs `bad targ.can value` (dbase.f:461); 3 more run with 20 ignored names from a legacy extra file; temp.inp = mc_neg_h_z37_ptbin.inp; fpi12_deltapp STOPs (D-038 F1) | same STOP / same run; simc++ additionally lists the ignored names and points to convert_inputfile.sh (§16) |
 | D-061 F5 HRS circles | mc_hrs*.f:159-180 | the circular apertures at z = 65.686 and 80.436 cm (before the slit box) count as slit_hor (stop_where 20, 21) | faithful |
 | D-061 F5/F7 HRS cal / VDC offset | mc_hrs*_hut.f:463-470, 480-487; mc_hrsl.f:525, mc_hrsr.f:524 | the calorimeter cuts are commented out (cal counter always 0); y_fp gets the VDC offset (−0.78 L, −0.48 R) after ys (the recon input) is set, so the recon ignores it | faithful |
 | D-061 F5 HRS stop_where | g_dump_all_events.inc, mc_hrs*.f | COMMON /g_dump_all_l|r/ stop_where, x_stop, y_stop written at each stop, never read by SIMC | mirrored in the kernel (`McHrs::dump`) for the L1 tables |
@@ -297,7 +302,7 @@ P7.F1 (K2–K4). §6 has the L2 numbers.
 | D-003 input | CTP .inp, `%` names only (obsolete `.` names silently ignored) | .inp (same CTP semantics, unknown names reported like CTP) or JSON; `inp2json` |
 | D-032 | arm codes as raw integers, 6 half-supported | one `SpectrometerId` table; 6 rejected (see §2) |
 | not ported | target field (using_tgt_field) | `simc::NotPorted` at start-up; the SOS (arm 2, P14.1), the HRS-R/L (arms 3/4, P14.2) and the calorimeter arms 7/8 with π0 → 2γ (P14.3) are ported |
-| D-057 F16 rho A ≥ 4 | dbase.f:209-214, 875-876: no doing_*rho flag for nint(A) ≥ 4, the run STOPs (exit 0) after printing E_bind = −1e10; hadron_arm 6/7/8 STOP in rho_decay | refused at input in both modes (std::invalid_argument; A ≥ 4: SetupBuilder; arms 7/8: the "rho" model; 6 is rejected for every run, D-032) |
+| D-057 F16 rho A ≥ 4 | dbase.f:209-214, 875-876: no doing_*rho flag for nint(A) ≥ 4, the run STOPs (exit 0) after printing E_bind = −1e10; hadron_arm 6/7/8 STOP in rho_decay | refused at input in both modes (std::invalid_argument; A ≥ 4: SetupBuilder; arms 7/8: the "rho" model; 6 is rejected for every run, D-032); P15.2: the A-range refusal comes after the dbase.f:461/465 target STOPs, so rhotest.inp (legacy names, A = 0) gives the Fortran `bad targ.can value` |
 | P13.1 rho + other reaction | dbase.f:136-215 takes the first branch of its if-chain (pion, kaon, delta, semi) and leaves doing_rho set, so event.f:420-421 decays that hadron as a rho | doing_rho together with doing_pion/kaon/delta/semi is refused at start-up (std::invalid_argument, both modes); doing_rho with doing_pizero too (results_write.f:230-236 overwrites the rho columns) |
 | P13.2 RANLUX | grnd = RANLUX luxury 3 (cern/ranlux.f, call_ranlux.f: 999 of every block of 1000), gauss1.f | besides the default `mt64` (D-002), the IRandom `"rng": {"type": "ranlux"}` reproduces the Fortran stream bit for bit from random_seed (or `"state"`: the 25 integers of *_start_random_state.dat): with `--fortran-compat` a SIMC++ run can then be identical to a Fortran run (both P13.F1 rho captures: every try, tree, .hist/.geni/.gen) |
 | P12.1 SIDIS files | Ctq5Pdf.f:SetCtq5 opens cteq5/cteq5m.tbl, fdss.f opens fdss/KANLO.GRID (kaons) from the working directory at the first peepiX call | the "sidis" model reads the copies in `data/sidis` (md5-checked, `l1_sidis_data_files`; JSON `physics.data_dir`) at start-up; a missing file is an error at start-up |
@@ -595,3 +600,70 @@ runs in simc_runs/20261029_014541_P13.2_L2_*). wtcontr = the .hist wtcontr (A: F
 
   The calorimeter corrections themselves (D-062 G1/G2: no decay in these runs; G3: FP path is not an ntuple column) leave
   these trees unchanged; they are proven by `fortran_diff_D062_G{1,2,3}_*`.
+
+## 16. spect_mode, π0 in the HMS/SHMS and the shipped inputs: full-run identity and L2 (task P15.2)
+
+References: reference/P15.F1_report.md (D-065). Identity = simc++ with the RANLUX port seeded from the .inp (as the Fortran;
+the default RANLUX seed where the .inp has none) and `--fortran-compat`: .hist except the BEGIN/END time lines, .geni, .gen
+text-identical, h10 tree bitwise (`simc_root_identity`). Script validation/scripts/p15_shipped_regression.sh; CTest label
+`regression_shipped` (+ `slow`), one test per folder (tests/regression/CMakeLists.txt). Evidence:
+simc_runs/20261113_190555_P15.2_shipped_identity (28 folders) and simc_runs/20261114_142803_P15.2_shipped_identity_other
+(11 folders, build 0fb5da0).
+
+* **spect_mode** (D-065 S1-S3, class d). SIMC++ reproduces the Fortran exactly: for a switched-off arm no aperture test, RECON
+  delta/yptar/xptar = SP, FP and recon z left 0.0 (docs/OUTPUT_FORMAT.md §1), .geni counters 0, no slop on its generation
+  window. Identity: p15f1_eep_sm1_A (1), p15f1_eep_smm1_A (−1), p15f1_eep_smm2_A (−2), p15f1_phsp_sm1_A (1 + doing_phsp),
+  p15f1_pion_sm1_A (1, π+ H) all IDENTICAL. Only addition: the corrected mode logs `WARNING (simc++): spect_mode = N is not
+  one of 0, 1, -1, -2 ...` for other values and runs with both arms on as the Fortran (`cli_shipped_inputs`: spect_mode 2 gives
+  the same tree and .hist as 0 in both modes).
+* **π0 with the HMS/SHMS as hadron arm** (D-065 P1, class b, §4): the π0 is transported through the spectrometer as a charged
+  particle, RECON%p = SP%p (D-063). Identity: p15f1_pi0_shms_A (2.09e6 tries), p15f1_pi0_hms_A (1.98e6), the capture
+  p15f1_pi0_shms_cap: IDENTICAL. With doing_decay = 1 the Fortran (and `--fortran-compat`) STOP at the first decay test
+  ('cannot decay particle with mass=  134.98'); the corrected mode runs and never decays the π0 in flight (D-037 F9
+  decaysInFlight is false for a π0; the pizero_decay photons are not tracked by HMS/SHMS).
+* **L2, seed 4242, mt64, 1e5 events** (validation/scripts/p15_spect_mode_l2.sh, simc_runs/20261114_143242_P15.2_L2_*, build
+  0fb5da0, references p15f1_<tag>_A at seed 12345). In every run the corrected-mode tree is identical to the compat tree
+  (simc_mode_diff); the corrected FAILs are deterministic corrections only:
+
+| run | compat vs A (F/N) | wtcontr A / C++ compat (pull) | corrected vs A (F/N) | corrected wtcontr (pull) | explanation |
+|---|---|---|---|---|---|
+| eep_sm1 (both arms off) | PASS 1/165 | 473.66 / 470.79 (+0.5) | FAIL 2/165 | 424.12 (+8.7) | D-006 pass_cuts: with the p arm off the recon proton delta spans the generation range (−41.7…+28.5 %), so the corrected p-arm delta window removes 9.9 % of wtcontr (corrected vs compat run) |
+| eep_smm1 (e arm off) | PASS 0/194 | 206.89 / 207.33 (−0.5) | PASS 0/194 | 207.33 (−0.5) | p arm on: its acceptance is inside both windows, D-006 has no effect |
+| eep_smm2 (p arm off) | PASS 3/194 | 440.61 / 442.79 (−0.8) | FAIL 4/194 | 418.75 (+7.9) | D-006 (−5.4 % vs compat) |
+| phsp_sm1 (both off, doing_phsp) | PASS 0/162 | 0.12294 / 0.12089 (+1.7) | FAIL 1/162 | 0.09139 (+26.9) | D-006 (−24.4 % vs compat, sigcc = 1: pure phase space) |
+| pion_sm1 (both off, π+ H) | PASS 0/181 | 654.30 / 663.64 (−2.2) | FAIL 1/181 | 663.64 (−2.2) | CENTRAL.sigcc (D-038 F5, deterministic); the −2.2 pull is a fluctuation (the RANLUX run is identical) |
+
+  The D-006 effect is large here because a switched-off arm imposes no acceptance: in spect_mode runs the corrected
+  pass_cuts window is the only limit on the hadron delta. Remaining non-gross failures (eep_sm1 `q`, eep_smm2 `theta_p`, KS
+  p ≈ 0.005-0.01) are the same in both modes (statistical).
+* **Shipped inputs** (simc_gfortran/infiles, P15.F1 §3). "as shipped" = what the Fortran does with the unmodified file;
+  simc++ does the same (`cli_shipped_inputs` checks every STOP in both modes); "identity" = the folder whose Fortran run
+  simc++ reproduces exactly.
+
+| file | Fortran as shipped | ignored names | simc++ as shipped | identity (reference/runs/…) |
+|---|---|---|---|---|
+| eep_hydrogen_q8 | runs | 0 | runs | shipped_eep_hydrogen_q8: IDENTICAL |
+| fpi12_test | runs | 0 | runs | shipped_fpi12_test: IDENTICAL |
+| fpi12_deltapp | STOP `Can't do Delta+ production from neutron for pi0` (dbase.f:823-826) | 0 | compat: same STOP; corrected: runs (D-038 F1, class a) | none possible |
+| mc_neg_h_z37_ptbin, temp (byte-identical) | runs | 0 | runs | shipped_mc_neg_h_z37_ptbin: IDENTICAL |
+| nps_excl_pi0_test, nps_excl_pi0_ld2_{proton,neutron}_test, nps_delta_pi0_test, nps_sidis_pi0_test | runs | 0 | runs | nps_* (5): IDENTICAL |
+| poltar_exclusivepion_example | runs (using_tgt_field) | 0 | REFUSED: using_tgt_field not ported (trg_track.f) | shipped_poltar_exclusivepion_example: REFUSED (P15.2b) |
+| inputfile_protoype | STOP `bad targ.can value` | 46 | same STOP + names + convert hint | shipped_inputfile_protoype_pct: REFUSED (using_tgt_field, P15.2b) |
+| mc_neg_d_z85_zbin | STOP `bad targ.can value` | 46 | same | shipped_mc_neg_d_z85_zbin_pct: IDENTICAL |
+| mc_neg_h_z85_zbin | STOP | 46 | same | p14f1_sidis_sos_A: IDENTICAL (disk evidence) |
+| rhotest | STOP | 46 | same (the D-057 F16 rho A-range refusal now comes after this STOP) | p14f1_rho_sos_A: IDENTICAL (P15.1, slow test) |
+| test_delta, test_delta2, test_delta_h2 | STOP | 46 | same | shipped_test_delta{,2,_h2}_pct: IDENTICAL |
+| test_delta_h | STOP | 46 | same | p14f1_delta_sos_A: IDENTICAL (disk evidence) |
+| test_eep_d | STOP | 46 | same | shipped_test_eep_d_pct: IDENTICAL |
+| test_eep_h | STOP | 46 | same | eep_h_test_pctnames: IDENTICAL; p14f1_eep_sos_A (slow test) |
+| test_eep_fe, test_eep_fe_bh | runs, legacy extra file | 20 | runs + loud warning with the 20 names | shipped_test_eep_fe{,_bh} (as shipped) and _pct: IDENTICAL |
+| test_hms_shms_validation | runs, legacy extra file | 20 | runs + warning | hms_shms_validation: IDENTICAL |
+| test_kaon_c12, _d, _he3, _he4 | STOP | 46 | same | shipped_test_kaon_*_pct: IDENTICAL |
+| test_kaon_h | STOP | 46 | same | p14f1_kaon_sos_A: IDENTICAL (disk evidence) |
+| test_pion_d, test_pion_he | STOP | 46 | same | shipped_test_pion_{d,he}_pct: IDENTICAL |
+| test_pion_h | STOP | 46 | same | p14f1_pion_sos_A: IDENTICAL (disk evidence, 498 s) |
+
+  For a legacy input simc++ prints `simc++: WARNING: 46 input variable(s) are not SIMC variables and are IGNORED, as by the
+  Fortran ...` with the names and the convert_inputfile.sh hint, then the Fortran STOP text (`simc++: Fortran STOP during the
+  setup: STOP bad targ.can value`) and a note that the ignored names are the likely cause. Exit status: 3 (simc::FortranStop;
+  the Fortran exits 0 after a STOP, see §6). Totals: 39 Fortran reference folders run, 37 IDENTICAL, 2 REFUSED (NotPorted).

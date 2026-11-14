@@ -12,10 +12,11 @@
 #   4. spect_mode = 2 (not 0/1/-1/-2): the Fortran runs with both arms on, no message (dbase.f:531-532). simc++ runs
 #      (exit 0); the corrected mode prints a warning, --fortran-compat does not; and the outputs equal those of
 #      spect_mode = 0 (same seed).
+#   5./6. rho on A = 4 still refused (D-057 F16); pi0 in the SHMS with doing_decay = 1 (D-065 P1) in both modes.
 # usage: cli_shipped_inputs.sh <simc++> <simc_root_identity> <simc_gfortran dir> <reference dir> <workdir>
 # Exit 0 pass, 1 fail, 77 inputs missing.
 set -uo pipefail
-if [[ $# -ne 5 ]]; then sed -n '2,19p' "$0"; exit 2; fi
+if [[ $# -ne 5 ]]; then sed -n '2,20p' "$0"; exit 2; fi
 SIMCPP=$1; IDENT=$2; FDIR=$3; REF=$4; WORK=$5
 INF=$FDIR/infiles
 [[ -f $INF/test_eep_h.inp && -f $INF/fpi12_deltapp.inp ]] || { echo "SKIP: $INF missing"; exit 77; }
@@ -99,5 +100,20 @@ if [[ -f $SRC ]]; then
             && echo "ok   rho A=4 ($mode): refused at start-up (D-057 F16)"
     done
 else echo "note: $SRC missing, rho part skipped"; fi
+# 6. pi0 with the SHMS as hadron arm (D-065 P1, class b) and doing_decay = 1: the Fortran transports the pi0 itself with
+#    decay_flag = doing_decay and STOPs at the first decay test (project.f:87-91, as D-062 G1); --fortran-compat does the
+#    same; the corrected mode runs (a pi0 is never decayed in flight, D-037 F9 decaysInFlight; the photons of pizero_decay
+#    are not tracked by HMS/SHMS).
+SRC=$REF/runs/p15f1_pi0_shms_A/p15f1_pi0_shms_A.inp
+if [[ -f $SRC ]]; then
+    sed -e 's/^\( *doing_decay = \)0/\11/' "$SRC" > "$WORK/pi0dec.inp"
+    "$SIMCPP" "$WORK/pi0dec.inp" -o "$WORK/pi0dec_compat" --quiet --ngen 100 --seed 4242 --fortran-compat \
+        > "$WORK/pi0dec_compat.log" 2>&1; rc=$?
+    check "pi0 SHMS doing_decay (compat)" 3 $rc "$WORK/pi0dec_compat.log" "error, cannot decay particle with mass=  134.98" \
+        && echo "ok   pi0 in the SHMS, doing_decay 1 (compat): Fortran STOP"
+    "$SIMCPP" "$WORK/pi0dec.inp" -o "$WORK/pi0dec_corrected" --quiet --ngen 100 --seed 4242 > "$WORK/pi0dec_corrected.log" 2>&1
+    check "pi0 SHMS doing_decay (corrected)" 0 $? "$WORK/pi0dec_corrected.log" \
+        && echo "ok   pi0 in the SHMS, doing_decay 1 (corrected): runs, pi0 not decayed"
+else echo "note: $SRC missing, pi0 part skipped"; fi
 [[ $fail -eq 0 ]] && echo "SHIPPED INPUTS / spect_mode warning (P15.2): PASS" || echo "SHIPPED INPUTS / spect_mode warning (P15.2): FAIL"
 exit $fail

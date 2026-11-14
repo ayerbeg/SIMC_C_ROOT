@@ -8,13 +8,16 @@
 # usage: p15_shipped_regression.sh <simc++> <simc_root_identity> <outdir> [run folder name ...]
 # env: JOBS (default 4), REF (default /home/ayerbe/NewDisk/reference/runs)
 # writes <outdir>/<folder>/ (outputs, run.log, identity.txt) and <outdir>/summary.tsv; exit 0 if every run is IDENTICAL or
-# REFUSED, 1 otherwise.
+# REFUSED, 1 otherwise (77 when a single requested folder is absent: CTest skip). A REFUSED run must say "not ported".
+# The CTest label regression_shipped (tests/regression/CMakeLists.txt) runs this script once per folder.
 set -uo pipefail
 SIMC=$1; IDENT=$2; OUT=$3; shift 3
 REF=${REF:-/home/ayerbe/NewDisk/reference/runs}; JOBS=${JOBS:-4}
 export LD_LIBRARY_PATH="${ROOTSYS:-/home/ayerbe/Builds/ROOT6_install}/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-mkdir -p "$OUT"
 LIST=("$@")
+# CTest regression_shipped_<folder> (one folder per test): skip (77) when that reference folder is absent
+if [[ ${#LIST[@]} -eq 1 && ! -d "$REF/${LIST[0]}" ]]; then echo "reference $REF/${LIST[0]} missing: SKIP"; exit 77; fi
+mkdir -p "$OUT"
 if [[ ${#LIST[@]} -eq 0 ]]; then
   for d in "$REF"/p15f1_* "$REF"/shipped_*; do [[ -d $d ]] && LIST+=("$(basename "$d")"); done
 fi
@@ -46,4 +49,5 @@ export -f one; export SIMC IDENT OUT REF
 printf '%s\n' "${LIST[@]}" | xargs -P "$JOBS" -I{} bash -c 'one {}'
 { printf 'folder\trun\tverdict\tseconds\n'; for f in "${LIST[@]}"; do cat "$OUT/$f/row.tsv"; done; } > "$OUT/summary.tsv"
 column -t -s$'\t' "$OUT/summary.tsv"
+[[ ${#LIST[@]} -eq 1 ]] && { cat "$OUT/${LIST[0]}/identity.txt"; grep -h "not ported" "$OUT/${LIST[0]}/run.log"; }
 ! grep -q -P '\t(DIFFERENT|ERROR|NO_REFERENCE)\t' "$OUT/summary.tsv"
