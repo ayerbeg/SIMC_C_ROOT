@@ -28,7 +28,8 @@ target_include_directories(simcval PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/compare)
 target_link_libraries(simcval PUBLIC ROOT::Core ROOT::MathCore nlohmann_json::nlohmann_json)
 target_compile_options(simcval PRIVATE -Wall -Wextra)
 
-add_executable(simc_compare compare/simc_compare.cpp)
+add_executable(simc_compare compare/simc_compare.cpp compare/CompareCommon.cpp compare/CompareRunLevel.cpp
+               compare/CompareTreeLevel.cpp compare/CompareReport.cpp)   # (P15.3 split)
 target_link_libraries(simc_compare PRIVATE simcval ROOT::Core ROOT::RIO ROOT::Tree ROOT::Hist
                       ROOT::Gpad ROOT::Graf ROOT::MathCore)
 target_compile_options(simc_compare PRIVATE -Wall -Wextra)
