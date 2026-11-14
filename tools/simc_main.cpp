@@ -19,6 +19,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #include "simc/core/Json.h"
 #include "simc/core/SimcParameters.h"
@@ -88,6 +89,8 @@ int main(int argc, char** argv) {
     if (input.empty()) { usage(); return 1; }
 
     SimcParameters params;
+
+    std::vector<std::string> ignoredNames;   // InpReader::notRegistered() (P15.2)
     Json pipeline = Json::object();
     if (endsWith(input, ".json")) {
         Json j;
@@ -116,6 +119,19 @@ int main(int argc, char** argv) {
             return 2;
         }
         for (const auto& m : rd.messages()) std::cout << m.text << "\n";   // CTP messages, like the Fortran
+        ignoredNames = rd.notRegistered();
+        if (!ignoredNames.empty()) {
+            // P15.2 (D-065 W1): the Fortran ignores unregistered names silently (CTP registers them as dummy ints); a run
+            // with legacy '.' names (targ.A, spec.e.P, ...) keeps the defaults of those variables. Same behaviour here,
+            // but said loudly.
+            std::cerr << "simc++: WARNING: " << ignoredNames.size()
+                      << " input variable(s) are not SIMC variables and are IGNORED, as by the Fortran (their defaults are "
+                         "used):\n  ";
+            for (std::size_t i = 0; i < ignoredNames.size(); ++i)
+                std::cerr << ignoredNames[i] << (i + 1 < ignoredNames.size() ? (i % 6 == 5 ? "\n  " : ", ") : "\n");
+            std::cerr << "  Legacy '.' names (targ.A, spec.e.P, ...) must be converted to '%' names with "
+                         "simc_gfortran/infiles/convert_inputfile.sh.\n";
+        }
     }
     if (!pipelineFile.empty()) {
         Json j;
@@ -141,6 +157,10 @@ int main(int argc, char** argv) {
         return 2;
     } catch (const std::exception& e) {
         std::cerr << "simc++: " << e.what() << "\n";
+        if (!ignoredNames.empty())
+            std::cerr << "simc++: note: the input has " << ignoredNames.size()
+                      << " ignored variable(s) (listed above), so their defaults were used — the likely cause of this "
+                         "STOP. Convert legacy '.' names with simc_gfortran/infiles/convert_inputfile.sh.\n";
         return 3;
     }
     return 0;
