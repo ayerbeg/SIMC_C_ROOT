@@ -85,6 +85,11 @@ SpecResult HrsSpectrometer::transport(const SpecInput& in, IRandom& rng) {
     return r;
 }
 
+// Fortran: trg_track.f:827-837 -> mc_hrs_recon(delta,dy,dx,y,xxd) with the COMMON /track/ hut values of the last call
+void HrsSpectrometer::reconstructLastTrack(double fry, double& delta, double& dydz, double& dxdz, double& y) {
+    k_->engine().recon(k_->params().spectr, k_->track(), fry, delta, dydz, dxdz, y);
+}
+
 }  // namespace hrs
 }  // namespace simc
 

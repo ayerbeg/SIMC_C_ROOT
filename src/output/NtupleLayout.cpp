@@ -189,6 +189,30 @@ const std::vector<NtupleColumn>& KaonNtupleColumns() {
 
 bool UsesPionLayout(const ReactionFlags& f) { return f.doing_pion || f.doing_kaon || f.doing_delta; }
 
+namespace {
+// results_write.f:155-162 / 213-220: the polarized-target angles (P15.2b)
+void FillTargetFieldColumns(const MainEvent& main, const Event& vertex, const Event& recon, std::vector<double>& ntu,
+                            std::size_t at) {
+    ntu[at + 0] = recon.theta_tarq;
+    ntu[at + 1] = recon.phi_targ;
+    ntu[at + 2] = recon.beta;
+    ntu[at + 3] = recon.phi_s;
+    ntu[at + 4] = recon.phi_c;
+    ntu[at + 5] = main.beta;
+    ntu[at + 6] = vertex.phi_s;
+    ntu[at + 7] = vertex.phi_c;
+}
+// results_write.f:172-185 / 230-243: the pi0 photons (12 columns from `at`)
+void FillPhotonColumns(const MainEvent& main, std::vector<double>& ntu, std::size_t at) {
+    ntu[at + 0] = main.ntup.xcal_gamma1;
+    ntu[at + 1] = main.ntup.ycal_gamma1;
+    for (std::size_t i = 0; i < 4; ++i) ntu[at + 2 + i] = main.ntup.gamma1[i];
+    ntu[at + 6] = main.ntup.xcal_gamma2;
+    ntu[at + 7] = main.ntup.ycal_gamma2;
+    for (std::size_t i = 0; i < 4; ++i) ntu[at + 8 + i] = main.ntup.gamma2[i];
+}
+}  // namespace
+
 // Fortran: results_write.f:131-186 (doing_pion; no target field)
 bool FillPionNtuple(const RunSetup& s, const MainEvent& main, const Event& vertex, const Event& orig,
                     const Event& recon, std::vector<double>& ntu) {
@@ -216,17 +240,21 @@ bool FillPionNtuple(const RunSetup& s, const MainEvent& main, const Event& verte
     ntu[50] = main.w / 1.e3;
     ntu[51] = main.t / 1.e6;
     ntu[52] = main.phi_pq;
-    if (s.flags.doing_kaon && ntu.size() >= static_cast<std::size_t>(kKaonNtupleSize)) {   // l.163-166 (no target field)
-        ntu[53] = main.ntup.sigcm1;   // sigcm - saghai model
-        ntu[54] = main.ntup.sigcm2;   // sigcm - factorized.
+    std::size_t next = 53;   // first column after phipqi
+    if (s.flags.using_tgt_field) {   // l.154-162 (P15.2b)
+        FillTargetFieldColumns(main, vertex, recon, ntu, 53);
+        next = 61;
     }
-    if (s.flags.doing_pizero && ntu.size() >= static_cast<std::size_t>(kPionPizeroNtupleSize)) {   // l.172-185
-        ntu[53] = main.ntup.xcal_gamma1;
-        ntu[54] = main.ntup.ycal_gamma1;
-        for (int i = 0; i < 4; ++i) ntu[static_cast<std::size_t>(55 + i)] = main.ntup.gamma1[static_cast<std::size_t>(i)];
-        ntu[59] = main.ntup.xcal_gamma2;
-        ntu[60] = main.ntup.ycal_gamma2;
-        for (int i = 0; i < 4; ++i) ntu[static_cast<std::size_t>(61 + i)] = main.ntup.gamma2[static_cast<std::size_t>(i)];
+    if (s.flags.doing_kaon && ntu.size() >= next + 2) {   // l.163-166 / 168-171
+        ntu[next] = main.ntup.sigcm1;       // sigcm - saghai model
+        ntu[next + 1] = main.ntup.sigcm2;   // sigcm - factorized.
+        next += 2;
+    }
+    if (s.flags.doing_pizero && ntu.size() >= next + 12) {   // l.172-185
+        // FORTRAN-BUG(D-067 T14): original Fortran results_write.f:172-185 writes the photons to ntu(54..65) also with
+        // using_tgt_field, overwriting the 8 angle columns (tags 54-61), and leaves the photon tags 66-73 at 0;
+        // corrected: the photons go to their own tags (62-73). fortran_compat keeps the Fortran columns.
+        FillPhotonColumns(main, ntu, s.fortran_compat ? 53 : next);
     }
     return side != ArmSide::Unknown;
 }
@@ -300,13 +328,30 @@ bool FillSemiNtuple(const RunSetup& s, const MainEvent& main, const Event& verte
     ntu[53] = F.pfer / 1000. * std::fabs(dummy) / dummy;
     ntu[54] = main.ntup.xfermi;
     ntu[55] = main.phi_pq;
-    if (s.flags.doing_pizero && ntu.size() >= static_cast<std::size_t>(kSemiPizeroNtupleSize)) {   // l.230-243 (P14.3)
-        ntu[56] = main.ntup.xcal_gamma1;
-        ntu[57] = main.ntup.ycal_gamma1;
-        for (int i = 0; i < 4; ++i) ntu[static_cast<std::size_t>(58 + i)] = main.ntup.gamma1[static_cast<std::size_t>(i)];
-        ntu[62] = main.ntup.xcal_gamma2;
-        ntu[63] = main.ntup.ycal_gamma2;
-        for (int i = 0; i < 4; ++i) ntu[static_cast<std::size_t>(64 + i)] = main.ntup.gamma2[static_cast<std::size_t>(i)];
+    std::size_t next = 56;
+    if (s.flags.using_tgt_field) {   // l.212-220 (P15.2b)
+        FillTargetFieldColumns(main, vertex, recon, ntu, 56);
+        next = 64;
+    }
+    if (s.flags.doing_rho) {   // l.221-229
+        if (s.flags.using_tgt_field) {
+            ntu[64] = main.ntup.rhomass;
+            ntu[65] = main.ntup.rhotheta;
+            // FORTRAN-BUG(D-067 T14): original Fortran results_write.f:221-224 never writes the tag mmnuc (67) with
+            // using_tgt_field (always 0); corrected: ntup%mmA/1000 as without the field. fortran_compat keeps the 0.
+            if (!s.fortran_compat) ntu[66] = main.ntup.mmA / 1000.;
+            next = 67;
+        } else {
+            ntu[56] = main.ntup.rhomass;
+            ntu[57] = main.ntup.rhotheta;
+            ntu[58] = main.ntup.mmA / 1000.;   // missmass (nucleus)HSV
+            next = 59;
+        }
+    }
+    if (s.flags.doing_pizero && ntu.size() >= next + 12) {   // l.230-243 (P14.3)
+        // FORTRAN-BUG(D-067 T14): with using_tgt_field the Fortran writes the photons to ntu(57..68), over the angle
+        // columns; corrected: their own tags. fortran_compat keeps the Fortran columns.
+        FillPhotonColumns(main, ntu, s.fortran_compat ? 56 : next);
     }
     return side != ArmSide::Unknown;
 }
@@ -351,26 +396,82 @@ const std::vector<NtupleColumn>& RhoNtupleColumns() {
 // Fortran: results_write.f:187-229 (doing_rho; no target field)
 bool FillRhoNtuple(const RunSetup& s, const MainEvent& main, const Event& vertex, const Event& orig, const Event& recon,
                    std::vector<double>& ntu) {
-    const bool ok = FillSemiNtuple(s, main, vertex, orig, recon, ntu);
-    ntu[56] = main.ntup.rhomass;
-    ntu[57] = main.ntup.rhotheta;
-    ntu[58] = main.ntup.mmA / 1000.;
-    return ok;
+    return FillSemiNtuple(s, main, vertex, orig, recon, ntu);   // (the rho columns are written there, l.221-229)
 }
 
+// NtupleInit.f:142-159 / 239-256 (using_tgt_field, task P15.2b): the 8 polarized-target angle columns
+const std::vector<NtupleColumn>& TargetFieldNtupleColumns() {
+    static const std::vector<NtupleColumn> c = {
+        {"th_tarq", "recon.theta_tarq (angle q - polarization; NaN for targ_pol = 0, D-067 T16)", "rad",
+         "results_write.f:155/213"},
+        {"phitarq", "recon.phi_targ", "rad", "results_write.f:156/214"},
+        {"beta", "recon.beta", "rad", "results_write.f:157/215"},
+        {"phis", "recon.phi_s (Sivers angle)", "rad", "results_write.f:158/216"},
+        {"phic", "recon.phi_c (Collins angle)", "rad", "results_write.f:159/217"},
+        {"betai", "main.beta", "rad", "results_write.f:160/218"},
+        {"phisi", "vertex.phi_s", "rad", "results_write.f:161/219"},
+        {"phici", "vertex.phi_c", "rad", "results_write.f:162/220"},
+    };
+    return c;
+}
+
+namespace {
+// NtupleInit.f:101-191 with using_tgt_field: pion 53 + 8 angles [+ saghai, factor (kaon)] [+ 12 photons (pi0)]
+const std::vector<NtupleColumn>& PionFieldNtupleColumns(bool kaon, bool pizero) {
+    static std::vector<NtupleColumn> cache[2][2];
+    std::vector<NtupleColumn>& c = cache[kaon][pizero];
+    if (c.empty()) {
+        c = PionNtupleColumns(false);
+        const auto& f = TargetFieldNtupleColumns();
+        c.insert(c.end(), f.begin(), f.end());
+        if (kaon) {
+            const auto& k = KaonNtupleColumns();
+            c.insert(c.end(), k.end() - 2, k.end());
+            c[c.size() - 2].fortran = "results_write.f:163";
+            c[c.size() - 1].fortran = "results_write.f:164";
+        }
+        if (pizero) {
+            const auto& g = PionNtupleColumns(true);
+            c.insert(c.end(), g.end() - 12, g.end());
+        }
+    }
+    return c;
+}
+// NtupleInit.f:192-264 with using_tgt_field: semi 56 + 8 angles [+ Mrho, Thrho, mmnuc (rho)] [+ 12 photons (pi0)]
+const std::vector<NtupleColumn>& SemiFieldNtupleColumns(bool rho, bool pizero) {
+    static std::vector<NtupleColumn> cache[2][2];
+    std::vector<NtupleColumn>& c = cache[rho][pizero];
+    if (c.empty()) {
+        c = rho ? std::vector<NtupleColumn>(RhoNtupleColumns().begin(), RhoNtupleColumns().begin() + kSemiNtupleSize)
+                : SemiNtupleColumns();
+        const auto& f = TargetFieldNtupleColumns();
+        c.insert(c.end(), f.begin(), f.end());
+        if (rho) {
+            const auto& r = RhoNtupleColumns();
+            c.insert(c.end(), r.end() - 3, r.end());
+        }
+        if (pizero) {
+            const auto& g = PionNtupleColumns(true);
+            c.insert(c.end(), g.end() - 12, g.end());
+        }
+    }
+    return c;
+}
+}  // namespace
+
 const std::vector<NtupleColumn>& NtupleColumnsFor(const RunSetup& s) {
+    const bool field = s.flags.using_tgt_field || s.params.using_tgt_field;
     // NtupleInit.f:101: doing_pion .or. doing_kaon .or. doing_delta share the 53 columns (doing_delta: task P11.1)
-    if ((s.flags.doing_pion || s.flags.doing_delta) && !s.flags.using_tgt_field && !s.params.using_tgt_field)
-        return PionNtupleColumns(s.flags.doing_pizero);
-    if (s.flags.doing_kaon && !s.flags.using_tgt_field && !s.params.using_tgt_field) return KaonNtupleColumns();
-    if (s.flags.doing_semi && !s.flags.using_tgt_field && !s.params.using_tgt_field)
-        return s.flags.doing_pizero ? SemiPizeroNtupleColumns() : SemiNtupleColumns();
-    if (s.flags.doing_rho && !s.flags.doing_pizero && !s.flags.using_tgt_field && !s.params.using_tgt_field)
-        return RhoNtupleColumns();
+    if (field && (s.flags.doing_pion || s.flags.doing_kaon || s.flags.doing_delta))
+        return PionFieldNtupleColumns(s.flags.doing_kaon, s.flags.doing_pizero);
+    if (field && (s.flags.doing_semi || (s.flags.doing_rho && !s.flags.doing_pizero)))
+        return SemiFieldNtupleColumns(!s.flags.doing_semi, s.flags.doing_pizero);
+    if ((s.flags.doing_pion || s.flags.doing_delta) && !field) return PionNtupleColumns(s.flags.doing_pizero);
+    if (s.flags.doing_kaon && !field) return KaonNtupleColumns();
+    if (s.flags.doing_semi && !field) return s.flags.doing_pizero ? SemiPizeroNtupleColumns() : SemiNtupleColumns();
+    if (s.flags.doing_rho && !s.flags.doing_pizero && !field) return RhoNtupleColumns();
     if (UsesEepLayout(s.flags)) return EepNtupleColumns();
-    throw std::runtime_error("ntuple: only the (e,e'p)/phase-space (NtupleInit.f:296-321), the exclusive pion and the "
-                             "kaon/delta (NtupleInit.f:101-190, no target field) and the SIDIS (NtupleInit.f:192-237, no target "
-                             "field, no pi0) layouts are implemented so far");
+    throw std::runtime_error("ntuple: no layout for this reaction (rho with pi0 is not set up)");
 }
 
 bool FillNtuple(const RunSetup& s, const MainEvent& main, const Event& vertex, const Event& orig, const Event& recon,

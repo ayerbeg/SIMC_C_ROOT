@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <filesystem>
 #include <iostream>
 #include <stdexcept>
 
@@ -13,6 +14,7 @@
 #include "simc/core/SpectrometerId.h"
 #include "simc/setup/KinematicsUtils.h"
 #include "simc/driver/PizeroCalorimeter.h"
+#include "simc/driver/TargetFieldAngles.h"
 #include "simc/stages/IRandom.h"
 
 namespace simc {
@@ -80,11 +82,51 @@ MonteCarlo::MonteCarlo(const RunSetup& setup, ITarget& target) : MonteCarlo(setu
 
 MonteCarlo::MonteCarlo(const RunSetup& setup, ITarget& target, const ArmChoice& hadron, const ArmChoice& electron)
     : setup_(setup), target_(target), log_(&std::cout) {
-    if (setup.params.using_tgt_field || setup.flags.using_tgt_field)
-        throw NotPorted("montecarlo: using_tgt_field (track_from_tgt / track_to_tgt, trg_track.f) not ported");
     // Fortran order of the calls: hadron arm first, then electron arm.
     pArm_ = makeArm(setup.params.hadron_arm, hadron);
     eArm_ = makeArm(setup.params.electron_arm, electron);
+    if (setup.params.using_tgt_field || setup.flags.using_tgt_field) initTargetField();
+}
+
+// Fortran: simc.f:120-155 (after the random-number initialisation, before the event loop): the arm angles of the
+// polarized-target field and trgInit (task P15.2b).
+void MonteCarlo::initTargetField() {
+    const RunSetup& S = setup_;
+    const ArmFieldAngles a = TargetFieldArmAngles(S.targ_Bangle, S.targ_Bphi, S.spec.e.theta, S.spec.e.phi,
+                                                  S.spec.p.theta, S.spec.p.phi, S.fortran_compat);
+    fieldLog_ = a.log;
+    // tgt_field_file: '0' = zero field, ' ' = uniform test field, else a file in the Fortran working directory
+    std::string file = S.params.tgt_field_file;
+    while (!file.empty() && file.back() == ' ') file.pop_back();
+    const bool blank = S.params.tgt_field_file.find_first_not_of(' ') == std::string::npos;
+    if (S.params.tgt_field_file.empty())
+        throw std::invalid_argument("using_tgt_field = 1 needs tgt_field_file (a field map such as 'trg_field_map.dat', "
+                                    "'0' for no field or ' ' for the uniform test field; the Fortran default is unset)");
+    std::string path = blank ? std::string(" ") : file;
+    if (!blank && file != "0" && !std::filesystem::path(file).is_absolute()) {
+        namespace fs = std::filesystem;
+        std::vector<fs::path> cands;
+        if (!S.data_dir.empty()) cands.push_back(fs::path(S.data_dir) / file);
+        cands.push_back(fs::path(file));
+        cands.push_back(fs::path(SIMC_FIELD_DATA_DIR) / file);
+        path = cands.back().string();
+        for (const auto& c : cands)
+            if (fs::is_regular_file(c)) {
+                path = c.string();
+                break;
+            }
+    }
+    field_ = std::make_unique<optics::TargetField>();
+    field_->init(path, a.earm * constants::degrad, 0., a.parm * constants::degrad, 0.);
+}
+
+// Fortran: simc.f:1573-1590 / 1777-1794: the spectrometer side decides the sign of stheta (right: HMS, HRSR; left: SOS,
+// HRSL, SHMS); any other arm STOPs (T17).
+double MonteCarlo::fieldStheta(int arm, double stheta) const {
+    if (Is(arm, SpectrometerId::HMS) || Is(arm, SpectrometerId::HRSR)) return stheta;
+    if (Is(arm, SpectrometerId::SOS) || Is(arm, SpectrometerId::HRSL) || Is(arm, SpectrometerId::SHMS)) return -stheta;
+    if (log_) *log_ << " Target field reconstruction not set up for your spectrometer\n";
+    throw FortranStop("Target field reconstruction not set up for your spectrometer (simc.f:1583-1585, 1787-1789)");
 }
 
 // Fortran: simc.f:montecarlo
@@ -147,9 +189,13 @@ bool MonteCarlo::run(const Event& orig, MainEvent& main, Event& recon, IRandom& 
         x_P_arm = x_P_arm - sp.offset.x;
         y_P_arm = y_P_arm - sp.offset.y;
         z_P_arm = z_P_arm - sp.offset.z;
-        const double dx_P_arm = main.SP.p.xptar - sp.offset.xptar;
-        const double dy_P_arm = main.SP.p.yptar - sp.offset.yptar;
-        // (using_tgt_field: track_from_tgt — rejected in the constructor)
+        double dx_P_arm = main.SP.p.xptar - sp.offset.xptar;
+        double dy_P_arm = main.SP.p.yptar - sp.offset.yptar;
+        if (field_) {   // do target field tracking - GAW (simc.f:1425-1432); the returned ok is ignored (T11)
+            bool ok_from = true;
+            field_->trackFromTgt(x_P_arm, y_P_arm, z_P_arm, dx_P_arm, dy_P_arm,
+                                 S.sign_hadron * sp.P * (1 + delta_P_arm / 100.), Mh, 1, ok_from);
+        }
         // ........ drift this position back to z=0, the plane through the target center
         x_P_arm = x_P_arm - z_P_arm * dx_P_arm;
         y_P_arm = y_P_arm - z_P_arm * dy_P_arm;
@@ -181,6 +227,7 @@ bool MonteCarlo::run(const Event& orig, MainEvent& main, Event& recon, IRandom& 
             // simc.f:1489-1556: the two pi0 photons through the calorimeter (PizeroCalorimeter, D-062 G1/G3/G4)
             const PizeroCalorimeter pc(harm, S.params.pizero_ngamma, S.fortran_compat);
             const PizeroCaloResult g = pc.detect(*pArm_, in, main.ntup.gamma1, main.ntup.gamma2, rng);
+            if (field_) fieldStheta(harm, 0.0);   // simc.f:1583-1585: STOP for a calorimeter arm (T17)
             main.ntup.xcal_gamma1 = g.xcal_gamma1;
             main.ntup.ycal_gamma1 = g.ycal_gamma1;
             main.ntup.xcal_gamma2 = g.xcal_gamma2;
@@ -208,14 +255,32 @@ bool MonteCarlo::run(const Event& orig, MainEvent& main, Event& recon, IRandom& 
             main.ntup.decdist = r.decay_distance;
             main.ntup.Mh2_final = r.Mh2_final;
             info_.p_stop = r.stop_reason;
-            if (!r.ok) {
+            const double stheta_field = field_ ? fieldStheta(harm, std::sin(sp.theta)) : 0.0;   // (STOP check first)
+            if (!r.ok) {   // (track_to_tgt returns at once for ok = .false.)
                 info_.fail_arm = 1;
                 return false;
             }
-            main.RECON.p.delta = r.delta_recon;
-            main.RECON.p.yptar = r.dydz_recon;
-            main.RECON.p.xptar = r.dxdz_recon;
-            main.RECON.p.z = r.y_recon;
+            double delta_rec = r.delta_recon, y_rec = r.y_recon, dx_rec = r.dxdz_recon, dy_rec = r.dydz_recon;
+            if (field_) {   // simc.f:1573-1590: reconstruction through the target field
+                const double phad = sp.P * (1. + delta_rec / 100.0);
+                const double ctheta = std::cos(sp.theta);
+                double mom = S.sign_hadron * phad;
+                bool ok = true;
+                field_->trackToTgt(delta_rec, y_rec, dx_rec, dy_rec, frx, -fry, mom, std::sqrt(r.m2_final), ctheta,
+                                   stheta_field, 1, ok, harm,
+                                   [this](double f, double& d, double& yp, double& xp, double& yt) {
+                                       pArm_->reconstructLastTrack(f, d, yp, xp, yt);
+                                   });
+                if (!ok) {
+                    info_.p_stop = "target_field";
+                    info_.fail_arm = 1;
+                    return false;
+                }
+            }
+            main.RECON.p.delta = delta_rec;
+            main.RECON.p.yptar = dy_rec;
+            main.RECON.p.xptar = dx_rec;
+            main.RECON.p.z = y_rec;
             main.FP.p.x = r.x_fp;
             main.FP.p.dx = r.dx_fp;
             main.FP.p.y = r.y_fp;
@@ -278,8 +343,13 @@ bool MonteCarlo::run(const Event& orig, MainEvent& main, Event& recon, IRandom& 
         x_E_arm = x_E_arm - se.offset.x;
         y_E_arm = y_E_arm - se.offset.y;
         z_E_arm = z_E_arm - se.offset.z;
-        const double dx_E_arm = main.SP.e.xptar - se.offset.xptar;
-        const double dy_E_arm = main.SP.e.yptar - se.offset.yptar;
+        double dx_E_arm = main.SP.e.xptar - se.offset.xptar;
+        double dy_E_arm = main.SP.e.yptar - se.offset.yptar;
+        if (field_) {   // GAW - project to z=0 to compare with reconstructed target positions (simc.f:1693-1701)
+            bool ok_from = true;
+            field_->trackFromTgt(x_E_arm, y_E_arm, z_E_arm, dx_E_arm, dy_E_arm, -se.P * (1 + delta_E_arm / 100.),
+                                 constants::Me, -1, ok_from);
+        }
         x_E_arm = x_E_arm - z_E_arm * dx_E_arm;
         y_E_arm = y_E_arm - z_E_arm * dy_E_arm;
         z_E_arm = 0.0;
@@ -316,14 +386,32 @@ bool MonteCarlo::run(const Event& orig, MainEvent& main, Event& recon, IRandom& 
         if (r.resolution_factor) tmpfact_ = *r.resolution_factor;
         main.ntup.resfac = main.ntup.resfac + tmpfact_;
         info_.e_stop = r.stop_reason;
+        const double stheta_field = field_ ? fieldStheta(S.params.electron_arm, std::sin(se.theta)) : 0.0;
         if (!r.ok) {
             info_.fail_arm = 2;
             return false;
         }
-        main.RECON.e.delta = r.delta_recon;
-        main.RECON.e.yptar = r.dydz_recon;
-        main.RECON.e.xptar = r.dxdz_recon;
-        main.RECON.e.z = r.y_recon;
+        double delta_rec = r.delta_recon, y_rec = r.y_recon, dx_rec = r.dxdz_recon, dy_rec = r.dydz_recon;
+        if (field_) {   // simc.f:1777-1794
+            const double pelec = se.P * (1. + delta_rec / 100.0);
+            const double ctheta = std::cos(se.theta);
+            double mom = -1.0 * pelec;
+            bool ok = true;
+            field_->trackToTgt(delta_rec, y_rec, dx_rec, dy_rec, frx, -fry, mom, std::sqrt(constants::Me2), ctheta,
+                               stheta_field, -1, ok, S.params.electron_arm,
+                               [this](double f, double& d, double& yp, double& xp, double& yt) {
+                                   eArm_->reconstructLastTrack(f, d, yp, xp, yt);
+                               });
+            if (!ok) {
+                info_.e_stop = "target_field";
+                info_.fail_arm = 2;
+                return false;
+            }
+        }
+        main.RECON.e.delta = delta_rec;
+        main.RECON.e.yptar = dy_rec;
+        main.RECON.e.xptar = dx_rec;
+        main.RECON.e.z = y_rec;
         main.FP.e.x = r.x_fp;
         main.FP.e.dx = r.dx_fp;
         main.FP.e.y = r.y_fp;

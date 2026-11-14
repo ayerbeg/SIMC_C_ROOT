@@ -198,7 +198,7 @@ bool RhoProduction::completeEv(MainEvent& main, Event& vertex, IRandom& rng) {
 
     // l.723-786 (t and tmin with the COMMON Mh2 = the BW mass of this try)
     pionMainKinematics(main, vertex, main.gnrl.Mh2);
-    // (using_tgt_field angles l.789-896: refused in init)
+    if (setup().flags.using_tgt_field) polarizedTargetAngles(main, vertex);   // l.796-896
 
     // l.914-926. FORTRAN-QUIRK: vertex%Pm is never assigned on the rho branch (PmPer uses the stale value, 0 in a run).
     vertex.Pmx = vertex.p.P * vertex.up.x - vertex.q * vertex.uq.x;

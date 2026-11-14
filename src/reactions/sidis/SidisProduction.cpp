@@ -158,6 +158,7 @@ bool SidisProduction::completeEv(MainEvent& main, Event& vertex, IRandom& rng) {
 
     // semi: no p-side block (the hadron was generated). Pion/kaon stuff (l.723-786), pizero_decay (l.899-901)
     pionMainKinematics(main, vertex);
+    if (f.using_tgt_field) polarizedTargetAngles(main, vertex);   // l.796-896
     if (f.doing_pizero) {
         const pion::PizeroDecayResult g = pion::pizeroDecay(vertex, s.Mh, rng, log_);
         if (g.success) {

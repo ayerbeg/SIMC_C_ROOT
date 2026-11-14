@@ -11,6 +11,7 @@
 #include <optional>
 #include <string>
 
+#include "simc/core/Errors.h"
 #include "simc/stages/IStage.h"
 
 namespace simc {
@@ -60,6 +61,13 @@ public:
     virtual SpecResult transport(const SpecInput& in, IRandom& rng) = 0;
     /// Per-aperture stop counters (Fortran hSTOP_*, shmsSTOP_*), including "trials" and "successes".
     virtual const std::map<std::string, long>& stopCounters() const = 0;
+    /// Fortran: mc_<arm>_recon(delta_p,delta_t,delta_phi,y_tgt,fry) re-called on the focal-plane track of the LAST
+    /// transport() (COMMON /track/), as trg_track.f:track_to_tgt does for the polarized-target field (P15.2b).
+    /// Outputs delta [%], dydz (= delta_t), dxdz (= delta_phi), y [cm]. Default: not available (NotPorted).
+    virtual void reconstructLastTrack(double fry, double& delta, double& dydz, double& dxdz, double& y) {
+        (void)fry, (void)delta, (void)dydz, (void)dxdz, (void)y;
+        throw NotPorted("spectrometer '" + name() + "': no reconstruction for the target-field tracking (track_to_tgt)");
+    }
 };
 
 }  // namespace simc

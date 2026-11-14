@@ -86,6 +86,11 @@ SpecResult HmsSpectrometer::transport(const SpecInput& in, IRandom& rng) {
     return r;
 }
 
+// Fortran: trg_track.f:827-837 -> mc_hms_recon(delta,dy,dx,y,xxd) with the COMMON /track/ hut values of the last call
+void HmsSpectrometer::reconstructLastTrack(double fry, double& delta, double& dydz, double& dxdz, double& y) {
+    k_->engine().recon(1, k_->track(), fry, delta, dydz, dxdz, y);
+}
+
 }  // namespace hms
 }  // namespace simc
 

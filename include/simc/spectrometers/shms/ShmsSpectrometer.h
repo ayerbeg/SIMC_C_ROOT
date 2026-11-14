@@ -44,6 +44,8 @@ public:
     void init(const StageContext& ctx) override;
     SpecResult transport(const SpecInput& in, IRandom& rng) override;
     const std::map<std::string, long>& stopCounters() const override;
+    /// mc_shms_recon on the last hut track (trg_track.f:track_to_tgt, P15.2b).
+    void reconstructLastTrack(double fry, double& delta, double& dydz, double& dxdz, double& y) override;
 
     /// The Fortran-faithful kernel (L1 tests, diagnostics).
     McShms& kernel() { return *k_; }

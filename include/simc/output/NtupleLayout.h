@@ -87,6 +87,11 @@ const std::vector<NtupleColumn>& RhoNtupleColumns();
 bool FillRhoNtuple(const RunSetup& setup, const MainEvent& main, const Event& vertex, const Event& orig,
                    const Event& recon, std::vector<double>& ntu);
 
+// ------------------------------------------------------------------------- polarized-target field (P15.2b)
+/// The 8 columns th_tarq, phitarq, beta, phis, phic, betai, phisi, phici that follow phipqi (pion/kaon/delta: 54-61,
+/// semi/rho: 57-64) when using_tgt_field (NtupleInit.f:142-159, 239-256).
+const std::vector<NtupleColumn>& TargetFieldNtupleColumns();
+
 /// The layout of a run: the columns and the filler (FillEepNtuple or FillPionNtuple). Throws std::runtime_error for
 /// the layouts that are not implemented (semi/rho, kaon, delta, target field).
 const std::vector<NtupleColumn>& NtupleColumnsFor(const RunSetup& setup);

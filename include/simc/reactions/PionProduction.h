@@ -100,6 +100,10 @@ protected:
     void pionMainKinematics(MainEvent& main, const Event& vertex) const;
     /// The same with the COMMON Mh2 given (doing_rho: the Breit-Wigner mass of the try).
     void pionMainKinematics(MainEvent& main, const Event& vertex, double Mh2) const;
+    /// event.f:796-896 (using_tgt_field, task P15.2b): main%phi_targ, main%beta, vertex%phi_s, vertex%phi_c,
+    /// main%theta_tarq from the vertex q and hadron directions and the in-plane polarization (T15: targ_Bphi and the
+    /// sign of targ_Bangle are ignored; T16: targ_pol = 0 gives theta_tarq = NaN).
+    void polarizedTargetAngles(MainEvent& main, Event& vertex) const;
     std::string dataDir_;
     bool verbose_{true};
 

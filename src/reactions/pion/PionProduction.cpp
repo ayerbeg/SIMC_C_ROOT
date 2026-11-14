@@ -115,8 +115,6 @@ void PionProduction::init(const StageContext& ctx) {
                                      doingDelta_ ? std::string("(e,e'p)pi in the Delta region (doing_delta)")
                                             : (kaon_ ? std::string("kaon production (doing_kaon)")
                                                      : std::string("exclusive pion production (doing_pion)"))));
-    if (f.using_tgt_field || s.params.using_tgt_field)
-        throw NotPorted("reaction '" + name_ + "': using_tgt_field (polarized-target angles) not ported");
     EepReactionBase::init(ctx);
     if (!verbose_) log_ = nullptr;
     mrecStruck_ = s.targ.Mrec_struck;
@@ -279,6 +277,62 @@ void PionProduction::pionMainKinematics(MainEvent& main, const Event& vertex, do
     if (main.phi_pq < 0.e0) main.phi_pq = main.phi_pq + 2. * pi;
 }
 
+// Fortran: event.f:796-896 (complete_ev, using_tgt_field: polarized-target azimuthal angles of the vertex)
+void PionProduction::polarizedTargetAngles(MainEvent& main, Event& vertex) const {
+    using constants::pi;
+    const RunSetup& s = setup();
+    const double targ_Bangle = s.targ_Bangle;
+    // CALCULATE ANGLE PHI BETWEEN SCATTERING PLANE AND TARGET POLARIZATION ('replay' coordinates: x = -y_simc,
+    // y = x_simc, z = z_simc)
+    double qx = -vertex.uq.y, qy = vertex.uq.x, qz = vertex.uq.z;
+    // FORTRAN-QUIRK(D-067 T15, class b): target in-plane, towards beam left: targ_Bphi and the sign of targ_Bangle unused
+    double targx = -targ_pol_ * std::sin(std::fabs(targ_Bangle));
+    double targy = 0.0;
+    double targz = targ_pol_ * std::cos(std::fabs(targ_Bangle));
+    double dummy = std::sqrt((sq(qx) + sq(qy)) * (sq(qx) + sq(qy) + sq(qz)));
+    double new_x_x = -qx * qz / dummy;
+    double new_x_y = -qy * qz / dummy;
+    double new_x_z = (sq(qx) + sq(qy)) / dummy;
+    dummy = std::sqrt(sq(qx) + sq(qy));
+    double new_y_x = qy / dummy;
+    double new_y_y = -qx / dummy;
+    double new_y_z = 0.0;
+    const double p_new_x = targx * new_x_x + targy * new_x_y + targz * new_x_z;
+    const double p_new_y = targx * new_y_x + targy * new_y_y + targz * new_y_z;
+    main.phi_targ = std::atan2(p_new_y, p_new_x);
+    if (main.phi_targ < 0.) main.phi_targ = 2. * pi + main.phi_targ;
+
+    // CALCULATE ANGLE BETA BETWEEN REACTION PLANE AND TRANSVERSE TARGET POLARIZATION
+    qx = -vertex.uq.y;
+    qy = vertex.uq.x;
+    qz = vertex.uq.z;
+    targx = -targ_pol_ * std::sin(std::fabs(targ_Bangle));
+    targy = 0.0;
+    targz = targ_pol_ * std::cos(std::fabs(targ_Bangle));
+    const double px = -vertex.up.y, py = vertex.up.x, pz = vertex.up.z;
+    dummy = std::sqrt(sq(qy * pz - qz * py) + sq(qz * px - qx * pz) + sq(qx * py - qy * px));
+    new_y_x = (qy * pz - qz * py) / dummy;
+    new_y_y = (qz * px - qx * pz) / dummy;
+    new_y_z = (qx * py - qy * px) / dummy;
+    dummy = std::sqrt(sq(new_y_y * qz - new_y_z * qy) + sq(new_y_z * qx - new_y_x * qz) + sq(new_y_x * qy - new_y_y * qx));
+    new_x_x = (new_y_y * qz - new_y_z * qy) / dummy;
+    new_x_y = (new_y_z * qx - new_y_x * qz) / dummy;
+    new_x_z = (new_y_x * qy - new_y_y * qx) / dummy;
+    const double targ_new_x = targx * new_x_x + targy * new_x_y + targz * new_x_z;
+    const double targ_new_y = targx * new_y_x + targy * new_y_y + targz * new_y_z;
+    main.beta = std::atan2(targ_new_y, targ_new_x);
+    if (main.beta < 0.) main.beta = 2 * pi + main.beta;
+
+    // the "Collins" (phi_pq+phi_targ) and "Sivers" (phi_pq-phi_targ) angles
+    vertex.phi_s = main.phi_pq - main.phi_targ;
+    if (vertex.phi_s < 0.) vertex.phi_s = 2 * pi + vertex.phi_s;
+    vertex.phi_c = main.phi_pq + main.phi_targ;
+    if (vertex.phi_c > 2. * pi) vertex.phi_c = vertex.phi_c - 2 * pi;
+    if (vertex.phi_c < 0.0) vertex.phi_c = 2 * pi + vertex.phi_c;
+    dummy = std::sqrt((sq(qx) + sq(qy) + sq(qz))) * std::sqrt((sq(targx) + sq(targy) + sq(targz)));
+    main.theta_tarq = std::acos((qx * targx + qy * targy + qz * targz) / dummy);   // T16: NaN for targ_pol = 0
+}
+
 // Fortran: event.f:complete_ev (l.432-1054), doing_pion branches.
 bool PionProduction::completeEv(MainEvent& main, Event& vertex, IRandom& rng) {
     using constants::Me;
@@ -359,7 +413,7 @@ bool PionProduction::completeEv(MainEvent& main, Event& vertex, IRandom& rng) {
 
     // Compute some pion and kaon stuff (l.720-786)
     pionMainKinematics(main, vertex);
-    // (using_tgt_field angles l.789-896: refused in init)
+    if (f.using_tgt_field) polarizedTargetAngles(main, vertex);   // l.796-896
     if (f.doing_pizero) {   // l.899-901: decay the pi0 into 2 photons (2 grnd)
         const pion::PizeroDecayResult g = pion::pizeroDecay(vertex, s.Mh, rng, log_);
         if (g.success) {

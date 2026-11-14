@@ -198,6 +198,9 @@ void SimcRun::initialise() {
         item("lab cross section (nb/Gev2/sr2)", central_.central.sigcc * 1000.0 * 1000.0 * 1000.0);
     }
 
+    // simc.f:120-151 (using_tgt_field): the target-field / arm angles, printed before trgInit (P15.2b)
+    for (const auto& l : mc_->targetFieldLog()) log(l);
+
     // ---- report bookkeeping
     report_ = RunReport{};
     report_.run_name = opt_.run_name;

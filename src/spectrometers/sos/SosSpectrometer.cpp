@@ -82,6 +82,11 @@ SpecResult SosSpectrometer::transport(const SpecInput& in, IRandom& rng) {
     return r;
 }
 
+// Fortran: trg_track.f:827-837 -> mc_sos_recon(delta,dy,dx,y,xxd) with the COMMON /track/ hut values of the last call
+void SosSpectrometer::reconstructLastTrack(double fry, double& delta, double& dydz, double& dxdz, double& y) {
+    k_->engine().recon(2, k_->track(), fry, delta, dydz, dxdz, y);
+}
+
 }  // namespace sos
 }  // namespace simc
 

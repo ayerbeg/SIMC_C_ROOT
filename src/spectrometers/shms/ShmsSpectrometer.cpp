@@ -95,6 +95,11 @@ SpecResult ShmsSpectrometer::transport(const SpecInput& in, IRandom& rng) {
     return r;
 }
 
+// Fortran: trg_track.f:827-837 -> mc_shms_recon(delta,dy,dx,y,xxd) with the COMMON /track/ hut values of the last call
+void ShmsSpectrometer::reconstructLastTrack(double fry, double& delta, double& dydz, double& dxdz, double& y) {
+    k_->engine().recon(Code(SpectrometerId::SHMS), k_->track(), fry, delta, dydz, dxdz, y);
+}
+
 }  // namespace shms
 }  // namespace simc
 

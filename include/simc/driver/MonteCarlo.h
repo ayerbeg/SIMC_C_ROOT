@@ -19,9 +19,9 @@
 // main.ntup.decdist / Mh2_final are set from the hadron arm (the loop resets them per event, simc.f:174-177).
 //
 // Calorimeter arms 7/8 (P14.3): "calo"; with doing_pizero the two photons go through driver::PizeroCalorimeter.
-// Not ported (throw simc::NotPorted):
-// the polarized-target field (using_tgt_field: track_from_tgt / track_to_tgt). Arm code 6 (SHMS LSA)
-// reaches mc_shms, which STOPs (simc::FortranStop).
+// Polarized-target field (using_tgt_field, P15.2b): optics::TargetField (trg_track.f), owned here: track_from_tgt on
+// the vertex before the drift to z = 0 (simc.f:1425-1432, 1693-1701) and track_to_tgt after a successful arm
+// (simc.f:1573-1590, 1777-1794, ISpectrometer::reconstructLastTrack). A calorimeter arm with the field STOPs (T17).
 //
 // Fortran behaviour reproduced (docs/FORTRAN_DIFFERENCES.md):
 //   * the electron-arm resmult goes through the SAVEd local tmpfact (simc.f:1334): if the electron-arm MC stops
@@ -39,9 +39,11 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #include "simc/core/Event.h"
 #include "simc/core/RunSetup.h"
+#include "simc/optics/TargetField.h"
 #include "simc/stages/ISpectrometer.h"
 #include "simc/stages/ITarget.h"
 #include "simc/core/Errors.h"
@@ -75,7 +77,7 @@ public:
 
     /// Creates (through Registry<ISpectrometer>) and initialises the arm spectrometers of setup.params
     /// (electron_arm, hadron_arm). `target` provides target_musc and trip_thru_target (correct_Eloss).
-    /// Throws NotPorted for using_tgt_field.
+    /// With using_tgt_field: computes the arm angles (simc.f:120-151) and loads the field map (trgInit).
     MonteCarlo(const RunSetup& setup, ITarget& target);
     /// P7.2 (additive): the same with the arm plug-ins chosen explicitly (e.g. from the JSON "pipeline").
     /// Arms with the same type and the same (merged) config share one object (one Fortran COMMON block of counters);
@@ -92,9 +94,14 @@ public:
 
     /// Where the Fortran write(6,*) messages go (default std::cout; nullptr = silent).
     void setLog(std::ostream* os) { log_ = os; }
+    /// using_tgt_field: the field tracking (nullptr otherwise) and the simc.f:120-151 log lines.
+    const optics::TargetField* targetField() const { return field_.get(); }
+    const std::vector<std::string>& targetFieldLog() const { return fieldLog_; }
 
 private:
     ISpectrometer* makeArm(int code, const ArmChoice& choice);
+    void initTargetField();
+    double fieldStheta(int arm, double stheta) const;
 
     const RunSetup& setup_;
     ITarget& target_;
@@ -102,6 +109,8 @@ private:
     ISpectrometer* pArm_{nullptr};   ///< the hadron arm (points into specs_)
     ISpectrometer* eArm_{nullptr};   ///< the electron arm (may be the same object as pArm_)
     MonteCarloInfo info_;
+    std::unique_ptr<optics::TargetField> field_;   ///< using_tgt_field (trg_track.f COMMON blocks)
+    std::vector<std::string> fieldLog_;
     double tmpfact_{0};   ///< simc.f:1334 local tmpfact (static under -fno-automatic)
     std::ostream* log_;
 };
