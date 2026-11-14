@@ -6,6 +6,8 @@
 // Usage: test_l1_trg <mode> <table_dir> <field_dir> <matrix_dir>
 //   modes: trginit, trginit_map, trgfield, trgderiv, trgrk4, trgtracktoplane, track_from_tgt, track_to_tgt
 //          files <field_dir> <simc_dir> : data/field/trg_field_map.dat equals the Fortran file
+//          replay <capture_dir> <field_dir> <matrix_dir> : every trgTrackToPlane / track_from_tgt / track_to_tgt call
+//                 of the capture reference/runs/p15f2_poltar_cap (records cap_plane/cap_from/cap_to.txt.xz, via xz -dc)
 // <field_dir> holds trg_field_map.dat (map_cfg 1); <matrix_dir> the COSY recon files (hms/, sos/, hrs/, shms/) for
 // the mc_*_recon calls of track_to_tgt (whose COMMON /track/ hut values are the track_* input columns).
 // Exit: 0 pass, 1 fail, 77 table missing.
@@ -14,6 +16,8 @@
 #include <cstring>
 #include <fstream>
 #include <iterator>
+#include <sstream>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -232,6 +236,129 @@ int runTrackTo(const std::string& dir, const std::string& mdir) {
                        });
 }
 
+// ---- capture replay (reference/runs/p15f2_poltar_cap/capture: every call of the 1000-event capture, config A)
+struct XzTable {
+    std::vector<std::string> names;
+    FILE* pipe{nullptr};
+    std::vector<double> row;
+    bool open(const std::string& path) {
+        pipe = popen(("xz -dc '" + path + "'").c_str(), "r");
+        if (!pipe) return false;
+        char buf[8192];
+        if (!fgets(buf, sizeof buf, pipe)) return false;
+        std::istringstream h(buf);
+        std::string n;
+        while (h >> n) names.push_back(n);
+        return !names.empty();
+    }
+    bool next() {
+        static char buf[1 << 16];
+        if (!fgets(buf, sizeof buf, pipe)) return false;
+        row.clear();
+        char* p = buf;
+        char* e = nullptr;
+        for (std::size_t i = 0; i < names.size(); ++i) {
+            row.push_back(std::strtod(p, &e));
+            p = e;
+        }
+        return true;
+    }
+    double operator[](const std::string& n) const {
+        for (std::size_t i = 0; i < names.size(); ++i)
+            if (names[i] == n) return row[i];
+        throw std::out_of_range("column " + n);
+    }
+    ~XzTable() {
+        if (pipe) pclose(pipe);
+    }
+};
+
+bool same(double a, double b) { return std::memcmp(&a, &b, sizeof a) == 0; }
+
+int runReplay(const std::string& cap, const std::string& mdir) {
+    TargetField f;
+    f.init(g_fieldDir + "/trg_field_map.dat", 6.4749999999999986E+001, 0, 9.2699999809265137E+001, 0);   // config A
+    CosyEngine eng;
+    eng.setFortranCompat(true);
+    eng.setLog(nullptr);
+    eng.initRecon(1, mdir);
+    eng.initRecon(5, mdir);
+    int fails = 0;
+    {   // every trgTrackToPlane call (factor_out compared when ok_in = 1: stale otherwise, T9)
+        XzTable t;
+        if (!t.open(cap + "/cap_plane.txt.xz")) {
+            std::printf("SKIP: %s/cap_plane.txt.xz missing\n", cap.c_str());
+            return 77;
+        }
+        long n = 0, bad = 0;
+        while (t.next()) {
+            TargetField::Vec u{};
+            for (int i = 0; i < 6; ++i) u[static_cast<std::size_t>(i)] = t["u" + std::to_string(i + 1) + "_in"];
+            bool ok = t["ok_in"] != 0;
+            const bool ok_in = ok;
+            f.trackToPlane(u, t["E"], t["dl"], t["a"], t["b"], t["c"], t["d"], ok, static_cast<int>(t["spect"]));
+            bool d = (ok ? 1.0 : 0.0) != t["ok_out"] || (ok_in && !same(f.factor(), t["factor_out"]));
+            for (int i = 0; i < 6; ++i) d = d || !same(u[static_cast<std::size_t>(i)], t["u" + std::to_string(i + 1) + "_out"]);
+            if (d && bad++ < 5) std::printf("  trgTrackToPlane call %ld differs\n", n + 1);
+            ++n;
+        }
+        std::printf("trgTrackToPlane (all captured calls): %ld compared, %ld differing\n", n, bad);
+        fails += bad != 0 || n == 0;
+    }
+    {
+        XzTable t;
+        if (!t.open(cap + "/cap_from.txt.xz")) return 1;
+        long n = 0, bad = 0;
+        while (t.next()) {
+            double x = t["x_in"], y = t["y_in"], z = t["z_in"], dx = t["dx_in"], dy = t["dy_in"];
+            bool ok = false;
+            f.trackFromTgt(x, y, z, dx, dy, t["mom_in"], t["mass_in"], static_cast<int>(t["spect_in"]), ok);
+            const bool d = !same(x, t["x_out"]) || !same(y, t["y_out"]) || !same(z, t["z_out"]) || !same(dx, t["dx_out"]) ||
+                           !same(dy, t["dy_out"]) || (ok ? 1.0 : 0.0) != t["ok_out"];
+            if (d && bad++ < 5) std::printf("  track_from_tgt call %ld differs\n", n + 1);
+            ++n;
+        }
+        std::printf("track_from_tgt (all captured calls): %ld compared, %ld differing\n", n, bad);
+        fails += bad != 0 || n == 0;
+    }
+    {
+        XzTable t;
+        if (!t.open(cap + "/cap_to.txt.xz")) return 1;
+        long n = 0, bad = 0, skipped = 0;
+        while (t.next()) {
+            if (t["ok_in"] == 0) {   // immediate return in SIMC (the spectrometer failed)
+                ++skipped;
+                continue;
+            }
+            Track tr;
+            tr.xs = t["track_xs"];
+            tr.ys = t["track_ys"];
+            tr.dxdzs = t["track_dxdzs"];
+            tr.dydzs = t["track_dydzs"];
+            const int arm = static_cast<int>(t["arm_in"]);
+            double delta = t["delta_in"], y = t["y_in"], dx = t["dx_in"], dy = t["dy_in"], mom = t["mom_in"];
+            bool ok = true;
+            int nr = 0;
+            f.trackToTgt(delta, y, dx, dy, t["frx_in"], t["fry_in"], mom, t["mass_in"], t["ctheta_in"], t["stheta_in"],
+                         static_cast<int>(t["spect_in"]), ok, arm,
+                         [&](double fry, double& d, double& yp, double& xp, double& yt) {
+                             eng.recon(arm, tr, fry, d, yp, xp, yt);
+                         },
+                         &nr);
+            const bool d = !same(delta, t["delta_out"]) || !same(y, t["y_out"]) || !same(dx, t["dx_out"]) ||
+                           !same(dy, t["dy_out"]) || !same(mom, t["mom_out"]) || (ok ? 1.0 : 0.0) != t["ok_out"] ||
+                           nr != static_cast<int>(t["n_recon"]);
+            if (d && bad++ < 5) std::printf("  track_to_tgt call %ld differs\n", n + skipped + 1);
+            ++n;
+        }
+        std::printf("track_to_tgt (captured calls with ok_in = 1): %ld compared, %ld differing (%ld ok_in = 0 calls)\n", n,
+                    bad, skipped);
+        fails += bad != 0 || n == 0;
+    }
+    std::printf("%s\n", fails == 0 ? "PASS" : "FAIL");
+    return fails == 0 ? 0 : 1;
+}
+
 bool slurp(const std::string& p, std::string& s) {
     std::ifstream in(p, std::ios::binary);
     if (!in) return false;
@@ -270,6 +397,7 @@ int main(int argc, char** argv) {
         if (mode == "trgtracktoplane") return runTrackToPlane(dir);
         if (mode == "track_from_tgt") return runTrackFrom(dir);
         if (mode == "track_to_tgt") return runTrackTo(dir, mdir);
+        if (mode == "replay") return runReplay(dir, mdir);
     } catch (const std::exception& e) {
         std::printf("error: %s\n", e.what());
         return 1;

@@ -15,3 +15,8 @@ endforeach()
 add_test(NAME l1_trg_field_map_file COMMAND test_l1_trg files ${_trgmap} ${SIMC_FORTRAN_DIR})
 list(APPEND _trg_tests l1_trg_field_map_file)
 set_tests_properties(${_trg_tests} PROPERTIES SKIP_RETURN_CODE 77 LABELS l1 TIMEOUT 600)
+# the capture replay: all 704778 trgTrackToPlane, 203423 track_from_tgt and the 9174 tracking track_to_tgt calls of the
+# 1000-event capture of the shipped poltar example (bitwise); needs xz
+add_test(NAME l1_trg_replay_capture COMMAND test_l1_trg replay ${SIMC_REFERENCE_DIR}/runs/p15f2_poltar_cap/capture
+         ${_trgmap} ${_trgmat})
+set_tests_properties(l1_trg_replay_capture PROPERTIES SKIP_RETURN_CODE 77 LABELS "l1;replay" TIMEOUT 900)
