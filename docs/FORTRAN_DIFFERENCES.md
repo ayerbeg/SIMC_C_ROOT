@@ -60,6 +60,9 @@ P7.F1 (K2–K4). §6 has the L2 numbers.
 | D-062 G1 π0 photon decay | simc.f:1518-1522, 1535-1539 | the π0 photons go to mc_calo with m2 = Mh2 = Mpi0² and decay_flag = doing_decay: with doing_decay = 1 the first "photon decay" STOPs in project.f:76-90 ('cannot decay particle with mass=  134.98'; reference/runs/p14f2_excl_h_dec1_probe) | photons are massless and stable (m2 = 0, decay_flag false; `driver::PizeroCalorimeter`); the corrected set-up accepts doing_decay with doing_pizero (no effect) | every π0 run with doing_decay = 1 (Fortran: no output at all) | `fortran_diff_D062_G1_pi0_photon_decay`, `calo_selftest` |
 | D-062 G2 calo electron decay | simc.f:1761-1765 | the calorimeter as electron arm passes decay_flag = doing_decay (every other electron arm .false.): an electron "decay" STOPs (mass 0.51) | decay_flag false (`MonteCarlo`) | electron arm 7/8 with doing_decay = 1 | `fortran_diff_D062_G2_calo_electron_decay` |
 | D-062 G3 π0 path length | simc.f:1462, 1517-1544 | pathlen is set to 0 once; the second photon starts from the first photon's path length, so FP%p%path ≈ 2 × drift_to_cal (600 cm for 300) | each photon starts at 0; FP%p%path = the path of the photon reported in FP%p | π0 ntuple: no FP path column in the pion/SIDIS layouts; the summary/kaon-like survival weights do not use it | `fortran_diff_D062_G3_pi0_path_length`, `calo_selftest` |
+| D-067 T1 field opposite side | simc.f:127, 141 | `degrad*abs(targ_Bphi-phi)-180.0 .lt. .01` has no outer abs: every Δφ < 180.01° that is not "same side" is taken as "opposite side" (targ_Bphi = 0, the default: p arm Δφ = 90° gives 92.7°, the e arm hits the error branch and keeps 0) | `abs(degrad*abs(Δφ)-180) < .01` (driver::TargetFieldArmAngles) | using_tgt_field runs with targ_Bphi ≠ the arm φ ± 0/180° only (probe p15f2_poltar_bphi0: both arms error branch, field angles 0) | `fortran_diff_D067_T1_field_opposite_side` |
+| D-067 T2 field p-arm sign | simc.f:136-140 | p arm, same side, targ_Bangle < θp: `+1*sin(phi)*(targ_Bangle-theta)` = −sinφ·\|B−θ\| (the sign of the B ≥ θ branch), unlike the continuous e-arm formula (simc.f:122-126) | the e-arm formula +sinφ·(θ−B) | field on the hadron-arm side with targ_Bangle < θp only (probe p15f2_poltar_bangle5: −7.7° → +7.7°) | `fortran_diff_D067_T2_field_parm_sign` |
+| D-067 T14 field + π0/rho columns | results_write.f:154-185, 212-240 | with using_tgt_field the π0 photons are written to ntu(54..65) (semi 57..68), over the 8 polarized-angle columns, and the last 8 photon tags stay 0; rho + field never writes `mmnuc` (tag 67, always 0) | each value in its own tag (OUTPUT_FORMAT.md §1g) | ntuple only, π0/rho runs with the field (probe p15f2_poltar_pi0: 73 columns) | `fortran_diff_D067_T14_field_ntuple_columns` |
 | D-011 .geni DC | simc.f:526 | label "DC1, DC2, Scin, Cal" with two values | label "DC1, DC2" | `.geni` text only (every SHMS run). | same |
 | D-018 offsets | simc.f:815-818 | `xptar/yptar offset` printed in rad under the unit `mr` | printed in mr (×1000) | `.hist` text, only when a spectrometer angle offset is non-zero (0 in all validation runs). | same |
 | D-018 L format | simc.f:897-898, 907, 927 | the integers `deForest_flag`, `use_first_cer`, `use_expon` written with the L edit descriptor (T/F; −1 and +1 both "T") | written as integers (i2, i2, i3) | `.hist` text of every run (2 or 3 lines). D-018 quoted l.896/906/925; the lines are 898/907/927. | same |
@@ -120,7 +123,6 @@ P7.F1 (K2–K4). §6 has the L2 numbers.
 
 | id | Fortran | bug | C++ now | to do |
 |---|---|---|---|---|
-| D-006 tgt field | simc.f:139 | `ang_targ_parm = +1*sin(phi)*(targ_Bangle-theta)` (the e-arm line l.125 has `theta-targ_Bangle`) | `using_tgt_field` is NotPorted | when the target field is ported |
 
 ## 3. Class c: acceptance mode, open with the user (D-031 flag 1)
 
@@ -195,6 +197,11 @@ P7.F1 (K2–K4). §6 has the L2 numbers.
 | D-062 G5 drift_to_cal | dbase.f:1104 | `drift_to_cal` defaults to 0 and is not checked: arms 7/8 without it put the calorimeter face at the target plane | refuse 0? kept (`calo` plug-in) | calorimeter runs without drift_to_cal |
 | D-062 G8 π0 decay in tail 1 | event.f:899-901 (complete_ev), radc.f tail 1 | pizero_decay is called again when the radiative tail 1 re-calls complete_ev: a second, different photon pair per event (as D-038 F9) | keep the first pair? kept | π0 runs with radiation (photon pair of ~5 % of the events) |
 | D-065 P1 π0 in HMS/SHMS | simc.f:1403-1609, mc_hms/mc_shms | with doing_pizero and hadron_arm 1 or 5 the π0 itself (m2 = Mpi0²) is transported through the magnetic spectrometer like a charged particle (apertures, COSY maps, hut, multiple scattering); pizero_decay still fills the photon columns, which no spectrometer uses; RECON%p = SP%p (D-063). With doing_decay = 1 the π0 reaches the project/transp decay test and STOPs (as D-062 G1) | is "π0 kinematics in the HMS/SHMS acceptance" a meaningful mode, or should it be refused / use a neutral-particle acceptance? Kept in both modes; the corrected mode never decays the π0 in flight (doing_decay = 1 runs, D-037 F9), --fortran-compat STOPs | π0 runs with hadron_arm 1/5 only (reference/runs/p15f1_pi0_{shms,hms}_A); `cli_shipped_inputs` |
+| D-067 T4 field step limit | trg_track.f:210 | `max_steps = int(max(dist0,10*dl)/dl)*10` with the SIGNED dist0: arms called with −sinθ (SOS, HRS-L, SHMS) always get 100 iterations; in the shipped example 208 of 8174 (2.5 %) SHMS events that passed mc_shms are rejected by this limit (the iterated reconstruction had run away) | abs(dist0)? kept in both modes | using_tgt_field, left-side arms |
+| D-067 T5 field convergence | trg_track.f:794-865 | track_to_tgt tests delx of the START of each iteration: the final result is never tested; after 10 iterations it is accepted if that delx ≤ 0.2 (134 captured calls) | test the final delx? kept | using_tgt_field reconstruction |
+| D-067 T6 field factor | trg_track.f:81, 123, 192 | factor = 90/E instead of c²·1e-16/1e6 = 89.8755178737: bending 0.14 % too strong | use 89.8755? kept | every using_tgt_field run |
+| D-067 T13 π0 bent in the field | dbase.f:330-346 | sign_hadron = ±1 for doing_pizero: the neutral π0 is bent in the target field as a charged particle (adds to D-065 P1) | kept | π0 + field |
+| D-067 T15 polarization vector | event.f:811-813, 851-853, 1206-1208, 1248-1250 | the polarization for the event angles is (−pol·sin\|B\|, 0, pol·cos\|B\|): always beam left and in-plane, targ_Bphi and the sign of targ_Bangle ignored (in the shipped example the angle frame and the tracking field are on opposite sides) | kept | the 8 polarized-angle columns |
 | D-060/D-061 F2 SOS 7.62 cm | mc_sos.f:337-340, 349-360 | the last 7.62 cm to the new exit window are a straight line without `project`: no pathlength (FP path −7.62 cm), no decay check over that segment; the code comment says "WE REALLY NEED TO FIX THIS UP" | include the 7.62 cm in pathlen / decay? | SOS FP path (TOF), decay ON runs |
 | D-061 F3 SOS/HRS recon fry | simc.f:1349-1355, 1472, 1738 | mc_sos (and mc_hrs*) receive the raster `fry` (−rastery, 0 without correct_raster) as the recon vertical position; mc_hms/mc_shms receive xtar_init (the true x at z = 0) | intended difference (SOS/HRS matrices fitted with the raster), or a leftover? | SOS ytar/delta recon with an extended beam spot |
 | D-061 F6 HRS aerogel | physics_kaon.f:155-157, semi_physics.f:617-619 | the survival weight of HRS kaons uses zaero = −183 cm ("aero at 130cm, last project=313(S2)"), but mc_hrs*_hut ends the pathlength at the calorimeter back (432.3 cm; 432.3 − 183 = 249.3 ≠ 130) | which distance is intended? | HRS kaon / SIDIS-kaon weights without decay (only visible with D-061 F1 corrected) |
@@ -219,6 +226,9 @@ P7.F1 (K2–K4). §6 has the L2 numbers.
 | D-065 S2 spect_mode values | dbase.f:531-532, 949-950 | any spect_mode other than 1/−1/−2 means "both arms on", unchecked | faithful; the corrected mode logs a WARNING for values outside {0, 1, −1, −2} (SetupBuilder, `cli_shipped_inputs`) |
 | D-065 S3 slop | init.f:159-200 | the MC slop is added to the generation window only for arms whose MC is on (genvol 0.0195475 vs 0.0224744 for eep_h_elastic_rad_A) | faithful |
 | D-065 W1-W3 shipped inputs | simc_gfortran/infiles | 18 of the 32 shipped main inputs use legacy `.` names: CTP ignores them (registered as dummy ints) and the run STOPs `bad targ.can value` (dbase.f:461); 3 more run with 20 ignored names from a legacy extra file; temp.inp = mc_neg_h_z37_ptbin.inp; fpi12_deltapp STOPs (D-038 F1) | same STOP / same run; simc++ additionally lists the ignored names and points to convert_inputfile.sh (§16) |
+| D-067 T3/T17 field set-up | simc.f:129-133, 143-147; trg_track.f:286; simc.f:1583-1585, 1787-1789 | the angle error branches print and continue (angle 0; l.146 prints θp as "p-arm phi"); phi treated as 0; calorimeter arms with the field STOP 'Target field reconstruction not set up for your spectrometer' | faithful (FortranStop for arms 7/8) |
+| D-067 T7-T12 trg_track numerics | trg_track.f:273, 409-416, 184, 200-214, 640-648; simc.f:1431/1579 | pi180 = 3.141592653/180; field 0 for z' ≥ 100 or r ≥ 100 cm and for non-finite coordinates (INT() = −2147483648); factor not written when ok = .false.; the loop restarts from the wrong-direction step; SIGN(1.,−0.) = −1; track_from_tgt's ok ignored and its z = 0 result discarded; Mh to track_from_tgt but sqrt(m2) after a decay to track_to_tgt | faithful, bitwise (optics::TargetField) |
+| D-067 T16 targ_pol = 0 | event.f:895, 1289 | theta_tarq = acos(0/0) = NaN in every event (column th_tarq); phi_targ = betai = 0 | faithful |
 | D-061 F5 HRS circles | mc_hrs*.f:159-180 | the circular apertures at z = 65.686 and 80.436 cm (before the slit box) count as slit_hor (stop_where 20, 21) | faithful |
 | D-061 F5/F7 HRS cal / VDC offset | mc_hrs*_hut.f:463-470, 480-487; mc_hrsl.f:525, mc_hrsr.f:524 | the calorimeter cuts are commented out (cal counter always 0); y_fp gets the VDC offset (−0.78 L, −0.48 R) after ys (the recon input) is set, so the recon ignores it | faithful |
 | D-061 F5 HRS stop_where | g_dump_all_events.inc, mc_hrs*.f | COMMON /g_dump_all_l|r/ stop_where, x_stop, y_stop written at each stop, never read by SIMC | mirrored in the kernel (`McHrs::dump`) for the L1 tables |
@@ -286,7 +296,7 @@ P7.F1 (K2–K4). §6 has the L2 numbers.
 | D-057 F7b rho main%w/t | rho_physics.f:113, 117 | peerho overwrites main%w with √s in GeV and main%t with t in GeV² (complete_ev set them in MeV, MeV²) | faithful: the rho ntuple/report see the GeV values as in the Fortran |
 | D-057 F2b rho_decay success | rho_decay.f:1-160 | rho_decay never sets success = .true.: the incoming success is returned on every non-failure path | faithful (`rho::rhoDecay(..., success_in, ...)`); the call after a failed try is corrected (F2, §2) |
 | D-057 F13 rho weight | event.f:1016-1022; simc.f:375-391 | no hadron jacobian, genvol = dΩe · 4π · ΔEe (flat CM generation, peerho = gtpr·dσ/dΩcm); the truncated Breit-Wigner sampling (±500 MeV: 90.5 % of the BW) carries no normalisation factor; davejac is computed but not applied | faithful |
-| D-057 F14 rho ntuple | results_write.f:187-229 | 59 columns (OUTPUT_FORMAT.md §1f): `t` is the PION t (Mh2 = Mpi2), zi/pt2i/sigcent/xfermi always 0, Mhadron in MeV, pfermi NaN for H (D-051 F3: 0 in the corrected mode) and ±0 for D/³He, jacobian/centjac = davejac/johnjac, phipqi = the rho's φpq; with using_tgt_field `mmnuc` is never filled (not ported) | faithful (pfermi: D-051 F3) |
+| D-057 F14 rho ntuple | results_write.f:187-229 | 59 columns (OUTPUT_FORMAT.md §1f): `t` is the PION t (Mh2 = Mpi2), zi/pt2i/sigcent/xfermi always 0, Mhadron in MeV, pfermi NaN for H (D-051 F3: 0 in the corrected mode) and ±0 for D/³He, jacobian/centjac = davejac/johnjac, phipqi = the rho's φpq; with using_tgt_field `mmnuc` is never filled (D-067 T14, corrected by default) | faithful (pfermi: D-051 F3) |
 | D-057 F17 rho CENTRAL.sigcc | simc.f:1236-1290 | CENTRAL.sigcc = peerho for the SHMS central particle treated as a rho of nominal mass with main0%phi_pq = 0 (as D-038 F5) | kept in both modes (`RhoProduction::prepareCentral` does nothing) |
 | D-057 F19 rho pass_cuts | simc.f:237 (D-006) | the electron delta max in the hadron test changes Σ Weight of the rho runs by −24 … −34 % | corrected by D-006 (§2) |
 | D-057 F22 rho_decay dead code | rho_decay.f:54, 132-136 | dlen/ctaurho are computed and unused; the 'going backwards' test is unreachable after the pzprime test | faithful |
@@ -301,7 +311,7 @@ P7.F1 (K2–K4). §6 has the L2 numbers.
 | D-005 STOP | `STOP` exits with status 0 | `simc::FortranStop`, exit status 3; rejected inputs exit 2 |
 | D-003 input | CTP .inp, `%` names only (obsolete `.` names silently ignored) | .inp (same CTP semantics, unknown names reported like CTP) or JSON; `inp2json` |
 | D-032 | arm codes as raw integers, 6 half-supported | one `SpectrometerId` table; 6 rejected (see §2) |
-| not ported | target field (using_tgt_field) | `simc::NotPorted` at start-up; the SOS (arm 2, P14.1), the HRS-R/L (arms 3/4, P14.2) and the calorimeter arms 7/8 with π0 → 2γ (P14.3) are ported |
+| not ported | — | nothing: the SOS (arm 2, P14.1), the HRS-R/L (arms 3/4, P14.2), the calorimeter arms 7/8 with π0 → 2γ (P14.3) and the polarized-target field (using_tgt_field, P15.2b) are ported |
 | D-057 F16 rho A ≥ 4 | dbase.f:209-214, 875-876: no doing_*rho flag for nint(A) ≥ 4, the run STOPs (exit 0) after printing E_bind = −1e10; hadron_arm 6/7/8 STOP in rho_decay | refused at input in both modes (std::invalid_argument; A ≥ 4: SetupBuilder; arms 7/8: the "rho" model; 6 is rejected for every run, D-032); P15.2: the A-range refusal comes after the dbase.f:461/465 target STOPs, so rhotest.inp (legacy names, A = 0) gives the Fortran `bad targ.can value` |
 | P13.1 rho + other reaction | dbase.f:136-215 takes the first branch of its if-chain (pion, kaon, delta, semi) and leaves doing_rho set, so event.f:420-421 decays that hadron as a rho | doing_rho together with doing_pion/kaon/delta/semi is refused at start-up (std::invalid_argument, both modes); doing_rho with doing_pizero too (results_write.f:230-236 overwrites the rho columns) |
 | P13.2 RANLUX | grnd = RANLUX luxury 3 (cern/ranlux.f, call_ranlux.f: 999 of every block of 1000), gauss1.f | besides the default `mt64` (D-002), the IRandom `"rng": {"type": "ranlux"}` reproduces the Fortran stream bit for bit from random_seed (or `"state"`: the 25 integers of *_start_random_state.dat): with `--fortran-compat` a SIMC++ run can then be identical to a Fortran run (both P13.F1 rho captures: every try, tree, .hist/.geni/.gen) |
@@ -647,8 +657,8 @@ simc_runs/20261113_190555_P15.2_shipped_identity (28 folders) and simc_runs/2026
 | fpi12_deltapp | STOP `Can't do Delta+ production from neutron for pi0` (dbase.f:823-826) | 0 | compat: same STOP; corrected: runs (D-038 F1, class a) | none possible |
 | mc_neg_h_z37_ptbin, temp (byte-identical) | runs | 0 | runs | shipped_mc_neg_h_z37_ptbin: IDENTICAL |
 | nps_excl_pi0_test, nps_excl_pi0_ld2_{proton,neutron}_test, nps_delta_pi0_test, nps_sidis_pi0_test | runs | 0 | runs | nps_* (5): IDENTICAL |
-| poltar_exclusivepion_example | runs (using_tgt_field) | 0 | REFUSED: using_tgt_field not ported (trg_track.f) | shipped_poltar_exclusivepion_example: REFUSED (P15.2b) |
-| inputfile_protoype | STOP `bad targ.can value` | 46 | same STOP + names + convert hint | shipped_inputfile_protoype_pct: REFUSED (using_tgt_field, P15.2b) |
+| poltar_exclusivepion_example | runs (using_tgt_field) | 0 | runs (P15.2b; until then REFUSED) | shipped_poltar_exclusivepion_example: IDENTICAL (§17) |
+| inputfile_protoype | STOP `bad targ.can value` | 46 | same STOP + names + convert hint | shipped_inputfile_protoype_pct: IDENTICAL (§17) |
 | mc_neg_d_z85_zbin | STOP `bad targ.can value` | 46 | same | shipped_mc_neg_d_z85_zbin_pct: IDENTICAL |
 | mc_neg_h_z85_zbin | STOP | 46 | same | p14f1_sidis_sos_A: IDENTICAL (disk evidence) |
 | rhotest | STOP | 46 | same (the D-057 F16 rho A-range refusal now comes after this STOP) | p14f1_rho_sos_A: IDENTICAL (P15.1, slow test) |
@@ -666,4 +676,52 @@ simc_runs/20261113_190555_P15.2_shipped_identity (28 folders) and simc_runs/2026
   For a legacy input simc++ prints `simc++: WARNING: 46 input variable(s) are not SIMC variables and are IGNORED, as by the
   Fortran ...` with the names and the convert_inputfile.sh hint, then the Fortran STOP text (`simc++: Fortran STOP during the
   setup: STOP bad targ.can value`) and a note that the ignored names are the likely cause. Exit status: 3 (simc::FortranStop;
-  the Fortran exits 0 after a STOP, see §6). Totals: 39 Fortran reference folders run, 37 IDENTICAL, 2 REFUSED (NotPorted).
+  the Fortran exits 0 after a STOP, see §6). Totals: 39 Fortran reference folders run, 37 IDENTICAL, 2 REFUSED (NotPorted);
+  since P15.2b the 2 refused ones are IDENTICAL too (§17).
+
+## 17. Polarized-target field tracking (using_tgt_field, trg_track.f): L1, capture replay, full-run identity, L2 (task P15.2b)
+
+References: reference/P15.F2_report.md (findings T1-T18, D-067). The port: `optics::TargetField` (trgInit, trgField,
+trgDeriv, trgRK4, trgTrackToPlane, track_from_tgt, track_to_tgt; no random numbers), owned by `driver::MonteCarlo`
+(track_from_tgt before the drift to z = 0, track_to_tgt after a successful arm through
+`ISpectrometer::reconstructLastTrack` = mc_<arm>_recon on the hut track of the last call); the arm angles of simc.f:120-155
+in `driver::TargetFieldArmAngles`; the event angles of event.f:796-896 (`PionProduction::polarizedTargetAngles`, also
+for kaon/delta/SIDIS/rho) and event.f:1189-1290 (`EepReactionBase`); the 8 ntuple columns (OUTPUT_FORMAT.md §1g); the map
+data/field/trg_field_map.dat (byte copy, `l1_trg_field_map_file`). With using_tgt_field = 0 nothing changes (every
+regression baseline test passes unchanged in check_all).
+
+* **L1** (reference/functions/trg_track/, tolerance 0, `l1_trg_*`): trginit 9 rows, trginit_map 7803 nodes × 4 values,
+  trgfield 4022 (incl. NaN/±Inf/1e300 inputs: zero field), trgderiv 800, trgrk4 800, trgtracktoplane 3842 (incl. the 208
+  captured max_steps failures and the ±0 starts), track_from_tgt 3000, track_to_tgt 11694 (arms 1-5, ok_in 0/1): every
+  value bitwise.
+* **Capture replay** (`l1_trg_replay_capture`, reference/runs/p15f2_poltar_cap/capture): all 704778 trgTrackToPlane, 203423
+  track_from_tgt and 9174 tracking track_to_tgt calls (ok_in = 1; 194249 ok_in = 0 calls return at once) bitwise.
+* **Full-run identity** (RANLUX + `--fortran-compat`, .hist except the time lines, .geni, .gen, h10 tree; script
+  p15_shipped_regression.sh, simc_runs/20261114_155201_P15.2b_field_identity, build ed04e71; CTest `regression_shipped_*`):
+
+| folder | what | tries | columns | verdict |
+|---|---|---|---|---|
+| shipped_poltar_exclusivepion_example | the shipped input, 50000 events (615 s) | 11143514 | 61 | IDENTICAL |
+| shipped_inputfile_protoype_pct | the renamed inputfile_protoype.inp (617 s) | 11143514 | 61 | IDENTICAL |
+| p15f2_poltar_cap | the example, 1000 events | 211933 | 61 | IDENTICAL |
+| p15f2_poltar_pol0 | targ_pol = 0 (th_tarq NaN, T16) | 47584 | 61 | IDENTICAL |
+| p15f2_poltar_bphi90 | targ_Bphi = 90 | 11953 | 61 | IDENTICAL |
+| p15f2_poltar_bangle5 | targ_Bphi = 90, targ_Bangle = 5 (T2 active) | 12335 | 61 | IDENTICAL |
+| p15f2_poltar_pi0 | doing_pizero, 2 γ (T13, T14 active) | 42015 | 73 | IDENTICAL |
+| p15f2_poltar_bphi0 | targ_Bphi = 0 (T1 active, e-arm error branch) | 41170 | 61 | IDENTICAL |
+
+* **Class a corrections** (default mode; `--fortran-compat` keeps the Fortran; tests in both modes): T1 opposite-side
+  test (`fortran_diff_D067_T1_field_opposite_side`: targ_Bphi = 0 gives the error branch for both arms instead of 92.7°
+  for the p arm), T2 p-arm sign (`fortran_diff_D067_T2_field_parm_sign`: bangle5 p arm +7.7° instead of −7.7°), T14
+  ntuple columns of π0/rho with the field (`fortran_diff_D067_T14_field_ntuple_columns`). None of them acts on the
+  shipped example (targ_Bphi = 270 = the e-arm φ, targ_Bangle 80° > θ, no π0).
+* **Kept in both modes (class b, §4):** T4 signed step limit (2.5 % of the SHMS events of the example rejected), T5
+  convergence test, T6 factor 90/E, T13 π0 bent as ±1 charge, T15 polarization vector. Documented (class d, §5): T3,
+  T7-T12, T16, T17 (calorimeter arms with the field STOP).
+* **L2** (seed 4242, mt64, 50000 events, validation/scripts/p15b_field_l2.sh, simc_runs/20261114_155606_P15.2b_L2_*,
+  vs the Fortran shipped_poltar_exclusivepion_example): compat **PASS** 4/304 (statistical, incl. pmoop and radphot, which also fail in the corrected run;
+  wtcontr 18.2451 / 18.1751, pull +0.44); corrected FAIL 5/304, the only gross failure CENTRAL.sigcc (D-038 F5,
+  deterministic 9.56e-7 → 7.69e-6), wtcontr 18.1743 (pull +0.45). The corrected tree differs from the compat tree in most
+  events: a correction of an earlier phase (doing_decay = 1 here, e.g. the D-037 F7 decay drift) changes an acceptance
+  decision early in the run, after which the random sequences diverge (as for the dec1 pion runs of §9); ΣWeight corrected/compat = 0.999988. No difference is due to
+  T1/T2/T14 (not active for this input).

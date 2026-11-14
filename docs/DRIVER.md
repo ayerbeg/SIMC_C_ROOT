@@ -118,5 +118,5 @@ finish: Normalise → RunReport → RunSummary → sinks (endRun; IReportSink::w
 ## 5. Not supported yet
 
 Reactions other than H/D/A(e,e'p), exclusive pion (P9.2), kaon (P10.2) and Delta-region (e,e'p)pi (P11.1) production and
-`doing_phsp` (rho, semi-inclusive: NotPorted at initialise), `using_tgt_field`, `random_state_file`, the semi/rho ntuple layouts, the kaon layout with the target field,
+`doing_phsp` (rho, semi-inclusive: NotPorted at initialise), `random_state_file`, the semi/rho ntuple layouts. (The polarized-target field `using_tgt_field` is ported since P15.2b: optics::TargetField, owned by driver::MonteCarlo.)
 (all spectrometer arms are ported: SOS P14.1, HRS P14.2, calorimeter + pi0 P14.3).

@@ -201,8 +201,10 @@ endforeach()
 # full-run identity is on disk (simc_runs/20261114_142803_P15.2_shipped_identity_other): p14f1_{sidis,delta,kaon,pion}_sos_A
 # (mc_neg_h_z85_zbin, test_delta_h, test_kaon_h, test_pion_h renamed, 1e5 events, 71-498 s). rhotest (p14f1_rho_sos_A) and
 # p14f1_eep_sos_A are the slow l1_simcrun_ranlux_* tests (kaon.cmake, hrs.cmake).
-# shipped_poltar_exclusivepion_example and shipped_inputfile_protoype_pct need using_tgt_field (trg_track.f, not ported):
-# their tests check the refusal ("not ported") until P15.2b. Labels "regression_shipped;slow"; skipped (77) without reference.
+# P15.2b: shipped_poltar_exclusivepion_example and shipped_inputfile_protoype_pct (using_tgt_field, trg_track.f) are full
+# 50000-event runs (~615 s each in simc++: the only ones above 10 min; the 1000-event capture p15f2_poltar_cap of the same
+# input and the 5 P15.F2 probes p15f2_poltar_* are the short ones). Labels "regression_shipped;slow"; skipped (77) without
+# reference.
 set(SIMC_SHIPPED_FOLDERS
     p15f1_eep_sm1_A p15f1_eep_smm1_A p15f1_eep_smm2_A p15f1_phsp_sm1_A p15f1_pion_sm1_A
     p15f1_pi0_shms_A p15f1_pi0_hms_A p15f1_pi0_shms_cap
@@ -212,11 +214,12 @@ set(SIMC_SHIPPED_FOLDERS
     shipped_test_eep_fe_bh_pct shipped_test_kaon_c12_pct shipped_test_kaon_d_pct shipped_test_kaon_he3_pct
     shipped_test_kaon_he4_pct shipped_test_pion_d_pct shipped_test_pion_he_pct
     nps_excl_pi0_test nps_excl_pi0_ld2_proton_test nps_excl_pi0_ld2_neutron_test nps_delta_pi0_test nps_sidis_pi0_test
-    hms_shms_validation eep_h_test_pctnames)
+    hms_shms_validation eep_h_test_pctnames
+    p15f2_poltar_cap p15f2_poltar_pol0 p15f2_poltar_bphi90 p15f2_poltar_bangle5 p15f2_poltar_pi0 p15f2_poltar_bphi0)
 foreach(_f ${SIMC_SHIPPED_FOLDERS})
     add_test(NAME regression_shipped_${_f}
              COMMAND ${CMAKE_SOURCE_DIR}/validation/scripts/p15_shipped_regression.sh $<TARGET_FILE:simcpp>
                      $<TARGET_FILE:simc_root_identity> ${CMAKE_CURRENT_BINARY_DIR}/shipped_${_f} ${_f})
-    set_tests_properties(regression_shipped_${_f} PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 1200
+    set_tests_properties(regression_shipped_${_f} PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 1800
                          ENVIRONMENT "REF=${SIMC_REFERENCE_DIR}/runs;JOBS=1" LABELS "regression_shipped;slow")
 endforeach()

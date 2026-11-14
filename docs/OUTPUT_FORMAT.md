@@ -25,7 +25,7 @@ Each sink accepts an optional JSON config `{"file": "..."}`.
   `doing_phsp`, which keeps `doing_hyd_elast`, so the acceptance runs also have these 46 columns. Exclusive pion production
   (`doing_pion`, P9.2): 53 columns, 65 with `doing_pizero` (§1b). Kaon production (`doing_kaon`, P10.2): 55 columns (§1c).
   Delta region (`doing_delta`, P11.1): the 53 pion columns (§1d). SIDIS (`doing_semi`, P12.2): 56 columns (§1e), 68 with `doing_pizero` (the 12 photon columns of §1b appended, P14.3). Rho
-  (`doing_rho`, P13.2): 59 columns (§1f). `beginRun` throws for `using_tgt_field`. The layout is chosen from the run
+  (`doing_rho`, P13.2): 59 columns (§1f). With `using_tgt_field` (P15.2b) 8 polarized-target columns follow `phipqi` (§1g). The layout is chosen from the run
   flags (`NtupleColumnsFor(setup)`, `FillNtuple`).
 - **Arm assignment** (results_write.f:64 and 89): `hs*` = the spectrometer on the beam **right** (HMS, HRSR) and `ss*` = the
   one on the **left** (SOS, HRSL, SHMS).
@@ -145,7 +145,7 @@ Columns 1-53 are those of the pion layout (§1b), with the kaon meanings below, 
 | 54 | `saghai` | `main.ntup.sigcm1` (Saghai model; 0 for every event in fortran_compat, D-043 F1) | model units | results_write.f:164 |
 | 55 | `factor` | `main.ntup.sigcm2` (factorized model, = `sigcm`) | model units | results_write.f:165 |
 
-With `using_tgt_field` the two kaon columns would move to 62/63 (not ported). The kaon captures prove the 55 columns bit for
+With `using_tgt_field` the two kaon columns move to 62/63 (§1g). The kaon captures prove the 55 columns bit for
 bit (`l1_simcrun_replay_kaon_*`).
 
 ### 1d. Delta layout (doing_delta; NtupleInit.f:101-158, results_write.f:131-155)
@@ -214,8 +214,32 @@ below, then 3 more (D-057 F14):
 | 58 | `Thrho` | `main.ntup.rhotheta`: the decay polar angle in the rho rest frame w.r.t. the LAB z axis (rho_decay.f:66; D-057 F8) | rad |
 | 59 | `mmnuc` | `main.ntup.mmA/1000` (missing mass, nucleus) | GeV |
 
-With `using_tgt_field` the Fortran adds 8 columns before Mrho (not ported). The two rho captures (and the full-run
+With `using_tgt_field` the 8 columns of §1g come before Mrho (Mrho, Thrho, mmnuc = 65-67). The two rho captures (and the full-run
 RANLUX replays) prove the 59 columns bit for bit (`l1_simcrun_replay_rho_{h,d}`).
+
+### 1g. Polarized-target field columns (`using_tgt_field`; NtupleInit.f:142-159, 239-256, results_write.f:154-162, 212-220; task P15.2b)
+
+Eight columns follow `phipqi`: pion/kaon/delta 54-61 (kaon `saghai`/`factor` then 62/63, π0 photons 62-73), semi/rho
+57-64 (rho `Mrho`, `Thrho`, `mmnuc` then 65-67, π0 photons 65-76). All in radians, [0, 2π) except `th_tarq` in [0, π].
+The shipped example (π+ H, HMS e⁻ + SHMS π+) has 61 columns.
+
+| # (pion/semi) | branch | C++ source | Fortran |
+|---|---|---|---|
+| 54/57 | `th_tarq` | `recon.theta_tarq`: angle between q and the polarization (NaN in every event for targ_pol = 0, D-067 T16) | event.f:1189-1290 (complete_recon_ev) |
+| 55/58 | `phitarq` | `recon.phi_targ`: angle between the scattering plane and the polarization | event.f:1189-1290 (complete_recon_ev) |
+| 56/59 | `beta` | `recon.beta`: angle between the reaction plane and the transverse polarization | event.f:1189-1290 (complete_recon_ev) |
+| 57/60 | `phis` | `recon.phi_s` = φpq − φtarg (Sivers) | event.f:1189-1290 (complete_recon_ev) |
+| 58/61 | `phic` | `recon.phi_c` = φpq + φtarg (Collins) | event.f:1189-1290 (complete_recon_ev) |
+| 59/62 | `betai` | `main.beta` (vertex) | event.f:796-896 (complete_ev) |
+| 60/63 | `phisi` | `vertex.phi_s` | event.f:796-896 (complete_ev) |
+| 61/64 | `phici` | `vertex.phi_c` | event.f:796-896 (complete_ev) |
+
+The polarization vector is always in-plane towards beam left, (−pol·sin|B|, 0, pol·cos|B|) in replay coordinates:
+targ_Bphi and the sign of targ_Bangle are ignored (D-067 T15, kept). Not written: `main%phi_targ`, `main%theta_tarq`.
+**π0 / rho with the field (D-067 T14, corrected by default):** the Fortran writes the photon values to the columns that
+start at the angles (pion 54-65, semi 57-68), overwriting them, and leaves the last 8 photon tags at 0; with doing_rho it
+never writes `mmnuc` (0). The default mode writes every value to its own tag; `--fortran-compat` reproduces the Fortran
+columns.
 
 ## 2. Run summary JSON (RunSummarySink, hist2json)
 

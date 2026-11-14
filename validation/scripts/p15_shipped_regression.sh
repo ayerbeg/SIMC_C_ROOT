@@ -4,11 +4,12 @@
 # RANLUX port and --fortran-compat (the seed of the .inp, as the Fortran) and the outputs are compared with the Fortran:
 #   .hist without the BEGIN/END Time lines (diff), .geni and .gen (cmp), the h10 tree (simc_root_identity, bitwise).
 # The run name of a folder is the basename of its .inp that has a .hist next to it (shipped_<x> folders keep the
-# shipped file name). Folders whose run the C++ refuses (NotPorted: using_tgt_field) are reported as REFUSED.
+# shipped file name). Folders whose run the C++ refuses (NotPorted) are reported as REFUSED; since P15.2b (using_tgt_field
+# ported) nothing is refused, so REFUSED counts as a failure unless ALLOW_REFUSED=1.
 # usage: p15_shipped_regression.sh <simc++> <simc_root_identity> <outdir> [run folder name ...]
 # env: JOBS (default 4), REF (default /home/ayerbe/NewDisk/reference/runs)
 # writes <outdir>/<folder>/ (outputs, run.log, identity.txt) and <outdir>/summary.tsv; exit 0 if every run is IDENTICAL or
-# REFUSED, 1 otherwise (77 when a single requested folder is absent: CTest skip). A REFUSED run must say "not ported".
+# (with ALLOW_REFUSED=1) REFUSED, 1 otherwise (77 when a single requested folder is absent: CTest skip).
 # The CTest label regression_shipped (tests/regression/CMakeLists.txt) runs this script once per folder.
 set -uo pipefail
 SIMC=$1; IDENT=$2; OUT=$3; shift 3
@@ -50,4 +51,5 @@ printf '%s\n' "${LIST[@]}" | xargs -P "$JOBS" -I{} bash -c 'one {}'
 { printf 'folder\trun\tverdict\tseconds\n'; for f in "${LIST[@]}"; do cat "$OUT/$f/row.tsv"; done; } > "$OUT/summary.tsv"
 column -t -s$'\t' "$OUT/summary.tsv"
 [[ ${#LIST[@]} -eq 1 ]] && { cat "$OUT/${LIST[0]}/identity.txt"; grep -h "not ported" "$OUT/${LIST[0]}/run.log"; }
-! grep -q -P '\t(DIFFERENT|ERROR|NO_REFERENCE)\t' "$OUT/summary.tsv"
+bad='DIFFERENT|ERROR|NO_REFERENCE'; [[ ${ALLOW_REFUSED:-0} == 1 ]] || bad="$bad|REFUSED"
+! grep -q -P "\t($bad)\t" "$OUT/summary.tsv"
