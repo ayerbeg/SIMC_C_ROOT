@@ -3,7 +3,7 @@
 #                       (from the registry) and the track back to the target (P7.1).
 #   PizeroCalorimeter.cpp : simc.f:1489-1556 — pi0 -> 2 gamma through a calorimeter arm (P14.3)
 #   Central.cpp       : simc.f:calculate_central (P7.2)
-#   RunReport.cpp     : simc.f normalisation (l.360-432), report (.hist) and .geni text, summary sections (P7.2)
+#   RunReport*.cpp    : simc.f normalisation (l.360-432), report (.hist), .geni text, summary sections (P7.2; split P15.3)
 #   FortranWriter.cpp : gfortran formatted-output emulation for the .hist/.geni text
 #   Pipeline.cpp      : the JSON plug-in choice per stage (docs/DRIVER.md)
 #   SimcRun.cpp       : the main loop (simc.f l.1-623)
@@ -15,7 +15,10 @@ add_library(simcfw_driver STATIC
     Central.cpp
     FortranWriter.cpp
     Pipeline.cpp
-    RunReport.cpp
+    RunReport.cpp           # normalisation, summary sections (P15.3 split:)
+    RunReportHist.cpp       #   .hist (simc.f:report)
+    RunReportGeni.cpp       #   .geni
+    RunReportRecords.cpp    #   reaction lines and FORMAT records of the report
     SimcRun.cpp
     TargetFieldAngles.cpp   # simc.f:120-155 arm angles of the polarized-target field (P15.2b)
 )
