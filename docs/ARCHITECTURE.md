@@ -169,7 +169,7 @@ replays (§7) possible.
 | `cli` | `simc++` with .inp vs JSON inputs, `inp2json`, plug-in selection by `--pipeline` | — |
 | `regression` | before/after output identity (`tests/regression`): all h10 branches and entries bitwise, text outputs equal apart from time stamps | SIMC++_Project/baselines/f9cea51_{rad,norad,phsp}_s4242 (`--fortran-compat`), 08812e6_corrected_{rad,norad,phsp}_s4242 (default); D/A(e,e'p): 508633a_[corrected_]eep_{d,fe56}_rad_n20k_s4242 (P8.2); pion: 3b27d5c_[corrected_]pion_{h_k1_rad_dec1,d_k1_pim_rad_dec1}_n20k_s4242 (P9.2); kaon: 1275770_[corrected_]kaon_{h_k1_rad_dec1,d_k1_sigm_rad_dec1}_n20k_s4242 (P10.2). Since P10.4 (D-044) the tests use the same set regenerated on glibc 2.43 / gcc 16.2.1: 4408493_glibc243_<same suffix> (validation/scripts/regen_baselines.sh; README.txt records the toolchain, tests/toolchain_guard.sh prints it on a failure); Delta (P11.1): 074cced_glibc243_[corrected_]delta_h_d1_rad_n20k_s4242; SIDIS (P12.2): 31b4232_glibc243_[corrected_]sidis_h_k1_pip_rad_n20k_s4242; rho (P13.2): e6feaf0_glibc243_[corrected_]rho_h_k1_rad_n1k_s4242 |
 | `fortran_diff` | one test per corrected Fortran bug, both modes (`tests/fortran_diff`), and the D-032 arm-code checks | reference/functions, reference/runs |
-| `examples` | example plug-ins run through the full driver | — |
+| `examples` | example plug-ins run through the full driver; `package`: install + out-of-tree plug-in build (P15.3) | — |
 | `slow` | long distribution tests | — |
 
 L2 (statistical, D-002): `validation/simc_compare` compares a C++ run with the Fortran A/B runs (.hist pulls,
@@ -182,13 +182,34 @@ include/simc/core/            parameters, RunSetup, events, Registry, Errors, Un
 include/simc/stages/          the interfaces, StageContext
 include/simc/<module>/        plug-in classes and kernel libraries; <module>/kernel/ = private Fortran mirrors
 src/<module>/                 one CMake target per module (simcfw_<module>; OBJECT if it registers plug-ins)
-src/driver/                   simcfw_driver (+ simcfw_driver_sinks): SimcRun, MonteCarlo, Pipeline, report
-tools/                        simc_main.cpp (simc++), inp2json, hist2json, check_all.sh
-examples/                     example plug-ins (ideal_box) and their tests
-tests/{unit,l1,regression}/   CTest suites (labels above)
-validation/                   simc_compare (own CMake project)
-data/                         COSY maps (byte copies of the Fortran files), tables, configs (data/config/*.json)
+src/setup/                    simcfw_setup: SetupBuilder.cpp (BuildRunSetup sequence, dbase.f STOP checks, radc_init,
+                              luminosity), SetupReaction.cpp (dbase.f:124-547), SetupTheory.cpp (target_init, theory /
+                              momentum distribution / spectral-function choice and the file readers), SetupLimits.cpp
+                              (limits_init); private SetupInternal.h (P15.3)
+src/driver/                   simcfw_driver (+ simcfw_driver_sinks): SimcRun, MonteCarlo, Pipeline, CommandLine (the simc++
+                              command line, CommandLineMain), TargetFieldAngles, report: RunReport.cpp (normalisation,
+                              summary), RunReportHist.cpp (.hist), RunReportGeni.cpp (.geni), RunReportRecords.cpp
+                              (reaction lines, FORMAT records; private RunReportInternal.h)
+tools/                        simc_main.cpp (simc++ = CommandLineMain), inp2json, hist2json, check_all.sh
+cmake/                        SIMCConfig.cmake.in (the installed CMake package)
+examples/                     example plug-ins: ideal_box (in-tree), out_of_tree_plugin (find_package(SIMC)); tests
+tests/{unit,l1,regression,fortran_diff}/   CTest suites (labels above)
+validation/                   simc_compare (own CMake project): simc_compare.cpp (CLI, loading, exit status),
+                              CompareCommon.{h,cpp} (config, tree, records, session), CompareRunLevel.cpp,
+                              CompareTreeLevel.cpp, CompareReport.cpp (verdict, summary.txt/json, PDF); scripts/
+data/                         byte copies of the Fortran data files with MD5SUMS: matrices/simc_fortran (COSY maps),
+                              spectral, pion, kaon, sidis, field; configs (data/config/*.json)
 ```
+
+**Installation and package (P15.3).** `cmake --install <build> --prefix <p>` installs `simc++`, `inp2json`,
+`hist2json`, `simc_root_identity` (bin/), the public headers (include/simc, without the private kernel/ headers), the
+libraries (lib/simc: the static libraries and, for the OBJECT libraries that carry SIMC_REGISTER registrations, their
+object files in lib/simc/objects), the data (share/simc/data), docs and examples, and the CMake package
+lib/cmake/SIMC (SIMCConfig.cmake, SIMCConfigVersion.cmake, SIMCTargets.cmake). `find_package(SIMC 2.0)` gives the
+target `SIMC::simc` (everything a complete run links; dependencies ROOT 6.40 and nlohmann_json are found by the
+config). The data paths compiled into the libraries are those of the source tree; a relocated installation uses
+`--data-dir` and the stages' `matrix_dir`/`data_dir` JSON keys with `SIMC_DATA_DIR`. CTest `package_out_of_tree_plugin`
+installs into a temporary prefix, builds examples/out_of_tree_plugin with find_package(SIMC) and runs it.
 
 ## 9. Known limitations of the design (to be lifted with the ports that need them)
 
@@ -213,7 +234,7 @@ data/                         COSY maps (byte copies of the Fortran files), tabl
   `BuildRunSetup` (`SetupOptions::sf_file`, `use_benhar_sf`).
 * The arm codes `electron_arm`/`hadron_arm` (one table, `core/SpectrometerId.h`, D-032) still drive Fortran logic outside the spectrometer: the window
   materials in `hallc_cryo`, the `.geni` blocks and the default plug-in choice.
-* The set-up (`BuildRunSetup`) is one large port of dbase.f/init.f with reaction-specific branches. It is not
-  split per stage.
-* Out-of-tree plug-ins: the install rules install the programs, the public headers and the data, but no CMake
-  package config yet. Plug-ins are built in-tree (EXTENDING.md).
+* The set-up (`BuildRunSetup`) is a port of dbase.f/init.f with reaction-specific branches. Since P15.3 it is split
+  into phases by responsibility (§8), not per stage plug-in.
+* Plug-ins are linked, not loaded at run time (SIMC_REGISTER at static initialisation): an out-of-tree plug-in is built
+  into its own executable against the installed package (EXTENDING.md §1, examples/out_of_tree_plugin).

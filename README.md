@@ -41,7 +41,8 @@ time put only `$ROOTSYS/lib` in `LD_LIBRARY_PATH`: on this machine `/usr/local/l
 cmake -S . -B build -DCMAKE_PREFIX_PATH=/home/ayerbe/Builds/ROOT6_install -DCMAKE_BUILD_TYPE=Release \
       -DSIMC_REFERENCE_DIR=/home/ayerbe/NewDisk/reference -DSIMC_FORTRAN_DIR=/home/ayerbe/NewDisk/simc_gfortran
 cmake --build build -j
-cmake --install build --prefix <prefix>     # optional: programs, public headers, data, docs, examples
+cmake --install build --prefix <prefix>     # optional: programs, headers, libraries, data, docs, examples and the
+                                            # CMake package (find_package(SIMC), docs/EXTENDING.md)
 ```
 
 `SIMC_REFERENCE_DIR` (the Fortran reference data) and `SIMC_FORTRAN_DIR` (the Fortran tree, for its `infiles/`)

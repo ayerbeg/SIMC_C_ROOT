@@ -2,7 +2,7 @@
 
 The driver is the C++ counterpart of the `simc.f` main program (l.1-623): set-up, central event, event loop,
 normalisation and outputs. It is built from the validated stage components (P2-P7.1) and does not change their
-numerics. Code: `include/simc/driver/`, `src/driver/`, CLI `tools/simc_main.cpp` (binary `simc++`).
+numerics. Code: `include/simc/driver/`, `src/driver/`, CLI `src/driver/CommandLine.cpp` (`simc::driver::CommandLineMain`, called by `tools/simc_main.cpp`, binary `simc++`).
 
 ## 1. Running it
 

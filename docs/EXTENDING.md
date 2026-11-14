@@ -41,6 +41,36 @@ The top-level `CMakeLists.txt` links `${SIMC_DRIVER_LIBS} ${SIMC_EXAMPLE_PLUGINS
 `src/driver/CMakeLists.txt`), or follow the `examples/` pattern. A test or a program of your own links
 `${SIMC_DRIVER_LIBS}` plus your OBJECT library.
 
+### Out of tree: the installed package (P15.3)
+
+Plug-ins are **linked, not loaded**: there is no run-time plug-in loading (dlopen). A plug-in developed outside the
+SIMC++ sources is compiled into the user's own executable, which links the installed package and calls the simc++
+command line as a library function. Complete example: `examples/out_of_tree_plugin/` (an ISpectrometer "toy_window",
+tested by the CTest `package_out_of_tree_plugin`):
+
+```bash
+cmake --install build --prefix $HOME/simc                       # SIMC++ build -> package lib/cmake/SIMC
+cmake -S my_plugin -B my_plugin/build -DCMAKE_PREFIX_PATH=$HOME/simc -DROOT_DIR=<ROOT>/cmake
+cmake --build my_plugin/build
+my_plugin/build/my_simc run.inp --pipeline toy_window.json -o out   # the plug-in chosen by the JSON pipeline
+```
+
+```cmake
+find_package(SIMC 2.0 REQUIRED)
+add_executable(my_simc main.cpp ToyWindowSpectrometer.cpp)   # sources compiled into the executable: registration kept
+target_link_libraries(my_simc PRIVATE SIMC::simc)            # all built-in stages + their registrations
+```
+
+```cpp
+// main.cpp
+#include "simc/driver/CommandLine.h"
+int main(int argc, char** argv) { return simc::driver::CommandLineMain(argc, argv); }
+```
+
+Only the installed public headers are available (include/simc without the kernel/ directories). The data directories
+compiled into the libraries are those of the SIMC++ source tree; after moving the installation use `--data-dir` and
+the `matrix_dir`/`data_dir` JSON keys with the installed data (`${SIMC_DATA_DIR}` = <prefix>/share/simc/data).
+
 ## 2. What every stage has (`IStage`)
 
 ```cpp
