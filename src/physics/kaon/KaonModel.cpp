@@ -1,6 +1,8 @@
 // src/physics/kaon/KaonModel.cpp — IPhysicsModel "kaon" (task P10.1). See include/simc/physics/kaon/KaonModel.h.
 #include "simc/physics/kaon/KaonModel.h"
 
+#include "simc/core/DataPath.h"
+
 #include <iostream>
 #include <stdexcept>
 
@@ -8,15 +10,12 @@
 #include "simc/core/RunSetup.h"
 #include "simc/core/SimcParameters.h"
 
-#ifndef SIMC_KAON_DATA_DIR
-#define SIMC_KAON_DATA_DIR "data/kaon"
-#endif
 
 namespace simc {
 namespace kaon {
 
 void KaonModel::configure(const Json& config, const SimcParameters&) {
-    data_dir_ = SIMC_KAON_DATA_DIR;
+    data_dir_ = simc::DataDir("kaon");
     if (config.is_object()) {
         if (config.contains("data_dir")) data_dir_ = config.at("data_dir").get<std::string>();
         if (config.contains("verbose")) verbose_ = config.at("verbose").get<bool>();

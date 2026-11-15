@@ -3,15 +3,14 @@
 // ISpectrometer plug-in in HmsSpectrometer.cpp.
 #include "simc/spectrometers/hms/kernel/McHms.h"
 
+#include "simc/core/DataPath.h"
+
 #include <cmath>
 #include <iostream>
 #include <stdexcept>
 
 #include "simc/stages/IRandom.h"
 
-#ifndef SIMC_HMS_DEFAULT_MATRIX_DIR
-#define SIMC_HMS_DEFAULT_MATRIX_DIR "data/matrices/simc_fortran"
-#endif
 
 namespace simc {
 namespace hms {
@@ -78,7 +77,7 @@ bool hitDipole(double x, double y) {
     return !miss_dipole;
 }
 
-std::string McHms::defaultMatrixDir() { return SIMC_HMS_DEFAULT_MATRIX_DIR; }
+std::string McHms::defaultMatrixDir() { return simc::DataDir("matrices/simc_fortran"); }
 
 McHms::McHms()
     : eng_(std::make_shared<optics::CosyEngine>()), matrixDir_(defaultMatrixDir()), log_(&std::cout) {}

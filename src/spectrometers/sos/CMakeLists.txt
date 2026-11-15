@@ -8,6 +8,5 @@ add_library(simcfw_sos OBJECT
 )
 target_link_libraries(simcfw_sos PUBLIC simcfw simcfw_optics)
 target_compile_options(simcfw_sos PRIVATE -Wall -Wextra -pedantic)
-# Default location of sos/forward_cosy.dat and sos/recon_cosy.dat (byte-identical copies of the Fortran files).
-target_compile_definitions(simcfw_sos PRIVATE
-    SIMC_SOS_DEFAULT_MATRIX_DIR="${CMAKE_SOURCE_DIR}/data/matrices/simc_fortran")
+# Default location of sos/forward_cosy.dat and sos/recon_cosy.dat (byte-identical copies of the Fortran files):
+# DataDir("matrices/simc_fortran") (include/simc/core/DataPath.h; P15.4, D-069).

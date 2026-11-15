@@ -13,6 +13,5 @@ add_library(simcfw_sidis OBJECT
     SidisModel.cpp
 )
 target_link_libraries(simcfw_sidis PUBLIC simcfw m)
-# Default directory of the SIDIS model tables (data/sidis: byte copies of the Fortran files)
-target_compile_definitions(simcfw_sidis PRIVATE SIMC_SIDIS_DATA_DIR="${CMAKE_SOURCE_DIR}/data/sidis")
+# Default directory of the SIDIS model tables (data/sidis: byte copies of the Fortran files): DataDir("sidis") (P15.4).
 target_compile_options(simcfw_sidis PRIVATE -Wall -Wextra -pedantic)

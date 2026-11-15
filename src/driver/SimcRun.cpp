@@ -8,6 +8,7 @@
 #include <sstream>
 #include <stdexcept>
 
+#include "simc/core/DataPath.h"
 #include "simc/core/Errors.h"
 #include "simc/core/Registry.h"
 #include "simc/core/random/Mt64Random.h"
@@ -82,7 +83,7 @@ void SimcRun::initialise() {
     {
         SetupOptions so;
         so.run_name = opt_.run_name;
-        so.data_dir = opt_.data_dir.empty() ? std::string(SIMC_SPECTRAL_DATA_DIR) : opt_.data_dir;
+        so.data_dir = opt_.data_dir.empty() ? DataDir("spectral") : opt_.data_dir;   // (D-069: DataPath.h)
         so.fortran_compat = opt_.fortran_compat;
         // D/A(e,e'p): a spectral function named in the JSON (task P8.1, D-033 F1) reaches the set-up, which reads the
         // theory file / chooses the Benhar file: "theory"/"benhar" set use_benhar_sf, "file" the file.

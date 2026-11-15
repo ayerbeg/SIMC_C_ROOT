@@ -1,6 +1,8 @@
 // src/physics/sidis/SidisModel.cpp — IPhysicsModel "sidis" (task P12.1). See include/simc/physics/sidis/SidisModel.h.
 #include "simc/physics/sidis/SidisModel.h"
 
+#include "simc/core/DataPath.h"
+
 #include <iostream>
 #include <stdexcept>
 
@@ -9,9 +11,6 @@
 #include "simc/core/RunSetup.h"
 #include "simc/core/SimcParameters.h"
 
-#ifndef SIMC_SIDIS_DATA_DIR
-#define SIMC_SIDIS_DATA_DIR "data/sidis"
-#endif
 
 namespace simc {
 namespace sidis {
@@ -71,7 +70,7 @@ PeepiXConfig makeConfig(const RunSetup& s) {
 }
 
 void SidisModel::configure(const Json& config, const SimcParameters&) {
-    data_dir_ = SIMC_SIDIS_DATA_DIR;
+    data_dir_ = simc::DataDir("sidis");
     if (config.is_object()) {
         if (config.contains("data_dir")) data_dir_ = config.at("data_dir").get<std::string>();
         if (config.contains("verbose")) verbose_ = config.at("verbose").get<bool>();

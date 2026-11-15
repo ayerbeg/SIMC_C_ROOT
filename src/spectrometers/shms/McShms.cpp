@@ -3,6 +3,8 @@
 // mc_shms (mc_shms.f), the ISpectrometer glue and the registration. Collimator: McShmsColl.cpp, hut: McShmsHut.cpp.
 #include "simc/spectrometers/shms/kernel/McShms.h"
 
+#include "simc/core/DataPath.h"
+
 #include <cmath>
 #include <iostream>
 #include <stdexcept>
@@ -11,9 +13,6 @@
 #include "simc/stages/IRandom.h"
 #include "ShmsHutConstants.h"
 
-#ifndef SIMC_SHMS_DEFAULT_MATRIX_DIR
-#define SIMC_SHMS_DEFAULT_MATRIX_DIR "data/matrices/simc_fortran"
-#endif
 
 namespace simc {
 namespace shms {
@@ -94,7 +93,7 @@ const char* counterName(int idx) {
     return kNamesArr[idx];
 }
 
-std::string McShms::defaultMatrixDir() { return SIMC_SHMS_DEFAULT_MATRIX_DIR; }
+std::string McShms::defaultMatrixDir() { return simc::DataDir("matrices/simc_fortran"); }
 
 McShms::McShms()
     : eng_(std::make_shared<optics::CosyEngine>()), matrixDir_(defaultMatrixDir()), log_(&std::cout) {}

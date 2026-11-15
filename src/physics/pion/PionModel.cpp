@@ -1,6 +1,8 @@
 // src/physics/pion/PionModel.cpp — IPhysicsModel "pion" (task P9.1). See include/simc/physics/pion/PionModel.h.
 #include "simc/physics/pion/PionModel.h"
 
+#include "simc/core/DataPath.h"
+
 #include <iostream>
 #include <stdexcept>
 
@@ -8,15 +10,12 @@
 #include "simc/core/RunSetup.h"
 #include "simc/core/SimcParameters.h"
 
-#ifndef SIMC_PION_DATA_DIR
-#define SIMC_PION_DATA_DIR "data/pion"
-#endif
 
 namespace simc {
 namespace pion {
 
 void PionModel::configure(const Json& config, const SimcParameters&) {
-    data_dir_ = SIMC_PION_DATA_DIR;
+    data_dir_ = simc::DataDir("pion");
     if (config.is_object()) {
         if (config.contains("data_dir")) data_dir_ = config.at("data_dir").get<std::string>();
         if (config.contains("verbose")) verbose_ = config.at("verbose").get<bool>();

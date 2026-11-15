@@ -10,6 +10,6 @@ add_library(simcfw_pion OBJECT
     PionModel.cpp
 )
 target_link_libraries(simcfw_pion PUBLIC simcfw simcfw_kinematics simcfw_reactions)
-# Default directory of the MAID tables and MULTIPOL.file (data/pion: byte copies of the Fortran files)
-target_compile_definitions(simcfw_pion PRIVATE SIMC_PION_DATA_DIR="${CMAKE_SOURCE_DIR}/data/pion")
+# Default directory of the MAID tables and MULTIPOL.file (data/pion: byte copies of the Fortran files): DataDir("pion")
+# (include/simc/core/DataPath.h; P15.4, D-069).
 target_compile_options(simcfw_pion PRIVATE -Wall -Wextra -pedantic)

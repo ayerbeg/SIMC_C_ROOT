@@ -2,15 +2,14 @@
 // mc_sos (sos/mc_sos.f). The detector hut is in McSosHut.cpp, the ISpectrometer plug-in in SosSpectrometer.cpp.
 #include "simc/spectrometers/sos/kernel/McSos.h"
 
+#include "simc/core/DataPath.h"
+
 #include <cmath>
 #include <iostream>
 #include <stdexcept>
 
 #include "simc/stages/IRandom.h"
 
-#ifndef SIMC_SOS_DEFAULT_MATRIX_DIR
-#define SIMC_SOS_DEFAULT_MATRIX_DIR "data/matrices/simc_fortran"
-#endif
 
 namespace simc {
 namespace sos {
@@ -57,7 +56,7 @@ const char* counterName(int idx) {
     return kNames[idx];
 }
 
-std::string McSos::defaultMatrixDir() { return SIMC_SOS_DEFAULT_MATRIX_DIR; }
+std::string McSos::defaultMatrixDir() { return simc::DataDir("matrices/simc_fortran"); }
 
 McSos::McSos() : eng_(std::make_shared<optics::CosyEngine>()), matrixDir_(defaultMatrixDir()), log_(&std::cout) {}
 

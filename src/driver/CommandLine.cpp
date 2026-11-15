@@ -2,7 +2,7 @@
 //
 //   simc++ <file.inp | file.json> [-o OUTDIR] [--seed N] [--ngen N] [--pipeline overrides.json]
 //          [--run-name NAME] [--data-dir DIR] [--infiles-dir DIR] [--quiet] [--print-pipeline] [--fortran-compat]
-//          [--threads N]
+//          [--threads N] [--print-data-dir]
 //
 // Input:
 //   * a Fortran .inp (CTP syntax, + its extra_dbase_file), read exactly like dbase.f (InpReader), or
@@ -13,6 +13,8 @@
 // --threads N (P15.4, docs/PERFORMANCE.md): the event loop on N threads with independent mt64 streams (reproducible for a
 // given seed and N; statistically equivalent to, not bitwise equal to, the one-thread run). Default 1 (or the pipeline
 // "threads"). Refused (exit 2) with --fortran-compat and with an rng other than mt64.
+// --print-data-dir prints the default data directory (include/simc/core/DataPath.h: env SIMC_DATA_DIR, the installed
+// package's, <exe>/../share/simc/data, or the source tree) and exits.
 // --pipeline FILE merges a pipeline JSON (either the section itself or {"pipeline": {...}}) over the input's.
 // Outputs in OUTDIR (default "."): <run>.root (tree h10, if Nntu > 0), <run>.summary.json/.txt, <run>.gen.root,
 // <run>.hist and <run>.geni (simc.f report layout). <run> defaults to the input file stem (Fortran `base`).
@@ -25,6 +27,7 @@
 #include <string>
 #include <vector>
 
+#include "simc/core/DataPath.h"
 #include "simc/core/Json.h"
 #include "simc/core/SimcParameters.h"
 #include "simc/driver/SimcRun.h"
@@ -40,10 +43,11 @@ namespace {
 void usage() {
     std::cerr << "usage: simc++ <file.inp|file.json> [-o OUTDIR] [--seed N] [--ngen N] [--pipeline FILE]\n"
                  "               [--run-name NAME] [--data-dir DIR] [--infiles-dir DIR] [--quiet] [--print-pipeline]\n"
-                 "               [--fortran-compat] [--threads N]\n"
+                 "               [--fortran-compat] [--threads N] [--print-data-dir]\n"
                  "  --fortran-compat  exact Fortran behaviour (known Fortran bugs kept; bitwise validation)\n"
                  "  --threads N       event loop on N threads (independent mt64 streams per thread; a given seed and N\n"
-                 "                    always give the same output; not with --fortran-compat or rng ranlux). Default 1.\n";
+                 "                    always give the same output; not with --fortran-compat or rng ranlux). Default 1.\n"
+                 "  --print-data-dir  print the default data directory (env SIMC_DATA_DIR overrides it) and exit\n";
 }
 
 std::string stem(const std::string& path) {
@@ -103,6 +107,7 @@ int CommandLineMain(int argc, char** argv) {
             }
             opt.threads = static_cast<int>(n);
         }
+        else if (a == "--print-data-dir") { std::cout << DataRoot() << "\n"; return 0; }
         else if (a == "-h" || a == "--help") { usage(); return 0; }
         else if (!a.empty() && a[0] == '-') { usage(); return 1; }
         else if (input.empty()) input = a;

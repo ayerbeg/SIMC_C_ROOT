@@ -17,7 +17,6 @@ target_compile_options(simcfw_reactions PRIVATE -Wall -Wextra -pedantic)
 add_library(simcfw_reactions_pion OBJECT pion/PionProduction.cpp)
 target_link_libraries(simcfw_reactions_pion PUBLIC simcfw simcfw_kinematics simcfw_material simcfw_reactions
     simcfw_physics simcfw_pion)
-target_compile_definitions(simcfw_reactions_pion PRIVATE SIMC_PION_DATA_DIR="${CMAKE_SOURCE_DIR}/data/pion")
 target_compile_options(simcfw_reactions_pion PRIVATE -Wall -Wextra -pedantic)
 
 # simcfw_reactions_kaon (task P10.2): IReaction "kaon_production" (event.f doing_kaon branches = the pion code with the

@@ -44,6 +44,7 @@ add_library(simcfw STATIC
     src/core/SimcParameters.cpp
     src/core/RunSetup.cpp
     src/core/SpectrometerId.cpp
+    src/core/DataPath.cpp          # default data directory (P15.4, D-069)
     src/input/InpReader.cpp
     src/input/EffectiveValues.cpp
     src/output/NtupleLayout.cpp
@@ -52,6 +53,9 @@ add_library(simcfw STATIC
 target_include_directories(simcfw PUBLIC $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
 target_link_libraries(simcfw PUBLIC nlohmann_json::nlohmann_json)
 target_compile_options(simcfw PRIVATE -Wall -Wextra -pedantic)
+# DataPath.cpp: the data directory of an in-tree build (step 4 of include/simc/core/DataPath.h)
+set_source_files_properties(src/core/DataPath.cpp PROPERTIES
+    COMPILE_DEFINITIONS "SIMC_SOURCE_DATA_ROOT=\"${CMAKE_SOURCE_DIR}/data\"")
 
 add_executable(inp2json tools/inp2json.cpp)
 target_link_libraries(inp2json PRIVATE simcfw)
@@ -143,9 +147,10 @@ add_subdirectory(tests/regression)     # C++ baselines: output_identity.sh print
 # ============================================================================
 # Programs, the public headers (core, stages, driver, io, plug-in classes; NOT the kernel/ headers, which are private
 # to their modules), the data files (COSY maps, tables, example configurations), the documentation and the examples.
-# The data directories compiled into the libraries are those of the SOURCE tree (data/...); an installed copy
-# (share/simc/data, SIMC_DATA_DIR of the package) is selected with --data-dir and the "matrix_dir"/"data_dir" JSON keys
-# of the stages (docs/EXTENDING.md).
+# The default data directory (include/simc/core/DataPath.h; P15.4, D-069): env SIMC_DATA_DIR, else for a program built
+# with find_package(SIMC) the package's share/simc/data (cmake/SimcInstalledDataRoot.cpp, an interface source added by
+# SIMCConfig.cmake), else for an installed program <exe>/../share/simc/data, else the source tree (in-tree builds).
+# --data-dir and the "matrix_dir"/"data_dir" JSON keys of the stages still override it (docs/EXTENDING.md).
 install(TARGETS simcpp inp2json hist2json simc_root_identity RUNTIME DESTINATION bin)
 
 # P15.3: the CMake package SIMC (find_package(SIMC)). SIMC::simc is an INTERFACE target that links every library of a
@@ -180,6 +185,7 @@ install(DIRECTORY include/simc DESTINATION include
         FILES_MATCHING PATTERN "*.h"
         PATTERN "kernel" EXCLUDE)
 install(DIRECTORY data/ DESTINATION share/simc/data)
+install(FILES cmake/SimcInstalledDataRoot.cpp DESTINATION share/simc/cmake)
 install(DIRECTORY docs/ DESTINATION share/simc/docs)
 install(FILES README.md DESTINATION share/simc)
 install(DIRECTORY examples/ DESTINATION share/simc/examples)

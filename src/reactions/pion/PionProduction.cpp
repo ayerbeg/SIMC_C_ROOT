@@ -3,6 +3,8 @@
 // Operation order follows the Fortran source; x**2 is x*x, x**3 is (x*x)*x (__powidf2), D-024.
 #include "simc/reactions/PionProduction.h"
 
+#include "simc/core/DataPath.h"
+
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -20,9 +22,6 @@
 #include "simc/setup/KinematicsUtils.h"
 #include "simc/stages/IRandom.h"
 
-#ifndef SIMC_PION_DATA_DIR
-#define SIMC_PION_DATA_DIR "data/pion"
-#endif
 
 namespace simc {
 namespace reactions {
@@ -97,7 +96,7 @@ PionProduction::~PionProduction() = default;
 
 void PionProduction::configure(const Json& config, const SimcParameters& params) {
     EepReactionBase::configure(config, params);
-    dataDir_ = SIMC_PION_DATA_DIR;
+    dataDir_ = simc::DataDir("pion");
     if (config.is_object()) {
         if (config.contains("data_dir")) dataDir_ = config.at("data_dir").get<std::string>();
         if (config.contains("verbose")) verbose_ = config.at("verbose").get<bool>();

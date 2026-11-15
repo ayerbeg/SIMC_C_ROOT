@@ -3,6 +3,8 @@
 // McHrsHut.cpp, the ISpectrometer plug-ins in HrsSpectrometer.cpp.
 #include "simc/spectrometers/hrs/kernel/McHrs.h"
 
+#include "simc/core/DataPath.h"
+
 #include <cmath>
 #include <cstring>
 #include <iostream>
@@ -10,9 +12,6 @@
 
 #include "simc/stages/IRandom.h"
 
-#ifndef SIMC_HRS_DEFAULT_MATRIX_DIR
-#define SIMC_HRS_DEFAULT_MATRIX_DIR "data/matrices/simc_fortran"
-#endif
 
 namespace simc {
 namespace hrs {
@@ -90,7 +89,7 @@ const char* counterName(int idx) {
     return kNames[idx];
 }
 
-std::string McHrs::defaultMatrixDir() { return SIMC_HRS_DEFAULT_MATRIX_DIR; }
+std::string McHrs::defaultMatrixDir() { return simc::DataDir("matrices/simc_fortran"); }
 
 McHrs::McHrs(Side side)
     : side_(side), eng_(std::make_shared<optics::CosyEngine>()), matrixDir_(defaultMatrixDir()), log_(&std::cout) {}

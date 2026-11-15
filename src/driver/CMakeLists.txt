@@ -27,9 +27,8 @@ add_library(simcfw_driver STATIC
 )
 find_package(Threads REQUIRED)
 target_link_libraries(simcfw_driver PUBLIC simcfw simcfw_kinematics simcfw_material simcfw_setup Threads::Threads)
-# Default directory of the spectral-function files (data/spectral: copies of the Fortran theory/Benhar files, P8.1)
-target_compile_definitions(simcfw_driver PRIVATE SIMC_SPECTRAL_DATA_DIR="${CMAKE_SOURCE_DIR}/data/spectral"
-    SIMC_FIELD_DATA_DIR="${CMAKE_SOURCE_DIR}/data/field")   # trg_field_map.dat (P15.2b)
+# Default directories of the spectral-function files (data/spectral: copies of the Fortran theory/Benhar files, P8.1) and
+# of trg_field_map.dat (data/field, P15.2b): DataDir("spectral"), DataDir("field") (include/simc/core/DataPath.h, P15.4).
 target_compile_options(simcfw_driver PRIVATE -Wall -Wextra -pedantic)
 
 # The "fortran_hist" sink (SIMC_REGISTER): OBJECT library so the registration is linked.

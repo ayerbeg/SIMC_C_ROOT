@@ -8,6 +8,7 @@
 #include <iostream>
 #include <stdexcept>
 
+#include "simc/core/DataPath.h"
 #include "simc/core/Json.h"
 #include "simc/core/Registry.h"
 #include "simc/core/SimcConstants.h"
@@ -108,7 +109,7 @@ void MonteCarlo::initTargetField() {
         std::vector<fs::path> cands;
         if (!S.data_dir.empty()) cands.push_back(fs::path(S.data_dir) / file);
         cands.push_back(fs::path(file));
-        cands.push_back(fs::path(SIMC_FIELD_DATA_DIR) / file);
+        cands.push_back(fs::path(DataDir("field")) / file);   // (D-069: DataPath.h)
         path = cands.back().string();
         for (const auto& c : cands)
             if (fs::is_regular_file(c)) {

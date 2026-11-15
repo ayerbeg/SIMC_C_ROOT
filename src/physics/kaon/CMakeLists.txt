@@ -8,6 +8,5 @@ add_library(simcfw_kaon OBJECT
     KaonModel.cpp
 )
 target_link_libraries(simcfw_kaon PUBLIC simcfw simcfw_kinematics simcfw_reactions m)
-# Default directory of the kaon model tables (data/kaon: byte copies of the Fortran files)
-target_compile_definitions(simcfw_kaon PRIVATE SIMC_KAON_DATA_DIR="${CMAKE_SOURCE_DIR}/data/kaon")
+# Default directory of the kaon model tables (data/kaon: byte copies of the Fortran files): DataDir("kaon") (P15.4).
 target_compile_options(simcfw_kaon PRIVATE -Wall -Wextra -pedantic)

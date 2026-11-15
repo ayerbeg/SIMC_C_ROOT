@@ -7,5 +7,4 @@ add_library(simcfw_hrs OBJECT
 )
 target_link_libraries(simcfw_hrs PUBLIC simcfw simcfw_optics)
 target_compile_options(simcfw_hrs PRIVATE -Wall -Wextra -pedantic)
-target_compile_definitions(simcfw_hrs PRIVATE
-    SIMC_HRS_DEFAULT_MATRIX_DIR="${CMAKE_SOURCE_DIR}/data/matrices/simc_fortran")
+# Default matrix directory: DataDir("matrices/simc_fortran") (include/simc/core/DataPath.h; P15.4, D-069).
