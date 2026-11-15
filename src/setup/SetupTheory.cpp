@@ -1,4 +1,4 @@
-// src/setup/SetupTheory.cpp — task P15.3 split of SetupBuilder.cpp (no logic change): the SIMC data-file readers
+// src/setup/SetupTheory.cpp — part of BuildRunSetup (see SetupInternal.h): the SIMC data-file readers
 // (init.f:theory_init, sf_lookup_init's Emval(numEm), the momentum distributions) and BuildRunSetup phase 2:
 // init.f:target_init through the target model's ITargetLossProvider, theory_init, the momentum distribution and the
 // spectral-function choice (dbase.f:551-681).
@@ -281,7 +281,7 @@ bool BuildTargetAndTheory(RunSetup& s, const SimcParameters& p, const SetupOptio
 
     // ---- dbase.f:592-621 spectral function (sf_lookup_init). For A(e,e'p) with use_benhar_sf the choice of the file and
     // of the proton/neutron column is made here; the table is read by the "benhar" ISpectralFunction (sf_lookup_init).
-    // (also for A > 2 quasifree pion/kaon production, doing_hepi/doing_hekaon: the table of generate_em, P9.2)
+    // (also for A > 2 quasifree pion/kaon production, doing_hepi/doing_hekaon: the table of generate_em)
     benharEmMax = 0.0;   // Emval(numEm)
     if ((f.doing_heavy && p.use_benhar_sf) || f.doing_hepi || f.doing_hekaon || hedelta) {
         SpectralFunctionChoice& sf = s.sf;
@@ -319,7 +319,7 @@ bool BuildTargetAndTheory(RunSetup& s, const SimcParameters& p, const SetupOptio
         }
     }
     // ---- dbase.f:624-681 kaon model tables: they belong to the kaon cross-section model
-    // (doing_kaon: read by the "kaon" physics model, kaon::SaghaiTables, task P10.1)
+    // (doing_kaon: read by the "kaon" physics model, kaon::SaghaiTables)
     return true;
 }
 

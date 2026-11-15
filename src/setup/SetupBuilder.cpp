@@ -1,4 +1,6 @@
-// src/setup/SetupBuilder.cpp
+// src/setup/SetupBuilder.cpp — see include/simc/setup/SetupBuilder.h.
+// Builds the RunSetup (everything the event loop needs that does not change per event) from the input parameters.
+// Called by driver/SimcRun.cpp before the pipeline stages are created; the stages only read the result.
 //
 // Port of the Fortran start-up sequence (simc.f l.53-101 without calculate_central):
 // dbase.f:dbase_read post-read logic, init.f:target_init and extreme_trip_thru_target (through the target model's ITargetLossProvider, default material::HallCCryoTarget), theory_init,
@@ -6,7 +8,7 @@
 //
 // Numerics: the Fortran is compiled with -fdefault-real-8, so every literal is a double and
 // every expression below keeps the Fortran operation order (left to right as written).
-// Task P15.3: the phases live in SetupReaction.cpp, SetupTheory.cpp (with the data-file readers) and SetupLimits.cpp
+// The phases live in SetupReaction.cpp, SetupTheory.cpp (with the data-file readers) and SetupLimits.cpp
 // (src/setup/SetupInternal.h); this file keeps the sequence, the dbase.f:689-958 STOP checks, radc_init and simc.f:94-101.
 #include "simc/setup/SetupBuilder.h"
 
@@ -166,7 +168,7 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
     // =========================================================================================
     // simc.f:94-101 target factor and luminosity
     // =========================================================================================
-    // FORTRAN-QUIRK(P8.2): `3.75914d+6` is a DOUBLE PRECISION literal, which -fdefault-real-8 promotes to real*16, so
+    // FORTRAN-QUIRK: `3.75914d+6` is a DOUBLE PRECISION literal, which -fdefault-real-8 promotes to real*16, so
     // the Fortran evaluates the whole expression in quad precision (objdump of simc.o: __divtf3/__multf3) and rounds
     // the result to real*8. The double-precision evaluation differs by 1 ulp for the D(e,e'p) capture input.
     {

@@ -1,4 +1,4 @@
-// src/setup/SetupReaction.cpp — BuildRunSetup phase 1 (task P15.3 split of SetupBuilder.cpp, no logic change):
+// src/setup/SetupReaction.cpp — BuildRunSetup phase 1 (see SetupInternal.h): reaction, kinematics and target input,
 // dbase.f:124-547 post-read logic: reaction flags and Mh, run switches, kinematics_main, target masses, struck/recoil
 // masses and sign_hadron, target geometry, offsets, SPedge, radiation tails, generation angles, flags.
 // Numerics: the Fortran is compiled with -fdefault-real-8, so every literal is a double and every expression keeps
@@ -38,12 +38,12 @@ bool BuildReactionAndKinematics(RunSetup& s, const SimcParameters& p) {
     SimcParameters pre = p;
     pre.doing_phsp = false;
     const ReactionFlags f0 = DeriveReactionFlags(pre);
-    // P13.1: doing_rho together with another reaction flag. dbase.f:136-215 takes the first branch of its if-chain
+    // doing_rho together with another reaction flag. dbase.f:136-215 takes the first branch of its if-chain
     // (pion, kaon, delta, semi) but leaves doing_rho set, so event.f:420-421 still calls rho_decay on that hadron
     // (and complete_main uses the other cross section): no meaningful run. Refused in both modes (input error).
     // FORTRAN-BUG(D-057 F16): original Fortran dbase.f:209-214, 875-876: no doing_*rho flag for nint(A) >= 4, so the run
     // STOPs ('I don't have ANY idea what (e,e'rho) we're doing!!!', exit status 0) after printing E_bind = -1e10;
-    // refused in both modes with a clear message (there is no rho model for A >= 4). P15.2: the refusal is made after the
+    // refused in both modes with a clear message (there is no rho model for A >= 4). The refusal is made after the
     // target-geometry STOPs of dbase.f:461/465 (below), which the Fortran reaches first (shipped rhotest.inp, legacy names:
     // targ%A = 0 and targ%can = 0 -> 'bad targ.can value', reference/P15.F1_report.md §3).
     if (p.doing_rho && !p.doing_phsp && (p.doing_pion || p.doing_kaon || p.doing_delta || p.doing_semi))
@@ -86,11 +86,11 @@ bool BuildReactionAndKinematics(RunSetup& s, const SimcParameters& p) {
     // configuration is rejected here with a clear message (and project/transp never check a non-pi/K particle for
     // decay). fortran_compat keeps the Fortran (simc::FortranStop at the first decay).
     // (the same pi/K test as optics::decaysInFlight and project.f:78-79)
-    // doing_rho (P13.1): the detected hadron is the pi+/pi- of rho_decay.f (Mh2 = Mpi2 after the decay, rho_decay.f:148-151),
+    // doing_rho: the detected hadron is the pi+/pi- of rho_decay.f (Mh2 = Mpi2 after the decay, rho_decay.f:148-151),
     // which is what project.f/transp.f see at the decay test.
     const bool hadronDecays = std::fabs(std::sqrt(s.Mh2) - K::Mpi) < 2 || std::fabs(std::sqrt(s.Mh2) - K::Mk) < 2 ||
                               (f0.doing_rho && !p.doing_phsp);
-    // D-062 G1 (P14.3): with doing_pizero the detected particles are the decay photons, which the corrected mode tracks as
+    // D-062 G1: with doing_pizero the detected particles are the decay photons, which the corrected mode tracks as
     // massless and stable: doing_decay = 1 is accepted and has no effect (the Fortran STOPs at the first photon "decay").
     if (p.doing_decay && !s.fortran_compat && !hadronDecays && !f0.doing_pizero) {
         char b[320];
@@ -283,7 +283,7 @@ bool BuildReactionAndKinematics(RunSetup& s, const SimcParameters& p) {
         stop("BAD targ.angle (0 is perp. to beam, +ve is rotated towards SOS)");
         return false;
     }
-    // D-057 F16 (see above): rho with nint(A) outside 1..3, refused after the dbase.f:461/465 STOPs (P15.2)
+    // D-057 F16 (see above): rho with nint(A) outside 1..3, refused after the dbase.f:461/465 STOPs
     if (p.doing_rho && !p.doing_phsp && (A >= 4 || A < 1))
         throw std::invalid_argument("doing_rho = 1 with targ%A = " + std::to_string(p.targ.A) +
                                     ": exclusive rho production is only set up for H, D and 3He (dbase.f:209-214; the "
@@ -337,7 +337,7 @@ bool BuildReactionAndKinematics(RunSetup& s, const SimcParameters& p) {
     // ---- dbase.f:531-547 flags
     sw.using_E_arm_montecarlo = p.spect_mode != 1 && p.spect_mode != -1;
     sw.using_P_arm_montecarlo = p.spect_mode != 1 && p.spect_mode != -2;
-    // P15.2 (D-065 S2): the Fortran accepts any spect_mode; every value other than 1/-1/-2 silently means "both arms on".
+    // D-065 S2: the Fortran accepts any spect_mode; every value other than 1/-1/-2 silently means "both arms on".
     // Corrected mode says so (log only, the run continues as in the Fortran); fortran_compat prints nothing.
     if (!s.fortran_compat && p.spect_mode != 0 && p.spect_mode != 1 && p.spect_mode != -1 && p.spect_mode != -2)
         msg("WARNING (simc++): spect_mode = " + std::to_string(p.spect_mode) +

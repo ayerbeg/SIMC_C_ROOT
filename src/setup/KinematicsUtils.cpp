@@ -1,4 +1,7 @@
-// src/setup/KinematicsUtils.cpp
+// src/setup/KinematicsUtils.cpp — see include/simc/setup/KinematicsUtils.h.
+// Small kinematic helpers shared by the set-up, the reactions and the spectrometer stage: the conversion between the
+// spectrometer slopes (xptar, yptar) and the physics angles (theta, phi) in both directions, and the Lorentz boost
+// of loren.f.
 //
 // Bit-for-bit ports (the Fortran is compiled with -fdefault-real-8: every literal is a double;
 // x**2 is x*x; expressions are evaluated left to right as written). No FMA contraction is
@@ -32,6 +35,7 @@ void PhysicsAngles(double theta0, double phi0, double dx, double dy, double& the
         }
     }
 
+    // the ray direction is (dx, dy, 1)/r in the spectrometer frame, rotated by theta0 about the arm's phi0 axis
     const double tmp = (costh - dy * sinth * sinph) / r;
     if (std::abs(tmp) > 1 && log) *log << " tmp=" << std::setprecision(17) << tmp << "\n";
     theta = std::acos((costh - dy * sinth * sinph) / r);
@@ -55,6 +59,7 @@ void SpectrometerAngles(double theta0, double phi0, double& dx, double& dy, doub
     const double y0 = std::sin(theta0) * std::sin(phi0);
     const double z0 = std::cos(theta0);
 
+    // project the direction onto the spectrometer frame: dx, dy are the slopes relative to the central ray
     const double cos_dtheta = x * x0 + y * y0 + z * z0;
     dx = x / cos_dtheta;
     // FORTRAN-BUG(D-028 F2, D-012 F1): original Fortran event.f:1641: `dy = sqrt(1/cos_dtheta**2-1.-dx**2)`;
@@ -69,7 +74,7 @@ void SpectrometerAngles(double theta0, double phi0, double& dx, double& dy, doub
     if (y_event < y0) dy = -dy;
 }
 
-// Fortran: loren.f:loren (l.1-26)
+// Fortran: loren.f:loren (l.1-26). Boost of the four-vector (e; x, y, z) by velocity (bx, by, bz) with gamma gam.
 LorenResult Loren(double gam, double bx, double by, double bz, double e, double x, double y, double z) {
     LorenResult r;
     const double gam1 = gam * gam / (1. + gam);

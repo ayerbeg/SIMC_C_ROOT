@@ -1,4 +1,4 @@
-// src/setup/SetupLimits.cpp — BuildRunSetup phase 3 (task P15.3 split of SetupBuilder.cpp, no logic change):
+// src/setup/SetupLimits.cpp — BuildRunSetup phase 3 (see SetupInternal.h): the generation and acceptance limits,
 // init.f:limits_init (l.91-575, called at dbase.f:685): slops, edges, extreme_trip_thru_target through the target
 // model, VERTEXedge, radiation limits, generation limits, and the diagnostic histogram axes (init.f:520-535).
 #include <algorithm>
@@ -115,7 +115,8 @@ bool BuildLimits(RunSetup& s, const SimcParameters& p, ITargetLossProvider* loss
     }
     if (!sw.mc_smear) t.musc_max = {0., 0., 0.};   // init.f:254-258
 
-    // init.f:260-271
+    // init.f:260-271: the vertex-side edges = the spectrometer edges widened by the energy loss and the multiple
+    // scattering in the target (index 0 = beam, 1 = electron arm, 2 = hadron arm: Fortran targ%Eloss(1..3))
     edge.e.E.min = edge.e.E.min + t.Eloss[1].min;
     edge.e.E.max = edge.e.E.max + t.Eloss[1].max;
     edge.p.E.min = edge.p.E.min + t.Eloss[2].min;
@@ -216,7 +217,7 @@ bool BuildLimits(RunSetup& s, const SimcParameters& p, ITargetLossProvider* loss
         V.Trec.max = std::sqrt(V.Mrec.min * V.Mrec.min + V.Pm.max * V.Pm.max) - V.Mrec.min;
     }
 
-    // init.f:399-406
+    // init.f:399-406: kinetic energy of the recoiling struck system (none for (e,e'p) and SIDIS)
     if (f.doing_eep || f.doing_semi) {
         V.Trec_struck.min = 0.;
         V.Trec_struck.max = 0.;

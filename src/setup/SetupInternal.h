@@ -1,5 +1,5 @@
-// src/setup/SetupInternal.h — private to src/setup (task P15.3): the phases of BuildRunSetup (SetupBuilder.cpp), split
-// by responsibility without changing the operation order. Each phase returns false where the original single function
+// src/setup/SetupInternal.h — private to src/setup: the phases of BuildRunSetup (SetupBuilder.cpp), split by
+// responsibility without changing the operation order of the Fortran start-up. Each phase returns false where the original single function
 // returned the RunSetup early (a Fortran STOP recorded in RunSetup::stops).
 //   SetupReaction.cpp : dbase.f:124-547   reaction flags, Mh, switches, kinematics_main, target masses, struck/recoil
 //                                          masses, target geometry, offsets, SPedge, radiation tails, gen angles, flags
@@ -18,7 +18,7 @@
 namespace simc {
 namespace setup_detail {
 
-inline int nint(double x) { return static_cast<int>(std::lround(x)); }
+inline int nint(double x) { return static_cast<int>(std::lround(x)); }   // Fortran nint: half away from zero
 
 inline std::string joinPath(const std::string& dir, const std::string& file) {
     if (dir.empty()) return file;
