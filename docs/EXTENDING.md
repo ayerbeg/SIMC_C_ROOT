@@ -314,6 +314,15 @@ to select the contributing events and `main.weight` as their weight. A sink that
 Templates: `src/output/RunSummarySink.cpp` (simplest), `src/output/RootTreeSink.cpp`. A sink created in code
 (tests, a user program) can be added with `SimcRun::addSink(std::make_unique<MySink>())`, no registration needed.
 
+**Threads (P15.4).** With `--threads N > 1` every worker thread fills its own sinks. A sink takes part by also
+implementing `IParallelSink` (`include/simc/stages/IParallelSink.h`): `makeWorkerSink(k, n)` returns a new, configured
+sink of the same kind for worker k (it gets `beginRun` and `fill`, never `endRun`; return `nullptr` if `fill` does
+nothing), and `mergeWorkerSink(w)` adds a worker's content to the run's sink (called in the worker order 0..n-1 after
+all workers have finished, before `endRun`). A worker sink must keep its state to itself (no shared files, no globals)
+and sees only the `fill` arguments. A sink without `IParallelSink` makes `--threads N > 1` stop with a clear message;
+the one-thread run does not need it. Examples: `RootTreeSink` (worker temporary file, entries appended in order),
+`GenHistSink`, `driver::FortranHistSink` (histograms summed), `RunSummarySink` (`nullptr`: works at `endRun` only).
+
 ## 8. Other stages
 
 `IBeam` (`standard`: beam spread, raster, vertex z; template `StandardBeam`), `IRadiator` (`simc_rad`; it must also
@@ -325,7 +334,8 @@ defaults are zero/false), `IMaterialModel` (`simc_material`, used inside `hallc_
 
 * [ ] One class, one `SIMC_REGISTER` line, in an OBJECT library linked by `simc++` and your tests.
 * [ ] Internal units (`core/Units.h`). Convert input units in `configure`/`init` only.
-* [ ] No globals. Run state lives in the object, collaborators come from the `StageContext`.
+* [ ] No globals. Run state lives in the object, collaborators come from the `StageContext`. (With `--threads N` every
+      worker builds its own instance of every stage: a `static` mutable cache would be shared between threads.)
 * [ ] If it ports a Fortran routine: cite it (`// Fortran: file.f:routine (l.a-b)`), keep the operation order, put
       the Fortran-mirror structures in a `kernel/` header of its module, and add an L1 test against a Fortran
       reference table.

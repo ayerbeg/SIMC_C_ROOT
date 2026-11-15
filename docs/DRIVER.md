@@ -9,7 +9,16 @@ numerics. Code: `include/simc/driver/`, `src/driver/`, CLI `src/driver/CommandLi
 ```
 simc++ <file.inp | file.json> [-o OUTDIR] [--seed N] [--ngen N] [--pipeline overrides.json]
        [--run-name NAME] [--data-dir DIR] [--infiles-dir DIR] [--quiet] [--print-pipeline]
+       [--fortran-compat] [--threads N] [--print-data-dir]
 ```
+
+* `--threads N` (P15.4, docs/PERFORMANCE.md): the event loop on N threads, each with its own stages and its own mt64
+  stream (`seed_seq(seed, worker)`); the outputs are the deterministic merge of the workers (a given seed and N always
+  give the same files; they are statistically equivalent to, not bitwise equal to, the one-thread run). Also
+  `"pipeline": {"threads": N}`; the option wins. Refused (exit 2) with `--fortran-compat` and with an rng other than
+  `mt64`. Default 1: the sequential loop, unchanged.
+* `--print-data-dir` prints the default data directory and exits (env `SIMC_DATA_DIR` > the installed package's
+  `share/simc/data` > the source tree; `include/simc/core/DataPath.h`, D-069).
 
 * A Fortran `.inp` is read exactly like `dbase.f` (`InpReader`, CTP rules, `extra_dbase_file`, float rounding of
   real literals, D-018).
@@ -68,8 +77,9 @@ finish: Normalise → RunReport → RunSummary → sinks (endRun; IReportSink::w
 * **D/A(e,e'p) (P8.2).** `deuterium_eep` / `nucleus_eep` (NuclearEep) with a spectral-function component
   (`reaction.spectral_function`: `theory` or `benhar`, optional `file`). The choice reaches the set-up before it is built
   (`PipelineConfig::SpectralFunction`, `SetupOptions::sf_file`, `use_benhar_sf`) because the set-up reads the theory file
-  (init.f:theory_init) and uses it for the generation limits. Data files: `--data-dir DIR`, default the source tree's
-  `data/spectral` (compiled in as `SIMC_SPECTRAL_DATA_DIR`). The physics model is created before the reaction, which
+  (init.f:theory_init) and uses it for the generation limits. Data files: `--data-dir DIR`, default `DataDir("spectral")`
+  (`include/simc/core/DataPath.h`: the source tree's `data/spectral` for an in-tree build, the installed
+  `share/simc/data/spectral` for an installed one; env `SIMC_DATA_DIR` overrides the data root; P15.4). The physics model is created before the reaction, which
   assembles the event weight with it (`IReaction::completeMain`, D-030).
 * **Arms.** Two arms with the same type and the same merged config share one spectrometer object (one Fortran COMMON
   block of counters, e.g. HMS for both arms); otherwise each arm has its own object.

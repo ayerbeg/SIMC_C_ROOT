@@ -29,6 +29,7 @@ Documentation (`docs/`):
 | [EXTENDING.md](docs/EXTENDING.md) | how to add a spectrometer, reaction, physics model, target or output sink |
 | [INP_JSON_MAPPING.md](docs/INP_JSON_MAPPING.md) | Fortran `.inp` variables → JSON parameters |
 | [OUTPUT_FORMAT.md](docs/OUTPUT_FORMAT.md) | `.root` tree, summary JSON/text, `.hist/.geni/.gen` |
+| [PERFORMANCE.md](docs/PERFORMANCE.md) | profile, speed vs the Fortran, `--threads N` (parallel event loop) |
 
 ## Build
 
@@ -68,7 +69,9 @@ build/bin/simc++ run.json -o out
 ```
 
 Useful options: `--ngen N`, `--seed N`, `--run-name NAME`, `--pipeline FILE` (plug-in choice, for example
-`examples/ideal_box/hadron_arm.json`), `--print-pipeline`, `--quiet`. The outputs in `out/` are
+`examples/ideal_box/hadron_arm.json`), `--print-pipeline`, `--quiet`, `--threads N` (the event loop on N threads with
+independent random streams, reproducible for a given seed and N; docs/PERFORMANCE.md), `--print-data-dir` (where the
+data files are read from; env `SIMC_DATA_DIR` overrides it). The outputs in `out/` are
 `<run>.root` (tree `h10`, the Fortran `make_root_tree` layout), `<run>.summary.json/.txt`, `<run>.gen.root` and
 the Fortran text reports `<run>.hist`, `<run>.geni`, `<run>.gen`.
 

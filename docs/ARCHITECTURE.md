@@ -186,7 +186,8 @@ src/setup/                    simcfw_setup: SetupBuilder.cpp (BuildRunSetup sequ
                               luminosity), SetupReaction.cpp (dbase.f:124-547), SetupTheory.cpp (target_init, theory /
                               momentum distribution / spectral-function choice and the file readers), SetupLimits.cpp
                               (limits_init); private SetupInternal.h (P15.3)
-src/driver/                   simcfw_driver (+ simcfw_driver_sinks): SimcRun, MonteCarlo, Pipeline, CommandLine (the simc++
+src/driver/                   simcfw_driver (+ simcfw_driver_sinks): SimcRun (+ SimcRunParallel.cpp, --threads N, P15.4),
+                              MonteCarlo, Pipeline, CommandLine (the simc++
                               command line, CommandLineMain), TargetFieldAngles, report: RunReport.cpp (normalisation,
                               summary), RunReportHist.cpp (.hist), RunReportGeni.cpp (.geni), RunReportRecords.cpp
                               (reaction lines, FORMAT records; private RunReportInternal.h)
@@ -207,9 +208,19 @@ libraries (lib/simc: the static libraries and, for the OBJECT libraries that car
 object files in lib/simc/objects), the data (share/simc/data), docs and examples, and the CMake package
 lib/cmake/SIMC (SIMCConfig.cmake, SIMCConfigVersion.cmake, SIMCTargets.cmake). `find_package(SIMC 2.0)` gives the
 target `SIMC::simc` (everything a complete run links; dependencies ROOT 6.40 and nlohmann_json are found by the
-config). The data paths compiled into the libraries are those of the source tree; a relocated installation uses
-`--data-dir` and the stages' `matrix_dir`/`data_dir` JSON keys with `SIMC_DATA_DIR`. CTest `package_out_of_tree_plugin`
-installs into a temporary prefix, builds examples/out_of_tree_plugin with find_package(SIMC) and runs it.
+config). The default data directory (P15.4, D-069; `include/simc/core/DataPath.h`, `simc++ --print-data-dir`) is: the
+environment variable `SIMC_DATA_DIR`, else for a program built with find_package(SIMC) the package's share/simc/data
+(registered by the interface source share/simc/cmake/SimcInstalledDataRoot.cpp that SIMCConfig.cmake adds to
+`SIMC::simc`; relocatable), else for an installed program `<exe>/../share/simc/data`, else the source tree (in-tree
+builds and tests). `--data-dir` and the stages' `matrix_dir`/`data_dir` JSON keys still override it. CTest
+`package_out_of_tree_plugin` installs into a temporary prefix, builds examples/out_of_tree_plugin with
+find_package(SIMC), runs it, and checks that the installed `simc++` and `my_simc` use the installed data without
+`--data-dir` (and that `SIMC_DATA_DIR` overrides it).
+
+**Performance and the parallel event loop (P15.4).** docs/PERFORMANCE.md: the profile, the bitwise-neutral
+single-thread optimisations (tgamma memo, COSY power tables) and `--threads N` (`SimcRun::runThreaded`,
+src/driver/SimcRunParallel.cpp): N worker `SimcRun`s with their own stages and mt64 streams, merged in the fixed worker
+order (`MergeTotals`, `IParallelSink` sinks), refused with `--fortran-compat` / RANLUX.
 
 ## 9. Known limitations of the design (to be lifted with the ports that need them)
 
