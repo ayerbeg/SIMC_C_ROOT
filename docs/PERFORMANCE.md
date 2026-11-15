@@ -42,6 +42,10 @@ both modes, plus one `simc_compare`) gives 326 identical files against the golde
 RANLUX / replay CTest (bitwise against the Fortran) passes unchanged (73/73 of the `replay|ranlux|radc|transp...`
 subset, then the full `check_all`).
 
+After them (callgrind, same runs): eep H rad 4.18e9 → 3.04e9 instructions (tgamma 40 % → 23 %), rho 8.62e9 → 5.68e9
+(tgamma 56 % → 34 %); the remaining hot spots are the 12 distinct tgamma calls per try, generate_rad, trip_thru_target
+(energy loss, log/pow) and the COSY maps.
+
 Single-thread wall time per try (and the Fortran's, from the reference `.hist` BEGIN/END times; the Fortran runs were
 made on the same machine, possibly under other load):
 
@@ -118,7 +122,23 @@ approaches the 4-thread / 8-thread asymptote (about 3.4x / 4x on this 4-core mac
 L2 validation (`validation/scripts/p154_l2.sh`): for each case a `--threads 8` and a `--threads 1` run with the
 reference's ngen, `simc_compare` of t8 vs the Fortran reference A, t8 vs t1 and t1 vs A:
 
-(results: added when the runs are complete)
+| case (ngen) | t8 vs Fortran A | t1 vs Fortran A | t8 vs t1 | wall t8 / t1 (s, loaded machine) |
+|---|---|---|---|---|
+| eep H rad (200000) | PASS 1/214 | PASS 0/214 | PASS 0/214 | 41 / 167 |
+| pion dec1 (200000) | FAIL 4/271, 1 gross: `sigcc_central` (D-038 F5) | FAIL 3/273, the same gross | PASS 4/274 | 63 / 236 |
+| SIDIS (100000) | FAIL 6/271, gross: `wtcontr` (D-006), `decdist`, `pfermi` (D-051 F3) | FAIL 10/271, the same gross | PASS 3/273 | 53 / 218 |
+| rho (100000) | FAIL 5/280, 2 gross: `wtcontr` (D-006), `pfermi` (D-051 F3) | FAIL 2/280, the same gross (*) | PASS 3/282 (*) | 1105 / 6851 (*) |
+
+(*) rho t1 = the accepted P13.2 corrected run (simc_runs/20261029_014541_P13.2_L2_corrected_h_k1_rad: same seed and ngen,
+SIMC++ 75f8dbd before the optimisations; the one-thread outputs are unchanged since, as the pion/SIDIS t1 runs show).
+F/N = statistical failures (p < 0.01) / tests. Every gross failure against the Fortran is a documented correction of
+the default (corrected) mode, present identically in the one-thread run (FORTRAN_DIFFERENCES.md: §9 pion, §12 SIDIS,
+§13 rho); `--threads` cannot run in the compat mode, so the threaded runs are compared in the corrected mode. The
+one-thread runs (t1) of pion and SIDIS are bitwise identical (`.hist`, tree) to the accepted P9.2 / P12.2 corrected L2
+runs of the same seed. Runs: simc_runs/20261114_2101*_P15.4_L2_<case>_t{1,8}/ (compare_vs_A/, compare_vs_t1/).
+
+ThreadSanitizer (clang 22, `-fsanitize=thread`): `--threads 4` runs of eep, pion dec1, SIDIS, rho, calo pi0 and the
+polarized-target field input report no data race.
 
 ## 4. Not done (possible next steps)
 
