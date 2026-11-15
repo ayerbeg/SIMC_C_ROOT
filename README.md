@@ -1,123 +1,47 @@
 # SIMC++
 
-SIMC++ is a C++20 / ROOT 6 translation of SIMC, the Hall C Monte Carlo (Fortran, `simc_gfortran`), built as a
-plug-in framework. The Fortran is the physics specification: the ported routines reproduce it bit for bit (L1 and
-replay tests), and complete runs agree statistically with the Fortran (L2). Around these faithful kernels, every
-stage of the event chain (target, beam, reaction, radiation, cross section, spectrometers, outputs) is a plug-in
-chosen by name from a JSON pipeline.
+SIMC++ is a C++20 / ROOT 6 translation of SIMC, the Hall C coincidence Monte Carlo (Fortran, `simc_gfortran`). It reads
+the Fortran `.inp` files unchanged, and it writes the Fortran `.hist`/`.geni`/`.gen` reports and the `h10` ROOT tree.
+Every stage of the event chain is a plug-in that can be chosen from a JSON configuration. Every reaction, spectrometer and
+the polarized-target field of the Fortran are ported. Clear Fortran bugs are corrected by default; `--fortran-compat`
+restores the exact Fortran behaviour, and with the RANLUX generator SIMC++ then reproduces Fortran runs file for file.
 
-Current scope: H(e,e'p) elastic, D(e,e'p) and A(e,e'p) (theory-file or Benhar spectral functions; task P8), exclusive
-pion electroproduction (π+/π−/π0 on H, D and A, quasifree, coherent and π Δ final states, decay in flight; task P9; the
-π0 runs with the calorimeter arm: P14.3), kaon electroproduction (K+Λ/Σ0/Σ− on H, D and A, quasifree and coherent,
-decay in flight or survival weight; task P10), (e,e'p)π in the Delta region (`doing_delta`, H, and D/A in the corrected
-mode; task P11), with and without radiation, and phase-space (`doing_phsp`) runs, HMS and SHMS arms. Semi-inclusive
-(e,e'π±)X and (e,e'K±)X on H, D and A (`doing_semi`; semi_physics.f:peepiX with CTEQ5M, fDSS and F1F2IN21; physics model
-`sidis`, P12.1, reaction `sidis_production`, P12.2) is ported, π0 SIDIS with the calorimeter arm (P14.3). Exclusive ρ0 electroproduction, ρ0 → π+π− with one detected pion (`doing_rho`, H/D/³He; model `rho` = rho_physics.f:peerho, P13.1; reaction `rho_production`, P13.2) is ported. The
-SOS (arm 2, plug-in `sos`, P14.1), the Hall A HRS-R/HRS-L (arms 3/4, plug-ins `hrsr`/`hrsl`, P14.2) and the calorimeter
-(arms 7/8, NPS-like, plug-in `calo`, with the π0 → 2γ detection of `driver::PizeroCalorimeter`, P14.3) are ported.
+## Manuals
 
-**Delta runs: the weight contains no cross section.** As in the Fortran (physics_delta.f:132, "Need new xsec model."),
-the `doing_delta` event weight is phase space × virtual-photon flux × the proton CM→lab jacobian; the model cross section
-is not applied. Delta yields are therefore not physical rates (docs/FORTRAN_DIFFERENCES.md, D-048 F4).
+* **[User manual](docs/manual/user/index.md)**: installation, quick start, inputs (complete parameter reference),
+  reactions, spectrometers, outputs, reproducibility, comparison with the Fortran, differences, FAQ.
+* **[Developer manual](docs/manual/developer/index.md)**: architecture, Fortran → C++ map, numerical conventions, validation
+  framework, extending SIMC++.
 
-Documentation (`docs/`):
+Reference documents: [docs/INP_JSON_MAPPING.md](docs/INP_JSON_MAPPING.md), [docs/OUTPUT_FORMAT.md](docs/OUTPUT_FORMAT.md),
+[docs/FORTRAN_DIFFERENCES.md](docs/FORTRAN_DIFFERENCES.md), [docs/DRIVER.md](docs/DRIVER.md),
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/EXTENDING.md](docs/EXTENDING.md),
+[docs/PERFORMANCE.md](docs/PERFORMANCE.md), [validation/README.md](validation/README.md).
 
-| file | content |
-|---|---|
-| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | layers, stage interfaces, plug-in wiring, per-event data flow, Fortran correspondence, tests |
-| [DRIVER.md](docs/DRIVER.md) | the `simc++` driver: command line, pipeline JSON, outputs, simc.f correspondence |
-| [EXTENDING.md](docs/EXTENDING.md) | how to add a spectrometer, reaction, physics model, target or output sink |
-| [INP_JSON_MAPPING.md](docs/INP_JSON_MAPPING.md) | Fortran `.inp` variables → JSON parameters |
-| [OUTPUT_FORMAT.md](docs/OUTPUT_FORMAT.md) | `.root` tree, summary JSON/text, `.hist/.geni/.gen` |
-| [PERFORMANCE.md](docs/PERFORMANCE.md) | profile, speed vs the Fortran, `--threads N` (parallel event loop) |
+**Delta-region runs (`doing_delta`) have no cross section in the weight**, as in the Fortran (`physics_delta.f:132`):
+their yields are not physical rates.
 
-## Build
-
-Requirements: CMake ≥ 3.15, a C++20 compiler, ROOT ≥ 6.40 built with C++20 (Core, Tree, Hist, RIO; the default is
-`/home/ayerbe/Builds/ROOT6_install`, ROOT 6.40.04), nlohmann/json ≥ 3.9 (fetched automatically if absent). At run
-time put only `$ROOTSYS/lib` in `LD_LIBRARY_PATH`: on this machine `/usr/local/lib` holds an old ROOT and an old
-`libtbb.so.12` that break linking against ROOT 6.40 (libImt).
+## In short
 
 ```bash
-cmake -S . -B build -DCMAKE_PREFIX_PATH=/home/ayerbe/Builds/ROOT6_install -DCMAKE_BUILD_TYPE=Release \
-      -DSIMC_REFERENCE_DIR=/home/ayerbe/NewDisk/reference -DSIMC_FORTRAN_DIR=/home/ayerbe/NewDisk/simc_gfortran
-cmake --build build -j
-cmake --install build --prefix <prefix>     # optional: programs, headers, libraries, data, docs, examples and the
-                                            # CMake package (find_package(SIMC), docs/EXTENDING.md)
+export ROOTSYS=/path/to/root-6.40 LD_LIBRARY_PATH=$ROOTSYS/lib          # only ROOT's lib (not an old ROOT/libtbb)
+cmake -S . -B build -DCMAKE_PREFIX_PATH=$ROOTSYS -DCMAKE_BUILD_TYPE=Release && cmake --build build -j8
+build/bin/simc++ /path/to/simc_gfortran/infiles/eep_h_elastic_rad_A.inp -o out --ngen 5000
+(cd build && ctest -LE slow -j8)
 ```
 
-`SIMC_REFERENCE_DIR` (the Fortran reference data) and `SIMC_FORTRAN_DIR` (the Fortran tree, for its `infiles/`)
-are only needed by the tests. Tests whose data are missing are skipped. `-DSIMC_BUILD_EXAMPLES=OFF` leaves the
-example plug-ins out of `simc++`. The build is warning-free with `-Wall -Wextra -pedantic`.
-
-Programs (in `build/bin/`): `simc++` (the Monte Carlo), `inp2json` (Fortran `.inp` → JSON), `hist2json` (Fortran
-`.hist` → summary JSON), `simc_root_identity` (bitwise comparison of two output ROOT files).
-
-## Run
-
-With a Fortran input file, read exactly like `dbase.f` (CTP syntax, `extra_dbase_file`):
-
-```bash
-build/bin/simc++ /home/ayerbe/NewDisk/simc_gfortran/infiles/eep_h_elastic_rad_A.inp -o out --seed 4242
-```
-
-With a JSON configuration (`parameters` = the `inp2json` output, plus the optional `pipeline` and `run` sections):
-
-```bash
-build/bin/inp2json -o run.json my_run.inp          # or start from data/config/h_elastic_rad.json
-build/bin/simc++ run.json -o out
-```
-
-Useful options: `--ngen N`, `--seed N`, `--run-name NAME`, `--pipeline FILE` (plug-in choice, for example
-`examples/ideal_box/hadron_arm.json`), `--print-pipeline`, `--quiet`, `--threads N` (the event loop on N threads with
-independent random streams, reproducible for a given seed and N; docs/PERFORMANCE.md), `--print-data-dir` (where the
-data files are read from; env `SIMC_DATA_DIR` overrides it). The outputs in `out/` are
-`<run>.root` (tree `h10`, the Fortran `make_root_tree` layout), `<run>.summary.json/.txt`, `<run>.gen.root` and
-the Fortran text reports `<run>.hist`, `<run>.geni`, `<run>.gen`.
-
-In the SIMC++ project, `tools/run_simc.sh [CONFIG] --label <id>` (in `SIMC++_Project/tools/`) builds, runs and
-archives a run under `SIMC++_Project/simc_runs/`.
-
-## Compare with the Fortran
-
-The statistical comparison tool is a separate CMake project in `validation/`:
-
-```bash
-cmake -S validation -B build-val -DCMAKE_PREFIX_PATH=/home/ayerbe/Builds/ROOT6_install && cmake --build build-val -j
-build-val/simc_compare --a /home/ayerbe/NewDisk/reference/runs/eep_h_elastic_rad_A \
-                       --b out/eep_h_elastic_rad_A.summary.json --out cmp --config validation/config/compare_default.json
-```
-
-It writes `cmp/summary.txt`, `summary.json` and `compare.pdf`: the `.hist` normalisation pulls, the stop
-counters, and the weighted χ²/KS test of every tree variable, with a PASS/FAIL verdict (see `validation/README.md`).
-The Fortran reference runs are in `/home/ayerbe/NewDisk/reference/runs/<tag>/`.
-
-## Tests
-
-```bash
-cd build && ctest -j8                 # everything
-ctest -L unit | -L l1 | -L replay | -L cli | -L regression | -L examples
-```
-
-* `l1`: routine-level tables against the Fortran harness (`reference/functions/`).
-* `replay`: the complete driver fed with captured Fortran random streams reproduces the Fortran outputs bit for bit.
-* `regression`: the outputs of the standard runs (seed 4242; H(e,e'p), D/Fe(e,e'p), π+ H, π− D, K+Λ H, K+Σ− D, H(e,e'p)π Delta, H(e,e'π+)X, H(e,e'π+)[ρ]) must equal the baseline outputs of
-  their reference commits (`SIMC++_Project/baselines/<commit>_*`), in both modes: every tree branch and entry bitwise, the text outputs apart from time stamps.
-  Every refactor must keep these green.
-* `tools/check_all.sh [--commit REV]`: a clean build of everything plus both test suites, logged in
-  `SIMC++_Project/simc_runs/`.
+Requirements: a C++20 compiler, CMake ≥ 3.15, ROOT ≥ 6.40 built with C++20, nlohmann/json ≥ 3.9 (fetched if absent).
+See [chapter 2 of the user manual](docs/manual/user/02_installation.md) for the options, installation, data directory and
+test labels.
 
 ## Layout
 
 ```
-include/simc/   core/ stages/ driver/ input/ output/ setup/ material/ radiation/ reactions/ physics/ optics/
-                spectrometers/      (*/kernel/ = private Fortran-mirror headers)
-src/            the same modules
-examples/       example plug-ins (ideal_box spectrometer) and their tests
-tests/          unit/ l1/ regression/
-tools/          simc++ main, inp2json, hist2json, check_all.sh
-validation/     simc_compare (L2)
-data/           COSY maps, spectral functions, pion, kaon and SIDIS model tables, the target field map (copies of the
-                Fortran files, each directory with MD5SUMS: matrices/simc_fortran, spectral, pion, kaon, sidis, field),
-                data/config/*.json
+include/simc/, src/   the library (core, stages, driver, reactions, physics, optics, spectrometers, output)
+tools/                simc++ main, inp2json, hist2json, check_all.sh, check_md_links.py
+tests/                unit/ l1/ fortran_diff/ regression/ user_manual/
+validation/           simc_compare (statistical comparison with the Fortran) and validation scripts
+examples/             example plug-ins
+data/                 COSY maps, model tables, spectral functions, field map, example configurations
+docs/                 reference documents and the manuals (docs/manual/user, docs/manual/developer)
 ```
