@@ -1,4 +1,8 @@
 // src/driver/Pipeline.cpp — see include/simc/driver/Pipeline.h.
+// The pipeline configuration: which registered stage implements each step of the event chain (random source,
+// target, beam, reaction, physics model, radiator, the two arms, the output sinks). Defaults() reproduces the Fortran
+// dispatch (the reaction and cross section chosen by the dbase.f flags, the arms by their codes); apply() overlays the
+// optional "pipeline" JSON of the user. SimcRun creates the stages by these names through the Registry.
 #include "simc/driver/Pipeline.h"
 
 #include <stdexcept>
@@ -8,6 +12,8 @@
 namespace simc {
 namespace driver {
 
+// A stage is given either as a bare name ("mt64") or as an object {"type": name, <config keys>...}; the object's
+// other keys are merged into the stage config (later keys win).
 void StageSpec::apply(const Json& j, const std::string& what) {
     if (j.is_string()) {
         type = j.get<std::string>();
@@ -74,18 +80,18 @@ PipelineConfig PipelineConfig::Defaults(const RunSetup& s) {
         p.reaction.type = "deuterium_eep";
     else if (f.doing_heavy)
         p.reaction.type = "nucleus_eep";
-    else if (f.doing_pion)   // which_pion 0/1/2/3/10/11, pi+/pi-/pi0 (P9.2)
+    else if (f.doing_pion)   // which_pion 0/1/2/3/10/11, pi+/pi-/pi0
         p.reaction.type = "pion_production";
-    else if (f.doing_kaon)   // which_kaon 0/1/2/10/11/12 (P10.2)
+    else if (f.doing_kaon)   // which_kaon 0/1/2/10/11/12
         p.reaction.type = "kaon_production";
-    else if (f.doing_delta)   // H/D/A(e,e'p)pi (P11.1)
+    else if (f.doing_delta)   // H/D/A(e,e'p)pi
         p.reaction.type = "delta_production";
-    else if (f.doing_semi)   // (e,e'pi)X / (e,e'K)X on H, D, A (P12.2)
+    else if (f.doing_semi)   // (e,e'pi)X / (e,e'K)X on H, D, A
         p.reaction.type = "sidis_production";
-    else if (f.doing_rho)   // H/D/3He(e,e'rho), rho -> pi+ pi- (P13.2)
+    else if (f.doing_rho)   // H/D/3He(e,e'rho), rho -> pi+ pi-
         p.reaction.type = "rho_production";
     else
-        p.reaction.type = "";   // not ported: SimcRun reports NotPorted with the reaction title
+        p.reaction.type = "";   // no target class set (e.g. targ%A < 1): SimcRun refuses the run with the reaction title
     // event.f:complete_main l.1444-1456
     if (f.doing_deuterium || f.doing_heavy) {
         p.physics.type = "deforest";
@@ -104,8 +110,11 @@ PipelineConfig PipelineConfig::Defaults(const RunSetup& s) {
         p.physics.type = "sigep";
     }
     p.radiator.type = "simc_rad";
+    // empty arm type: MonteCarlo picks the plug-in of the arm code (MonteCarlo::DefaultArm)
     p.hadron_arm.type = "";
     p.electron_arm.type = "";
+    // the outputs of the Fortran: the ntuple (only when Nntu > 0, as the Fortran), the .hist/.geni/.gen report, plus
+    // the summary JSON and the .gen.root histograms of SIMC++
     if (s.params.Nntu > 0) p.sinks.push_back({"root_tree", Json::object()});
     p.sinks.push_back({"run_summary", Json::object()});
     p.sinks.push_back({"gen_hist", Json::object()});
@@ -161,7 +170,7 @@ Json PipelineConfig::toJson() const {
     j["spectrometers"] = {{"hadron", hadron_arm.toJson()}, {"electron", electron_arm.toJson()}};
     j["sinks"] = Json::array();
     for (const auto& s : sinks) j["sinks"].push_back(s.toJson());
-    if (threads > 0) j["threads"] = threads;   // (P15.4; absent unless given)
+    if (threads > 0) j["threads"] = threads;   // (absent unless given)
     return j;
 }
 

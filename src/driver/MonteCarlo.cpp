@@ -1,4 +1,9 @@
 // src/driver/MonteCarlo.cpp — see include/simc/driver/MonteCarlo.h.
+// The spectrometer stage of the event chain (simc.f:montecarlo): for each arm (hadron first, as the Fortran) apply
+// the target energy loss and multiple scattering, rotate the vertex track into the spectrometer (TRANSPORT)
+// coordinates with the arm offsets, run the arm's ISpectrometer plug-in (apertures, detectors, reconstruction), and
+// fill the reconstructed event (recon) and the focal-plane values. Also the pi0 photons into the calorimeter
+// (PizeroCalorimeter) and the polarized-target field (optics/TargetField). The arm plug-ins are chosen by their code.
 // Fortran: simc.f:montecarlo (l.1310-1853). Operation order kept for bitwise results.
 #include "simc/driver/MonteCarlo.h"
 
@@ -37,11 +42,11 @@ MonteCarlo::ArmChoice MonteCarlo::DefaultArm(int code) {
         case SpectrometerId::HRSR:
         case SpectrometerId::HRSL:
         case SpectrometerId::SHMS:
-            c.type = Key(*id);   // plug-ins "hms", "sos" (P14.1), "hrsr", "hrsl" (P14.2), "shms"
+            c.type = Key(*id);   // plug-ins "hms", "sos", "hrsr", "hrsl", "shms"
             break;
         case SpectrometerId::CALO_HMS_SIDE:
         case SpectrometerId::CALO_SHMS_SIDE:
-            c.type = "calo";   // one plug-in for both sides (mc_calo ignores spect_side, D-062 G7; P14.3)
+            c.type = "calo";   // one plug-in for both sides (mc_calo ignores spect_side, D-062 G7)
             break;
     }
     return c;
@@ -90,7 +95,7 @@ MonteCarlo::MonteCarlo(const RunSetup& setup, ITarget& target, const ArmChoice& 
 }
 
 // Fortran: simc.f:120-155 (after the random-number initialisation, before the event loop): the arm angles of the
-// polarized-target field and trgInit (task P15.2b).
+// polarized-target field and trgInit.
 void MonteCarlo::initTargetField() {
     const RunSetup& S = setup_;
     const ArmFieldAngles a = TargetFieldArmAngles(S.targ_Bangle, S.targ_Bphi, S.spec.e.theta, S.spec.e.phi,
@@ -109,7 +114,7 @@ void MonteCarlo::initTargetField() {
         std::vector<fs::path> cands;
         if (!S.data_dir.empty()) cands.push_back(fs::path(S.data_dir) / file);
         cands.push_back(fs::path(file));
-        cands.push_back(fs::path(DataDir("field")) / file);   // (D-069: DataPath.h)
+        cands.push_back(fs::path(DataDir("field")) / file);   // (the data tree: core/DataPath.h)
         path = cands.back().string();
         for (const auto& c : cands)
             if (fs::is_regular_file(c)) {
@@ -137,7 +142,7 @@ bool MonteCarlo::run(const Event& orig, MainEvent& main, Event& recon, IRandom& 
     const SpecArm& se = S.spec.e;
     const bool mc_smear = S.sw.mc_smear;
     info_ = MonteCarloInfo{};
-    // COMMON /gnrl/ Mh, Mh2: the set-up values, or the per-try values of doing_rho (the decay pion, task P13.2)
+    // COMMON /gnrl/ Mh, Mh2: the set-up values, or the per-try values of doing_rho (the decay pion)
     const double Mh = main.gnrl_per_event ? main.gnrl.Mh : S.Mh;
     const double Mh2 = main.gnrl_per_event ? main.gnrl.Mh2 : S.Mh2;
 

@@ -1,4 +1,8 @@
 // src/driver/FortranWriter.cpp — see include/simc/driver/FortranWriter.h.
+// gfortran formatted output (the F, E, I, L, A edit descriptors and a positional record) so that the .hist, .geni and
+// .gen texts are byte-identical to the Fortran ones: width overflow gives '*' fill, NaN/Infinity are right-justified,
+// the optional leading zero is dropped when the field is too narrow, and Ew.d prints 0.ddddE+xx. Used by the report
+// writers (RunReport*.cpp, ReportSink.cpp) and the stdout messages that mimic Fortran prints.
 #include "simc/driver/FortranWriter.h"
 
 #include <cmath>
@@ -17,6 +21,7 @@ std::string rjust(const std::string& s, int w) {
 }
 }  // namespace
 
+// Fw.d
 std::string F(double v, int w, int d) {
     if (std::isnan(v)) return rjust("NaN", w);
     if (std::isinf(v)) return rjust(v > 0 ? "Infinity" : "-Infinity", w);
@@ -31,6 +36,7 @@ std::string F(double v, int w, int d) {
     return rjust(s, w);
 }
 
+// Ew.d: the mantissa is 0.d1d2...dd, the exponent E+xx (or +xxx without the E for |exponent| > 99)
 std::string E(double v, int w, int d) {
     if (std::isnan(v)) return rjust("NaN", w);
     if (std::isinf(v)) return rjust(v > 0 ? "Infinity" : "-Infinity", w);
@@ -71,6 +77,7 @@ std::string A(const std::string& s, int w) {
     return std::string(static_cast<std::size_t>(w) - s.size(), ' ') + s;
 }
 
+// Writes s at the current column (pos_, moved by the X/T descriptors), overwriting what is there, as a Fortran record.
 Record& Record::put(const std::string& s) {
     if (buf_.size() < pos_) buf_.resize(pos_, ' ');
     if (pos_ + s.size() > buf_.size()) buf_.resize(pos_ + s.size(), ' ');

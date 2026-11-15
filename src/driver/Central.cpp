@@ -1,4 +1,7 @@
 // src/driver/Central.cpp — see include/simc/driver/Central.h.
+// The central event: the kinematics of the central rays of both spectrometers (no offsets, no Fermi motion) and its
+// cross section, computed once before the event loop. It is printed in the .hist (CENTRAL values), and vertex0 is the
+// reference the reactions use in complete_main (e.g. the pion central cross section).
 // Fortran: simc.f:calculate_central (l.1143-1309).
 #include "simc/driver/Central.h"
 
@@ -16,7 +19,7 @@ CentralResult calculateCentral(const RunSetup& s, IReaction& reaction, IRadiator
     Event& vertex0 = res.vertex0;
     CentralEvent& central = res.central;
 
-    // l.1166-1177
+    // --- 1. beam and target at the centre (l.1166-1177)
     main0.target.x = 0.0;
     main0.target.y = 0.0;
     main0.target.z = s.targ.zoffset;
@@ -29,7 +32,7 @@ CentralResult calculateCentral(const RunSetup& s, IReaction& reaction, IRadiator
     main0.Ee_shift = 0.0;
     main0.gen_weight = 1.0;
 
-    // l.1181-1195
+    // --- 2. both arms on their central ray: delta = xptar = yptar = 0 (l.1181-1195)
     vertex0.e.delta = 0.0;
     vertex0.e.yptar = 0.0;
     vertex0.e.xptar = 0.0;
@@ -58,7 +61,7 @@ CentralResult calculateCentral(const RunSetup& s, IReaction& reaction, IRadiator
         main0.pfermi.efer = s.targ.M - std::sqrt(m_spec * m_spec + main0.pfermi.pfer * main0.pfermi.pfer);
     }
 
-    // l.1240-1242
+    // --- 3. complete the kinematics as for a reconstructed event (l.1240-1242)
     if (!reaction.completeRecon(vertex0)) throw FortranStop("COMPLETE_EV failed trying to complete a CENTRAL event! (simc.f:1240-1242)");
     central.Q2 = vertex0.Q2;
     central.q = vertex0.q;
@@ -80,6 +83,7 @@ CentralResult calculateCentral(const RunSetup& s, IReaction& reaction, IRadiator
     else
         central.MM = std::sqrt(mm2);
 
+    // --- 4. radiative-correction values of the central event (l.1262-1281)
     // l.1262-1266
     main0.target.teff[1] = s.targ.teff[1].ave;
     main0.target.teff[2] = s.targ.teff[2].ave;
@@ -87,9 +91,10 @@ CentralResult calculateCentral(const RunSetup& s, IReaction& reaction, IRadiator
     // l.1268-1281
     if (s.sw.using_rad) central.rad = radiator.currentValues();
 
+    // --- 5. its cross section through the event chain's complete_main
     // l.1288-1290: recon0 = vertex0; complete_main(.true., main0, vertex0, vertex0, recon0, success)
     const Event recon0 = vertex0;
-    reaction.prepareCentral(main0, vertex0);   // P9.2 hook (pion: D-038 F5 in corrected mode); no-op otherwise
+    reaction.prepareCentral(main0, vertex0);   // reaction hook (pion: D-038 F5 in corrected mode); no-op otherwise
     model.beginEvent(0);   // nevent = 0 before the loop
     reaction.completeMain(true, main0, vertex0, vertex0, recon0);
     central.sigcc = main0.sigcc;

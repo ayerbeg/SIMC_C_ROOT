@@ -1,6 +1,6 @@
 // src/driver/RunReport.cpp — see include/simc/driver/RunReport.h.
 // Fortran: simc.f l.360-432 (normalisation), l.462-532 (.geni), report (l.644-1142).
-// Task P15.3: the .hist writer is in RunReportHist.cpp (records: RunReportRecords.cpp), the .geni writer in
+// The .hist writer is in RunReportHist.cpp (records: RunReportRecords.cpp), the .geni writer in
 // RunReportGeni.cpp; this file keeps the normalisation, FortranCtime and the summary sections.
 #include "simc/driver/RunReport.h"
 
@@ -27,8 +27,7 @@ using constants::degrad;
 using namespace report_detail;
 
 
-// Fortran: simc.f l.360-432
-// P15.4: parallel event loop (RunReport.h).
+// Parallel event loop: the counters and sums of a worker added to the run's (in worker order; RunReport.h).
 void MergeTotals(RunTotals& a, const RunTotals& b) {
     a.ntried = a.ntried + b.ntried;
     a.nevent = a.nevent + b.nevent;
@@ -48,6 +47,8 @@ void MergeTotals(RunTotals& a, const RunTotals& b) {
     reactions::mergeSlops(a.slop, b.slop);
 }
 
+// Fortran: simc.f l.360-432. The weight normalisation: normfac = luminosity * genvol * nevent / ntried, so that
+// sum(weight) * normfac is a counting rate; plus the mean and r.m.s. of the reconstruction errors (resolutions).
 Normalisation Normalise(const RunSetup& s, const RunTotals& t, double genvol) {
     Normalisation n;
     n.targetfac = s.targetfac;
@@ -233,13 +234,13 @@ RunSummary MakeRunSummary(const RunSetup& s, const RunReport& r) {
     x["run"] = {{"tag", r.run_name},
                 {"producer", "simc++"},
                 {"random_seed", r.random_seed},
-                {"rng", r.rng_type},                  // D-054 (P15.1): the random source
-                {"fortran_compat", s.fortran_compat},  // D-054 (P15.1): simc_compare reads the pass_cuts mode
+                {"rng", r.rng_type},                  // the random source (mt64 / ranlux / ...)
+                {"fortran_compat", s.fortran_compat},  // simc_compare reads the pass_cuts mode from it
                 {"reaction", ReactionTitle(s.flags, s.params)},
                 {"begin_time", r.begin_time},
                 {"end_time", r.end_time}};
     if (s.flags.doing_heavy) x["run"]["theory_file"] = s.theory.file;
-    if (r.threads > 1) x["run"]["threads"] = r.threads;   // P15.4 (absent for the sequential loop)
+    if (r.threads > 1) x["run"]["threads"] = r.threads;   // (absent for the sequential loop)
     return sum;
 }
 

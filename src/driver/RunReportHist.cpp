@@ -1,4 +1,5 @@
-// src/driver/RunReportHist.cpp — task P15.3 split of RunReport.cpp (no logic change): the .hist text
+// src/driver/RunReportHist.cpp — part of the report writer (RunReport.h): the .hist text, record by record as the
+// Fortran WRITE statements produce it (input echo, reaction, normalisation, central values, resolutions)
 // (Fortran: simc.f:report, l.644-1142).
 #include "simc/driver/RunReport.h"
 

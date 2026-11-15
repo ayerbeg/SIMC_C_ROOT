@@ -1,4 +1,4 @@
-// src/driver/RunReportRecords.cpp — task P15.3 split of RunReport.cpp (no logic change): the reaction lines of
+// src/driver/RunReportRecords.cpp — part of the report writer (RunReport.h): the reaction lines of
 // simc.f:report (l.667-788) and the formatted records (FORMAT statements) used by the .hist writer.
 #include <cmath>
 #include <ctime>

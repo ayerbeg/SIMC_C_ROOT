@@ -1,4 +1,8 @@
 // src/driver/ReportSink.cpp — see include/simc/driver/ReportSink.h.
+// The "fortran_hist" output sink: the three Fortran text outputs of a run, <run>.hist (the report: input echo,
+// normalisation, central values, resolutions; RunReportHist.cpp), <run>.geni (the spectrometer stop counters;
+// RunReportGeni.cpp) and <run>.gen (the generated/contributing/reconstructed histograms, filled here with the
+// Fortran's own binning). Written byte-compatible with the Fortran so that they can be diffed.
 #include "simc/driver/ReportSink.h"
 
 #include <cmath>
@@ -41,7 +45,7 @@ void FortranHistSink::beginRun(const RunSetup& setup) {
     }
 }
 
-// P15.4: parallel event loop (IParallelSink).
+// Parallel event loop (IParallelSink): the worker histograms are added bin by bin in worker order.
 std::unique_ptr<IOutputSink> FortranHistSink::makeWorkerSink(int, int) const {
     return std::make_unique<FortranHistSink>();
 }
@@ -109,7 +113,7 @@ namespace {
 double centre(const FortranHistSink::Hist& h, int i) { return h.ax.min + (i - 0.5) * h.ax.bin; }
 }  // namespace
 
-// Fortran: simc.f l.534-612
+// Fortran: simc.f l.534-612: the .gen text, seven blocks of 50 rows (bin centre, content)
 std::string FortranHistSink::formatGen() const {
     using fortran::Record;
     std::ostringstream os;

@@ -1,4 +1,7 @@
 // src/driver/PizeroCalorimeter.cpp — see include/simc/driver/PizeroCalorimeter.h.
+// pi0 detection with the calorimeter as hadron arm: the two decay photons are rotated into the calorimeter frame and
+// transported one after the other through the calorimeter plug-in; the event is accepted with one or both photons
+// (pizero_ngamma). Called by MonteCarlo for doing_pizero runs with arm 7/8.
 #include "simc/driver/PizeroCalorimeter.h"
 
 #include <cmath>
@@ -8,7 +11,8 @@
 namespace simc {
 namespace driver {
 
-// Fortran: simc.f:1495-1515
+// Fortran: simc.f:1495-1515. Rotation by the calorimeter angle about x (the sign of the rotation depends on the side
+// of the beam: arm 8 = SHMS side), then the slopes dx/dz, dy/dz.
 PhotonSlopes rotateToCalorimeter(const std::array<double, 4>& g, double theta, int arm) {
     PhotonSlopes s;
     if (arm == 8) {

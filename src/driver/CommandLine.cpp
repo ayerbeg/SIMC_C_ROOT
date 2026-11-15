@@ -1,4 +1,5 @@
-// src/driver/CommandLine.cpp — the `simc++` command line (task P7.2; a library function since P15.3).
+// src/driver/CommandLine.cpp — the `simc++` command line (a library function, CommandLineMain, so that a program that
+// links extra plug-ins can reuse it: tools/simc_main.cpp, examples/out_of_tree_plugin).
 //
 //   simc++ <file.inp | file.json> [-o OUTDIR] [--seed N] [--ngen N] [--pipeline overrides.json]
 //          [--run-name NAME] [--data-dir DIR] [--infiles-dir DIR] [--quiet] [--print-pipeline] [--fortran-compat]
@@ -10,7 +11,7 @@
 //                     "run": {"name": ..., "output_dir": ..., "fortran_compat": false} (optional)}.
 // --fortran-compat (or "run": {"fortran_compat": true}) keeps the exact Fortran behaviour, including the clear Fortran
 // bugs that SIMC++ corrects by default (D-031, docs/FORTRAN_DIFFERENCES.md). It exists for the bitwise validation.
-// --threads N (P15.4, docs/PERFORMANCE.md): the event loop on N threads with independent mt64 streams (reproducible for a
+// --threads N (docs/PERFORMANCE.md): the event loop on N threads with independent mt64 streams (reproducible for a
 // given seed and N; statistically equivalent to, not bitwise equal to, the one-thread run). Default 1 (or the pipeline
 // "threads"). Refused (exit 2) with --fortran-compat and with an rng other than mt64.
 // --print-data-dir prints the default data directory (include/simc/core/DataPath.h: env SIMC_DATA_DIR, the installed
@@ -74,8 +75,9 @@ bool readJson(const std::string& path, Json& j) {
 
 }  // namespace
 
-// The former main() of tools/simc_main.cpp (moved here unchanged in P15.3 so that a program with extra plug-ins can
-// reuse it, examples/out_of_tree_plugin).
+// The simc++ program: parse the options, read the input (.inp or JSON), run, write the outputs. Exit status 0 on
+// success, 1 for a command-line error, 2 for an unreadable or rejected input/configuration, 3 when the run stops
+// (a Fortran STOP, a refused feature or any other error during the run).
 int CommandLineMain(int argc, char** argv) {
     std::string input, outdir = ".", pipelineFile, runName, dataDir, infilesDir;
     bool quiet = false, printPipeline = false, compatFlag = false;
@@ -117,7 +119,7 @@ int CommandLineMain(int argc, char** argv) {
 
     SimcParameters params;
 
-    std::vector<std::string> ignoredNames;   // InpReader::notRegistered() (P15.2)
+    std::vector<std::string> ignoredNames;   // InpReader::notRegistered()
     Json pipeline = Json::object();
     if (endsWith(input, ".json")) {
         Json j;
@@ -148,7 +150,7 @@ int CommandLineMain(int argc, char** argv) {
         for (const auto& m : rd.messages()) std::cout << m.text << "\n";   // CTP messages, like the Fortran
         ignoredNames = rd.notRegistered();
         if (!ignoredNames.empty()) {
-            // P15.2 (D-065 W1): the Fortran ignores unregistered names silently (CTP registers them as dummy ints); a run
+            // D-065 W1: the Fortran ignores unregistered names silently (CTP registers them as dummy ints); a run
             // with legacy '.' names (targ.A, spec.e.P, ...) keeps the defaults of those variables. Same behaviour here,
             // but said loudly.
             std::cerr << "simc++: WARNING: " << ignoredNames.size()
@@ -171,7 +173,7 @@ int CommandLineMain(int argc, char** argv) {
     opt.data_dir = dataDir;
     opt.quiet_stages = quiet;
     if (compatFlag) opt.fortran_compat = true;   // the CLI flag wins over the JSON
-    if (opt.threads > 1 && opt.fortran_compat) {  // P15.4 (refused before the run starts; SimcRun::threadsRefusal)
+    if (opt.threads > 1 && opt.fortran_compat) {  // refused before the run starts (also SimcRun::threadsRefusal)
         std::cerr << "simc++: --threads " << opt.threads
                   << " (more than one event-loop thread) cannot be used with --fortran-compat: the exact Fortran "
                      "reproduction needs the single random stream in the Fortran order (run with --threads 1)\n";
@@ -184,7 +186,7 @@ int CommandLineMain(int argc, char** argv) {
         run.initialise();
         if (printPipeline) std::cout << run.pipeline().toJson().dump(2) << "\n";
         const int nthreads = run.threadCount();
-        if (nthreads > 1) {   // P15.4: the parallel event loop (refused with a message for compat / ranlux)
+        if (nthreads > 1) {   // the parallel event loop (refused with a message for compat / ranlux)
             if (const std::string why = run.threadsRefusal(nthreads); !why.empty()) {
                 std::cerr << "simc++: " << why << "\n";
                 return 2;

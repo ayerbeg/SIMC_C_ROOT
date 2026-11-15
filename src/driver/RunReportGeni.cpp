@@ -1,4 +1,5 @@
-// src/driver/RunReportGeni.cpp — task P15.3 split of RunReport.cpp (no logic change): the .geni text
+// src/driver/RunReportGeni.cpp — part of the report writer (RunReport.h): the .geni text, the per-spectrometer stop
+// counters (where the rays were lost: slits, magnets, detectors)
 // (Fortran: simc.f l.462-532).
 #include "simc/driver/RunReport.h"
 
@@ -50,7 +51,7 @@ std::string FormatGeni(const RunSetup& s, const RunReport& r) {
         o.line(x);
     };
     // The Fortran blocks (by arm code) are written for the Fortran spectrometers; an arm served by another ISpectrometer
-    // plug-in (e.g. examples/ideal_box) gets a generic block at the end (P7.4).
+    // plug-in (e.g. examples/ideal_box) gets a generic block at the end.
     auto uses = [&](SpectrometerId id) { return Is(ea, id) || Is(ha, id); };   // D-032 spectrometer table
     if (uses(SpectrometerId::HMS) && has(r, "hms")) {
         row("HMS Trials:           ", "hms", {"trials"});
@@ -71,7 +72,7 @@ std::string FormatGeni(const RunSetup& s, const RunReport& r) {
         row("Successes             ", "hms", {"successes"});
         o.line("");
     }
-    if (uses(SpectrometerId::SOS) && has(r, "sos")) {   // simc.f:475-486 (task P14.1)
+    if (uses(SpectrometerId::SOS) && has(r, "sos")) {   // simc.f:475-486
         row("SOS Trials:           ", "sos", {"trials"});
         // FORTRAN-BUG(D-011, D-061 F8): original Fortran simc.f:477: `write(7,*) 'Slit hor/vert/corners ',sSTOP_slit_vert,
         // sSTOP_slit_hor,sSTOP_slit_oct`; corrected because the label (and the HMS/SHMS lines) put slit_hor first: the
@@ -87,7 +88,7 @@ std::string FormatGeni(const RunSetup& s, const RunReport& r) {
         row("Successes             ", "sos", {"successes"});
         o.line("");
     }
-    // simc.f:487-509 (task P14.2): HRS-R then HRS-L. The "S1, S2, Cal" label contains a TAB (simc.f:496, 508; kept).
+    // simc.f:487-509: HRS-R then HRS-L. The "S1, S2, Cal" label contains a TAB (simc.f:496, 508; kept).
     // FORTRAN-BUG(D-061 F8): the Fortran HRS blocks have no "Successes" line and the HRS-L block no trailing blank line;
     // corrected: both added (as in the HMS/SOS/SHMS blocks). fortran_compat writes the Fortran blocks.
     auto hrsBlock = [&](const char* key, const char* trials, bool blank) {
@@ -132,7 +133,7 @@ std::string FormatGeni(const RunSetup& s, const RunReport& r) {
         row("Successes             ", "shms", {"successes"});
         o.line("");
     }
-    // simc.f:531-535 (task P14.3): the calorimeter (either side); 'Calo Trials' counts mc_calo calls, i.e. PHOTONS for a
+    // simc.f:531-535: the calorimeter (either side); 'Calo Trials' counts mc_calo calls, i.e. PHOTONS for a
     // pi0 hadron arm. No blank line after it (the Fortran block has none).
     if ((uses(SpectrometerId::CALO_HMS_SIDE) || uses(SpectrometerId::CALO_SHMS_SIDE)) && has(r, "calo")) {
         row("Calo Trials:          ", "calo", {"trials"});

@@ -1,4 +1,4 @@
-// src/driver/RunReportInternal.h — private to src/driver (task P15.3 split of RunReport.cpp): the gfortran
+// src/driver/RunReportInternal.h — private to src/driver (the report writer is split over RunReport*.cpp): the gfortran
 // formatted-record helpers shared by the .hist (RunReportHist.cpp), .geni (RunReportGeni.cpp) and summary writers.
 #ifndef SIMC_SRC_DRIVER_RUNREPORTINTERNAL_H
 #define SIMC_SRC_DRIVER_RUNREPORTINTERNAL_H

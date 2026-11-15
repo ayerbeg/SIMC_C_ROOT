@@ -1,4 +1,6 @@
 // src/driver/TargetFieldAngles.cpp — see include/simc/driver/TargetFieldAngles.h.
+// using_tgt_field: the angles between the polarized-target field (targ_Bangle, targ_Bphi) and each spectrometer arm,
+// as simc.f computes them before trgInit, with the log lines the Fortran prints. Used by MonteCarlo::initTargetField.
 #include "simc/driver/TargetFieldAngles.h"
 
 #include <cmath>

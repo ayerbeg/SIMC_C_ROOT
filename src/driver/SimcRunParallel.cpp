@@ -1,4 +1,4 @@
-// src/driver/SimcRunParallel.cpp — the parallel event loop of SimcRun (task P15.4; docs/PERFORMANCE.md).
+// src/driver/SimcRunParallel.cpp — the parallel event loop of SimcRun (docs/PERFORMANCE.md).
 //
 // Not a Fortran feature: the Fortran SIMC (and SimcRun::step) runs one try after the other on one random stream. Here
 // N worker SimcRun objects, each with its own stages built from the same input (set-up, target, radiator, beam, physics,

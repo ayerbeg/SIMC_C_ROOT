@@ -1,4 +1,10 @@
 // src/driver/SimcRun.cpp — see include/simc/driver/SimcRun.h.
+// The run driver: the C++ counterpart of the simc.f main program. initialise() builds the RunSetup (setup/), resolves
+// the pipeline (Pipeline.cpp: which reaction, physics model, radiator, target, arms and sinks), creates the stages by
+// name through the Registry and computes the central event; step() is one try of the Fortran event loop (generate,
+// montecarlo, complete_recon_ev, complete_main, pass_cuts, histograms/ntuple, counters); finish() normalises and
+// hands the run summary to the sinks (.hist/.geni/.gen, summary JSON, ROOT tree). The parallel loop is in
+// SimcRunParallel.cpp.
 // Fortran: simc.f main program (l.1-623).
 #include "simc/driver/SimcRun.h"
 
@@ -79,13 +85,14 @@ void SimcRun::initialise() {
     if (initialised_) return;
     // ---- dbase_read, init.f (min_max_init, target_init, limits_init, radc_init), targetfac, luminosity.
     // target_init and extreme_trip_thru_target come from the pipeline's target model (ITargetLossProvider), through a
-    // dedicated instance: the event-loop target below starts from its own fresh state, as before P7.4.
+    // dedicated instance: the event-loop target below starts from its own fresh state (the target model may keep
+    // per-event state that the set-up must not leave behind).
     {
         SetupOptions so;
         so.run_name = opt_.run_name;
-        so.data_dir = opt_.data_dir.empty() ? DataDir("spectral") : opt_.data_dir;   // (D-069: DataPath.h)
+        so.data_dir = opt_.data_dir.empty() ? DataDir("spectral") : opt_.data_dir;   // (data tree: core/DataPath.h)
         so.fortran_compat = opt_.fortran_compat;
-        // D/A(e,e'p): a spectral function named in the JSON (task P8.1, D-033 F1) reaches the set-up, which reads the
+        // D/A(e,e'p): a spectral function named in the JSON (D-033 F1) reaches the set-up, which reads the
         // theory file / chooses the Benhar file: "theory"/"benhar" set use_benhar_sf, "file" the file.
         const PipelineConfig::SpectralFunctionSpec sf = PipelineConfig::SpectralFunction(pipelineJson_);
         if (sf.type == "theory" || sf.type == "benhar") {
@@ -119,7 +126,8 @@ void SimcRun::initialise() {
     pipe_.apply(pipelineJson_);
     if (pipe_.reaction.type.empty())
         throw NotPorted("reaction '" + ReactionTitle(setup_.flags, params_) +
-                        "' is not ported yet (only H/D/A(e,e'p) and doing_phsp; P9+)");
+                        "': no event generator for these reaction flags and this target (no doing_* target class "
+                        "is set, e.g. targ%A < 1, or (e,e'rho) with A >= 4)");
     const bool quiet = opt_.quiet_stages;
 
     // ---- the stages, created by name and wired through the StageContext (interfaces only)
@@ -130,7 +138,7 @@ void SimcRun::initialise() {
         if (pipe_.rng.type == "mt64" && !Registry<IRandom>::contains("mt64"))
             rng_ = std::make_unique<Mt64Random>();
         else if (pipe_.rng.type == "ranlux" && !Registry<IRandom>::contains("ranlux"))
-            rng_ = std::make_unique<RanluxRandom>();   // (same reason: simcfw_random is STATIC; task P13.2)
+            rng_ = std::make_unique<RanluxRandom>();   // (same reason: simcfw_random is STATIC)
         else
             rng_ = Registry<IRandom>::create(pipe_.rng.type);
         rng_->configure(pipe_.rng.config, params_);
@@ -152,7 +160,8 @@ void SimcRun::initialise() {
     beam_->configure(withVerbose(pipe_.beam.config, quiet), params_);
     beam_->init(ctx);
 
-    // the physics model before the reaction: the reaction assembles the event weight with it (D-030, P8.2)
+    // the physics model before the reaction: the reaction assembles the event weight with it (it calls the model's
+    // cross section in completeMain), so the model must exist when the reaction's init() wires it in
     model_ = Registry<IPhysicsModel>::create(pipe_.physics.type);
     model_->configure(withVerbose(pipe_.physics.config, quiet), params_);
     model_->init(ctx);
@@ -181,7 +190,8 @@ void SimcRun::initialise() {
     // ---- simc.f:85 calculate_central (after radc_init; central%rad from the radiator, simc.f:1268-1281)
     central_ = calculateCentral(setup_, *reaction_, *radiator_, *model_);
     if (setup_.flags.doing_semi) {
-        // simc.f:1289-1303 (calculate_central): the SIDIS central kinematics, list-directed (P15.1, D-051)
+        // simc.f:1289-1303 (calculate_central): the SIDIS central kinematics, printed list-directed as the Fortran
+        // does (the numbers go to stdout only)
         const Event& v0 = central_.vertex0;
         auto item = [&](const char* label, double x) { log(" " + std::string(label) + " " + fortran::listReal(x)); };
         log(" SIDIS: central event kinematics");
@@ -199,7 +209,7 @@ void SimcRun::initialise() {
         item("lab cross section (nb/Gev2/sr2)", central_.central.sigcc * 1000.0 * 1000.0 * 1000.0);
     }
 
-    // simc.f:120-151 (using_tgt_field): the target-field / arm angles, printed before trgInit (P15.2b)
+    // simc.f:120-151 (using_tgt_field): the target-field / arm angles, printed before trgInit
     for (const auto& l : mc_->targetFieldLog()) log(l);
 
     // ---- report bookkeeping
@@ -256,6 +266,7 @@ void SimcRun::step() {
     ++T.ntried;
     ev.ntried = T.ntried;
 
+    // --- 1. bookkeeping of the try
     // l.195-200 ... keep the human interested
     if (T.ntried % ninform_ == 1) {
         fortran::Record r;
@@ -265,6 +276,7 @@ void SimcRun::step() {
         if (T.ntried >= 5000) ninform_ = 20000;
     }
 
+    // --- 2. the event chain: generate the vertex, transport it through both arms, reconstruct, weight
     model_->beginEvent(T.nevent);
     reaction_->beginTry(T.ntried);
     // l.203 generate
@@ -276,6 +288,7 @@ void SimcRun::step() {
     // l.224 complete_main
     if (success) success = reaction_->completeMain(false, main, ev.vertex, central_.vertex0, ev.recon);
 
+    // --- 3. cuts: pass_cuts decides the resolution sums and wtcontr; hard_cuts also rejects the event
     // l.226-238 pass_cuts (PassCuts, top of this file; FORTRAN-BUG(D-006) there)
     ev.pass_cuts = PassCuts(S, ev.recon);
     // l.240-243
@@ -287,6 +300,7 @@ void SimcRun::step() {
     // l.245
     if (success) T.sum_sigcc = T.sum_sigcc + main.sigcc;
 
+    // --- 4. output and counters
     // l.250-287 histograms (geni every try; RECON/gen for successes) and l.333 results_ntu_write: the sinks
     for (auto& s : sinks_) s->fill(main, ev.vertex, ev.orig, ev.recon, success);
 
@@ -330,7 +344,7 @@ void SimcRun::step() {
                                 T.slop, S.flags.doing_rho && !S.fortran_compat);   // D-057 F18
     }
 
-    // l.341-347
+    // l.341-347: ngen > 0 counts successes, ngen < 0 counts tries (|ngen| tries)
     if (params_.ngen < 0) {
         T.nevent = T.nevent + 1;
     } else {
@@ -393,6 +407,7 @@ void SimcRun::finish() {
     log(" Come back soon!");
 }
 
+// The whole run: initialise, the event loop (sequential, or the parallel loop of SimcRunParallel.cpp), finish.
 void SimcRun::run() {
     initialise();
     const int n = threadCount();
