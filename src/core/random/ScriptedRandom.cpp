@@ -1,4 +1,8 @@
 // src/core/random/ScriptedRandom.cpp — see include/simc/core/random/ScriptedRandom.h.
+// A test-only random source that replays the uniform and Gaussian numbers captured from the Fortran L1 harness
+// (reference/functions/*), so that a single routine can be compared with the Fortran on identical random input.
+// Running out of numbers is recorded (err_) and returns NaN instead of throwing, so the test can report how many
+// numbers the C++ consumed against the Fortran.
 #include "simc/core/random/ScriptedRandom.h"
 
 #include <limits>

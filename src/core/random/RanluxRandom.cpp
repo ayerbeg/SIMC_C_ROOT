@@ -1,4 +1,7 @@
-// src/core/random/RanluxRandom.cpp — see include/simc/core/random/RanluxRandom.h (task P13.2).
+// src/core/random/RanluxRandom.cpp — see include/simc/core/random/RanluxRandom.h.
+// Bit-for-bit port of the CERNLIB RANLUX generator as SIMC calls it, so that a RANLUX run with the seed of the .inp
+// reproduces the Fortran event by event (the "ranlux" IRandom; the shipped-input regression tests rely on it).
+// The arrays keep the Fortran 1-based indexing (seeds_[1..24], next_[1..24]); element 0 is unused.
 // Fortran: cern/ranlux.f (RANLUX, RLUXIN, RLUXUT, RLUXGO), call_ranlux.f (sgrnd, grnd), gauss1.f.
 #include "simc/core/random/RanluxRandom.h"
 
@@ -12,6 +15,7 @@
 namespace simc {
 
 namespace {
+// ranlux.f PARAMETERs/DATA: luxury levels 0..4 and the number of numbers skipped per 24 at each level
 constexpr int kMaxlev = 4;
 constexpr int kNdskip[kMaxlev + 1] = {0, 24, 73, 199, 365};
 constexpr int kIgiga = 1000000000, kJsdflt = 314159265, kItwo24 = 1 << 24, kIcons = 2147483563;
@@ -20,6 +24,7 @@ constexpr double kTwop12 = 4096.;
 
 RanluxRandom::RanluxRandom() = default;
 
+// Configuration: an explicit 25-word RLUXUT state, else a seed (JSON, else the .inp random_seed, as simc.f:107).
 void RanluxRandom::configure(const Json& config, const SimcParameters& params) {
     if (config.is_object() && config.contains("state")) {
         const auto& v = config.at("state");
@@ -35,13 +40,14 @@ void RanluxRandom::configure(const Json& config, const SimcParameters& params) {
     }
 }
 
-// call_ranlux.f:sgrnd
+// call_ranlux.f:sgrnd: luxury level 3, no skipping; latest_ = 0 forces a fresh block at the next grnd
 void RanluxRandom::seed(std::uint64_t s) {
     rluxgo(3, static_cast<int>(s), 0, 0);
     latest_ = 0;
 }
 
-// call_ranlux.f:grnd (l.58-72): rvec(1..999) of each RANLUX(rvec, 1000) block
+// call_ranlux.f:grnd (l.58-72): rvec(1..999) of each RANLUX(rvec, 1000) block. Number 1000 of each block is never
+// returned (the Fortran refills when latest reaches 1000): kept, it decides the stream.
 double RanluxRandom::uniform() {
     if (latest_ <= 0 || latest_ >= 1000) {
         ranlux(rvec_ + 1, 1000);
@@ -56,6 +62,7 @@ double RanluxRandom::gauss1(double nsig_max) { return gauss1Polar(*this, nsig_ma
 
 // ranlux.f:RANLUX (incl. the default initialisation of the first call)
 void RanluxRandom::ranlux(double* rvec, int lenv) {
+    // --- first call without RLUXGO/RLUXIN: default initialisation (seed 314159265, level 3)
     if (notyet_) {
         notyet_ = false;
         int jseed = kJsdflt;
@@ -67,6 +74,7 @@ void RanluxRandom::ranlux(double* rvec, int lenv) {
         mkount_ = 0;
         twom24_ = 1.;
         int iseeds[25];
+        // the 24 seeds from a multiplicative congruential generator (L'Ecuyer, Schrage's factorisation avoids overflow)
         for (int i = 1; i <= 24; ++i) {
             twom24_ = twom24_ * 0.5;
             const int k = jseed / 53668;
@@ -77,7 +85,7 @@ void RanluxRandom::ranlux(double* rvec, int lenv) {
         twom12_ = twom24_ * 4096.;
         for (int i = 1; i <= 24; ++i) {
             seeds_[i] = static_cast<double>(iseeds[i]) * twom24_;
-            next_[i] = i - 1;
+            next_[i] = i - 1;   // circular list of the lags
         }
         next_[1] = 24;
         i24_ = 24;
@@ -85,6 +93,7 @@ void RanluxRandom::ranlux(double* rvec, int lenv) {
         carry_ = 0.;
         if (seeds_[24] == 0.) carry_ = twom24_;
     }
+    // --- subtract-with-borrow x(n) = x(n-10) - x(n-24) - carry, mod 1
     for (int ivec = 0; ivec < lenv; ++ivec) {
         double uni = seeds_[j24_] - seeds_[i24_] - carry_;
         if (uni < 0.) {
@@ -126,7 +135,8 @@ void RanluxRandom::ranlux(double* rvec, int lenv) {
     }
 }
 
-// ranlux.f:RLUXIN
+// ranlux.f:RLUXIN: restore a state written by RLUXUT (24 seeds as 24-bit integers; word 25 packs i24, j24, in24,
+// the luxury level and the carry as its sign)
 void RanluxRandom::rluxin(const std::array<int, 25>& isdext) {
     notyet_ = false;
     twom24_ = 1.;
@@ -158,7 +168,7 @@ void RanluxRandom::rluxin(const std::array<int, 25>& isdext) {
     inseed_ = -1;
 }
 
-// ranlux.f:RLUXUT
+// ranlux.f:RLUXUT: the inverse of RLUXIN
 std::array<int, 25> RanluxRandom::rluxut() const {
     std::array<int, 25> s{};
     for (int i = 1; i <= 24; ++i) s[static_cast<std::size_t>(i - 1)] = static_cast<int>(seeds_[i] * kTwop12 * kTwop12);
@@ -167,7 +177,7 @@ std::array<int, 25> RanluxRandom::rluxut() const {
     return s;
 }
 
-// ranlux.f:RLUXGO
+// ranlux.f:RLUXGO: initialise with luxury level lux and seed ins, then skip k1 + k2*1e9 numbers
 void RanluxRandom::rluxgo(int lux, int ins, int k1, int k2) {
     if (lux < 0) {
         luxlev_ = 3;
@@ -209,6 +219,7 @@ void RanluxRandom::rluxgo(int lux, int ins, int k1, int k2) {
     if (seeds_[24] == 0.) carry_ = twom24_;
     kount_ = k1;
     mkount_ = k2;
+    // skip k1 + k2*1e9 numbers (no luxury skipping during the advance; in24 is then recomputed)
     if (k1 + k2 != 0) {
         for (int iouter = 1; iouter <= k2 + 1; ++iouter) {
             const int inner = (iouter == k2 + 1) ? k1 : kIgiga;

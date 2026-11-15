@@ -1,5 +1,7 @@
-// src/core/SimcParameters.cpp
-// Parameter table and JSON (de)serialisation for SimcParameters.
+// src/core/SimcParameters.cpp — see include/simc/core/SimcParameters.h.
+// Parameter table and JSON (de)serialisation for SimcParameters: one descriptor per Fortran input variable (name,
+// kind, units, origin) giving uniform access to the struct members. Used by the .inp reader (input/InpReader.cpp),
+// the JSON configuration of the command line, inp2json and the summary writer.
 // Fortran: dbase.f:regallvars (l.967-1128) — the table below lists the 106 registered
 // variables in the same order and with the same CTP names.
 #include "simc/core/SimcParameters.h"
@@ -21,7 +23,8 @@ std::string lower(std::string s) {
     return s;
 }
 
-// Accessor helpers. Each macro expands to a captureless lambda converted to a function pointer.
+// Accessor helpers. Each macro expands to a captureless lambda converted to a function pointer, so the table is a
+// plain list of descriptors that can reach nested members such as EXPER.charge or SPedge.e.delta.max.
 #define P_INT(nm, member, units, fort)                                                          \
     ParamDescriptor{nm, ParamKind::Int, 1, units, fort,                                          \
                     [](SimcParameters& p) -> int* { return &p.member; }, nullptr, nullptr, nullptr}
@@ -161,6 +164,7 @@ std::vector<ParamDescriptor> buildTable() {
     };
 }
 
+// %.10g: readable echo of an input value (not used for any numerical output)
 std::string fmtDouble(double v) {
     char buf[64];
     std::snprintf(buf, sizeof buf, "%.10g", v);
@@ -169,6 +173,7 @@ std::string fmtDouble(double v) {
 
 }  // namespace
 
+// "SPedge%e%delta%max" -> {"SPedge", "e", "delta", "max"}: the Fortran derived-type path becomes nested JSON objects.
 std::vector<std::string> ParamDescriptor::jsonPath() const {
     std::vector<std::string> out;
     std::string cur;
@@ -189,6 +194,7 @@ const std::vector<ParamDescriptor>& ParameterTable() {
     return table;
 }
 
+// Case-insensitive, as Fortran and CTP names are.
 const ParamDescriptor* FindParameter(const std::string& fortran_name) {
     const std::string key = lower(fortran_name);
     for (const auto& d : ParameterTable())
@@ -197,7 +203,7 @@ const ParamDescriptor* FindParameter(const std::string& fortran_name) {
 }
 
 std::string FormatValue(const ParamDescriptor& d, const SimcParameters& cp) {
-    auto& p = const_cast<SimcParameters&>(cp);
+    auto& p = const_cast<SimcParameters&>(cp);   // the accessors return non-const pointers; nothing is written here
     std::ostringstream os;
     switch (d.kind) {
         case ParamKind::Int: os << *d.asInt(p); break;
@@ -300,6 +306,8 @@ void assignLeaf(const ParamDescriptor& d, const Json& v, SimcParameters& p, cons
     }
 }
 
+// Depth-first over the JSON object: a key that names a registered parameter (e.g. "spec" -> "e" -> "theta" =
+// spec%e%theta) is assigned; any other object is descended into; anything else is reported as unknown.
 void walk(const Json& node, const std::string& prefix, SimcParameters& p, std::vector<std::string>* w) {
     for (auto it = node.begin(); it != node.end(); ++it) {
         const std::string key = prefix.empty() ? it.key() : prefix + "%" + it.key();

@@ -1,4 +1,7 @@
-// src/core/RunSetup.cpp
+// src/core/RunSetup.cpp — see include/simc/core/RunSetup.h.
+// The derived reaction flags of dbase.f (doing_hydpi, doing_deutkaon, doing_eep, ...: which reaction family on which
+// target class), the reaction title of the .hist report and the minimal RunSetup made from the raw parameters. The
+// full set-up (limits, theory tables, radiative corrections) is built by setup/SetupBuilder.cpp on top of this.
 #include "simc/core/RunSetup.h"
 
 #include <cmath>
@@ -9,6 +12,7 @@ namespace {
 constexpr double kPi = 3.141592653589793;
 constexpr double kDegrad = 180.0 / kPi;   // constants.inc degrad
 int nint(double x) { return static_cast<int>(std::lround(x)); }
+// Collects the dbase.f STOP conditions (the caller decides whether a problem is fatal: the set-up refuses the run).
 void problem(std::vector<std::string>* v, const std::string& s) { if (v) v->push_back(s); }
 }  // namespace
 
@@ -25,11 +29,14 @@ ReactionFlags DeriveReactionFlags(const SimcParameters& p, std::vector<std::stri
     f.doing_hplus = p.doing_hplus;
     f.do_fermi = p.do_fermi;
     f.using_tgt_field = p.using_tgt_field;
-    const int A = nint(p.targ.A);
+    const int A = nint(p.targ.A);   // the target class is decided on nint(targ%A): 1 = H, 2 = D, >= 3 nucleus
 
+    // --- 1. semi-inclusive: doing_pion/doing_kaon with doing_semi select the SIDIS hadron (dbase.f:127-134)
     if (f.doing_pion && f.doing_semi) { f.doing_semipi = true; f.doing_semika = false; f.doing_pion = false; }
     if (f.doing_kaon && f.doing_semi) { f.doing_semika = true; f.doing_semipi = false; f.doing_kaon = false; }
 
+    // --- 2. one reaction family per run (the first true flag of the dbase.f if-chain wins), split by target class;
+    //        the coherent channels (which_* >= 10) are run as on a single nucleon (the doing_hyd* flag)
     if (f.doing_pion) {
         if (A == 1 && p.which_pion == 1 && !f.doing_pizero) problem(problems, "STOP Pi- production from Hydrogen not allowed!");
         if (A <= 2 && p.which_pion >= 10) problem(problems, "STOP Coherent production from Hydrogen/Deuterium not allowed!");
@@ -58,21 +65,22 @@ ReactionFlags DeriveReactionFlags(const SimcParameters& p, std::vector<std::stri
     } else if (f.doing_rho) {
         f.doing_hydrho = A == 1;
         f.doing_deutrho = A == 2;
-        f.doing_herho = A == 3;   // FORTRAN-DIFF-CANDIDATE(D-018): dbase.f:213 uses .eq.3 (other he* flags .ge.3). Intended? (rho: P13)
-    } else {
+        f.doing_herho = A == 3;   // FORTRAN-DIFF-CANDIDATE(D-018): dbase.f:213 uses .eq.3 (other he* flags .ge.3). Intended? (rho A >= 4 is refused by the set-up)
+    } else {   // no production flag: (e,e'p)
         f.doing_eep = true;
         f.doing_hyd_elast = A == 1;
         f.doing_deuterium = A == 2;
         f.doing_heavy = A >= 3;
     }
-    // dbase.f:227-234: phsp switches the reaction flags off but keeps doing_hyd_elast & co.
+    // --- 3. dbase.f:227-234: phsp switches the reaction flags off but keeps doing_hyd_elast & co. (the elastic
+    //        kinematics of complete_ev still run for H + phsp, see FORTRAN_DIFFERENCES.md D-031)
     if (f.doing_phsp) {
         f.doing_eep = f.doing_pion = f.doing_kaon = f.doing_delta = f.doing_rho = false;
     }
     return f;
 }
 
-// Fortran: simc.f:report l.664-790
+// Fortran: simc.f:report l.664-790 (the title line of the .hist; also used in the 'reaction not available' message)
 std::string ReactionTitle(const ReactionFlags& f, const SimcParameters& p) {
     const bool plus = f.doing_hplus;
     if (f.doing_eep) {
@@ -102,7 +110,8 @@ RunSetup RunSetup::FromParameters(const SimcParameters& p, const std::string& ru
     s.params = p;
     s.flags = DeriveReactionFlags(p);
     s.run_name = run_name;
-    // dbase.f:239-244
+    // dbase.f:239-244: central angles in rad (the input is in degrees; the sign of theta only selects the side of the
+    // beam, which is carried by the arm phi)
     s.e_theta = std::abs(p.spec.e.theta) / kDegrad;
     s.e_cos_th = std::cos(s.e_theta);
     s.e_sin_th = std::sin(s.e_theta);

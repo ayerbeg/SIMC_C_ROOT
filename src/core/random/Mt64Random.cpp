@@ -1,4 +1,6 @@
 // src/core/random/Mt64Random.cpp — see include/simc/core/random/Mt64Random.h.
+// The default random source of SIMC++ ("mt64": std::mt19937_64). It is not bitwise comparable with the Fortran
+// (that is the job of the RANLUX port, RanluxRandom.cpp); it is used for statistical comparisons and production.
 #include "simc/core/random/Mt64Random.h"
 
 #include "simc/core/Registry.h"
@@ -22,7 +24,8 @@ std::uint64_t Mt64Random::BaseSeed(const Json& config, const SimcParameters& par
     return kDefaultSeed;
 }
 
-// P15.4: worker streams of the parallel event loop.
+// Worker streams of the parallel event loop (driver/SimcRunParallel.cpp): each stream is seeded from (base seed,
+// stream index, a fixed tag) through seed_seq, so the streams are reproducible and independent of the thread timing.
 void Mt64Random::seedStream(std::uint64_t base, std::uint64_t stream) {
     std::seed_seq seq{static_cast<std::uint32_t>(base & 0xffffffffu), static_cast<std::uint32_t>(base >> 32),
                       static_cast<std::uint32_t>(stream & 0xffffffffu), static_cast<std::uint32_t>(0x53494d43u)};

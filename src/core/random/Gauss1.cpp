@@ -1,4 +1,6 @@
 // src/core/random/Gauss1.cpp — see include/simc/core/random/Gauss1.h.
+// The truncated standard normal of SIMC (gauss1.f), shared by every IRandom implementation so that each Gaussian
+// consumes uniforms exactly as the Fortran does (the number of uniform draws per Gaussian is random: rejections).
 #include "simc/core/random/Gauss1.h"
 
 #include <cmath>
@@ -7,7 +9,8 @@
 
 namespace simc {
 
-// Fortran: gauss1.f:gauss1 (l.1-30)
+// Fortran: gauss1.f:gauss1 (l.1-30). Marsaglia polar method; only the first of the two normals is used, and values
+// beyond nsigmax are rejected and redrawn (a truncated, not a clipped, Gaussian).
 double gauss1Polar(IRandom& rng, double nsigmax) {
     for (;;) {
         const double u1 = rng.uniform();   // 1  u1 = grnd()
