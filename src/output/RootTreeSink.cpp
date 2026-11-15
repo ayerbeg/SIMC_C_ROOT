@@ -1,4 +1,8 @@
-// src/output/RootTreeSink.cpp
+// src/output/RootTreeSink.cpp — see include/simc/output/RootTreeSink.h.
+// The "root_tree" output sink: one Float_t branch per ntuple column of the reaction's layout (NtupleLayout.cpp), one
+// entry per successful event, in the TTree "h10" of <run>.root — the tree the Fortran writes through its
+// make_root_tree converter, so the two files can be compared column by column. Also the parallel-loop variant:
+// every worker writes a temporary file that is appended to the run's tree in worker order.
 // Fortran: results_write.f:results_ntu_write (l.1-271); util/root_tree/make_root_tree.f + froot.c
 // (TTree "h10", nt->Branch(tag, &float, tag) => one Float_t leaf per tag).
 #include "simc/output/RootTreeSink.h"
@@ -36,7 +40,7 @@ void RootTreeSink::init(const StageContext&) {}
 
 void RootTreeSink::beginRun(const RunSetup& setup) {
     setup_ = setup;
-    const auto& cols = NtupleColumnsFor(setup);   // throws for the layouts not implemented yet
+    const auto& cols = NtupleColumnsFor(setup);   // throws if no layout matches (rho + doing_pizero, refused at set-up)
     if (file_.empty()) file_ = setup.output_dir + "/" + setup.run_name + ".root";
     tfile_.reset(TFile::Open(file_.c_str(), "RECREATE"));
     if (!tfile_ || tfile_->IsZombie()) throw std::runtime_error("RootTreeSink: cannot create " + file_);
@@ -51,7 +55,8 @@ void RootTreeSink::fill(const MainEvent& main, const Event& vertex, const Event&
                         bool success) {
     if (!success || !tree_) return;   // results_write.f:34
     FillNtuple(setup_, main, vertex, orig, recon, ntu_);
-    for (size_t i = 0; i < ntu_.size(); ++i) out_[i] = static_cast<float>(ntu_[i]);   // make_root_tree real*4
+    // the ntuple is computed in double and stored as real*4, as the Fortran hbook ntuple / make_root_tree do
+    for (size_t i = 0; i < ntu_.size(); ++i) out_[i] = static_cast<float>(ntu_[i]);
     tree_->Fill();
     ++entries_;
 }
@@ -67,7 +72,8 @@ void RootTreeSink::closeFile() {
     tree_ = nullptr;
 }
 
-// P15.4: parallel event loop (IParallelSink).
+// Parallel event loop (IParallelSink, driver/SimcRunParallel.cpp): a worker sink writes <file>.w<k>.tmp; the merge
+// below appends its entries to the run's tree (in worker order, so the output does not depend on thread timing).
 std::unique_ptr<IOutputSink> RootTreeSink::makeWorkerSink(int worker, int) const {
     ROOT::EnableThreadSafety();   // every worker fills its own TTree in its own TFile, in its own thread
     auto w = std::make_unique<RootTreeSink>();

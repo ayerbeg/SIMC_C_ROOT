@@ -1,4 +1,7 @@
-// src/output/RunSummarySink.cpp
+// src/output/RunSummarySink.cpp — see include/simc/output/RunSummarySink.h.
+// The "run_summary" output sink: at the end of the run it writes <run>.summary.json (the machine-readable content of
+// the Fortran .hist and .geni: counters, normalisation, averages, stop counters, settings; built by SummaryJson.cpp)
+// and a plain-text rendering <run>.summary.txt. simc_compare reads the JSON to compare a C++ run with a Fortran one.
 // Fortran: simc.f:report (l.644-1142) and .geni (l.462-532); see docs/OUTPUT_FORMAT.md.
 #include "simc/output/RunSummarySink.h"
 
@@ -27,6 +30,7 @@ void RunSummarySink::endRun(const RunSummary& summary) {
     std::ofstream f(file_);
     if (!f) throw std::runtime_error("RunSummarySink: cannot write " + file_);
     f << last_.dump(2) << "\n";
+    // the text twin: <name>.json -> <name>.txt (or <name>.txt appended to a name without .json)
     std::string txt = file_;
     const std::string ext = ".json";
     if (txt.size() > ext.size() && txt.compare(txt.size() - ext.size(), ext.size(), ext) == 0)

@@ -1,4 +1,7 @@
-// src/output/SummaryJson.cpp
+// src/output/SummaryJson.cpp — see include/simc/output/SummaryJson.h.
+// The run summary JSON (schema simc.run_summary): built from a C++ run (BuildSummaryJson, for RunSummarySink), and
+// parsed from a Fortran .hist/.geni text (ParseFortranHist/ParseFortranGeni, for hist2json and simc_compare), so that
+// both codes are compared through the same keys. Also the text rendering and a small JSON-schema validator.
 // Fortran: simc.f:report (l.644-1142) for the .hist layout, simc.f l.462-532 for the .geni.
 #include "simc/output/SummaryJson.h"
 #include "simc/core/SpectrometerId.h"
@@ -84,7 +87,7 @@ const std::vector<std::string>& StopCounterKeys(const std::string& spec) {
                  "Q2_out", "Q3_in", "Q3_mid", "Q3_out", "D1_in", "D1_out", "hut", "dc1", "dc2", "scin", "cal",
                  "successes", "coll"}},
         // shms/mc_shms.f, struct_shms.inc (D1_men, targ_*, cer1/2, BP_*, coll are not printed in the .geni)
-        // shms/mc_shms.f, struct_shms.inc. Names as in the P1.5 reader (validation/compare/RunSummary.cpp):
+        // shms/mc_shms.f, struct_shms.inc. Names as in the simc_compare reader (validation/compare/RunSummary.cpp):
         // hb_*/q*_* lower case, D1_* upper case. q2_mid_dup = the value the .geni prints in the Q3 "mid"
         // column (FORTRAN-QUIRK simc.f:519-520: it is shmsSTOP_q2_mid). D1_men, targ_*, cer1/2, BP_*, coll
         // are not printed in the .geni.
@@ -124,7 +127,7 @@ Json BuildSummaryJson(const RunSetup& s, const RunSummary& r) {
     j["run"] = {{"tag", r.run_name.empty() ? s.run_name : r.run_name},
                 {"producer", "simc++"},
                 {"random_seed", r.random_seed},
-                {"fortran_compat", s.fortran_compat},   // D-054 (P15.1)
+                {"fortran_compat", s.fortran_compat},   // the mode: simc_compare applies the matching pass_cuts rule
                 {"reaction", r.reaction_title.empty() ? ReactionTitle(s.flags, p) : r.reaction_title}};
 
     j["counters"] = {{"ngen", r.ngen},
@@ -195,7 +198,7 @@ Json BuildSummaryJson(const RunSetup& s, const RunSummary& r) {
                        {"p", arm(p.spec.p)}};
 
     // SPedge echo, as the Fortran .hist prints it (simc.f:990-1002): after the dbase.f conversions and the
-    // slop%MC widening of limits_init (init.f:201-212), i.e. RunSetup::SPedge from BuildRunSetup (P2.2).
+    // slop%MC widening of limits_init (init.f:201-212), i.e. RunSetup::SPedge from BuildRunSetup.
     // A setup filled only by RunSetup::FromParameters falls back to the converted input (and says so).
     j["notes"] = Json::array();
     if (s.built) {

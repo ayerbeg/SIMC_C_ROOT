@@ -1,4 +1,8 @@
-// src/output/GenHistSink.cpp
+// src/output/GenHistSink.cpp — see include/simc/output/GenHistSink.h.
+// The "gen_hist" output sink: the generated (geni: every try; gen: successes, unweighted) and reconstructed (recon:
+// successes, weighted) distributions of delta, yptar, xptar of both arms and Em, Pm, as the Fortran H%geni/H%gen/
+// H%RECON histograms that it prints to the .gen file. Stored as TH1D in <run>.gen.root (the .gen text is written by
+// the report, driver/RunReport.cpp, from these histograms). Binning and the bin errors follow simc.f:inc exactly.
 // Fortran: simc.f:inc (l.624-640), fills at simc.f l.254-286, axes init.f l.515-570,
 // text output .gen at simc.f l.534-605.
 #include "simc/output/GenHistSink.h"
@@ -53,7 +57,8 @@ void GenHistSink::configure(const Json& config, const SimcParameters&) {
 void GenHistSink::init(const StageContext&) {}
 
 int GenHistSink::FortranBin(double val, const HistAxis& ax) {
-    // ibin = nint(0.5+(val-hist%min)/hist%bin); Fortran nint rounds half away from zero.
+    // ibin = nint(0.5+(val-hist%min)/hist%bin); Fortran nint rounds half away from zero (= std::lround).
+    // The Fortran bins are not ROOT's bins: the TH1D is used as storage with the same bin index (1..kNHbins).
     const double x = 0.5 + (val - ax.min) / ax.bin;
     if (!(std::abs(x) < 1.0e9)) return 0;   // integer*4 range guard (also NaN)
     return static_cast<int>(std::lround(x));
@@ -87,13 +92,14 @@ void GenHistSink::beginRun(const RunSetup& setup) {
     }
 }
 
+// Fortran: simc.f:inc. Bin content += weight, error = sqrt(error^2 + weight^2), entries + 1 per call in range.
 void GenHistSink::inc(int slot, double val, double weight) {
     const Slot& sl = slots_[static_cast<std::size_t>(slot)];
     const int ibin = FortranBin(val, sl.ax);
     if (ibin < 1 || ibin > kNHbins) return;   // no under/overflow in the Fortran
     TH1D* h = sl.h;
     const double entries = h->GetEntries();
-    const double err = h->GetBinError(ibin);   // x*x, not std::pow(x,2): gcc 16 calls libm pow (P10.4)
+    const double err = h->GetBinError(ibin);   // x*x, not std::pow(x,2): gcc 16 calls libm pow, not bitwise x*x
     const double err2 = err * err + weight * weight;
     h->SetBinContent(ibin, h->GetBinContent(ibin) + weight);
     h->SetBinError(ibin, std::sqrt(err2));
@@ -135,7 +141,8 @@ void GenHistSink::fill(const MainEvent& main, const Event& vertex, const Event& 
     inc(kGen_Em, vertex.Em, 1.0);
 }
 
-// P15.4: parallel event loop (IParallelSink).
+// Parallel event loop (IParallelSink): each worker fills its own histograms; the merge adds contents and errors in
+// quadrature bin by bin (the same bins as the sequential run, the sums in another order).
 std::unique_ptr<IOutputSink> GenHistSink::makeWorkerSink(int, int) const {
     ROOT::EnableThreadSafety();   // every worker fills its own TH1Ds (no directory) in its own thread
     return std::make_unique<GenHistSink>();
