@@ -1,17 +1,23 @@
 # 2. Installation
 
+**SIMC++ is self-contained.** You do not need the Fortran SIMC, CERNLIB or any Fortran compiler to build, install or run it.
+The model tables, optics maps and spectral functions it needs are part of SIMC++ (`data/`). The Fortran code and its
+reference runs are used only by optional validation tests, which are skipped when those files are absent
+([2.5](#25-running-the-tests)).
+
 ## 2.1 Requirements
 
 | item | version | note |
 |---|---|---|
 | C++ compiler | C++20 (GCC 16.2 and clang 22 are used by the project; both build without warnings with `-Wall -Wextra -pedantic`) | |
-| CMake | ≥ 3.15 (≥ 3.29 adds a toolchain hint to failing bitwise tests) | `CMakeLists.txt`, `tests/toolchain_guard.sh` |
-| ROOT | ≥ 6.40, built with C++20; components Core, Tree, Hist, RIO (the validation tool also needs Gpad, Graf, MathCore) | the project uses ROOT 6.40.04 (decision D-047) |
-| nlohmann/json | ≥ 3.9 | downloaded automatically (FetchContent, v3.11.2) when it is not installed |
-| Python 3 | any recent | only for the `docs` tests ([2.5](#25-running-the-tests)); the tests are skipped when Python is missing |
+| CMake | ≥ 3.15 | |
+| ROOT | ≥ 6.40, built with C++20; components Core, Tree, Hist, RIO (the comparison tool also needs Gpad, Graf, MathCore) | the project uses ROOT 6.40.04 |
+| nlohmann/json | ≥ 3.9 | downloaded automatically (FetchContent, v3.11.2) when it is not installed; this needs network access at configure time |
+| Python 3 | any recent | only for the `docs` tests; they are not registered without Python |
 
-Runtime library path: put only `$ROOTSYS/lib` in `LD_LIBRARY_PATH`. On the development machine `/usr/local/lib` holds an
-older ROOT and an older `libtbb.so.12`, and these break ROOT 6.40 (libImt). Keep that directory out of the path:
+Runtime library path: `LD_LIBRARY_PATH` must contain the `lib` directory of the ROOT that SIMC++ was built with, and no
+directory with another ROOT or another `libtbb.so` (on the development machine `/usr/local/lib` holds an older ROOT and TBB
+that break ROOT 6.40):
 
 ```bash
 export ROOTSYS=/home/ayerbe/Builds/ROOT6_install        # your ROOT 6.40 installation
@@ -23,8 +29,7 @@ export LD_LIBRARY_PATH=$ROOTSYS/lib
 From the source tree (`SIMC++_Claude/`):
 
 ```bash
-cmake -S . -B build -DCMAKE_PREFIX_PATH=$ROOTSYS -DCMAKE_BUILD_TYPE=Release \
-      -DSIMC_REFERENCE_DIR=/path/to/reference -DSIMC_FORTRAN_DIR=/path/to/simc_gfortran
+cmake -S . -B build -DCMAKE_PREFIX_PATH=$ROOTSYS -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j8
 ```
 
@@ -33,26 +38,20 @@ The programs are in `build/bin/`:
 | program | purpose |
 |---|---|
 | `simc++` | the Monte Carlo |
-| `inp2json` | converts a Fortran `.inp` (and its `extra_dbase_file`) into a SIMC++ JSON configuration ([4.2](04_inputs.md#42-the-json-format)) |
-| `hist2json` | converts a Fortran `.hist` + `.geni` into the SIMC++ run-summary JSON |
+| `inp2json` | converts a `.inp` input (and its `extra_dbase_file`) into a SIMC++ JSON configuration ([4.2](04_inputs.md#42-the-json-format)) |
+| `hist2json` | converts a `.hist` + `.geni` report into the run-summary JSON format |
 | `simc_root_identity` | compares two output ROOT files entry by entry and branch by branch (bitwise) |
 
-CMake options and cache variables:
+CMake options:
 
 | option | default | meaning |
 |---|---|---|
-| `CMAKE_BUILD_TYPE` | (none) | use `Release` (`-O3`). Do **not** add `-march=native` or `-ffast-math`: they change the floating-point results, and the bitwise tests then fail (`docs/PERFORMANCE.md` §4) |
-| `SIMC_REFERENCE_DIR` | `/home/ayerbe/NewDisk/reference` | the Fortran reference data (`runs/`, `functions/`). Only the tests use it. Tests whose data are missing are skipped |
-| `SIMC_FORTRAN_DIR` | `/home/ayerbe/NewDisk/simc_gfortran` | the Fortran tree, for its `infiles/`. Only the tests use it |
-| `SIMC_BASELINE_DIR`, `SIMC_BASELINE_COMMIT` | project paths | the regression baselines (`regression` tests) |
-| `SIMC_BUILD_EXAMPLES` | `ON` | builds the example plug-ins (`ideal_box`) into `simc++` |
+| `CMAKE_BUILD_TYPE` | (none) | use `Release` (`-O3`). Do **not** add `-march=native` or `-ffast-math`: they change the floating-point results and the exact-reproduction tests then fail |
+| `SIMC_BUILD_EXAMPLES` | `ON` | build the example plug-ins (`ideal_box`) into `simc++` |
+| `SIMC_REFERENCE_DIR`, `SIMC_FORTRAN_DIR`, `SIMC_BASELINE_DIR` | paths on the development machine | **validation tests only**: the Fortran reference runs, the Fortran source tree and the regression baselines. Leave them alone on another machine; tests whose data are missing are skipped |
 
-The comparison tool `simc_compare` is a separate CMake project ([chapter 9](09_comparing_with_fortran.md)):
-
-```bash
-cmake -S validation -B build-val -DCMAKE_PREFIX_PATH=$ROOTSYS -DCMAKE_BUILD_TYPE=Release
-cmake --build build-val -j8
-```
+The statistical comparison tool `simc_compare` is a separate, optional CMake project in `validation/` (see
+`docs/translation/user_comparing_with_fortran.md`).
 
 ## 2.3 Installing
 
@@ -63,19 +62,19 @@ cmake --install build --prefix $PREFIX
 This installs:
 
 * `$PREFIX/bin/` with the four programs;
-* `$PREFIX/share/simc/data/` with the data files: COSY maps, spectral functions, pion/kaon/SIDIS model tables, the
-  target-field map and example configurations. Each data directory has an `MD5SUMS` file;
-* `$PREFIX/share/simc/docs/`, `$PREFIX/share/simc/examples/` and `$PREFIX/share/simc/README.md`;
-* the headers, libraries and the CMake package `SIMC` (`find_package(SIMC)`), which you need only to write your own
-  plug-ins (developer manual, `docs/EXTENDING.md`).
+* `$PREFIX/share/simc/data/` with the data files (optics maps, spectral functions, pion/kaon/SIDIS model tables, the
+  target-field map, example configurations; each directory has an `MD5SUMS` file);
+* `$PREFIX/share/simc/docs/` (this manual and its example inputs in `docs/manual/user/examples/`),
+  `$PREFIX/share/simc/examples/` and `$PREFIX/share/simc/README.md`;
+* the headers, libraries and the CMake package `SIMC` (`find_package(SIMC)`), needed only to write your own plug-ins
+  (developer manual).
 
-After `export PATH=$PREFIX/bin:$PATH`, the commands of this manual can be typed as `simc++ ...`. In a build tree, use
-`build/bin/simc++ ...` instead; both find their data automatically ([2.4](#24-where-the-data-files-are-found)).
+After `export PATH=$PREFIX/bin:$PATH` the commands of this manual can be typed as `simc++ ...`. In a build tree use
+`build/bin/simc++`; both find their data automatically ([2.4](#24-where-the-data-files-are-found)).
 
 ## 2.4 Where the data files are found
 
-`simc++` reads its tables (COSY matrices, MAID/Saghai/CTEQ/fDSS tables, spectral functions, target-field map) from one data
-directory. It uses the first of these that applies (`include/simc/core/DataPath.h`, decisions D-069/D-070):
+`simc++` reads its tables from one data directory, the first of these that applies (`include/simc/core/DataPath.h`):
 
 1. the environment variable `SIMC_DATA_DIR`, if it is set and not empty;
 2. for a program built against the installed CMake package (`find_package(SIMC)`): that package's
@@ -94,41 +93,41 @@ $ SIMC_DATA_DIR=/data/simc simc++ --print-data-dir
 
 Two more ways to choose data files:
 
-* `--data-dir DIR` sets the directory of the spectral-function and theory files of D/A(e,e'p), and the first place
-  where a target-field map file (`tgt_field_file`) is looked for. For the field map, the current directory and
-  `data/field` are tried next;
-* the JSON keys `"data_dir"` (pion, kaon and SIDIS physics models) and `"matrix_dir"` (spectrometers) of a pipeline
-  stage ([4.3](04_inputs.md#43-the-pipeline-section-choosing-plug-ins)).
+* `--data-dir DIR`: the directory of the spectral-function files of D/A(e,e'p), and the first place where a target-field
+  map (`tgt_field_file`) is looked for (then the current directory, then the data directory's `field/`);
+* the JSON keys `"data_dir"` (pion, kaon and SIDIS models) and `"matrix_dir"` (spectrometers) of a pipeline stage
+  ([4.3](04_inputs.md#43-the-pipeline-section-choosing-plug-ins)).
 
-A missing data file is an error at start-up (exit status 3), not in the middle of a run.
+A missing data file stops the run at start-up, not in the middle of a run.
 
 ## 2.5 Running the tests
 
 ```bash
 cd build
-ctest -j8                      # everything (the sequential check_all run takes about 75 min; the slow tests dominate)
 ctest -L docs                  # the user-manual checks (seconds)
-ctest -LE slow -j8             # everything except the long full-run tests
+ctest -L unit -j8              # the unit tests (no external data needed)
+ctest -j8                      # everything
 ```
 
-| label | what it tests | count |
+| label | what it tests | needs the validation data |
 |---|---|---|
-| `unit` | unit tests of the C++ components (no Fortran data needed) | 75 |
-| `l1` | routine-level tables: the C++ against the outputs of the Fortran routines, bitwise (`reference/functions/`) | 282 |
-| `replay` | the complete program fed with the random numbers of a Fortran run reproduces it exactly (subset of `l1`) | 53 |
-| `fortran_diff` | each documented difference with the Fortran, in both modes ([chapter 10](10_differences_from_fortran.md)) | 47 |
-| `cli` | the command line: `.inp` vs JSON give identical outputs, rejected inputs, shipped inputs | 10 |
-| `regression` | outputs of the standard runs (seed 4242) are unchanged with respect to the baselines, in both modes; `--threads` reproducibility | 30 |
-| `regression_shipped` | full-run identity with the Fortran for every runnable shipped input (RANLUX, `--fortran-compat`) | 41 |
-| `slow` | the long tests: `regression_shipped` and 12 long `l1` runs | 53 |
-| `threads` | the parallel event loop | 4 |
-| `examples`, `package` | the example plug-in and the installed CMake package | 4, 1 |
-| `docs` | this manual: every input parameter and command-line option is documented, and every link resolves | 2 |
+| `unit` | unit tests of the components | partly (many compare with reference tables) |
+| `docs` | this manual: every input parameter and command-line option is documented, every link resolves | no |
+| `examples`, `package` | the example plug-in; the installed CMake package used by an external project | yes (they run reference inputs) |
+| `l1`, `replay` | each physics routine and complete runs against the original code's outputs | yes |
+| `fortran_diff` | each documented difference with the original code, in both modes | partly |
+| `cli` | the command line (input formats, rejected inputs) | partly |
+| `regression`, `threads` | outputs of standard runs unchanged from the stored baselines; `--threads` reproducibility | yes |
+| `regression_shipped`, `slow` | complete runs of the example inputs, identical to the original program's outputs (long) | yes |
 
-(Counts from `ctest -N -L <label>` on the commit of this manual; one test can carry several labels.)
+Tests whose reference data, Fortran tree or baselines are missing report "Skipped". On a machine without them (checked
+by configuring with non-existent `SIMC_REFERENCE_DIR`, `SIMC_FORTRAN_DIR` and `SIMC_BASELINE_DIR`): the build is
+unchanged, 390 of the 437 tests are skipped, 41 pass, and 6 tests that still read those files **fail instead of being
+skipped**: `inp2json_cli`, `l1_saghai_tables`, `threads_reproducibility_eep`, `threads_reproducibility_poltar`,
+`threads_one_is_sequential`, `threads_refusal`. These failures say nothing about your build. The 41 tests that pass
+there are the ones that do not need the data: component self-tests, the checksums of the shipped data files, the `docs`
+tests and the self-contained `fortran_diff` checks.
 
-The comparison tool has its own suite of 26 self-tests: `cd build-val && ctest`.
-
-In the SIMC++ project, `tools/check_all.sh [--commit REV] [--label NAME]` does a clean build of both projects, runs both
-test suites and logs the result under `SIMC++_Project/simc_runs/`. If other people may have uncommitted changes in the
-worktree, use `--commit`. Put `TMPDIR` on a large disk.
+The project script `tools/check_all.sh [--commit REV] [--label NAME]` makes a clean build of SIMC++ and of the comparison
+tool, runs both test suites and logs the result under `SIMC++_Project/simc_runs/` (about 75 minutes, most of it in the
+`slow` tests).

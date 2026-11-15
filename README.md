@@ -9,11 +9,13 @@ restores the exact Fortran behaviour, and with the RANLUX generator SIMC++ then 
 ## Manuals
 
 * **[User manual](docs/manual/user/index.md)**: installation, quick start, inputs (complete parameter reference),
-  reactions, spectrometers, outputs, reproducibility, comparison with the Fortran, differences, FAQ.
+  reactions, spectrometers, outputs, run modes and reproducibility, performance, FAQ.
 * **[Developer manual](docs/manual/developer/index.md)**: architecture, Fortran → C++ map, numerical conventions, validation
   framework, extending SIMC++.
 
-Reference documents: [docs/INP_JSON_MAPPING.md](docs/INP_JSON_MAPPING.md), [docs/OUTPUT_FORMAT.md](docs/OUTPUT_FORMAT.md),
+Translation and validation (comparison with the Fortran SIMC, every difference): `docs/translation/`, with the user
+guides [docs/translation/user_comparing_with_fortran.md](docs/translation/user_comparing_with_fortran.md) and
+[docs/translation/user_differences.md](docs/translation/user_differences.md). Reference documents: [docs/INP_JSON_MAPPING.md](docs/INP_JSON_MAPPING.md), [docs/OUTPUT_FORMAT.md](docs/OUTPUT_FORMAT.md),
 [docs/FORTRAN_DIFFERENCES.md](docs/FORTRAN_DIFFERENCES.md), [docs/DRIVER.md](docs/DRIVER.md),
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/EXTENDING.md](docs/EXTENDING.md),
 [docs/PERFORMANCE.md](docs/PERFORMANCE.md), [validation/README.md](validation/README.md).
@@ -26,11 +28,11 @@ their yields are not physical rates.
 ```bash
 export ROOTSYS=/path/to/root-6.40 LD_LIBRARY_PATH=$ROOTSYS/lib          # only ROOT's lib (not an old ROOT/libtbb)
 cmake -S . -B build -DCMAKE_PREFIX_PATH=$ROOTSYS -DCMAKE_BUILD_TYPE=Release && cmake --build build -j8
-build/bin/simc++ /path/to/simc_gfortran/infiles/eep_h_elastic_rad_A.inp -o out --ngen 5000
+build/bin/simc++ docs/manual/user/examples/h_elastic_rad.inp -o out --ngen 5000
 (cd build && ctest -LE slow -j8)
 ```
 
-Requirements: a C++20 compiler, CMake ≥ 3.15, ROOT ≥ 6.40 built with C++20, nlohmann/json ≥ 3.9 (fetched if absent).
+The Fortran SIMC is not needed. Requirements: a C++20 compiler, CMake ≥ 3.15, ROOT ≥ 6.40 built with C++20, nlohmann/json ≥ 3.9 (fetched if absent).
 See [chapter 2 of the user manual](docs/manual/user/02_installation.md) for the options, installation, data directory and
 test labels.
 

@@ -1,21 +1,21 @@
-# 9. Comparing with Fortran SIMC
+# Comparing SIMC++ with the Fortran SIMC (user guide)
 
 Two kinds of comparison are possible:
 
 * **exact**: RANLUX + `--fortran-compat` against a Fortran run of the same input. The files must be identical
-  ([8.4](08_running_and_reproducibility.md#84-reproducing-a-fortran-run-exactly));
+  ([8.4](../manual/user/08_running_and_reproducibility.md#84-reproducing-legacy-simc-results-exactly));
 * **statistical**: any SIMC++ run (default mode, mt64, any seed, any number of threads) against a Fortran run, with
-  `simc_compare`. This chapter covers it. The full description of the statistics is in `validation/README.md`.
+  `simc_compare`. This guide covers it. The full description of the statistics is in `validation/README.md`.
 
-## 9.1 Building `simc_compare`
+## 1. Building `simc_compare`
 
-`simc_compare` is a separate CMake project in `validation/` ([2.2](02_installation.md#22-building)):
+`simc_compare` is a separate CMake project in `validation/` ([2.2](../manual/user/02_installation.md#22-building)):
 
 ```bash
 cmake -S validation -B build-val -DCMAKE_PREFIX_PATH=$ROOTSYS -DCMAKE_BUILD_TYPE=Release && cmake --build build-val -j8
 ```
 
-## 9.2 Running it
+## 2. Running it
 
 ```
 simc_compare --a SPEC --b SPEC --out DIR [--config CFG.json] [--label-a NAME] [--label-b NAME]
@@ -37,7 +37,7 @@ It writes `cmp/summary.txt`, `cmp/summary.json`, `cmp/compare.pdf` (one page per
 overlays with B/A ratios) and the two parsed run summaries. The exit status is 0 for PASS (or when `--expect` is met),
 1 for FAIL, 2 for a usage or I/O error.
 
-## 9.3 Reading the verdict
+## 3. Reading the verdict
 
 The top of `summary.txt` from the example:
 
@@ -74,14 +74,14 @@ normfac or a number), `det_rel_tol`.
 
 Comparing two runs of the **same** code with the same seed must give `IDENTICAL` (`--expect IDENTICAL`).
 
-## 9.4 Mode of each side: `wtcontr`
+## 4. Mode of each side: `wtcontr`
 
 The σ of `wtcontr` uses the events of the pass_cuts window of each run. That window differs between the Fortran and the
 corrected mode (D-006). The tool takes the mode of a SIMC++ JSON from its `run.fortran_compat`; a Fortran `.hist` counts as
 compat. For a summary without that key, pass `--mode-a/--mode-b compat|corrected`. A warning appears when the window does
 not reproduce the run's own wtcontr within 0.2 % (usually a wrong mode).
 
-## 9.5 Expected differences in the default mode
+## 5. Expected differences in the default mode
 
 The default mode corrects clear Fortran bugs, so some comparisons against Fortran runs **fail on purpose**. The project's
 L2 runs (`docs/FORTRAN_DIFFERENCES.md` §7-§17) found these typical cases:
@@ -97,7 +97,7 @@ L2 runs (`docs/FORTRAN_DIFFERENCES.md` §7-§17) found these typical cases:
 | HRS | acceptance, FP path, decay | D-061 F1, F1e |
 | rho | random stream (no event-by-event comparison), energy loss of the ρ | D-057 F1, F2 |
 
-For each failure, check the variable against [chapter 10](10_differences_from_fortran.md). If it is not listed there,
+For each failure, check the variable against [the list of differences](user_differences.md). If it is not listed there,
 look further: run the corrected and the compat SIMC++ runs with the same seed, which differ only by the corrections, or
 repeat the Fortran-mode comparison with RANLUX. Since D-058, the project's first check of a doubtful Fortran-mode flag
 is a RANLUX run: if it is identical to the Fortran, the flag was a fluctuation.

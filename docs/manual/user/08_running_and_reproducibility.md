@@ -7,7 +7,7 @@ The seed comes from, in this order: the pipeline `"rng": {"seed": N}`, then `--s
 
 * `random_seed > 0`: `std::mt19937_64` seeded with it;
 * `random_seed = 0` or absent (and other values ≤ 0 except −1): the fixed seed 5489, so the run is still reproducible;
-* `random_seed = −1`: the current time, as in the Fortran (dbase.f:119). The log line ` Use random seed = ...` shows the value.
+* `random_seed = −1`: the current time. The log line ` Use random seed = ...` shows the value.
 
 A given input, seed, mode and number of threads always produce the same files.
 
@@ -15,33 +15,39 @@ A given input, seed, mode and number of threads always produce the same files.
 
 | generator | pipeline | properties |
 |---|---|---|
-| `mt64` (default) | `"rng": "mt64"` or `{"type": "mt64", "seed": N}` | std::mt19937_64. Fast; the project's statistical validation (L2) uses it (decision D-002) |
-| `ranlux` | `"rng": {"type": "ranlux"}`, optionally `"seed": N` or `"state": [25 integers]` | a bit-exact port of the Fortran RANLUX (`call_ranlux.f`, luxury level 3, seeded with RLUXGO(3, seed, 0, 0) from `random_seed`, as the Fortran). About 25 % slower (D-058). `"state"` takes the 25 integers of a Fortran `*_start_random_state.dat` |
+| `mt64` (default) | `"rng": "mt64"` or `{"type": "mt64", "seed": N}` | std::mt19937_64; fast; allows `--threads` |
+| `ranlux` | `"rng": {"type": "ranlux"}`, optionally `"seed": N` or `"state": [25 integers]` | RANLUX at luxury level 3, the generator of the legacy SIMC, seeded from `random_seed` the same way. About 25 % slower. `"state"` takes the 25 integers of a saved generator state (a legacy `*_start_random_state.dat` file) |
 
-`ranlux` gives the same random numbers as the Fortran. It reproduces a Fortran run only in the Fortran-compatible mode,
-because several corrections of the default mode change the number of random numbers drawn (for example D-057 F2 for
-rho runs).
+## 8.3 Default and legacy-compatible mode
 
-## 8.3 Corrected mode and `--fortran-compat`
+SIMC++ is a translation of the legacy Fortran SIMC. The legacy program has a number of known bugs (for example, the cut
+that decides whether an event counts in the `.hist` yield uses the electron delta limit for the hadron). **The default
+mode corrects them. The legacy-compatible mode, `--fortran-compat`, reproduces the legacy behaviour exactly**, bugs
+included:
 
-| | default (corrected) | `--fortran-compat` |
+| | default | `--fortran-compat` |
 |---|---|---|
-| clear Fortran bugs ([chapter 10](10_differences_from_fortran.md)) | corrected | kept |
-| ambiguous cases (expert list) | Fortran | Fortran |
-| reproduces a Fortran run exactly (with `ranlux`) | no | yes |
+| known bugs of the legacy SIMC | corrected | kept |
+| with `ranlux`: identical output files to a legacy SIMC run of the same input | no | yes |
 | `--threads N > 1` | yes | refused |
-| use it for | physics | validation, and comparing with an existing Fortran result |
+| use it for | physics | reproducing or checking an existing legacy SIMC result |
 
-In a JSON input: `"run": {"fortran_compat": true}`. The log says which mode is active.
+In a JSON input: `"run": {"fortran_compat": true}`. The log says which mode is active
+(` SIMC++: fortran_compat = true (exact Fortran behaviour, known Fortran bugs kept)`).
 
-## 8.4 Reproducing a Fortran run exactly
+What each correction changes in the results, and which run types are affected, is listed in
+`docs/translation/user_differences.md`; how to compare SIMC++ with legacy SIMC runs statistically is in
+`docs/translation/user_comparing_with_fortran.md`.
 
-Run the same `.inp` with RANLUX and `--fortran-compat`, in one thread. Example with the reference run of the converted
-`test_eep_h` input (1000 events, with an `extra_dbase_file`):
+## 8.4 Reproducing legacy SIMC results exactly
+
+Run the same `.inp` with `ranlux`, `--fortran-compat` and one thread. The `.hist` (apart from its two time lines), the
+`.geni`, the `.gen` and every entry of the tree are then identical to those of the legacy program. Example with a stored
+legacy run (`$SIMC_REF/runs/...` are the project's reference runs; 1000 events, with an `extra_dbase_file`):
 
 ```bash
 echo '{"pipeline": {"rng": {"type": "ranlux"}}}' > ranlux.json
-R=$SIMC_REF/runs/eep_h_test_pctnames            # the Fortran run: .inp, extra file, .hist, .geni, .gen, .root
+R=$SIMC_REF/runs/eep_h_test_pctnames            # the legacy run: .inp, extra file, .hist, .geni, .gen, .root
 simc++ $R/eep_h_test_pctnames.inp -o exact --fortran-compat --pipeline ranlux.json > exact.log
 diff <(sed 2,3d exact/eep_h_test_pctnames.hist) <(sed 2,3d $R/eep_h_test_pctnames.hist) && echo ".hist: identical apart from the time lines"
 cmp exact/eep_h_test_pctnames.geni $R/eep_h_test_pctnames.geni && cmp exact/eep_h_test_pctnames.gen $R/eep_h_test_pctnames.gen && echo ".geni, .gen: identical"
@@ -58,13 +64,12 @@ exact/eep_h_test_pctnames.root vs .../reference/runs/eep_h_test_pctnames/eep_h_t
 
 Notes:
 
-* The Fortran run must use the same input, including its `random_seed` (none = the RANLUX default seed), and must be
-  made with the same toolchain class: the bitwise references depend on glibc's libm (decision D-044).
-* Run the same command **without** `--fortran-compat` and the `.hist` differs in the corrected lines (here two lines
-  where the Fortran writes integers as `T`/`F`, D-018).
-* The project checked this on every runnable shipped input (39/39), the spect_mode and π0 probes and the
-  polarized-target examples (CTest label `regression_shipped`). The script
-  `validation/scripts/p15_shipped_regression.sh` runs the same procedure on a reference folder.
+* Use the same input, including its `random_seed` (none = the RANLUX default seed). Bit-for-bit identity also needs the
+  same C math library (glibc `libm`) as the machine that made the legacy run.
+* Without `--fortran-compat`, the `.hist` differs in the corrected lines (here two lines where the legacy program writes
+  integers as `T`/`F`).
+* This holds for every example input distributed with SIMC that the legacy program can run (CTest label
+  `regression_shipped`).
 
 ## 8.5 Threads: `--threads N`
 
@@ -89,20 +94,19 @@ $ simc++ run.json -o out_t4b --ngen 5000 --threads 4 > /dev/null && simc_root_id
 out_t4/run.root vs out_t4b/run.root: IDENTICAL
 ```
 
-**Why not with `--fortran-compat` or RANLUX:** the exact Fortran reproduction needs the single random stream, consumed in
-the Fortran order, and N threads use N streams. Both combinations are refused before the run starts (exit status 2):
+**Why not with `--fortran-compat` or RANLUX:** the exact reproduction of a legacy run needs one random stream consumed in the
+legacy order, and N threads use N streams. Both combinations are refused before the run starts (exit status 2):
 
 ```
 $ simc++ run.json -o out_compat --ngen 5000 --threads 4 --fortran-compat
 simc++: --threads 4 (more than one event-loop thread) cannot be used with --fortran-compat: the exact Fortran reproduction needs the single random stream in the Fortran order (run with --threads 1)
 ```
 
-The L2 comparison of 8-thread runs with the Fortran gives the same verdicts as the one-thread runs
-(`docs/PERFORMANCE.md` §3).
+Statistical comparisons of 8-thread and one-thread runs agree (`docs/PERFORMANCE.md` §3).
 
 ## 8.6 Other run options
 
 * `--ngen N` overrides `ngen` (use a small N for a test; a negative N gives |N| tries, which always ends).
-* `--quiet` silences the stage messages (the Fortran-style progress lines stay).
+* `--quiet` silences the stage messages (the progress lines stay).
 * `--print-pipeline` prints the plug-ins chosen and continues with the run.
 * `--run-name`, `-o`: output naming ([4.2.2](04_inputs.md#422-run)).
