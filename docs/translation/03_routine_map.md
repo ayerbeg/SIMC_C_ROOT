@@ -1,13 +1,13 @@
-# 4. Fortran → C++ map
+# 3. Fortran → C++ map
 
-## 4.1 The generated table
+## 3.1 The generated table
 
 [fortran_routine_map.md](fortran_routine_map.md) lists **every routine** of the Fortran files that the Makefile links
 into `simc` (172 routines) with its line range, the C++ files that cite it, its status, and the L1 tables named after
 it. It is generated from the code, not written by hand:
 
 ```bash
-python3 -I docs/manual/developer/tools/gen_fortran_map.py      # rewrites docs/manual/developer/fortran_routine_map.md
+python3 -I docs/translation/tools/gen_fortran_map.py      # rewrites docs/translation/fortran_routine_map.md
 ```
 
 The script reads the Fortran Makefile (`my_objs` + `simc.f` + the module files), finds every SUBROUTINE / FUNCTION /
@@ -20,7 +20,7 @@ script after a port** and check that no routine is "not cited".
 `project_control/TRANSLATION_MAP.md` is the original P0.3 audit table (2026-09-29, H(e,e'p) scope only); it is kept as a
 historical record and is superseded by the generated table.
 
-## 4.2 Curated map by subsystem
+## 3.2 Curated map by subsystem
 
 The main entry points (file → C++ function or class). Line numbers are those of the `// Fortran:` comment at the
 C++ definition.
@@ -73,7 +73,7 @@ C++ definition.
 | results_write.f, NtupleInit.f, util/root_tree | `NtupleLayout` (`FillNtuple`, `FillEepNtuple`, `FillPionNtuple`, `FillSemiNtuple`, `FillRhoNtuple`), `RootTreeSink` |
 | histograms.inc + simc.f:250-287 | `FortranHistSink` (text `.gen`), `GenHistSink` (`.gen.root`) |
 
-## 4.3 COMMON blocks and SAVEd locals
+## 3.3 COMMON blocks and SAVEd locals
 
 | Fortran | C++ owner |
 |---|---|
@@ -95,13 +95,13 @@ C++ definition.
 
 Zero-initialised COMMON semantics are reproduced by value-initialisation of the members (`{0}`, `{}`).
 
-## 4.4 Naming and comment conventions
+## 3.4 Naming and comment conventions
 
 * **Origin comment** on every ported function or block, at the definition:
   `// Fortran: event.f:complete_ev (l.432-1054)`. For a block inside a routine: `// l.226-238 pass_cuts` or
-  `// Fortran: simc.f:1334`. File headers list the routines of the file. The generator of §4.1 relies on the
+  `// Fortran: simc.f:1334`. File headers list the routines of the file. The generator of §3.1 relies on the
   `file.f:routine` form: keep it.
-* **Markers** (chapter 6): `FORTRAN-BUG(D-xxx)` (corrected in the default mode; the original code and the reason),
+* **Markers** (chapter 5): `FORTRAN-BUG(D-xxx)` (corrected in the default mode; the original code and the reason),
   `FORTRAN-DIFF-CANDIDATE(D-xxx)` (ambiguous, kept, with the question), `FORTRAN-OPEN(D-031 flag 1)` (acceptance mode),
   `FORTRAN-QUIRK` (faithful odd behaviour, often with the finding id `D-xxx Fn`). At P15.D1 the code has 136
   FORTRAN-BUG, 87 FORTRAN-DIFF-CANDIDATE, 72 FORTRAN-QUIRK and 3 FORTRAN-OPEN markers.

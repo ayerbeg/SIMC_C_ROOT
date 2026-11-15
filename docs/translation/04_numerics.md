@@ -1,10 +1,10 @@
-# 5. Numerical conventions
+# 4. Numerical conventions
 
 SIMC++ reproduces the Fortran **bit for bit** wherever a Fortran reference exists (L1 tables, captures, RANLUX full
 runs). That is only possible if every rule of this chapter is followed. When an L1 test differs in the last bit,
 the cause is almost always one of them.
 
-## 5.1 Units
+## 4.1 Units
 
 One convention everywhere inside the framework (core/Units.h): MeV, MeV/c, MeV², cm, rad, slopes dx/dz and dy/dz,
 g/cm², g/cm³, delta in %. Cross sections are in the units of the Fortran routine they replace (documented per model).
@@ -19,7 +19,7 @@ Exceptions:
 The named factors of `simc::units` are exact and must be used with the same operation as the Fortran (`x / 1000.`
 stays a division, never a multiplication by 0.001), so naming a literal never changes a bit.
 
-## 5.2 Precision: double, real*4, REAL(16)
+## 4.2 Precision: double, real*4, REAL(16)
 
 The Fortran is compiled with `-fdefault-real-8`: every `REAL` and every untyped literal (`0.62`, `1./137.0359895`) is
 a **double**. Use double literals of the same decimal value. But `-fdefault-real-8` also promotes `DOUBLE PRECISION`
@@ -47,7 +47,7 @@ to **REAL(16)** (binary128), which has visible consequences:
   expressions in double. `InpReader` rounds every non-integer literal to float before evaluating
   (src/input/InpReader.cpp l.81-88). A JSON input is double (it is a different input format).
 
-## 5.3 Powers
+## 4.3 Powers
 
 * `x**2` (and `x**2.`) → `x*x` (or `sq(x)`). gcc ≤ 15 folded `std::pow(x, 2.)` into `x*x`, gcc 16 calls libm `pow`
   under `-fmath-errno`, which can differ by 1 ulp. The unit test `lint_no_pow_square` (tests/unit/lint_no_pow_square.sh)
@@ -56,7 +56,7 @@ to **REAL(16)** (binary128), which has visible consequences:
   (repeated squaring, `1/y` for negative n; optics/CosyEngine.h). Not `std::pow`.
 * real exponents (`x**0.61`, `pow(Q,3.)` in fofa) → `std::pow`, as gfortran calls libm `pow`.
 
-## 5.4 Operation order, NaN signs and Fortran intrinsics
+## 4.4 Operation order, NaN signs and Fortran intrinsics
 
 * Keep the **operation order** of the source: `a*b*c` is `(a*b)*c`, sums of dot products are `x+y+z` in that order,
   `-(a)*b` is the product then the sign flip. Do not "simplify" an expression of a kernel.
@@ -73,7 +73,7 @@ to **REAL(16)** (binary128), which has visible consequences:
   previous call (`MonteCarlo::tmpfact_`, `EepReactionBase::krel_`): it becomes a member of the object.
 * `-ff2c`: REAL functions return double under the f2c convention; no effect on the values with `-fdefault-real-8`.
 
-## 5.5 libm and toolchain dependence (D-044)
+## 4.5 libm and toolchain dependence (D-044)
 
 The bitwise references depend on the libm of the machine: the SIMC objects link libm and libgfortran dynamically, so a
 glibc update changes their results by a few ulp (2026-10-09: glibc 2.42 → 2.43 changed `tgamma` by ≤ 2 ulp in 49 of 274
@@ -87,9 +87,9 @@ table points; every radiative weight downstream changed). Rules:
   failure. `tests/toolchain_guard.sh` prints SAME / DIFFERENT next to a failing L1 test.
 * Use the same libm functions as gfortran: `std::tgamma` for the intrinsic `gamma`, `std::exp`, `std::log`, `std::pow`,
   `std::atan2`... The `tgamma` memo of `RadcState` (P15.4) is bitwise neutral because `tgamma` is pure.
-* No `-march=native` (FMA contraction), no `-ffast-math`, no `-ffp-contract=fast` (chapter 2).
+* No `-march=native` (FMA contraction), no `-ffast-math`, no `-ffp-contract=fast` (developer manual, chapter 2).
 
-## 5.6 Random-number order invariants
+## 4.6 Random-number order invariants
 
 * Every random number is drawn by a stage, through `IRandom`, in the **same order and number as the Fortran**: one
   `uniform()` per `grnd()`, one `gauss1(nsig)` per `gauss1(nsig)`. Draws that the Fortran makes even when their value is
@@ -104,9 +104,9 @@ table points; every radiative weight downstream changed). Rules:
   Fortran streams; that is accepted (D-058), but `--fortran-compat` must keep the Fortran draws exactly. State in the
   comment whether a correction changes the stream.
 * `mt64` (default) gives 53-bit uniforms strictly inside (0,1); the worker streams of `--threads N` are
-  `seedStream(seed, k)` (chapter 9).
+  `seedStream(seed, k)` (developer manual, chapter 5).
 
-## 5.7 Checking a numerical question
+## 4.7 Checking a numerical question
 
 1. Read the Fortran line and the flags (`-fdefault-real-8`, `-fno-automatic`).
 2. If precision or operand order is in doubt, disassemble the Fortran object (`objdump -d

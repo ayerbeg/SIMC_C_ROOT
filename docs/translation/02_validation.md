@@ -1,4 +1,4 @@
-# 7. Validation framework
+# 2. Validation framework
 
 SIMC++ is validated at four levels against the Fortran, plus C++-against-C++ identity for refactors. Every result is
 recorded in `/home/ayerbe/NewDisk/project_control/VALIDATION_LEDGER.md` (date, task, Fortran reference, C++ run,
@@ -12,7 +12,7 @@ commit, metrics, tolerance, verdict).
 | L2 | is the run statistically the same (the acceptance test, D-002)? | `reference/runs/<tag>_A`, `_B` | `simc_compare` |
 | identity | did a refactor change any output? | — | `regression_*`, `p153_golden.sh` |
 
-## 7.1 The Fortran L1 harness and the tables
+## 2.1 The Fortran L1 harness and the tables
 
 `/home/ayerbe/NewDisk/fortran_harness` (README.md there; conventions in `reference/functions/README.md`) links the
 **unmodified** SIMC objects (archived into `lib/libsimcobjs.a`, built with the SIMC Makefile flags) with one driver per
@@ -35,7 +35,7 @@ with `n_unif`, `n_gauss`, `rng_err` outputs; harness stubs `common/rng_stub_*.f`
 `distributions/`, `rad_distributions/`, `mc_distributions` (real RNG, summary statistics and histograms for routines whose
 random structure is checked statistically); `<x>_state/` (the COMMON state a configuration leaves, e.g. `pion_state`).
 
-## 7.2 The C++ L1 runners
+## 2.2 The C++ L1 runners
 
 `tests/l1/L1Runner.{h,cpp}` (`simcl1` namespace): `Table::load`, `Row` (columns by name), `ColumnSpec {name, rel_tol,
 abs_tol}` (pass if |rel| ≤ rel_tol or |abs| ≤ abs_tol), `compare(in, ref, cols, adapter)`, `report`. The runner checks
@@ -50,7 +50,7 @@ that needs more states why in its `.cmake` file. One `.cmake` per module (tests/
 included OPTIONAL by tests/l1/CMakeLists.txt, which labels every test `l1` (+ `replay` for names with `_replay_`).
 Data-file tests (`l1_*_data_files`) check the md5 of the copies in `data/`.
 
-## 7.3 Captures and replays
+## 2.3 Captures and replays
 
 A capture is an unmodified SIMC program linked with `ld --wrap` recorders (e.g. `fortran_harness/event/cap_simc`):
 the real routines run unchanged and the wrappers log every random number (`cap_rng.txt`: ntried, phase, kind grnd/gauss1,
@@ -69,7 +69,7 @@ Replays (tests/l1/test_l1_driver.cpp, test_l1_simcrun.cpp and the per-reaction t
 * **full run** (`l1_simcrun_replay_*`): `SimcRun` with `setRandom(ScriptedRandom)` fed with the whole captured stream,
   `--fortran-compat`: tree, per-try bookkeeping, normalisation, `.hist/.geni/.gen` must equal the Fortran.
 
-## 7.4 RANLUX full-run identity
+## 2.4 RANLUX full-run identity
 
 With the bit-for-bit RANLUX port (`"rng": {"type": "ranlux"}`, seeded from the `.inp` random_seed like simc.f:107) and
 `--fortran-compat`, a SIMC++ run reproduces a Fortran run without any capture. `tests/l1/ranlux_fullrun.sh <simc++>
@@ -84,10 +84,10 @@ the Fortran itself does not run as shipped (legacy dotted names → the same STO
 Policy (D-058): when an L2 comparison in compat mode flags something, the first check is a RANLUX same-seed run;
 bitwise identity proves the flag is a fluctuation.
 
-## 7.5 simc_compare (L2)
+## 2.5 simc_compare (L2)
 
 `validation/` is its own CMake project (`simc_compare`, `simc_mode_diff`); full documentation in
-[validation/README.md](../../../validation/README.md). Sources: simc_compare.cpp (CLI, loading, exit status),
+[validation/README.md](../../validation/README.md). Sources: simc_compare.cpp (CLI, loading, exit status),
 CompareCommon.{h,cpp} (config, tree, records, normalisation), CompareRunLevel.cpp, CompareTreeLevel.cpp,
 CompareReport.cpp (verdict, summary.txt/json, PDF), RunSummary.{h,cpp} (reads summary JSON or `.hist/.geni`), Stats.
 
@@ -116,13 +116,13 @@ A run is a `.summary.json`, a Fortran `.hist` (+ `.geni`, `.root`), a `.root` or
   within 0.2 % (wrong mode).
 * Expected outcomes: compat vs Fortran PASS; corrected vs Fortran may FAIL exactly on the quantities a correction
   changes (listed per reaction in FORTRAN_DIFFERENCES.md §7-17). There is no option to skip run-level quantities yet
-  (P15.X, chapter 10).
+  (P15.X).
 
 The L2 scripts of each phase are in `validation/scripts/` (`p10_kaon_l2.sh`, `p11_delta_l2.sh`, `p12_sidis_l2.sh`,
 `p13_rho_l2.sh`, `p14_*_l2.sh`, `p15_spect_mode_l2.sh`, `p15b_field_l2.sh`, `p154_l2.sh`); their outputs are in
 `SIMC++_Project/simc_runs/<run_id>/` and `reference/comparisons/`.
 
-## 7.6 Regression baselines (C++ vs C++)
+## 2.6 Regression baselines (C++ vs C++)
 
 * `tests/regression/output_identity.sh SIMCPP ROOT_IDENTITY INPUT SEED RUN_NAME BASELINE_DIR WORK_DIR [args]` runs
   `simc++ INPUT --seed SEED --run-name RUN_NAME -o WORK_DIR --quiet [args]` and requires every output to equal the
@@ -142,7 +142,7 @@ The L2 scripts of each phase are in `validation/scripts/` (`p10_kaon_l2.sh`, `p1
   target field) in both modes plus one `simc_compare`; `check` compares two sets file by file (326 files). Use it
   before/after any refactor or optimisation that should change nothing (P15.3, P15.4).
 
-## 7.7 Adding a new Fortran reference, end to end
+## 2.7 Adding a new Fortran reference, end to end
 
 1. **Specify** what is needed and ask the director, who asks the fortran-reference agent: the routine (file:lines), the
    input grid (columns, units, ranges incl. edge cases), the COMMON state to set (or the `.inp` that sets it), the
@@ -155,4 +155,4 @@ The L2 scripts of each phase are in `validation/scripts/` (`p10_kaon_l2.sh`, `p1
    `tests/l1/<module>.cmake` with `SKIP_RETURN_CODE 77` and the tolerance; for runs a RANLUX full-run test
    (`ranlux_fullrun.sh`) or a regression_shipped folder; for L2 a script in `validation/scripts/`.
 4. **Evidence**: the run folder (`SIMC++_Project/tools/run_simc.sh ... --label <task>` or `tools/check_all.sh`), the metrics, and a line in
-   VALIDATION_LEDGER.md (by the director). Findings go to DECISIONS.md and FORTRAN_DIFFERENCES.md (chapter 6).
+   VALIDATION_LEDGER.md (by the director). Findings go to DECISIONS.md and FORTRAN_DIFFERENCES.md (chapter 5); the catalogue of chapter 6 is regenerated from it.
