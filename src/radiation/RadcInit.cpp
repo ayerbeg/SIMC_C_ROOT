@@ -1,4 +1,9 @@
-// src/radiation/RadcInit.cpp — init.f:radc_init, radc_init_ev, basicrad_init_ev and RadcRun::FromSetup.
+// src/radiation/RadcInit.cpp — see include/simc/radiation/kernel/Radc.h.
+// The initialisation side of the radiative corrections: init.f:radc_init (once per run: lambda of the target,
+// b*t of the external radiators), radc_init_ev (per event: the internal correction from brem/bremos/schwinger, the
+// hard-photon factor hardcorfac, the tail exponents g(1..3) and their fractions frac(1..3)), basicrad_init_ev (the
+// normalisation constants c(i) of the photon-energy distributions), and RadcRun::FromSetup (the run constants copied
+// from the RunSetup). Arrays keep the Fortran indices: [1..3] = tails 1-3 (incoming e, scattered e, hadron).
 #include <cmath>
 #include <ostream>
 
@@ -9,6 +14,7 @@
 namespace simc {
 namespace radiation {
 
+// The run constants the radiation kernel needs (a flat copy, so the kernel does not depend on RunSetup).
 RadcRun RadcRun::FromSetup(const RunSetup& s) {
     RadcRun r;
     const SimcParameters& p = s.params;
@@ -100,7 +106,7 @@ void radcInitEv(const RadcRun& run, RadcState& st, const MainEvent& main, const 
     if (run.intcor_mode == 0) {
         // FORTRAN-DIFF-CANDIDATE(D-019, Q3): schwinger does not set dsoft_prime; the SAVEd value of an earlier
         // brem/bremos call (0 in a SIMC run with intcor_mode = 0) is used for g(4) below (init.f:701-715), so g(4)
-        // loses its internal part (0.019443 vs 0.098637 at the P1.2 kinematics). Question: is intcor_mode = 0 meant to
+        // loses its internal part (0.019443 vs 0.098637 for the H(e,e'p) validation kinematics). Question: is intcor_mode = 0 meant to
         // have a derivative term?
         r = schwinger(Ecutoff, vertex, true, run.targ_A, st.etta, run.use_expon, st.initev_dsoft, st.initev_dhard);
     } else {
@@ -120,10 +126,12 @@ void radcInitEv(const RadcRun& run, RadcState& st, const MainEvent& main, const 
 
     basicradInitEv(st, vertex.Ein, vertex.e.E, vertex.p.E);   // l.719
 
-    for (int i = 1; i <= 3; ++i) st.frac[i] = st.g[i] / st.g[0];   // l.723-725
+    // l.723-725: the probability that a given tail radiates the photon is its share of the total exponent g(0)
+    for (int i = 1; i <= 3; ++i) st.frac[i] = st.g[i] / st.g[0];
 }
 
-// Fortran: init.f:basicrad_init_ev (l.732-813). gamma = intrinsic = libm tgamma (D-019), through the bitwise memo st.gamma (P15.4).
+// Fortran: init.f:basicrad_init_ev (l.732-813). gamma = intrinsic = libm tgamma (D-019), through the memo st.gamma
+// (it returns the same bits as tgamma; tgamma of the same argument is not recomputed every event).
 void basicradInitEv(RadcState& st, double e1, double e2, double e3) {
     using constants::euler;
     using constants::Mp;

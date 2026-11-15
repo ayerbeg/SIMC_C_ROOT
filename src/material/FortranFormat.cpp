@@ -1,4 +1,6 @@
 // src/material/FortranFormat.cpp — see include/simc/material/FortranFormat.h.
+// gfortran list-directed output of one real*8 (write(6,*) x): the 25-character field that the Fortran messages of
+// the target, material and driver code print, reproduced so that the logs can be compared with the Fortran ones.
 #include "simc/material/FortranFormat.h"
 
 #include <cmath>
@@ -9,6 +11,7 @@
 namespace simc {
 namespace fortran {
 
+// gfortran chooses F20.d (0.1 <= |x| < 1e17, after rounding to 17 significant digits) or 1PE25.16E3 otherwise.
 std::string listReal(double x) {
     char buf[64];
     if (std::isnan(x)) {

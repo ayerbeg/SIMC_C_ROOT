@@ -1,4 +1,7 @@
 // src/radiation/Brem.cpp — see include/simc/radiation/kernel/Brem.h.
+// The internal radiative correction of SIMC (brem.f): brem (electron-only, Mo-Tsai type, with the soft-photon
+// exponentiation), bremos (including the radiation of the outgoing hadron), and their helpers inter/inter_prime,
+// srad and spence. Called per event by radc_init_ev (RadcInit.cpp) to get the soft and hard correction factors.
 // Fortran: simc_gfortran/brem.f. Operation order follows the Fortran source (left-to-right evaluation,
 // parentheses kept); comments give the Fortran line numbers.
 #include "simc/radiation/kernel/Brem.h"

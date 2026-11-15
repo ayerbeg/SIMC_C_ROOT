@@ -1,4 +1,8 @@
 // src/material/SimcMaterial.cpp — see include/simc/material/SimcMaterial.h.
+// The "simc_material" IMaterialModel plug-in: the SIMC material physics shared by the target and the spectrometers —
+// the most-probable/Landau-sampled ionisation energy loss (enerloss_new.f) and the Highland multiple-scattering
+// angles (musc.f) and angles plus displacements in a thick layer (musc_ext.f). Energies and momenta in MeV,
+// thicknesses in cm and g/cm^2, angles in rad.
 #include "simc/material/SimcMaterial.h"
 
 #include <cmath>
@@ -16,6 +20,8 @@ namespace material {
 SimcMaterial::SimcMaterial() : log_(&std::cout) {}
 
 // Fortran: enerloss_new.f:enerloss_new (l.1-85). Operation order kept for bitwise results.
+// typeflag (enerloss_new.f:9-12): 1 = sampled (|gaussian| as the Landau variable), 2 = minimum, 3 = maximum,
+// 4 = most probable; only 1 draws a random number.
 double SimcMaterial::energyLoss(double len, double dens, double zeff, double aeff, double epart, double mpart,
                                 int typeflag, IRandom& rng) {
     const double me = me_eloss;
@@ -77,6 +83,7 @@ double SimcMaterial::energyLoss(double len, double dens, double zeff, double aef
         Eloss = lambda * chsi + Eloss_mp;
     }
 
+    // a loss larger than the kinetic energy stops the particle: clamped just below KE (callers may test lastClamped_)
     lastClamped_ = Eloss > (epart - mpart);
     if (Eloss > (epart - mpart)) {
         Eloss = (epart - mpart) - 0.0000001;
@@ -98,6 +105,7 @@ void SimcMaterial::musc(double m2, double p, double rad_len, double& dth, double
         *log_ << " Momentum passed to musc.f should be in MeV, but p= " << fortran::listReal(p) << "\n";
 
     const double beta = p / std::sqrt(m2 + p * p);
+    // Highland formula (13.6 MeV, 0.088 log10 term) for the plane-projected r.m.s. angle
     const double theta_sigma = Es / p / beta * std::sqrt(rad_len) * (1 + epsilon * std::log10(rad_len / (beta * beta)));
 
     // Compute new trajectory angles (units are rad)
@@ -126,7 +134,8 @@ void SimcMaterial::muscExt(double m2, double p, double rad_len, double x_len, do
     const double beta = p / std::sqrt(m2 + p * p);
     const double theta_sigma = Es / p / beta * std::sqrt(rad_len) * (1 + epsilon * std::log10(rad_len / (beta * beta)));
 
-    // Compute new trajectory angles and displacements (units are rad and cm)
+    // Compute new trajectory angles and displacements (units are rad and cm): the correlated angle/position pair of a
+    // thick scatterer (PDG: y = x_len*theta0*(g2/sqrt(12) + g1/2), theta = theta0*g1)
     double g1 = rng.gauss1(kMuscNsig);   // gaussian, truncated at 99 sigma
     double g2 = rng.gauss1(kMuscNsig);
     dth = dth + theta_sigma * g1;

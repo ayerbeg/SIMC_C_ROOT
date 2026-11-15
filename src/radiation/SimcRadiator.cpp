@@ -1,4 +1,7 @@
 // src/radiation/SimcRadiator.cpp — see include/simc/radiation/SimcRadiator.h.
+// The "simc_rad" IRadiator plug-in: a thin stage wrapper around the radiation kernel (Radc.cpp, RadcInit.cpp,
+// Brem.cpp). It owns the run constants (RadcRun) and the state that the Fortran keeps in COMMON /radc/ and SAVEd
+// locals (RadcState), one instance per event loop (each worker of the parallel loop has its own).
 #include "simc/radiation/SimcRadiator.h"
 
 #include "simc/radiation/kernel/Radc.h"

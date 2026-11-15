@@ -1,4 +1,8 @@
 // src/radiation/Radc.cpp — see include/simc/radiation/kernel/Radc.h.
+// The event side of the SIMC radiative corrections (radc.f, peaking approximation): generate_rad picks one of the
+// three radiating tails (incoming electron, scattered electron, outgoing hadron), draws the photon energies from the
+// basicrad power law, rebuilds the event kinematics with complete_ev and computes the radiative weight
+// (peaked_rad_weight). Called through the IRadiator plug-in SimcRadiator by the reactions' generate step.
 // Fortran: simc_gfortran/radc.f. Operation order follows the Fortran source; comments give the line numbers.
 #include "simc/radiation/kernel/Radc.h"
 
@@ -20,7 +24,8 @@ inline double fmin2(double a, double b) { return b < a ? b : a; }
 inline double fmax2(double a, double b) { return b > a ? b : a; }
 }  // namespace
 
-// Fortran: radc.f:basicrad (l.3-88)
+// Fortran: radc.f:basicrad (l.3-88). One photon energy from the distribution g*E^(g-1) between emin and emax
+// (inverse-transform sampling), with its weight relative to the full distribution.
 void basicrad(const RadcState& st, int& itail, double Egamma_lo, double Egamma_hi, double& Egamma, double& weight,
               double& val_reciprocal, IRandom& rng) {
     // Initialize (l.47-49)
@@ -74,7 +79,8 @@ double gammaRadc(double x) {
     return gamma;
 }
 
-// Fortran: radc.f:peaked_rad_weight (l.523-646)
+// Fortran: radc.f:peaked_rad_weight (l.523-646). The weight of a radiated photon of energy Egamma in the peaking
+// approximation: the ratio of the full (internal + external) spectrum to the basicrad spectrum it was drawn from.
 double peakedRadWeight(const RadcRun& run, RadcState& st, const Event& vertex, double Egamma, double emin,
                        double emax, double basicrad_val_reciprocal, double basicrad_weight, std::ostream* log) {
     (void)basicrad_val_reciprocal;   // l.545: only touched to avoid an unused-variable warning
@@ -144,7 +150,7 @@ double peakedRadWeight(const RadcRun& run, RadcState& st, const Event& vertex, d
         (void)dsoft_int_prime;
     }
 
-    // ... All together now (l.634-643). gamma = intrinsic = libm tgamma (D-019), through the bitwise memo st.gamma (P15.4).
+    // ... All together now (l.634-643). gamma = intrinsic = libm tgamma (D-019), through the memo st.gamma (same bits).
     double w;
     if (emin > 0) {
         w = st.c_ext[0] / st.g_ext *
@@ -160,14 +166,14 @@ double peakedRadWeight(const RadcRun& run, RadcState& st, const Event& vertex, d
     return w;
 }
 
-// Fortran: radc.f:extrad_friedrich (l.650-664)
+// Fortran: radc.f:extrad_friedrich (l.650-664). External bremsstrahlung correction (Friedrich) for radiator thickness trad.
 void extradFriedrich(double etatzai, double Ei, double Ecutoff, double trad, double& dbrem, double& dbrem_prime) {
     const double x = Ecutoff / Ei;
     dbrem = trad * (-(etatzai - 0.5) - etatzai * std::log(x) + etatzai * x - 0.5 * sq(x));
     dbrem_prime = -trad / Ei * (etatzai / x - etatzai + x);
 }
 
-// Fortran: radc.f:extrad_phi (l.668-707)
+// Fortran: radc.f:extrad_phi (l.668-707). The external-bremsstrahlung shape factor phi(Egamma/E) of tail itail.
 double extradPhi(const RadcRun& run, const RadcState& st, int itail, double E1, double E2, double Egamma) {
     const double E[3] = {0, E1, E2};
     double phi = 1.0;   // CASE 1
@@ -191,8 +197,8 @@ double extradPhi(const RadcRun& run, const RadcState& st, int itail, double E1, 
     return phi;
 }
 
-// Fortran: radc.f:schwinger (l.711-739)
-// FORTRAN-QUIRK(P5.F1 Q8): exp(dsoft) when use_expon == 0 (opposite of brem's convention); only dhard is used in SIMC.
+// Fortran: radc.f:schwinger (l.711-739). Schwinger's soft (dsoft) and hard (dhard) internal correction.
+// FORTRAN-QUIRK: exp(dsoft) when use_expon == 0 (opposite of brem's convention); only dhard is used in SIMC.
 double schwinger(double Ecutoff, const Event& vertex, bool include_hard, double targ_A, double etta, int use_expon,
                  double& dsoft, double& dhard) {
     using constants::alpi;
@@ -224,7 +230,7 @@ double spen(double x) {
     return s;
 }
 
-// Fortran: radc.f:lambda_dave (l.768-821)
+// Fortran: radc.f:lambda_dave (l.768-821). The effective radiator thickness lambda of each tail (internal + external).
 double lambdaDave(int itail, int plus_flag, bool doing_proton, double e1, double e2, double e3, double p3, double th,
                   bool& warned, std::ostream* log) {
     using constants::alpi;
@@ -280,7 +286,7 @@ bool generateRad(const RadcRun& run, RadcState& st, MainEvent& main, Event& vert
     const bool force2 = false;   // the force2 block is commented out in the Fortran (l.223-226)
 
     // Which tail has to be radiated? (l.198-216)
-    // FORTRAN-DIFF-CANDIDATE(D-019, P5.F1 Q7): with one_tail != 0 ntail is still drawn from frac(1:3), which includes the
+    // FORTRAN-DIFF-CANDIDATE(D-019): with one_tail != 0 ntail is still drawn from frac(1:3), which includes the
     // disabled tails; a disabled tail is then skipped (doing_tail tests at l.234/358), the event passes with no photon
     // and gen_weight = 1/hardcorfac. Question: should frac be restricted to the enabled tails?
     peaked_basis_flag = 1;
@@ -331,7 +337,7 @@ bool generateRad(const RadcRun& run, RadcState& st, MainEvent& main, Event& vert
             // FORTRAN-BUG(D-048 F2): original Fortran radc.f:288-289:
             // `else if (doing_pion .or. doing_kaon .or. doing_rho .or. doing_semi) then` has no doing_delta, so for
             // doing_delta Egamma_min(1)/Egamma_max(1) are never assigned (0), basicrad returns weight 0 (radc.f:61) and
-            // EVERY try with ntail = 1 fails (about 44 % of the tries at the P11.F1 kinematics); corrected because
+            // EVERY try with ntail = 1 fails (about 44 % of the tries at the Delta validation kinematics); corrected because
             // doing_delta generates the electron energy in the pion sumEgen window (init.f:455-463, the "generated
             // ELECTRON energy limits" branch, the same as pion production), so the pion limit applies. fortran_compat
             // keeps the Fortran.
@@ -454,7 +460,7 @@ bool generateRad(const RadcRun& run, RadcState& st, MainEvent& main, Event& vert
     orig.e.P = orig.e.E;
     orig.e.delta = (orig.e.P - run.spec_e_P) / run.spec_e_P * 100.;
     orig.p.E = vertex.p.E - st.Egamma_used[3];
-    // COMMON /gnrl/ Mh, Mh2: per try for doing_rho (the Breit-Wigner rho mass of generate_rho; task P13.2)
+    // COMMON /gnrl/ Mh, Mh2: per try for doing_rho (the Breit-Wigner rho mass of generate_rho)
     const double Mh = main.gnrl_per_event ? main.gnrl.Mh : run.Mh;
     const double Mh2 = main.gnrl_per_event ? main.gnrl.Mh2 : run.Mh2;
     if (orig.p.E <= Mh) return false;

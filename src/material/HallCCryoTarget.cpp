@@ -1,4 +1,10 @@
 // src/material/HallCCryoTarget.cpp — see include/simc/material/HallCCryoTarget.h.
+// The "hallc_cryo" ITarget plug-in, the Fortran target model (target.f, init.f:target_init): the Hall C cryogenic
+// or solid target with its cell walls, the scattering-chamber and spectrometer windows and the air gaps. It gives the
+// vertex position, the energy loss, the Coulomb correction and the multiple scattering of the beam and of both
+// outgoing particles (trip_thru_target), and, for the set-up (ITargetLossProvider), target_init and the extreme
+// losses that widen the generation limits (extreme_trip_thru_target). The material physics comes from the
+// IMaterialModel (SimcMaterial by default).
 #include "simc/material/HallCCryoTarget.h"
 
 #include <algorithm>
@@ -180,7 +186,7 @@ void HallCCryoTarget::trip(int narm, double zpos, double energy, double theta, d
         throw std::invalid_argument("hallc_cryo trip_thru_target: " + std::string(narm == 2 ? "electron" : "hadron") +
                                     "_arm = " + std::to_string(arm) + " is not a spectrometer");
     }
-    // FORTRAN-DIFF-CANDIDATE(D-012 F4, P14.3): no branch for the calorimeter arms 7/8 (target.f:73-102/189-222): s_air,
+    // FORTRAN-DIFF-CANDIDATE(D-012 F4): no branch for the calorimeter arms 7/8 (target.f:73-102/189-222): s_air,
     // s_kevlar, s_mylar and forward_path keep the previous narm 2/3 call's values (static locals); s_Al = 0 (l.20).
     // Kept in both modes (the calorimeter windows need the NPS geometry). Question for the user/expert.
     s_air = win_air_;
@@ -536,7 +542,7 @@ void HallCCryoTarget::targetInit(bool using_Eloss, bool using_Coulomb, double th
     }
 }
 
-// ---- ITargetLossProvider: the set-up's view (task P7.4; was setup/HallCTargetLosses, P2.2) ------------------------
+// ---- ITargetLossProvider: the set-up's view (target_init and the extreme losses on the set-up's TargetInfo) ---------
 namespace {
 void splitLines(const std::string& text, std::vector<std::string>& out) {
     std::istringstream is(text);
@@ -556,7 +562,7 @@ void HallCCryoTarget::targetInit(const TargetInitArgs& a, simc::TargetInfo& t, s
     std::ostringstream log;
     setArms(a.electron_arm, a.hadron_arm);
     setLog(&log);
-    targ_ = t;   // the set-up target description (same type since P7.4)
+    targ_ = t;   // the set-up target description
     targetInit(a.using_Eloss, a.using_Coulomb, a.the_cent, a.thp_cent, a.Pp_cent, a.Mh2, a.Ebeam, a.Pe_cent);
     t.L1 = targ_.L1;
     t.L2 = targ_.L2;
@@ -572,12 +578,12 @@ void HallCCryoTarget::targetInit(const TargetInitArgs& a, simc::TargetInfo& t, s
     splitLines(log.str(), messages);
 }
 
-// Fortran: target.f:extreme_trip_thru_target (+ extreme_target_musc), called at init.f:245. Silent (as before P7.4).
+// Fortran: target.f:extreme_trip_thru_target (+ extreme_target_musc), called at init.f:245. Silent (prints nothing).
 void HallCCryoTarget::extremeLosses(const ExtremeTripArgs& x, simc::TargetInfo& t) {
     std::ostream* const saved = log_;
     setArms(x.electron_arm, x.hadron_arm);
     setLog(nullptr);
-    targ_ = t;   // the set-up target description (same type since P7.4)
+    targ_ = t;   // the set-up target description
     extremeTripThruTarget(x.Ebeam, Limits{x.the.min, x.the.max}, Limits{x.thp.min, x.thp.max},
                           Limits{x.pe.min, x.pe.max}, Limits{x.pp.min, x.pp.max}, Limits{x.z.min, x.z.max}, x.m,
                           x.fortran_compat);
