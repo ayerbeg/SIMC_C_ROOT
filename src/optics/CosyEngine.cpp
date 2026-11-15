@@ -1,4 +1,9 @@
 // src/optics/CosyEngine.cpp — see include/simc/optics/CosyEngine.h.
+// The COSY-map optics engine shared by every magnetic spectrometer (HMS, SOS, HRS, SHMS): it reads the forward maps
+// (transport from one aperture plane to the next, transp.f) and the reconstruction maps (focal plane -> target,
+// mc_*_recon.f), applies them as polynomials in (x, x', y, y', delta), drifts tracks between planes (project.f),
+// rotates them for the tilted apertures (rotate_haxis/vaxis.f), and handles decay in flight during the transport.
+// Used by the spectrometer kernels (src/spectrometers/*/Mc*.cpp) and the forward chains (ForwardChains.cpp).
 #include "simc/optics/CosyEngine.h"
 
 #include <algorithm>
@@ -31,8 +36,8 @@ double powi(double x, int m) {
 
 namespace {
 
-// P15.4 (performance): the powers x**k (k = 0..max_expon) of the five map variables, each one computed ONCE per call with
-// the same powi as before (k = 0 gives 1, as powi(x, 0)), then looked up by every term: bitwise the same products as
+// Performance: the powers x**k (k = 0..max_expon) of the five map variables, each one computed ONCE per call with
+// the same powi as a per-term call (k = 0 gives 1, as powi(x, 0)), then looked up by every term: bitwise the same products as
 // calling powi in every term. Exponents outside 0..kMaxPow (never in the COSY files: one digit) fall back to powi.
 constexpr int kMaxPow = 9;
 struct PowerTable {
@@ -47,7 +52,7 @@ struct PowerTable {
     double operator()(const double* x, int j, int k) const { return (k >= 0 && k <= m[j]) ? p[j][k] : powi(x[j], k); }
 };
 
-// Fortran: loren.f:loren (l.1-26). Single implementation in setup/KinematicsUtils (P2.2).
+// Fortran: loren.f:loren (l.1-26). Single implementation in setup/KinematicsUtils.
 void loren(double gam, double bx, double by, double bz, double e, double x, double y, double z, double& ef1,
            double& pxf, double& pyf, double& pzf, double& pf1) {
     const LorenResult r = Loren(gam, bx, by, bz, e, x, y, z);
@@ -372,7 +377,7 @@ void project(Track& t, double& x_new, double& y_new, double z_drift, double& pat
         // `tmpdrift = z_drift - z_decay/sqrt(1+dxdzs**2+dydzs**2)` evaluated with the slopes AFTER the decay; corrected
         // because the z already covered is z_decay/sqrt(1+s**2) with the PARENT slopes s (project.f:68-69): with the
         // daughter slopes the track ends at z_drift + z_decay*(1/sqrt(1+s_old**2) - 1/sqrt(1+s_new**2)) instead of
-        // z_drift (up to 0.28 cm in the P6.F2 captures, 18.9 cm in extreme rows). fortran_compat keeps the Fortran.
+        // z_drift (up to 0.28 cm in the Fortran reference captures, 18.9 cm in extreme rows). fortran_compat keeps the Fortran.
         const double tmpdrift = d.fortran_compat
                                     ? z_drift - z_decay / std::sqrt(1 + t.dxdzs * t.dxdzs + t.dydzs * t.dydzs)
                                     : z_drift - z_decay / norm_parent;
@@ -444,7 +449,7 @@ std::string CosyEngine::defaultReconFile(int spectr) {
     if (spectr == 4) return "hrsl/hrs_recon_cosy.dat";   // mc_hrsl_recon.f:74
     if (spectr == 5) return "shms/shms_recon.dat";
     // (mc_shms_recon.f also STOPs for the retired SHMS LSA tune; the input rejects that arm code, D-032.)
-    throw FortranStop("recon for spectrometer " + std::to_string(spectr) + " not ported");
+    throw FortranStop("no reconstruction matrix for spectrometer " + std::to_string(spectr) + " (1-5 only)");
 }
 
 int CosyEngine::initForward(int spectr, const std::string& simcDir) {
@@ -663,7 +668,7 @@ double CosyEngine::transp(int spectr, int cls, Track& t, double zd, double& path
     // Pack local copy of input coordinates.
     const double ray[5] = {t.xs, t.dxdzs * 1000.e0, t.ys, t.dydzs * 1000.e0, t.dpps};
     double sum[5] = {0., 0., 0., 0., 0.};
-    const PowerTable pw(ray, c.max_expon);   // (P15.4: powi(ray(j), expon) looked up, same values)
+    const PowerTable pw(ray, c.max_expon);   // (powi(ray(j), expon) looked up, same values)
     for (const ForwardTerm& e : c.terms) {
         double term = 1.0e0;
         for (int j = 0; j < 5; ++j) {
@@ -737,7 +742,7 @@ void CosyEngine::recon(int spectr, const Track& t, double fry, double& delta_p, 
     }
     const auto mx = recMaxExpon_.find(spectr);
     const PowerTable pw(hut, mx != recMaxExpon_.end() ? mx->second : std::array<int, 5>{kMaxPow, kMaxPow, kMaxPow, kMaxPow, kMaxPow});
-    for (const ReconTerm& e : terms) {   // (P15.4: powi(hut(j), expon) looked up, same values)
+    for (const ReconTerm& e : terms) {   // (powi(hut(j), expon) looked up, same values)
         const double term = pw(hut, 0, e.expon[0]) * pw(hut, 1, e.expon[1]) * pw(hut, 2, e.expon[2]) *
                             pw(hut, 3, e.expon[3]) * pw(hut, 4, e.expon[4]);
         sum[0] = sum[0] + term * e.coeff[0];

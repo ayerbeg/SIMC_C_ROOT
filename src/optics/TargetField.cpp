@@ -1,4 +1,7 @@
 // src/optics/TargetField.cpp — see include/simc/optics/TargetField.h.
+// The polarized-target magnetic field (using_tgt_field): the field map (or the uniform test field), Runge-Kutta
+// tracking of a charged particle through it, and the iterative reconstruction of the target quantities with the
+// field (trg_track.f). Called by MonteCarlo before and after the spectrometer transport.
 // Fortran: simc_gfortran/trg_track.f (compiled -fdefault-real-8 -fno-automatic): every literal is REAL*8 (T18), the
 // locals are SAVEd. Operation order kept for bitwise results.
 #include "simc/optics/TargetField.h"

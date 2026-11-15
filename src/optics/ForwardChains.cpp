@@ -1,4 +1,7 @@
 // src/optics/ForwardChains.cpp — see include/simc/optics/ForwardChains.h.
+// Aperture-free forward transport target -> focal plane for the HMS and SHMS (the drift/map/rotation sequence of
+// mc_hms.f and mc_shms.f with every aperture test removed), and pure COSY chains. Used by the L1 tests and the optics
+// diagnostics to check the maps independently of the acceptance; a callback sees the track at every plane.
 #include "simc/optics/ForwardChains.h"
 
 namespace simc {

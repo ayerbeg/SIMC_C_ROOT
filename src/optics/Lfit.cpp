@@ -1,4 +1,6 @@
-// src/optics/Lfit.cpp — see include/simc/optics/Lfit.h (moved from src/spectrometers/hms in P6.3).
+// src/optics/Lfit.cpp — see include/simc/optics/Lfit.h.
+// CERNLIB LFIT (unweighted straight-line least-squares fit), used by the detector huts to fit the track through the
+// wire-chamber planes.
 #include "simc/optics/Lfit.h"
 
 namespace simc {
