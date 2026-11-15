@@ -3,9 +3,28 @@
 **SIMC++ is self-contained.** You do not need the Fortran SIMC, CERNLIB or any Fortran compiler to build, install or run it.
 The model tables, optics maps and spectral functions it needs are part of SIMC++ (`data/`). The Fortran code and its
 reference runs are used only by optional validation tests, which are skipped when those files are absent
-([2.5](#25-running-the-tests)).
+([2.6](#26-running-the-tests)).
 
-## 2.1 Requirements
+## 2.1 Directory layout used in this manual
+
+All commands of this manual use these locations (adapt them to your machine):
+
+| variable | example | content |
+|---|---|---|
+| `$SIMCPP_SRC` | `~/src/simcpp` | the git checkout of SIMC++ (the source tree) |
+| `$SIMCPP_BUILD` | `~/build/simcpp` | the CMake build directory |
+| `$SIMCPP_PREFIX` | `~/opt/simcpp` | the installation prefix (`bin/`, `lib/`, `include/`, `share/simc/data`) |
+| `$SIMC_FORTRAN` | `~/src/simc_gfortran` | optional: the legacy Fortran SIMC, only for the validation tests |
+| `$SIMC_REFERENCE` | `~/simc_reference` | optional: reference runs and tables of the legacy program, only for validation |
+| `$ROOTSYS` | `~/opt/root` | the ROOT 6.40 installation |
+
+```bash
+export SIMCPP_SRC=~/src/simcpp SIMCPP_BUILD=~/build/simcpp SIMCPP_PREFIX=~/opt/simcpp
+export ROOTSYS=~/opt/root LD_LIBRARY_PATH=$ROOTSYS/lib
+export PATH=$SIMCPP_PREFIX/bin:$ROOTSYS/bin:$PATH
+```
+
+## 2.2 Requirements
 
 | item | version | note |
 |---|---|---|
@@ -16,24 +35,16 @@ reference runs are used only by optional validation tests, which are skipped whe
 | Python 3 | any recent | only for the `docs` tests; they are not registered without Python |
 
 Runtime library path: `LD_LIBRARY_PATH` must contain the `lib` directory of the ROOT that SIMC++ was built with, and no
-directory with another ROOT or another `libtbb.so` (on the development machine `/usr/local/lib` holds an older ROOT and TBB
-that break ROOT 6.40):
+directory with another ROOT or another `libtbb.so` (an older ROOT in `/usr/local/lib`, for example, breaks ROOT 6.40).
+
+## 2.3 Building
 
 ```bash
-export ROOTSYS=/home/ayerbe/Builds/ROOT6_install        # your ROOT 6.40 installation
-export LD_LIBRARY_PATH=$ROOTSYS/lib
+cmake -S $SIMCPP_SRC -B $SIMCPP_BUILD -DCMAKE_PREFIX_PATH=$ROOTSYS -DCMAKE_BUILD_TYPE=Release
+cmake --build $SIMCPP_BUILD -j8
 ```
 
-## 2.2 Building
-
-From the source tree (`SIMC++_Claude/`):
-
-```bash
-cmake -S . -B build -DCMAKE_PREFIX_PATH=$ROOTSYS -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j8
-```
-
-The programs are in `build/bin/`:
+The programs are in `$SIMCPP_BUILD/bin/`:
 
 | program | purpose |
 |---|---|
@@ -48,31 +59,31 @@ CMake options:
 |---|---|---|
 | `CMAKE_BUILD_TYPE` | (none) | use `Release` (`-O3`). Do **not** add `-march=native` or `-ffast-math`: they change the floating-point results and the exact-reproduction tests then fail |
 | `SIMC_BUILD_EXAMPLES` | `ON` | build the example plug-ins (`ideal_box`) into `simc++` |
-| `SIMC_REFERENCE_DIR`, `SIMC_FORTRAN_DIR`, `SIMC_BASELINE_DIR` | paths on the development machine | **validation tests only**: the Fortran reference runs, the Fortran source tree and the regression baselines. Leave them alone on another machine; tests whose data are missing are skipped |
+| `SIMC_REFERENCE_DIR`, `SIMC_FORTRAN_DIR`, `SIMC_BASELINE_DIR` | (see `CMakeLists.txt`) | **validation tests only**: `$SIMC_REFERENCE`, `$SIMC_FORTRAN` and the regression baselines. Not needed otherwise; tests whose data are missing are skipped ([2.6](#26-running-the-tests)) |
 
 The statistical comparison tool `simc_compare` is a separate, optional CMake project in `validation/` (see
 `docs/translation/user_comparing_with_fortran.md`).
 
-## 2.3 Installing
+## 2.4 Installing
 
 ```bash
-cmake --install build --prefix $PREFIX
+cmake --install $SIMCPP_BUILD --prefix $SIMCPP_PREFIX
 ```
 
 This installs:
 
-* `$PREFIX/bin/` with the four programs;
-* `$PREFIX/share/simc/data/` with the data files (optics maps, spectral functions, pion/kaon/SIDIS model tables, the
+* `$SIMCPP_PREFIX/bin/` with the four programs;
+* `$SIMCPP_PREFIX/share/simc/data/` with the data files (optics maps, spectral functions, pion/kaon/SIDIS model tables, the
   target-field map, example configurations; each directory has an `MD5SUMS` file);
-* `$PREFIX/share/simc/docs/` (this manual and its example inputs in `docs/manual/user/examples/`),
-  `$PREFIX/share/simc/examples/` and `$PREFIX/share/simc/README.md`;
+* `$SIMCPP_PREFIX/share/simc/docs/` (this manual and its example inputs in `docs/manual/user/examples/`),
+  `$SIMCPP_PREFIX/share/simc/examples/` and `$SIMCPP_PREFIX/share/simc/README.md`;
 * the headers, libraries and the CMake package `SIMC` (`find_package(SIMC)`), needed only to write your own plug-ins
   (developer manual).
 
-After `export PATH=$PREFIX/bin:$PATH` the commands of this manual can be typed as `simc++ ...`. In a build tree use
-`build/bin/simc++`; both find their data automatically ([2.4](#24-where-the-data-files-are-found)).
+With `$SIMCPP_PREFIX/bin` on the `PATH` the commands of this manual can be typed as `simc++ ...`. Without installing, use
+`$SIMCPP_BUILD/bin/simc++`; both find their data automatically ([2.5](#25-where-the-data-files-are-found)).
 
-## 2.4 Where the data files are found
+## 2.5 Where the data files are found
 
 `simc++` reads its tables from one data directory, the first of these that applies (`include/simc/core/DataPath.h`):
 
@@ -86,7 +97,7 @@ After `export PATH=$PREFIX/bin:$PATH` the commands of this manual can be typed a
 
 ```
 $ simc++ --print-data-dir
-/home/ayerbe/NewDisk/SIMC++_Project/.tmp_P15.D2/install/share/simc/data
+~/opt/simcpp/share/simc/data
 $ SIMC_DATA_DIR=/data/simc simc++ --print-data-dir
 /data/simc
 ```
@@ -100,10 +111,10 @@ Two more ways to choose data files:
 
 A missing data file stops the run at start-up, not in the middle of a run.
 
-## 2.5 Running the tests
+## 2.6 Running the tests
 
 ```bash
-cd build
+cd $SIMCPP_BUILD
 ctest -L docs                  # the user-manual checks (seconds)
 ctest -L unit -j8              # the unit tests (no external data needed)
 ctest -j8                      # everything
@@ -129,5 +140,5 @@ there are the ones that do not need the data: component self-tests, the checksum
 tests and the self-contained `fortran_diff` checks.
 
 The project script `tools/check_all.sh [--commit REV] [--label NAME]` makes a clean build of SIMC++ and of the comparison
-tool, runs both test suites and logs the result under `SIMC++_Project/simc_runs/` (about 75 minutes, most of it in the
+tool, runs both test suites and logs the result in a run folder (about 75 minutes, most of it in the
 `slow` tests).

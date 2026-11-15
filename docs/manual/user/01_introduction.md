@@ -55,7 +55,7 @@ used.
 Every physics routine was checked number for number against the original code, and complete runs of all the example
 inputs distributed with SIMC reproduce the original output files exactly in the legacy-compatible mode. Default-mode runs
 agree statistically, except where a known bug of the original is corrected. The test suite keeps this true for every
-change ([2.5](02_installation.md#25-running-the-tests)); the evidence is in `docs/translation/`.
+change ([2.6](02_installation.md#26-running-the-tests)); the evidence is in `docs/translation/`.
 
 ## 1.5 Limitations
 

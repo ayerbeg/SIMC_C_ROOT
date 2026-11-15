@@ -43,11 +43,11 @@ What each correction changes in the results, and which run types are affected, i
 
 Run the same `.inp` with `ranlux`, `--fortran-compat` and one thread. The `.hist` (apart from its two time lines), the
 `.geni`, the `.gen` and every entry of the tree are then identical to those of the legacy program. Example with a stored
-legacy run (`$SIMC_REF/runs/...` are the project's reference runs; 1000 events, with an `extra_dbase_file`):
+legacy run (`$SIMC_REFERENCE/runs/...` are the project's reference runs; 1000 events, with an `extra_dbase_file`):
 
 ```bash
 echo '{"pipeline": {"rng": {"type": "ranlux"}}}' > ranlux.json
-R=$SIMC_REF/runs/eep_h_test_pctnames            # the legacy run: .inp, extra file, .hist, .geni, .gen, .root
+R=$SIMC_REFERENCE/runs/eep_h_test_pctnames            # the legacy run: .inp, extra file, .hist, .geni, .gen, .root
 simc++ $R/eep_h_test_pctnames.inp -o exact --fortran-compat --pipeline ranlux.json > exact.log
 diff <(sed 2,3d exact/eep_h_test_pctnames.hist) <(sed 2,3d $R/eep_h_test_pctnames.hist) && echo ".hist: identical apart from the time lines"
 cmp exact/eep_h_test_pctnames.geni $R/eep_h_test_pctnames.geni && cmp exact/eep_h_test_pctnames.gen $R/eep_h_test_pctnames.gen && echo ".geni, .gen: identical"

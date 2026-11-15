@@ -22,6 +22,5 @@ Reference documents: `docs/INP_JSON_MAPPING.md` (the `.inp` → JSON table), `do
 `docs/DRIVER.md`, `docs/PERFORMANCE.md`. Comparison with the legacy Fortran SIMC and the list of differences:
 `docs/translation/`.
 
-Conventions: commands are shown as typed in a shell with `$PREFIX/bin` on the `PATH` (in a build tree use
-`build/bin/simc++`). `$EX` is the directory of the example inputs (`$PREFIX/share/simc/docs/manual/user/examples`).
-`$SIMC_REF` (the project's reference runs of the legacy program) is needed only for the example of chapter 8.4.
+Conventions: commands are shown as typed in a shell with `$SIMCPP_PREFIX/bin` on the `PATH` (directory layout: [2.1](02_installation.md#21-directory-layout-used-in-this-manual)). `$EX` is the directory of the example inputs (`$SIMCPP_PREFIX/share/simc/docs/manual/user/examples`).
+`$SIMC_REFERENCE` (the project's reference runs of the legacy program) is needed only for the example of chapter 8.4.

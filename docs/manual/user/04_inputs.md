@@ -37,7 +37,7 @@ end parm debug
 * **Every real value is stored as a 32-bit float first.** For example `ctau = 780.4` becomes 780.4000244140625. This keeps
   the inputs identical to those of the legacy program. `inp2json` writes the rounded values.
 
-The example inputs of this manual are in [examples/](examples/) (installed in `$PREFIX/share/simc/docs/manual/user/examples/`).
+The example inputs of this manual are in [examples/](examples/) (installed in `$SIMCPP_PREFIX/share/simc/docs/manual/user/examples/`).
 
 ### 4.1.2 `extra_dbase_file`
 
@@ -117,7 +117,7 @@ Other `inp2json` options: `--infiles-dir DIR` (where to find `extra_dbase_file`)
 `--table[=FILE]` (also print the converted values), `--mapping` (print the `.inp` → JSON table of all variables), `--strict`,
 `-q`.
 
-Example configurations come with SIMC++ in `data/config/` (installed in `$PREFIX/share/simc/data/config/`):
+Example configurations come with SIMC++ in `data/config/` (installed in `$SIMCPP_PREFIX/share/simc/data/config/`):
 `h_elastic_norad.json`, `h_elastic_rad.json` and `acceptance_phsp_hms_shms.json`, with the three sections written out.
 
 ### 4.2.2 `run`
@@ -163,7 +163,7 @@ An example: transport the hadron through the ideal box acceptance of the example
 spectrometer. `--pipeline FILE` merges a pipeline file over the input's own pipeline:
 
 ```
-$ simc++ run.json -o out_ideal --ngen 200 --pipeline $PREFIX/share/simc/examples/ideal_box/hadron_arm.json --print-pipeline --quiet
+$ simc++ run.json -o out_ideal --ngen 200 --pipeline $SIMCPP_PREFIX/share/simc/examples/ideal_box/hadron_arm.json --print-pipeline --quiet
   ...
   "spectrometers": {
     "electron": { "type": "" },
@@ -380,7 +380,7 @@ These have no `.inp` counterpart:
 | output name and directory | `run.name`, `run.output_dir` | `--run-name NAME`, `-o DIR` | input stem, `.` |
 | plug-ins, random-number generator | `pipeline` | `--pipeline FILE` | from the flags ([4.3](#43-the-pipeline-section-choosing-plug-ins)) |
 | event-loop threads | `pipeline.threads` | `--threads N` | 1 |
-| data directory | — | `--data-dir DIR`, env `SIMC_DATA_DIR` | [2.4](02_installation.md#24-where-the-data-files-are-found) |
+| data directory | — | `--data-dir DIR`, env `SIMC_DATA_DIR` | [2.5](02_installation.md#25-where-the-data-files-are-found) |
 | directory of `extra_dbase_file` | — | `--infiles-dir DIR` | the main file's directory |
 | number of events, seed | `parameters.ngen`, `parameters.random_seed` | `--ngen N`, `--seed N` (override the input; the `.hist` prints the overridden values) | from the input |
 | quiet stages | `"verbose": false` per stage | `--quiet` | verbose |

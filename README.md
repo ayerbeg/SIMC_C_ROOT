@@ -26,10 +26,11 @@ their yields are not physical rates.
 ## In short
 
 ```bash
-export ROOTSYS=/path/to/root-6.40 LD_LIBRARY_PATH=$ROOTSYS/lib          # only ROOT's lib (not an old ROOT/libtbb)
-cmake -S . -B build -DCMAKE_PREFIX_PATH=$ROOTSYS -DCMAKE_BUILD_TYPE=Release && cmake --build build -j8
-build/bin/simc++ docs/manual/user/examples/h_elastic_rad.inp -o out --ngen 5000
-(cd build && ctest -LE slow -j8)
+export SIMCPP_SRC=~/src/simcpp SIMCPP_BUILD=~/build/simcpp ROOTSYS=~/opt/root LD_LIBRARY_PATH=~/opt/root/lib
+cmake -S $SIMCPP_SRC -B $SIMCPP_BUILD -DCMAKE_PREFIX_PATH=$ROOTSYS -DCMAKE_BUILD_TYPE=Release
+cmake --build $SIMCPP_BUILD -j8
+$SIMCPP_BUILD/bin/simc++ $SIMCPP_SRC/docs/manual/user/examples/h_elastic_rad.inp -o out --ngen 5000
+(cd $SIMCPP_BUILD && ctest -L docs)
 ```
 
 The Fortran SIMC is not needed. Requirements: a C++20 compiler, CMake ≥ 3.15, ROOT ≥ 6.40 built with C++20, nlohmann/json ≥ 3.9 (fetched if absent).

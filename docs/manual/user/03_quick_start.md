@@ -1,15 +1,14 @@
 # 3. Quick start
 
 The commands below were run as shown on the commit of this manual. The full transcript is in
-[VERIFIED_EXAMPLES.md](VERIFIED_EXAMPLES.md). They assume:
+[VERIFIED_EXAMPLES.md](VERIFIED_EXAMPLES.md). They assume the environment of
+[2.1](02_installation.md#21-directory-layout-used-in-this-manual) and:
 
 ```bash
-export ROOTSYS=/home/ayerbe/Builds/ROOT6_install  LD_LIBRARY_PATH=$ROOTSYS/lib
-export PATH=$PREFIX/bin:$ROOTSYS/bin:$PATH          # $PREFIX = the installation prefix (chapter 2)
-export EX=$PREFIX/share/simc/docs/manual/user/examples    # the example inputs of this manual
+export EX=$SIMCPP_PREFIX/share/simc/docs/manual/user/examples    # the example inputs of this manual
 ```
 
-In a build tree, replace `simc++` with `build/bin/simc++`.
+Without installing, use `$SIMCPP_BUILD/bin/simc++` and `EX=$SIMCPP_SRC/docs/manual/user/examples`.
 
 ## 3.1 Run an input file
 
@@ -115,8 +114,8 @@ out/h_elastic_rad.root vs out_json/run.root: IDENTICAL
 Edit `run.json` to change parameters, add a `pipeline` section to change plug-ins, or add `"run": {"fortran_compat":
 true}` for the legacy-compatible mode ([chapter 4](04_inputs.md)).
 
-The same run is also shipped as a ready JSON configuration, `$PREFIX/share/simc/data/config/h_elastic_rad.json`, with the
-plug-in choice written out; `simc++ $PREFIX/share/simc/data/config/h_elastic_rad.json -o out_cfg --ngen 5000` runs it.
+The same run is also shipped as a ready JSON configuration, `$SIMCPP_PREFIX/share/simc/data/config/h_elastic_rad.json`, with the
+plug-in choice written out; `simc++ $SIMCPP_PREFIX/share/simc/data/config/h_elastic_rad.json -o out_cfg --ngen 5000` runs it.
 
 ## 3.5 Next steps
 

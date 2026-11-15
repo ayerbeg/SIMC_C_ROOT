@@ -43,7 +43,7 @@ A(e,e'p) with Benhar spectral functions `transparency`. Delta runs have no cross
 
 `simc++ --print-data-dir` shows where the tables are looked for. Set `SIMC_DATA_DIR` to a directory with the layout of
 `data/` (`matrices/`, `pion/`, `kaon/`, `sidis/`, `spectral/`, `field/`), or use `--data-dir` for the spectral and field
-files ([2.4](02_installation.md#24-where-the-data-files-are-found)). An installed `simc++` uses `$PREFIX/share/simc/data`.
+files ([2.5](02_installation.md#25-where-the-data-files-are-found)). An installed `simc++` uses `$SIMCPP_PREFIX/share/simc/data`.
 
 ## `error while loading shared libraries` or crashes in ROOT at start-up
 

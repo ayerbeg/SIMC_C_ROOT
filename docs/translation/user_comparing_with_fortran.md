@@ -9,10 +9,11 @@ Two kinds of comparison are possible:
 
 ## 1. Building `simc_compare`
 
-`simc_compare` is a separate CMake project in `validation/` ([2.2](../manual/user/02_installation.md#22-building)):
+`simc_compare` is a separate CMake project in `validation/` (user manual [2.3](../manual/user/02_installation.md#23-building)):
 
 ```bash
-cmake -S validation -B build-val -DCMAKE_PREFIX_PATH=$ROOTSYS -DCMAKE_BUILD_TYPE=Release && cmake --build build-val -j8
+cmake -S $SIMCPP_SRC/validation -B $SIMCPP_BUILD-validation -DCMAKE_PREFIX_PATH=$ROOTSYS -DCMAKE_BUILD_TYPE=Release
+cmake --build $SIMCPP_BUILD-validation -j8
 ```
 
 ## 2. Running it
@@ -29,8 +30,8 @@ seed 4242, 4 threads) against the Fortran reference run (seed 12345):
 
 ```bash
 simc++ $SIMC_FORTRAN/infiles/eep_h_elastic_rad_A.inp -o l2 --seed 4242 --threads 4 > l2.log
-build-val/simc_compare --a $SIMC_REF/runs/eep_h_elastic_rad_A --b l2/eep_h_elastic_rad_A.summary.json --out cmp \
-                       --config validation/config/compare_default.json
+$SIMCPP_BUILD-validation/simc_compare --a $SIMC_REFERENCE/runs/eep_h_elastic_rad_A --b l2/eep_h_elastic_rad_A.summary.json --out cmp \
+                       --config $SIMCPP_SRC/validation/config/compare_default.json
 ```
 
 It writes `cmp/summary.txt`, `cmp/summary.json`, `cmp/compare.pdf` (one page per variable: weighted and unweighted
