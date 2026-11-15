@@ -59,7 +59,7 @@ CMake options:
 |---|---|---|
 | `CMAKE_BUILD_TYPE` | (none) | use `Release` (`-O3`). Do **not** add `-march=native` or `-ffast-math`: they change the floating-point results and the exact-reproduction tests then fail |
 | `SIMC_BUILD_EXAMPLES` | `ON` | build the example plug-ins (`ideal_box`) into `simc++` |
-| `SIMC_REFERENCE_DIR`, `SIMC_FORTRAN_DIR`, `SIMC_BASELINE_DIR` | (see `CMakeLists.txt`) | **validation tests only**: `$SIMC_REFERENCE`, `$SIMC_FORTRAN` and the regression baselines. Not needed otherwise; tests whose data are missing are skipped ([2.6](#26-running-the-tests)) |
+| `SIMC_REFERENCE_DIR`, `SIMC_FORTRAN_DIR`, `SIMC_BASELINE_DIR` | the environment variables `SIMC_REFERENCE`, `SIMC_FORTRAN`, `SIMC_BASELINES`, else empty | **validation tests only**: the legacy reference data, the legacy source tree and the regression baselines. Not needed otherwise; when empty, the tests that need them are skipped ([2.6](#26-running-the-tests)) |
 
 The statistical comparison tool `simc_compare` is a separate, optional CMake project in `validation/` (see
 `docs/translation/user_comparing_with_fortran.md`).
@@ -131,14 +131,11 @@ ctest -j8                      # everything
 | `regression`, `threads` | outputs of standard runs unchanged from the stored baselines; `--threads` reproducibility | yes |
 | `regression_shipped`, `slow` | complete runs of the example inputs, identical to the original program's outputs (long) | yes |
 
-Tests whose reference data, Fortran tree or baselines are missing report "Skipped". On a machine without them (checked
-by configuring with non-existent `SIMC_REFERENCE_DIR`, `SIMC_FORTRAN_DIR` and `SIMC_BASELINE_DIR`): the build is
-unchanged, 390 of the 437 tests are skipped, 41 pass, and 6 tests that still read those files **fail instead of being
-skipped**: `inp2json_cli`, `l1_saghai_tables`, `threads_reproducibility_eep`, `threads_reproducibility_poltar`,
-`threads_one_is_sequential`, `threads_refusal`. These failures say nothing about your build. The 41 tests that pass
-there are the ones that do not need the data: component self-tests, the checksums of the shipped data files, the `docs`
-tests and the self-contained `fortran_diff` checks.
+Tests whose reference data, legacy source tree or baselines are missing report "Skipped", never "Failed": a build
+configured without them runs the remaining tests (component self-tests, checksums of the shipped data files, the `docs`
+tests) and skips the rest. To run the validation tests, export `SIMC_REFERENCE`, `SIMC_FORTRAN` and `SIMC_BASELINES` before
+configuring (or pass the `-D` options of [2.3](#23-building)).
 
 The project script `tools/check_all.sh [--commit REV] [--label NAME]` makes a clean build of SIMC++ and of the comparison
-tool, runs both test suites and logs the result in a run folder (about 75 minutes, most of it in the
+tool (with `ROOTSYS`, `SIMC_REFERENCE`, `SIMC_FORTRAN`, `SIMC_BASELINES` from the environment), runs both test suites and logs the result in a run folder (about 75 minutes, most of it in the
 `slow` tests).
