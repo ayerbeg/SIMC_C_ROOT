@@ -141,6 +141,7 @@ add_subdirectory(tests/l1)
 add_subdirectory(tests/fortran_diff)   # P7.5: documented differences with the Fortran (D-031/D-032)
 unset(CMAKE_TEST_LAUNCHER)
 add_subdirectory(tests/regression)     # C++ baselines: output_identity.sh prints the baseline toolchain itself
+add_subdirectory(tests/user_manual)    # P15.D2: user-manual checks (parameter reference complete, Markdown links), label "docs"
 
 # ============================================================================
 # Installation
