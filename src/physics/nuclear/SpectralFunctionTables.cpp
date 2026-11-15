@@ -77,6 +77,8 @@ bool SfTable::load(const std::string& path, bool protonflag, std::vector<std::st
         if (err) *err = "sf_lookup_init: numPm/numEm out of range (sf_lookup.inc nPmmax=100, nEmmax=200) in " + path;
         return false;
     }
+    // --- the grid: numPm x numEm nodes, each with Pm, Em, S(proton), S(neutron) and the bin widths; Pm and Em must
+    //     repeat along rows/columns (the Fortran only warns when they do not). 1-based arrays as sf_lookup.inc.
     file_ = path;
     numPm_ = nP;
     numEm_ = nE;
@@ -117,7 +119,7 @@ bool SfTable::load(const std::string& path, bool protonflag, std::vector<std::st
             }
         }
     }
-    // l.63-78
+    // --- normalise the table to unit total probability (l.63-78)
     sftotnorm_ = 0.0;
     for (int iPm = 1; iPm <= numPm_; ++iPm) {
         sfnorm_[iPm] = 0.0;

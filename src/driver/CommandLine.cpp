@@ -82,6 +82,7 @@ int CommandLineMain(int argc, char** argv) {
     std::string input, outdir = ".", pipelineFile, runName, dataDir, infilesDir;
     bool quiet = false, printPipeline = false, compatFlag = false;
     driver::RunOptions opt;
+    // --- 1. the options
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
         auto next = [&](std::string& v) {
@@ -117,6 +118,7 @@ int CommandLineMain(int argc, char** argv) {
     }
     if (input.empty()) { usage(); return 1; }
 
+    // --- 2. the input: a SIMC++ JSON (parameters + optional pipeline/run sections) or a Fortran .inp
     SimcParameters params;
 
     std::vector<std::string> ignoredNames;   // InpReader::notRegistered()
@@ -162,12 +164,14 @@ int CommandLineMain(int argc, char** argv) {
                          "simc_gfortran/infiles/convert_inputfile.sh.\n";
         }
     }
+    // --- 3. --pipeline overrides, merged key by key over the input's pipeline section
     if (!pipelineFile.empty()) {
         Json j;
         if (!readJson(pipelineFile, j)) { std::cerr << "simc++: cannot read " << pipelineFile << "\n"; return 2; }
         const Json& sec = j.contains("pipeline") ? j["pipeline"] : j;
         for (auto it = sec.begin(); it != sec.end(); ++it) pipeline[it.key()] = it.value();
     }
+    // --- 4. run options (the run name defaults to the input file name without extension, as the Fortran)
     opt.run_name = runName.empty() ? stem(input) : runName;
     opt.output_dir = outdir;
     opt.data_dir = dataDir;
@@ -180,6 +184,7 @@ int CommandLineMain(int argc, char** argv) {
         return 2;
     }
 
+    // --- 5. the run
     try {
         std::filesystem::create_directories(outdir);   // like the Fortran outfiles/, but created on demand
         driver::SimcRun run(params, pipeline, opt);

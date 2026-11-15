@@ -96,6 +96,9 @@ std::string FortranCtime(long epoch_seconds) {
 }
 
 // ------------------------------------------------------------------------------------------ summary sections
+// The RunSummary handed to the sinks at the end of the run: the counters and the normalisation (the numbers of the
+// .hist), plus `extra` sections (central event, target, radiation, recon summary, limits, slops, kinematics) that the
+// summary JSON writes as they are, so that simc_compare finds every .hist block in the C++ summary.
 RunSummary MakeRunSummary(const RunSetup& s, const RunReport& r) {
     const RunTotals& t = r.totals;
     const Normalisation& n = r.norm;

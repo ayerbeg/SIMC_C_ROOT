@@ -229,10 +229,11 @@ bool EepReactionBase::completeRecon(Event& recon) {
     const ReactionFlags& f = s.flags;
     double qx, qy, qz, px, py, pz, dummy, new_x_x, new_x_y, new_x_z, new_y_x, new_y_y, new_y_z, p_new_x, p_new_y;
 
+    // --- 1. the beam energy used in the reconstruction: the average vertex energy, without the Coulomb shift
     recon.Ein = s.Ebeam_vertex_ave;                          // l.1087
     recon.Ein = s.Ebeam_vertex_ave - s.targ.Coulomb.ave;     // l.1096 (overwrites)
 
-    // l.1099-1104
+    // --- 2. unit vectors of the reconstructed electron and hadron (l.1099-1104)
     recon.ue.x = std::sin(recon.e.theta) * std::cos(recon.e.phi);
     recon.ue.y = std::sin(recon.e.theta) * std::sin(recon.e.phi);
     recon.ue.z = std::cos(recon.e.theta);
@@ -240,7 +241,7 @@ bool EepReactionBase::completeRecon(Event& recon) {
     recon.up.y = std::sin(recon.p.theta) * std::sin(recon.p.phi);
     recon.up.z = std::cos(recon.p.theta);
 
-    // l.1110-1115
+    // --- 3. the virtual photon: nu, Q2, |q| and its direction (l.1110-1115; electron mass neglected)
     recon.nu = recon.Ein - recon.e.E;
     recon.Q2 = 2 * recon.Ein * recon.e.E * (1 - recon.ue.z);
     recon.q = std::sqrt(recon.Q2 + sq(recon.nu));
@@ -248,7 +249,7 @@ bool EepReactionBase::completeRecon(Event& recon) {
     recon.uq.y = -recon.e.P * recon.ue.y / recon.q;
     recon.uq.z = (recon.Ein - recon.e.P * recon.ue.z) / recon.q;
 
-    // l.1124-1127 (W with the proton mass)
+    // l.1124-1127 (W with the proton mass); W carries the sign of W2 (unphysical W2 < 0 kept visible)
     const double W2 = sq(Mp) + 2. * Mp * recon.nu - recon.Q2;
     recon.W = std::sqrt(std::fabs(W2)) * W2 / std::fabs(W2);
     recon.xbj = recon.Q2 / 2. / Mp / recon.nu;
@@ -264,6 +265,7 @@ bool EepReactionBase::completeRecon(Event& recon) {
     recon.theta_pq =
         std::acos(fminF(1.0, recon.up.x * recon.uq.x + recon.up.y * recon.uq.y + recon.up.z * recon.uq.z));
 
+    // --- 4. phi_pq: the azimuth of the hadron around q, in the frame where y is normal to the scattering plane
     // l.1160-1186
     qx = -recon.uq.y;
     qy = recon.uq.x;
@@ -339,7 +341,7 @@ bool EepReactionBase::completeRecon(Event& recon) {
         recon.theta_tarq = std::acos((qx * targx + qy * targy + qz * targz) / dummy);
     }
 
-    // l.1291-1301
+    // --- 5. missing momentum Pm = p - q and its components along q, out of plane and perpendicular (l.1291-1301)
     recon.Pmx = recon.p.P * recon.up.x - recon.q * recon.uq.x;
     recon.Pmy = recon.p.P * recon.up.y - recon.q * recon.uq.y;
     recon.Pmz = recon.p.P * recon.up.z - recon.q * recon.uq.z;
@@ -350,6 +352,7 @@ bool EepReactionBase::completeRecon(Event& recon) {
     recon.PmOop = (recon.Pmx * oop_x + recon.Pmy * oop_y) / std::sqrt(sq(oop_x) + sq(oop_y));
     recon.PmPer = std::sqrt(fmaxF(0.e0, sq(recon.Pm) - sq(recon.PmPar) - sq(recon.PmOop)));
 
+    // --- 6. missing energy / masses by reaction (meson production: mm, mmA, t for the ntuple) (l.1303-1335)
     // l.1303-1320
     if (f.doing_pion || f.doing_kaon || f.doing_delta || f.doing_rho || f.doing_semi) {
         recon.Em = recon.nu + s.targ.Mtar_struck - recon.p.E;
