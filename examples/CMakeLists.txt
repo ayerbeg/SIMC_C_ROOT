@@ -32,3 +32,16 @@ add_test(NAME package_out_of_tree_plugin
                  ${CMAKE_CURRENT_SOURCE_DIR}/out_of_tree_plugin ${CMAKE_CURRENT_BINARY_DIR}/out_of_tree_plugin ${_inp}
                  ${ROOT_DIR})
 set_tests_properties(package_out_of_tree_plugin PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 900 LABELS "examples;package")
+
+# P15.D1: the example plug-ins quoted by the developer manual (docs/manual/developer/08_extending.md): IPhysicsModel
+# "example_flat" and IOutputSink + IParallelSink "example_count". NOT linked into simc++ (only into their test), so the
+# simc++ registry is unchanged. Test: one-thread and two-thread runs through the complete driver (label "examples").
+add_library(simcfw_example_dev_manual OBJECT dev_manual/FlatModel.cpp dev_manual/CountSink.cpp)
+target_link_libraries(simcfw_example_dev_manual PUBLIC simcfw)
+target_compile_options(simcfw_example_dev_manual PRIVATE -Wall -Wextra -pedantic)
+add_executable(test_dev_manual dev_manual/test_dev_manual.cpp)
+target_link_libraries(test_dev_manual PRIVATE ${SIMC_DRIVER_LIBS} simcfw_example_dev_manual)
+add_test(NAME example_dev_manual_plugins
+         COMMAND test_dev_manual ${SIMC_FORTRAN_DIR}/infiles/eep_h_elastic_norad_A.inp
+                 ${CMAKE_CURRENT_BINARY_DIR}/dev_manual)
+set_tests_properties(example_dev_manual_plugins PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 600 LABELS "examples")
