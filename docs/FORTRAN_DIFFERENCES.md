@@ -4,7 +4,9 @@ Status: task P7.5 (decisions D-031 and D-032, 2026-10-04); D/A(e,e'p) items adde
 and decay-in-flight items added in P6.4 (D-037); pion items in P9 (D-038); kaon items in P10 (D-043); Delta items in P11 (D-048); SIDIS cross-section items in P12.1 (D-051 Fn = the P12.F1 findings; `P12.1 Qn` = further quirks of the port); rho items in P13.1/P13.2 (D-057 Fn = the P13.F1 findings, reference/P13.F1_report.md; D-056 maps the provisional P13.1 R ids). This file lists every known place where SIMC++ behaves
 differently from the Fortran SIMC (`simc_gfortran`), or where it keeps a Fortran behaviour that looks odd. Each item
 names the Fortran file and line, the C++ behaviour, the effect on outputs, and the test that covers it. The decisions
-(D-xxx) are in `project_control/DECISIONS.md`. The Fortran reports (`reference/P*_report.md`) give the details.
+(D-xxx) are in `project_control/DECISIONS.md`. The [translation report](translation/index.md) presents all items in one uniform table
+([catalogue](translation/06_catalogue.md), generated from §2-§6 of this file: edit here, then run
+`docs/translation/tools/gen_catalogue.py`). The Fortran reports (`reference/P*_report.md`) give the details.
 
 > **Delta region (`doing_delta`, H/D/A(e,e'p)π): the event weight contains NO cross section** (D-048 F4, class b, kept in
 > both modes). physics_delta.f:132 returns `peedelta = 1.0*jacobian*(gtpr*fac)`; the line with the model cross section
