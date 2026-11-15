@@ -32,12 +32,18 @@ User-oriented chapters (maintained with the user manual):
 
 ## Sources and tools
 
+Paths: `$SIMC_FORTRAN` and `$SIMC_REFERENCE` are the Fortran tree and the Fortran reference data (e.g.
+`~/src/simc_gfortran`, `~/simc_reference`; developer manual, chapter 2); `reference/...` in this report is relative to
+`$SIMC_REFERENCE`; `run-archive:<label>` is a run folder of the project's run archive (`simc_runs/<timestamp>_<label>/`,
+written by `tools/check_all.sh` and the run script); `project_control/` and `fortran_harness/` are directories of the
+project next to the source tree and the reference data.
+
 | what | where |
 |---|---|
-| Fortran source (read-only) | `/home/ayerbe/NewDisk/simc_gfortran` |
-| Fortran references (tables, captures, runs, findings reports, toolchain) | `/home/ayerbe/NewDisk/reference` (`functions/README.md`, `runs/`, `P*.F*_report.md`, `TOOLCHAIN.txt`) |
-| Fortran L1 harness | `/home/ayerbe/NewDisk/fortran_harness` (README.md) |
-| decisions, plan, evidence | `/home/ayerbe/NewDisk/project_control/{DECISIONS.md, PLAN.md, VALIDATION_LEDGER.md}` |
+| Fortran source (read-only) | `$SIMC_FORTRAN` (e.g. `~/src/simc_gfortran`) |
+| Fortran references (tables, captures, runs, findings reports, toolchain) | `$SIMC_REFERENCE` (e.g. `~/simc_reference`: `functions/README.md`, `runs/`, `P*.F*_report.md`, `TOOLCHAIN.txt`) |
+| Fortran L1 harness | `fortran_harness/` of the project (README.md) |
+| decisions, plan, evidence | `project_control/{DECISIONS.md, PLAN.md, VALIDATION_LEDGER.md}` of the project |
 | the differences, per item and per reaction | [FORTRAN_DIFFERENCES.md](../FORTRAN_DIFFERENCES.md) |
 | generators | `docs/translation/tools/gen_fortran_map.py` (routine map), `gen_catalogue.py` (catalogue) |
 

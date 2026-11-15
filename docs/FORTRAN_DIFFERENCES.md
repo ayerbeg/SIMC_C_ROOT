@@ -6,7 +6,7 @@ differently from the Fortran SIMC (`simc_gfortran`), or where it keeps a Fortran
 names the Fortran file and line, the C++ behaviour, the effect on outputs, and the test that covers it. The decisions
 (D-xxx) are in `project_control/DECISIONS.md`. The [translation report](translation/index.md) presents all items in one uniform table
 ([catalogue](translation/06_catalogue.md), generated from §2-§6 of this file: edit here, then run
-`docs/translation/tools/gen_catalogue.py`). The Fortran reports (`reference/P*_report.md`) give the details.
+`docs/translation/tools/gen_catalogue.py`). `run-archive:<label>` names a run folder of the SIMC++ project's run archive (the `simc_runs/` directory next to the source tree, where `tools/check_all.sh` and the run script write `<timestamp>_<label>/` folders); `reference/...` is relative to the Fortran reference data `$SIMC_REFERENCE`. The Fortran reports (`reference/P*_report.md`) give the details.
 
 > **Delta region (`doing_delta`, H/D/A(e,e'p)π): the event weight contains NO cross section** (D-048 F4, class b, kept in
 > both modes). physics_delta.f:132 returns `peedelta = 1.0*jacobian*(gtpr*fac)`; the line with the model cross section
@@ -346,7 +346,7 @@ P7.F1 (K2–K4). §6 has the L2 numbers.
 ## 8. D/A(e,e'p): L2 in both modes and the measured effect of the corrections (task P8.2)
 
 `simc_compare` (default config) of simc++ seed 4242, 200000 events, against the P8.F1 Fortran runs
-`reference/runs/eep_<tag>_A` (and `_B` for D and C-12). Run folders `SIMC++_Project/simc_runs/2026100{4,5}_*_P8.2_L2_{compat,corrected}_<tag>/`
+`reference/runs/eep_<tag>_A` (and `_B` for D and C-12). Run folders `run-archive:P8.2_L2_{compat,corrected}_<tag>/`
 (`compare_vs_A/`, `compare_vs_B/`: summary.txt, summary.json, compare.pdf; `mode_diff_vs_compat.txt` in the corrected
 folders: event-by-event comparison with the compat run, `validation/compare/mode_diff.cpp`).
 
@@ -375,7 +375,7 @@ folders: event-by-event comparison with the compat run, `validation/compare/mode
 
 `simc_compare` (default config) of simc++ seed 4242, 200000 successes, against the P9.F1 Fortran runs
 `reference/runs/pion_<tag>_A` (and `_B` for h_k1_rad_dec0). Run folders
-`SIMC++_Project/simc_runs/20261007_*_P9.2_L2_{compat,corrected}_<tag>/` (`compare_vs_A/`, `compare_vs_B/`: summary.txt,
+`run-archive:P9.2_L2_{compat,corrected}_<tag>/` (`compare_vs_A/`, `compare_vs_B/`: summary.txt,
 summary.json, compare.pdf; `mode_diff_vs_compat.txt` in the corrected folders: event-by-event comparison with the compat
 run of the same seed). Binary: commit 3b27d5c.
 
@@ -408,7 +408,7 @@ run of the same seed). Binary: commit 3b27d5c.
 
 `simc_compare` (default config) of simc++ seed 4242, 200000 successes, against the P10.F1 Fortran runs
 `reference/runs/kaon_<tag>_A` (and `_B` for h_k1_rad_dec0). Run folders
-`SIMC++_Project/simc_runs/20261011_*_P10.2_L2_{compat,corrected}_<tag>/` (`compare_vs_A/`, `compare_vs_B/`, `mode_diff_vs_compat.txt`
+`run-archive:P10.2_L2_{compat,corrected}_<tag>/` (`compare_vs_A/`, `compare_vs_B/`, `mode_diff_vs_compat.txt`
 in the corrected folders). Binary: commit 1275770 (numerically identical to the final commit). Batch:
 `validation/scripts/p10_kaon_l2.sh`.
 
@@ -463,7 +463,7 @@ in the corrected folders). Binary: commit 1275770 (numerically identical to the 
 ## 11. Delta region (e,e'p)π: L2 in both modes and the effect of each correction (task P11.1)
 
 `simc_compare` (default config) of simc++ seed 4242, 200000 successes, against the P11.F1 Fortran runs
-`reference/runs/delta_h_<tag>_A` (and `_B` for d1_rad). Run folders `SIMC++_Project/simc_runs/20261016_*_P11.1_L2_{compat,corrected}_h_<tag>/`
+`reference/runs/delta_h_<tag>_A` (and `_B` for d1_rad). Run folders `run-archive:P11.1_L2_{compat,corrected}_h_<tag>/`
 (`compare_vs_A/`, `compare_vs_B/`, `mode_diff_vs_compat.txt`; the corrected rad folders also hold `scratch_noF2/`: a scratch build with
 only D-048 F2 switched off). Batch: `validation/scripts/p11_delta_l2.sh`. Binary: commit ca2d338 (numerically identical to the final commit).
 
@@ -528,14 +528,14 @@ Explanation of the corrected-mode differences (every one is a documented correct
   (π+ and π− share the random stream); against seed B the same C++ run gives F = 7 with different variables, and the cap_h /
   cap_d replays are bitwise, so they are fluctuations of the C++ sample, not a model difference.
 * P12.3 (D-053): the wtcontr sigma of simc_compare was the relative error of the whole tree yield; it is now that of the
-  pass_cuts subset (validation/README.md). Re-compared (simc_runs/20261024_012401_P12.3_wtcontr_recompare/table.tsv): H π+
+  pass_cuts subset (validation/README.md). Re-compared (run-archive:P12.3_wtcontr_recompare/table.tsv): H π+
   K1 rad compat wtcontr pull −2.74 → −1.93 (σ 0.415 → 0.586), H π− −2.74 → −1.94, D π+ +2.28 → +1.61, H K+ −3.22 → −2.27;
   the director's seeds 5201-5204 give −0.07, −0.23, −2.01, −0.36.
 
 ## 13. Exclusive rho: L2 in both modes and the effect of the corrections (task P13.2)
 
 SIMC++ 75f8dbd, seed 4242, ngen 100000 (as the references), vs the P13.F1 Fortran runs A (simc_compare with --mode-b;
-runs in simc_runs/20261029_014541_P13.2_L2_*). wtcontr = the .hist wtcontr (A: Fortran; B: SIMC++).
+runs in run-archive:P13.2_L2_*). wtcontr = the .hist wtcontr (A: Fortran; B: SIMC++).
 
 | config | compat verdict (F/N) | wtcontr A / compat (pull) | corrected verdict (F/N, gross) | wtcontr corrected / compat | wall (s) compat / corr |
 |---|---|---|---|---|---|
@@ -557,7 +557,7 @@ runs in simc_runs/20261029_014541_P13.2_L2_*). wtcontr = the .hist wtcontr (A: F
   hsypfp, hsdeltai, nu, W, epsilon, siglab, Weight, sighad; p = 0.002–0.01) plus phipq, i.e. one correlated fluctuation.
   Two fresh seeds pass (1111: F = 3, P = 0.52; 2222: F = 9, P = 2.0e-3), and the compat run with the RANLUX stream and the
   Fortran seed 12345 (IRandom "ranlux") is BITWISE IDENTICAL to rho_h_k1_norad_A (100000 events, 59 columns, .hist,
-  .geni, .gen; simc_runs/20261030_191250_P13.2_norad_check_ranlux_fseed): the seed-4242 result is a statistical
+  .geni, .gen; run-archive:P13.2_norad_check_ranlux_fseed): the seed-4242 result is a statistical
   fluctuation (of the C++ sample or of Fortran A), not a code difference.
 
 ## 14. SOS and HRS: L1, full-run identity and L2 in both modes (tasks P14.1, P14.2)
@@ -572,7 +572,7 @@ runs in simc_runs/20261029_014541_P13.2_L2_*). wtcontr = the .hist wtcontr (A: F
   .gen and the h10 tree with 100000 entries × 59 branches identical). The delta SOS run first differed in the sign of 55 sigcm NaNs (D-048 F3
   garbage arguments of sig_blok): fixed by the operand order of the object code in `pion::sigBlok` (P14.2, finite values
   unchanged); the Delta regression baselines moved to 51e86c2_glibc243 (only those 9 NaN signs differ from 074cced).
-* **L2** (seed 4242, 1e5 events, validation/scripts/p14_sos_hrs_l2.sh, simc_runs/20261101_004418_P14_L2_*, build ac389e6):
+* **L2** (seed 4242, 1e5 events, validation/scripts/p14_sos_hrs_l2.sh, run-archive:P14_L2_*, build ac389e6):
 
 | run | compat vs A (F/N) | compat wtcontr A / C++ (pull) | corrected vs A (F/N) | corrected wtcontr | explanation of the corrected-mode differences |
 |---|---|---|---|---|---|
@@ -598,7 +598,7 @@ runs in simc_runs/20261029_014541_P13.2_L2_*). wtcontr = the .hist wtcontr (A: F
 * **Full-run identity** (RANLUX + `--fortran-compat`, seed 12345; .hist except the time lines, .geni, .gen, h10 tree): the two
   captures p14f2_excl_h_ng2_cap and p14f2_sidis_h_cap, and all nine 100k L2 runs p14f2_{excl_h_ng2_A, excl_h_ng2_B, excl_h_ng1_A,
   excl_d_p_A, excl_d_n_A, delta_h_A, sidis_h_A, eep_caloe_A} identical (2.9e7 tries for excl_h_ng2_A; 6.6e7 for sidis_h_A).
-* **L2** (seed 4242, 1e5 events, validation/scripts/p14_calo_l2.sh, simc_runs/20261107_232553_P14.3_L2_*, build 3d516b7):
+* **L2** (seed 4242, 1e5 events, validation/scripts/p14_calo_l2.sh, run-archive:P14.3_L2_*, build 3d516b7):
 
 | run | compat vs A (F/N) | compat wtcontr A / C++ (pull) | corrected vs A (F/N) | explanation of the corrected-mode differences |
 |---|---|---|---|---|
@@ -619,7 +619,7 @@ References: reference/P15.F1_report.md (D-065). Identity = simc++ with the RANLU
 the default RANLUX seed where the .inp has none) and `--fortran-compat`: .hist except the BEGIN/END time lines, .geni, .gen
 text-identical, h10 tree bitwise (`simc_root_identity`). Script validation/scripts/p15_shipped_regression.sh; CTest label
 `regression_shipped` (+ `slow`), one test per folder (tests/regression/CMakeLists.txt). Evidence:
-simc_runs/20261113_190555_P15.2_shipped_identity (28 folders) and simc_runs/20261114_142803_P15.2_shipped_identity_other
+run-archive:P15.2_shipped_identity (28 folders) and run-archive:P15.2_shipped_identity_other
 (11 folders, build 0fb5da0).
 
 * **spect_mode** (D-065 S1-S3, class d). SIMC++ reproduces the Fortran exactly: for a switched-off arm no aperture test, RECON
@@ -633,7 +633,7 @@ simc_runs/20261113_190555_P15.2_shipped_identity (28 folders) and simc_runs/2026
   p15f1_pi0_shms_cap: IDENTICAL. With doing_decay = 1 the Fortran (and `--fortran-compat`) STOP at the first decay test
   ('cannot decay particle with mass=  134.98'); the corrected mode runs and never decays the π0 in flight (D-037 F9
   decaysInFlight is false for a π0; the pizero_decay photons are not tracked by HMS/SHMS).
-* **L2, seed 4242, mt64, 1e5 events** (validation/scripts/p15_spect_mode_l2.sh, simc_runs/20261114_143242_P15.2_L2_*, build
+* **L2, seed 4242, mt64, 1e5 events** (validation/scripts/p15_spect_mode_l2.sh, run-archive:P15.2_L2_*, build
   0fb5da0, references p15f1_<tag>_A at seed 12345). In every run the corrected-mode tree is identical to the compat tree
   (simc_mode_diff); the corrected FAILs are deterministic corrections only:
 
@@ -699,7 +699,7 @@ regression baseline test passes unchanged in check_all).
 * **Capture replay** (`l1_trg_replay_capture`, reference/runs/p15f2_poltar_cap/capture): all 704778 trgTrackToPlane, 203423
   track_from_tgt and 9174 tracking track_to_tgt calls (ok_in = 1; 194249 ok_in = 0 calls return at once) bitwise.
 * **Full-run identity** (RANLUX + `--fortran-compat`, .hist except the time lines, .geni, .gen, h10 tree; script
-  p15_shipped_regression.sh, simc_runs/20261114_155201_P15.2b_field_identity, build ed04e71; CTest `regression_shipped_*`):
+  p15_shipped_regression.sh, run-archive:P15.2b_field_identity, build ed04e71; CTest `regression_shipped_*`):
 
 | folder | what | tries | columns | verdict |
 |---|---|---|---|---|
@@ -720,7 +720,7 @@ regression baseline test passes unchanged in check_all).
 * **Kept in both modes (class b, §4):** T4 signed step limit (2.5 % of the SHMS events of the example rejected), T5
   convergence test, T6 factor 90/E, T13 π0 bent as ±1 charge, T15 polarization vector. Documented (class d, §5): T3,
   T7-T12, T16, T17 (calorimeter arms with the field STOP).
-* **L2** (seed 4242, mt64, 50000 events, validation/scripts/p15b_field_l2.sh, simc_runs/20261114_155606_P15.2b_L2_*,
+* **L2** (seed 4242, mt64, 50000 events, validation/scripts/p15b_field_l2.sh, run-archive:P15.2b_L2_*,
   vs the Fortran shipped_poltar_exclusivepion_example): compat **PASS** 4/304 (statistical, incl. pmoop and radphot, which also fail in the corrected run;
   wtcontr 18.2451 / 18.1751, pull +0.44); corrected FAIL 5/304, the only gross failure CENTRAL.sigcc (D-038 F5,
   deterministic 9.56e-7 → 7.69e-6), wtcontr 18.1743 (pull +0.45). The corrected tree differs from the compat tree in most

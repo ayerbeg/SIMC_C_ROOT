@@ -4,7 +4,8 @@ uniform table, from the per-class tables of docs/FORTRAN_DIFFERENCES.md (section
 comments and the tests cite), plus a cross-check against the finding ids of project_control/DECISIONS.md.
 
 Usage: gen_catalogue.py [--differences FILE] [--decisions FILE] [--out FILE]
-Defaults: docs/FORTRAN_DIFFERENCES.md, /home/ayerbe/NewDisk/project_control/DECISIONS.md, docs/translation/06_catalogue.md.
+Defaults: docs/FORTRAN_DIFFERENCES.md, $SIMC_DECISIONS or <source>/../../project_control/DECISIONS.md (the project
+layout), docs/translation/06_catalogue.md.
 Do not edit 06_catalogue.md by hand: edit FORTRAN_DIFFERENCES.md and re-run this script.
 """
 import argparse
@@ -100,7 +101,8 @@ def norm(cls, header, d):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--differences", default=os.path.join(SRC, "docs", "FORTRAN_DIFFERENCES.md"))
-    ap.add_argument("--decisions", default="/home/ayerbe/NewDisk/project_control/DECISIONS.md")
+    ap.add_argument("--decisions", default=os.environ.get(
+        "SIMC_DECISIONS", os.path.join(SRC, "..", "..", "project_control", "DECISIONS.md")))
     ap.add_argument("--out", default=os.path.join(SRC, "docs", "translation", "06_catalogue.md"))
     a = ap.parse_args()
     rows = parse(a.differences)

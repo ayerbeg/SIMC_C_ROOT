@@ -3,7 +3,7 @@
 cite it (`// Fortran: file.f:routine ...` comments), plus the L1 reference tables that exist for it.
 
 Usage: gen_fortran_map.py [--fortran DIR] [--reference DIR] [--out FILE]
-Defaults: /home/ayerbe/NewDisk/simc_gfortran, /home/ayerbe/NewDisk/reference, docs/translation/fortran_routine_map.md
+Defaults: $SIMC_FORTRAN, $SIMC_REFERENCE (environment), docs/translation/fortran_routine_map.md
 (relative to the SIMC++ source tree, found from this script's location). The Fortran tree is only read.
 
 The routine list is the set of SUBROUTINE/FUNCTION/PROGRAM statements of the files the Fortran Makefile links into
@@ -113,10 +113,12 @@ def tables(refdir):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--fortran", default="/home/ayerbe/NewDisk/simc_gfortran")
-    ap.add_argument("--reference", default="/home/ayerbe/NewDisk/reference")
+    ap.add_argument("--fortran", default=os.environ.get("SIMC_FORTRAN", ""))
+    ap.add_argument("--reference", default=os.environ.get("SIMC_REFERENCE", ""))
     ap.add_argument("--out", default=os.path.join(SRC, "docs", "translation", "fortran_routine_map.md"))
     a = ap.parse_args()
+    if not a.fortran or not os.path.isfile(os.path.join(a.fortran, "Makefile")):
+        sys.exit("gen_fortran_map.py: give the Fortran SIMC tree with --fortran or $SIMC_FORTRAN")
 
     cpp = cpp_lines()
     tabs = tables(a.reference)

@@ -35,10 +35,19 @@ endif()
 # New framework (translation branch, docs/ARCHITECTURE.md). ROOT-free core.
 # ============================================================================
 
-set(SIMC_REFERENCE_DIR "/home/ayerbe/NewDisk/reference" CACHE PATH
-    "Fortran reference data (reference/runs, reference/functions); tests skip if absent")
-set(SIMC_FORTRAN_DIR "/home/ayerbe/NewDisk/simc_gfortran" CACHE PATH
-    "Fortran SIMC source tree (read-only; infiles/ used by tests)")
+# Validation data (optional; D-073: no machine-specific defaults). Empty = not available: the tests that need them are
+# skipped (exit 77). Defaults from the environment variables SIMC_REFERENCE / SIMC_FORTRAN (tools/check_all.sh sets them).
+set(SIMC_REFERENCE_DIR "$ENV{SIMC_REFERENCE}" CACHE PATH
+    "Fortran reference data (runs/, functions/); empty = absent, the tests that need it are skipped")
+set(SIMC_FORTRAN_DIR "$ENV{SIMC_FORTRAN}" CACHE PATH
+    "Fortran SIMC source tree (read-only; its infiles/ are test inputs); empty = absent, those tests are skipped")
+# Empty = a non-existent placeholder for the test arguments (an empty CMake argument would vanish from the command line
+# and shift the other arguments): the tests see a missing file and skip (77). Normal variables shadow the cache entries.
+foreach(_v SIMC_REFERENCE_DIR SIMC_FORTRAN_DIR)
+    if(NOT ${_v})
+        set(${_v} "${CMAKE_BINARY_DIR}/not_configured_${_v}")
+    endif()
+endforeach()
 
 add_library(simcfw STATIC
     src/core/SimcParameters.cpp

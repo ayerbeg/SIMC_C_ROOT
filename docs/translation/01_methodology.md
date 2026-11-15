@@ -7,7 +7,7 @@ chapters give the details: the validation framework (chapter 2), the routine map
 ## 1.1 The Fortran SIMC in one page
 
 SIMC is the Hall C Monte Carlo for coincidence (e,e'X) experiments. The version translated here is
-`/home/ayerbe/NewDisk/simc_gfortran` (gfortran build, flags `-O -w -ffixed-line-length-132 -ff2c -fno-automatic
+`$SIMC_FORTRAN` (the `simc_gfortran` tree; gfortran build, flags `-O -w -ffixed-line-length-132 -ff2c -fno-automatic
 -fdefault-real-8`). Its structure:
 
 * **Main program** `simc.f` (l.1-623):
@@ -101,7 +101,7 @@ describes these classes; chapter 3 here gives the routine-level map.
 ## 1.4 How the translation was done
 
 * **Roles.** Three kinds of agents worked under a director (`project_control/`): the *fortran-reference* agent built
-  and ran the Fortran program and the L1 harness and produced every reference (`/home/ayerbe/NewDisk/reference`), the
+  and ran the Fortran program and the L1 harness and produced every reference (`$SIMC_REFERENCE`), the
   *cpp-translator* agents wrote the C++ against those references, and the director reviewed every task, recorded the
   decisions (`DECISIONS.md`, D-001 ... D-070) and the evidence (`VALIDATION_LEDGER.md`), and ran `tools/check_all.sh` at
   every task close. The Fortran source was never modified; the C++ never wrote a reference for itself.

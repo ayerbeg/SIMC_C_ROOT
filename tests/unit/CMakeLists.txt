@@ -29,9 +29,12 @@ add_test(NAME inp_not_registered_hms_shms_validation COMMAND test_inp_reference 
 add_test(NAME inp_not_registered_eep_h_test_pctnames COMMAND test_inp_reference notreg
          ${_runs}/eep_h_test_pctnames/eep_h_test_pctnames.inp ${_runs}/eep_h_test_pctnames/eep_h_test_pctnames.out 0)
 add_test(NAME stage_headers_and_registry COMMAND test_stage_headers)
-add_test(NAME inp2json_cli COMMAND inp2json -q -o ${CMAKE_BINARY_DIR}/inp2json_eep_h_test_pctnames.json
+# (skipped, exit 77, when the reference input is absent: tests/skip_if_missing.sh)
+add_test(NAME inp2json_cli COMMAND ${CMAKE_SOURCE_DIR}/tests/skip_if_missing.sh ${_runs}/eep_h_test_pctnames/eep_h_test_pctnames.inp --
+         $<TARGET_FILE:inp2json> -q -o ${CMAKE_BINARY_DIR}/inp2json_eep_h_test_pctnames.json
          --table=${CMAKE_BINARY_DIR}/inp2json_eep_h_test_pctnames.table.txt
          ${_runs}/eep_h_test_pctnames/eep_h_test_pctnames.inp)
+set_tests_properties(inp2json_cli PROPERTIES SKIP_RETURN_CODE 77)
 
 set_tests_properties(params_completeness inp_convert_all_infiles
     inp_vs_hist_eep_h_test_pctnames inp_vs_hist_hms_shms_validation

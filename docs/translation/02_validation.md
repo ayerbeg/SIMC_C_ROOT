@@ -1,7 +1,7 @@
 # 2. Validation framework
 
 SIMC++ is validated at four levels against the Fortran, plus C++-against-C++ identity for refactors. Every result is
-recorded in `/home/ayerbe/NewDisk/project_control/VALIDATION_LEDGER.md` (date, task, Fortran reference, C++ run,
+recorded in the project's `project_control/VALIDATION_LEDGER.md` (date, task, Fortran reference, C++ run,
 commit, metrics, tolerance, verdict).
 
 | level | question | Fortran side | C++ side |
@@ -14,7 +14,7 @@ commit, metrics, tolerance, verdict).
 
 ## 2.1 The Fortran L1 harness and the tables
 
-`/home/ayerbe/NewDisk/fortran_harness` (README.md there; conventions in `reference/functions/README.md`) links the
+the Fortran L1 harness `fortran_harness/` (a sibling of the reference data; README.md there; conventions in `reference/functions/README.md`) links the
 **unmodified** SIMC objects (archived into `lib/libsimcobjs.a`, built with the SIMC Makefile flags) with one driver per
 routine, `<group>/drv_<routine>.f`. A driver reads `input.txt`, fills the arguments and COMMON fields **by column
 name**, calls the routine and writes `output.txt`. The harness is run by the fortran-reference agent only; SIMC itself

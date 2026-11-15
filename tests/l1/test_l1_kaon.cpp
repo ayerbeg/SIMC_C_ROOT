@@ -20,6 +20,7 @@
 // Exit: 0 pass, 1 fail, 77 reference missing.
 #include <cmath>
 #include <cstdio>
+#include <filesystem>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
@@ -96,6 +97,10 @@ int runFiles(const std::string& dataDir, const std::string& fortranDir) {
 
 // ------------------------------------------------------------------------------------------------- saghai_tables
 int runSaghaiTables(const std::string& dir, const std::string& dataDir) {
+    if (!std::filesystem::is_directory(dir)) {   // reference tables absent (no SIMC_REFERENCE_DIR): CTest SKIP
+        std::printf("SKIP: %s not found\n", dir.c_str());
+        return 77;
+    }
     kaon::SaghaiTables t;
     if (!loadTables(dataDir, false, t)) return 1;
     int fail = 0;

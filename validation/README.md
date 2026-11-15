@@ -5,8 +5,8 @@
 Standalone CMake project (it does not touch the top-level build):
 
 ```bash
-export LD_LIBRARY_PATH=/home/ayerbe/Builds/ROOT6_install/lib     # ROOT 6.40 (C++20); not /usr/local/lib (old ROOT, old libtbb)
-cmake -S validation -B validation/build -DCMAKE_PREFIX_PATH=/home/ayerbe/Builds/ROOT6_install
+export LD_LIBRARY_PATH=$ROOTSYS/lib     # ROOT 6.40 (C++20); no other ROOT/libtbb in LD_LIBRARY_PATH
+cmake -S validation -B validation/build -DCMAKE_PREFIX_PATH=$ROOTSYS -DSIMC_REFERENCE_DIR=$SIMC_REFERENCE -DSIMC_BASELINE_DIR=<baselines>
 cmake --build validation/build -j
 (cd validation/build && ctest --output-on-failure)      # self-tests, about 40 s
 validation/scripts/run_compare_selftests.sh             # same, outputs into reference/comparisons/

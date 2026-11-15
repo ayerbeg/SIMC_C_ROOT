@@ -3,7 +3,7 @@
 #
 # Usage: toolchain_fingerprint.sh [--binary FILE] [--field glibc|libm_md5|gcc|gfortran|root|built_by]
 #   (no option)    print "glibc 2.43 (libm md5 <md5>); gcc <ver>; gfortran <ver>; ROOT <ver> (<ROOTSYS>)"
-#                  ROOT = $ROOTSYS/bin/root-config, default /home/ayerbe/Builds/ROOT6_install (P10.5; it only affects tree I/O)
+#                  ROOT = $ROOTSYS/bin/root-config, default: root-config --prefix (P10.5; it only affects tree I/O)
 #   --binary FILE  append "; <FILE basename> built by GCC <ver>" (from the ELF .comment section)
 #   --field NAME   print only that field (built_by needs --binary)
 # Bitwise references (Fortran tables/captures in reference/, C++ regression baselines) are only valid for the
@@ -26,7 +26,7 @@ for p in /usr/lib64/libm.so.6 /lib64/libm.so.6 /lib/x86_64-linux-gnu/libm.so.6 /
 done
 ver() { command -v "$1" >/dev/null 2>&1 && "$1" --version 2>/dev/null | head -1 | sed -E 's/^.*\) *([0-9][0-9.]* [0-9]{8}).*$/\1/;s/^.*\) *([0-9][0-9.]*).*$/\1/'; }
 gcc_v="$(ver gcc)"; gf_v="$(ver gfortran)"
-rootsys="${ROOTSYS:-/home/ayerbe/Builds/ROOT6_install}"
+rootsys="${ROOTSYS:-$(root-config --prefix 2>/dev/null)}"
 root_v="$("$rootsys/bin/root-config" --version 2>/dev/null)"
 built=""
 if [[ -n "$BIN" && -f "$BIN" ]]; then

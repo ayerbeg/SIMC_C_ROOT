@@ -130,7 +130,7 @@ acceptance in delta, xptar and yptar (JSON `delta_min/max` in %, `xptar_min/max`
 `path_length` in cm). It draws no random numbers. Run it with:
 
 ```bash
-simc++ /home/ayerbe/NewDisk/simc_gfortran/infiles/eep_h_elastic_rad_A.inp \
+simc++ $SIMC_FORTRAN/infiles/eep_h_elastic_rad_A.inp \
        --pipeline examples/ideal_box/hadron_arm.json --ngen 2000 -o out --print-pipeline
 ```
 

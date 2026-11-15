@@ -10,6 +10,10 @@
 #          --threads 2 with --fortran-compat, and with the pipeline rng "ranlux", must stop with exit 2 and a message
 set -uo pipefail
 mode=$1; shift
+# the input (.inp) is argument 3 (repro, one) or 2 (refuse): skip (77) when it is absent (no SIMC_FORTRAN_DIR /
+# SIMC_REFERENCE_DIR configured)
+inp=$([[ $mode == refuse ]] && echo "${2:-}" || echo "${3:-}")
+[[ -f $inp ]] || { echo "SKIP: input $inp not found"; exit 77; }
 
 flt() { grep -v -E '^ (BEGIN|END) Time:|^ *"?(begin|end)_time"? *[=:]' "$1" | sed "s|$2|<DIR>|g"; }
 

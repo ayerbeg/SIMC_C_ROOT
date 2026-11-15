@@ -6,14 +6,27 @@ C++20 compiler (gcc 16.2.1 on the reference machine), CMake ≥ 3.15 (≥ 3.29 f
 ROOT ≥ 6.40 (components Core, Tree, Hist, RIO), nlohmann/json ≥ 3.9 (fetched with FetchContent v3.11.2 when not
 installed), Threads, Python 3 (only for the `docs` tests), `xz` (for the compressed captures of the replay tests).
 
+The manuals use this layout (the same as the user manual's installation chapter):
+
+| variable | example | content |
+|---|---|---|
+| `$SIMCPP_SRC` | `~/src/simcpp` | the SIMC++ source tree |
+| `$SIMCPP_BUILD` | `~/build/simcpp` | a build directory |
+| `$SIMCPP_PREFIX` | `~/opt/simcpp` | an installation (`bin/`, `lib/`, `include/`, `share/simc/data`) |
+| `$SIMC_FORTRAN` | `~/src/simc_gfortran` | the Fortran SIMC tree (optional, validation only: its `infiles/` are test inputs) |
+| `$SIMC_REFERENCE` | `~/simc_reference` | the Fortran reference data (optional, validation only) |
+| `$SIMC_BASELINES` | `~/simc_baselines` | the C++ regression baselines (optional, validation only) |
+
 ```bash
-export ROOTSYS=/home/ayerbe/Builds/ROOT6_install
-export LD_LIBRARY_PATH=$ROOTSYS/lib          # NOT /usr/local/lib (an old ROOT and an old libtbb live there)
-cmake -S SIMC++_Claude -B build -DCMAKE_PREFIX_PATH=$ROOTSYS -DCMAKE_BUILD_TYPE=Release \
-      -DSIMC_REFERENCE_DIR=/home/ayerbe/NewDisk/reference -DSIMC_FORTRAN_DIR=/home/ayerbe/NewDisk/simc_gfortran
-cmake --build build -j8
-(cd build && ctest -j8 --output-on-failure -LE slow)    # everything except the long tests
+export LD_LIBRARY_PATH=$ROOTSYS/lib          # the ROOT 6.40 install; no other ROOT or libtbb in the path
+cmake -S $SIMCPP_SRC -B $SIMCPP_BUILD -DCMAKE_PREFIX_PATH=$ROOTSYS -DCMAKE_BUILD_TYPE=Release
+cmake --build $SIMCPP_BUILD -j8
+ctest --test-dir $SIMCPP_BUILD -j8 --output-on-failure -LE slow    # everything except the long tests
 ```
+
+Without the validation data every test that needs it is skipped (exit 77, "Skipped"); with them, add
+`-DSIMC_REFERENCE_DIR=$SIMC_REFERENCE -DSIMC_FORTRAN_DIR=$SIMC_FORTRAN -DSIMC_BASELINE_DIR=$SIMC_BASELINES` (or export
+`SIMC_REFERENCE`, `SIMC_FORTRAN`, `SIMC_BASELINES` before the first configure: they are the defaults).
 
 Flags: `-Wall -Wextra -pedantic` everywhere (the build has 0 warnings; keep it so), Release `-O3 -DNDEBUG`. **Do not
 add `-march=native`, `-ffast-math` or `-ffp-contract=fast`**: FMA contraction and value-unsafe optimisations change the
@@ -72,9 +85,9 @@ A new module: add `src/<module>/CMakeLists.txt` with an OBJECT library if it reg
 | variable | default | meaning |
 |---|---|---|
 | `SIMC_BUILD_EXAMPLES` | ON | build `examples/` and link the example plug-ins (`ideal_box`) into `simc++` |
-| `SIMC_REFERENCE_DIR` | /home/ayerbe/NewDisk/reference | reference data of the reference tests; tests whose reference is absent are skipped (exit 77) |
-| `SIMC_FORTRAN_DIR` | /home/ayerbe/NewDisk/simc_gfortran | directory whose `infiles/` provide the shipped test inputs (read-only) |
-| `SIMC_BASELINE_DIR` | /home/ayerbe/NewDisk/SIMC++_Project/baselines | C++ regression baselines |
+| `SIMC_REFERENCE_DIR` | env `SIMC_REFERENCE`, else empty | reference data of the reference tests; empty or absent: those tests are skipped (exit 77) |
+| `SIMC_FORTRAN_DIR` | env `SIMC_FORTRAN`, else empty | directory whose `infiles/` provide the shipped test inputs (read-only); empty: skipped |
+| `SIMC_BASELINE_DIR` | env `SIMC_BASELINES`, else empty | C++ regression baselines; empty: skipped |
 | `SIMC_*_BASELINE_COMMIT` | `55cf7a0_glibc243` | the baseline folder prefix per family (tests/regression/CMakeLists.txt) |
 
 `src/core/DataPath.cpp` is compiled with `SIMC_SOURCE_DATA_ROOT=<source>/data`, the last fallback of the data directory
@@ -114,9 +127,13 @@ empty trees, NaN entries, the wtcontr subset and mode detection.
 The acceptance check of every change: a clean build of everything plus both test suites, logged.
 
 ```bash
-TMPDIR=/home/ayerbe/NewDisk/SIMC++_Project/.tmp_<task> ROOTSYS=/home/ayerbe/Builds/ROOT6_install \
-    tools/check_all.sh --commit <hash> --label <task>
+TMPDIR=<large scratch dir> ROOTSYS=<ROOT install> tools/check_all.sh --commit <hash> --label <task>
 ```
+
+* Paths: ROOT from `$ROOTSYS` (else `root-config --prefix`); the validation data from the environment variables
+  `SIMC_REFERENCE`, `SIMC_FORTRAN`, `SIMC_BASELINES`, or, for those not set, from the untracked file `check_all.env` in
+  the project directory (the parent of the source tree; shell syntax, one `NAME=path` per line). Nothing machine-specific
+  is committed. Without the data check_all still runs, with those tests skipped; `git.txt` records which data were used.
 
 * `--commit REV` builds a clean detached worktree of REV (use it whenever other agents have uncommitted work).
 * It takes the same lock as `run_simc.sh` (`simc_runs/.lock`), so runs are serialised; check `ps` first.
@@ -124,8 +141,8 @@ TMPDIR=/home/ayerbe/NewDisk/SIMC++_Project/.tmp_<task> ROOTSYS=/home/ayerbe/Buil
   fingerprint, build.log, tests.log, val_build.log, val_tests.log), removes the build trees, and appends one line to
   `simc_runs/index.tsv`: `run_id overall build run tests seconds config` (`build` and `tests` are
   `<main>/<validation>` exit codes; config `check_all@<commit>`). The exit code is 0 only if both builds and both
-  suites pass. It runs every test including `slow` (about one hour on the reference machine).
-* Use a `TMPDIR` on the large disk: `/tmp` is a small tmpfs.
+  suites pass. It runs every test including `slow` (about one hour with all validation data).
+* Use a `TMPDIR` on a large disk (the worktree and the build trees are created there).
 
 ## 2.7 The installed package
 

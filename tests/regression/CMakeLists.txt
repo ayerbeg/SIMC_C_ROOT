@@ -19,8 +19,11 @@ add_executable(simc_root_identity root_identity.cpp)
 target_link_libraries(simc_root_identity PRIVATE ROOT::Core ROOT::RIO ROOT::Tree ROOT::Hist)
 set_target_properties(simc_root_identity PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-set(SIMC_BASELINE_DIR "/home/ayerbe/NewDisk/SIMC++_Project/baselines" CACHE PATH
+set(SIMC_BASELINE_DIR "$ENV{SIMC_BASELINES}" CACHE PATH
     "Reference outputs of earlier commits for the output-identity tests")
+if(NOT SIMC_BASELINE_DIR)   # empty: a non-existent placeholder, the identity tests skip (77)
+    set(SIMC_BASELINE_DIR "${CMAKE_BINARY_DIR}/not_configured_SIMC_BASELINE_DIR")
+endif()
 set(SIMC_BASELINE_COMMIT "55cf7a0_glibc243" CACHE STRING "Commit whose outputs are the identity baseline")
 
 foreach(_p "rad;eep_h_elastic_rad_A" "norad;eep_h_elastic_norad_A" "phsp;acc_phsp_hms_shms_A")
@@ -241,4 +244,4 @@ add_test(NAME threads_refusal
          COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/threads_test.sh refuse $<TARGET_FILE:simcpp>
                  ${SIMC_FORTRAN_DIR}/infiles/eep_h_elastic_rad_A.inp ${CMAKE_CURRENT_BINARY_DIR}/threads_refusal)
 set_tests_properties(threads_reproducibility_eep threads_reproducibility_poltar threads_one_is_sequential threads_refusal
-                     PROPERTIES TIMEOUT 900 LABELS "regression;threads")
+                     PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 900 LABELS "regression;threads")

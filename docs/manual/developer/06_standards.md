@@ -32,7 +32,7 @@
   required by the session at the end. Commit early and often.
 * At the end of a task: `tools/check_all.sh --commit <hash> --label <task>` (chapter 2 §2.6) and quote its
   `simc_runs/index.tsv` line in the report.
-* Reference data (`/home/ayerbe/NewDisk/reference`) and the directory of shipped inputs are read-only; new references
+* Reference data (`$SIMC_REFERENCE`) and the directory of shipped inputs are read-only; new references
   are produced by the reference process described in the translation report.
 * Do not delete run folders in `SIMC++_Project/simc_runs/` or baselines; only reproducible build output and git-tracked
   files may be removed.

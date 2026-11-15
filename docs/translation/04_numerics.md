@@ -110,6 +110,6 @@ table points; every radiative weight downstream changed). Rules:
 
 1. Read the Fortran line and the flags (`-fdefault-real-8`, `-fno-automatic`).
 2. If precision or operand order is in doubt, disassemble the Fortran object (`objdump -d
-   /home/ayerbe/NewDisk/simc_gfortran/<file>.o`, read-only) and look for `__*tf3` (quad), `cvtss2sd` (float),
+   $SIMC_FORTRAN/<file>.o`, read-only) and look for `__*tf3` (quad), `cvtss2sd` (float),
    `mulsd`/`xorpd` order, calls to `__powidf2`, `pow`, `tgamma`.
 3. Compare against the L1 table with the runner's report (max |rel|, bitwise-equal rows, NaN mismatches, worst row).

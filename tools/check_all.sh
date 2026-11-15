@@ -14,19 +14,34 @@
 # summary.md and git.txt also record the toolchain (glibc + libm md5, gcc, gfortran, the compiler that built simc++;
 # tools/toolchain_fingerprint.sh), because the bitwise references are tied to it (D-044).
 # Exit code: 0 only if both builds and both test suites pass.
+# Paths (D-073: nothing machine-specific in the repository): ROOT from $ROOTSYS (required); the optional validation data from
+# the environment variables SIMC_REFERENCE (Fortran reference data), SIMC_FORTRAN (Fortran SIMC tree, infiles/) and
+# SIMC_BASELINES (C++ regression baselines). Variables not set in the environment are read from the untracked file
+# <SIMC++_Project>/check_all.env (shell syntax, e.g. SIMC_REFERENCE=/data/simc_reference), if it exists. Missing data:
+# the tests that need it are skipped (exit 77), so the run passes with fewer tests.
 
 set -uo pipefail
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SRC_DIR="$PROJECT_DIR/SIMC++_Claude"
 RUNS_DIR="$PROJECT_DIR/simc_runs"
-ROOT_DIR="${ROOTSYS:-/home/ayerbe/Builds/ROOT6_install}"
+ENVFILE="$PROJECT_DIR/check_all.env"
+if [[ -f $ENVFILE ]]; then
+  _r=${SIMC_REFERENCE-} _f=${SIMC_FORTRAN-} _b=${SIMC_BASELINES-} _rs=${ROOTSYS-}
+  # shellcheck disable=SC1090
+  source "$ENVFILE"
+  SIMC_REFERENCE=${_r:-${SIMC_REFERENCE-}}; SIMC_FORTRAN=${_f:-${SIMC_FORTRAN-}}
+  SIMC_BASELINES=${_b:-${SIMC_BASELINES-}}; ROOTSYS=${_rs:-${ROOTSYS-}}
+fi
+ROOT_DIR="${ROOTSYS:-$(root-config --prefix 2>/dev/null)}"
+[[ -n $ROOT_DIR ]] || { echo "check_all.sh: set ROOTSYS (ROOT 6.40 install)"; exit 2; }
+export ROOTSYS="$ROOT_DIR"
 export LD_LIBRARY_PATH="$ROOT_DIR/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 LABEL=""; REV=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --label) LABEL="$2"; shift ;;
     --commit) REV="$2"; shift ;;
-    -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,20p' "$0"; exit 0 ;;
   esac; shift
 done
 
@@ -47,17 +62,18 @@ BUILD="$OUT/build"; VBUILD="$OUT/val_build"
 T0=$(date +%s)
 FPRINT="$(dirname "${BASH_SOURCE[0]}")/toolchain_fingerprint.sh"
 TOOLCHAIN="$("$FPRINT")"
-REFTC="$(grep -m1 -E '^glibc/libm:' /home/ayerbe/NewDisk/reference/TOOLCHAIN.txt 2>/dev/null | sed -E 's/^glibc\/libm: *//;s/ +\(.*$//')"
+REFTC="$(grep -m1 -E '^glibc/libm:' "${SIMC_REFERENCE:-/nonexistent}/TOOLCHAIN.txt" 2>/dev/null | sed -E 's/^glibc\/libm: *//;s/ +\(.*$//')"
 { echo "commit $COMMIT (branch $(git -C "$SRC_DIR" branch --show-current)), uncommitted files: $DIRTY";
   echo "toolchain: $TOOLCHAIN";
+  echo "validation data: SIMC_REFERENCE=${SIMC_REFERENCE:-<none>} SIMC_FORTRAN=${SIMC_FORTRAN:-<none>} SIMC_BASELINES=${SIMC_BASELINES:-<none>}";
   git -C "$SRC_DIR" status --short; } > "$OUT/git.txt"
 
 jobs=$(nproc)
-REFS=(-DSIMC_REFERENCE_DIR=/home/ayerbe/NewDisk/reference -DSIMC_FORTRAN_DIR=/home/ayerbe/NewDisk/simc_gfortran)
+REFS=(-DSIMC_REFERENCE_DIR="${SIMC_REFERENCE-}" -DSIMC_FORTRAN_DIR="${SIMC_FORTRAN-}" -DSIMC_BASELINE_DIR="${SIMC_BASELINES-}")
 ( cmake -S "$SRC_DIR" -B "$BUILD" -DCMAKE_PREFIX_PATH="$ROOT_DIR" -DCMAKE_BUILD_TYPE=Release "${REFS[@]}" &&
   cmake --build "$BUILD" -j"$jobs" ) > "$OUT/build.log" 2>&1; B=$?
 T=skipped; if [[ $B -eq 0 ]]; then (cd "$BUILD" && ctest --output-on-failure) > "$OUT/tests.log" 2>&1; T=$?; fi
-( cmake -S "$SRC_DIR/validation" -B "$VBUILD" -DCMAKE_PREFIX_PATH="$ROOT_DIR" -DCMAKE_BUILD_TYPE=Release &&
+( cmake -S "$SRC_DIR/validation" -B "$VBUILD" -DCMAKE_PREFIX_PATH="$ROOT_DIR" -DCMAKE_BUILD_TYPE=Release "${REFS[@]}" &&
   cmake --build "$VBUILD" -j"$jobs" ) > "$OUT/val_build.log" 2>&1; VB=$?
 VT=skipped; if [[ $VB -eq 0 ]]; then (cd "$VBUILD" && ctest --output-on-failure) > "$OUT/val_tests.log" 2>&1; VT=$?; fi
 SECS=$(( $(date +%s) - T0 ))

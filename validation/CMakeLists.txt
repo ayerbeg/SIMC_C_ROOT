@@ -1,5 +1,5 @@
 # SIMC++ validation tools (standalone CMake project; P1.5).
-#   cmake -S validation -B validation/build -DCMAKE_PREFIX_PATH=/home/ayerbe/Builds/ROOT6_install
+#   cmake -S validation -B validation/build -DCMAKE_PREFIX_PATH=$ROOTSYS
 #   cmake --build validation/build -j && (cd validation/build && ctest --output-on-failure)
 # Kept independent of the top-level CMakeLists.txt on purpose (the core is built
 # by another task); it can later be pulled in with add_subdirectory(validation).
@@ -12,7 +12,9 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif()
 
-list(APPEND CMAKE_PREFIX_PATH /home/ayerbe/Builds/ROOT6_install)
+if(DEFINED ENV{ROOTSYS})
+  list(APPEND CMAKE_PREFIX_PATH $ENV{ROOTSYS})
+endif()
 find_package(ROOT 6.40 REQUIRED COMPONENTS Core RIO Tree Hist Gpad Graf MathCore)
 
 find_package(nlohmann_json 3.9 QUIET)
@@ -41,7 +43,7 @@ target_compile_options(simc_mode_diff PRIVATE -Wall -Wextra)
 
 # ---------------------------------------------------------------- self-tests
 enable_testing()
-set(SIMC_REFERENCE_DIR "/home/ayerbe/NewDisk/reference" CACHE PATH "Fortran reference data")
+set(SIMC_REFERENCE_DIR "$ENV{SIMC_REFERENCE}" CACHE PATH "Fortran reference data (empty = absent: self-tests not registered)")
 set(R ${SIMC_REFERENCE_DIR}/runs)
 set(T ${CMAKE_CURRENT_BINARY_DIR}/selftest)
 set(CFG ${CMAKE_CURRENT_SOURCE_DIR}/config/compare_default.json)
@@ -107,7 +109,7 @@ else()
   message(STATUS "reference runs not found under ${R}: compare self-tests not registered")
 endif()
 
-set(SIMC_BASELINE_DIR "/home/ayerbe/NewDisk/SIMC++_Project/baselines" CACHE PATH "SIMC++ baseline outputs")
+set(SIMC_BASELINE_DIR "$ENV{SIMC_BASELINES}" CACHE PATH "SIMC++ baseline outputs (empty = absent)")
 # P7.4: both trees empty (Ncontribute = 0 in both runs, K2 acceptance) -> per-variable tests skipped, PASS
 # P10.4: regenerated on glibc 2.43 / gcc 16.2.1 (the original f9cea51_K2K4_s4242 is kept)
 set(_K2C ${SIMC_BASELINE_DIR}/55cf7a0_glibc243_K2K4_s4242)

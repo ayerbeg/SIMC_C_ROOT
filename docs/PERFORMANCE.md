@@ -129,13 +129,15 @@ reference's ngen, `simc_compare` of t8 vs the Fortran reference A, t8 vs t1 and 
 | SIDIS (100000) | FAIL 6/271, gross: `wtcontr` (D-006), `decdist`, `pfermi` (D-051 F3) | FAIL 10/271, the same gross | PASS 3/273 | 53 / 218 |
 | rho (100000) | FAIL 5/280, 2 gross: `wtcontr` (D-006), `pfermi` (D-051 F3) | FAIL 2/280, the same gross (*) | PASS 3/282 (*) | 1105 / 6851 (*) |
 
-(*) rho t1 = the accepted P13.2 corrected run (simc_runs/20261029_014541_P13.2_L2_corrected_h_k1_rad: same seed and ngen,
+`run-archive:<label>` names a run folder of the SIMC++ project's run archive (the `simc_runs/` directory next to the source tree, where `tools/check_all.sh` and the run script write `<timestamp>_<label>/` folders); `reference/...` is relative to the Fortran reference data `$SIMC_REFERENCE`.
+
+(*) rho t1 = the accepted P13.2 corrected run (run-archive:P13.2_L2_corrected_h_k1_rad: same seed and ngen,
 SIMC++ 75f8dbd before the optimisations; the one-thread outputs are unchanged since, as the pion/SIDIS t1 runs show).
 F/N = statistical failures (p < 0.01) / tests. Every gross failure against the Fortran is a documented correction of
 the default (corrected) mode, present identically in the one-thread run (FORTRAN_DIFFERENCES.md: §9 pion, §12 SIDIS,
 §13 rho); `--threads` cannot run in the compat mode, so the threaded runs are compared in the corrected mode. The
 one-thread runs (t1) of pion and SIDIS are bitwise identical (`.hist`, tree) to the accepted P9.2 / P12.2 corrected L2
-runs of the same seed. Runs: simc_runs/20261114_2101*_P15.4_L2_<case>_t{1,8}/ (compare_vs_A/, compare_vs_t1/).
+runs of the same seed. Runs: run-archive:P15.4_L2_<case>_t{1,8}/ (compare_vs_A/, compare_vs_t1/).
 
 ThreadSanitizer (clang 22, `-fsanitize=thread`): `--threads 4` runs of eep, pion dec1, SIDIS, rho, calo pi0 and the
 polarized-target field input report no data race.
