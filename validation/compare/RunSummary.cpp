@@ -1,4 +1,5 @@
-// RunSummary.cpp - readers for Fortran .hist/.geni and for the run summary JSON.
+// RunSummary.cpp - readers for Fortran .hist/.geni and for the run summary JSON (see RunSummary.h): both are turned
+// into the same RunSummary record, so simc_compare treats a Fortran and a C++ run alike.
 #include "RunSummary.h"
 
 #include <nlohmann/json.hpp>
@@ -147,7 +148,7 @@ bool isInteger(const std::string& t) {
 
 // ---------------------------------------------------------------------------
 // JSON helpers: tolerant key lookup (the schema of docs/summary.schema.json is
-// owned by P1.4; aliases keep this reader working if names differ slightly).
+// written by src/output/SummaryJson.cpp; aliases keep this reader working if names differ slightly).
 // ---------------------------------------------------------------------------
 const json* findKey(const json& j, const std::vector<std::string>& aliases, int depth = 3) {
     if (!j.is_object()) return nullptr;
@@ -191,7 +192,7 @@ void parseFortranHist(const std::string& path, RunSummary& s) {
     std::string line;
     int nlumi = 0;
     bool haveNgen = false, haveNtried = false, haveNcontr = false;
-    // P12.3: pass_cuts window (simc.f:report "Input Spectrometer Limits" and "slop.MC" lines) and electron_arm
+    // The pass_cuts window (simc.f:report "Input Spectrometer Limits" and "slop.MC" lines) and electron_arm
     static const std::regex spe(R"(^\s*SPedge\.([ep])\.(delta|yptar|xptar)\.min/max\s*=\s*(\S+)\s+(\S+))");
     static const std::regex slp(R"(^\s*(?:slop\.MC)?\s+([EP]) arm (delta|yptar|xptar)\s+(\S+))");
     static const std::regex earm(R"(electron_arm=\s*(-?\d+))");
@@ -400,7 +401,7 @@ void parseSummaryJson(const std::string& path, RunSummary& s) {
         }
     }
 
-    // P12.3: pass_cuts window ("spedge" [min, max], "slop".MC[].used), settings.electron_arm, run.fortran_compat
+    // The pass_cuts window ("spedge" [min, max], "slop".MC[].used), settings.electron_arm, run.fortran_compat
     if (j.contains("spedge") && j["spedge"].is_object()) {
         int n = 0;
         const char* arm[2] = {"e", "p"};

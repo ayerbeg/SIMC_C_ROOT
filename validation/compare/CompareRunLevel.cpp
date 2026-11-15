@@ -1,4 +1,5 @@
-// validation/compare/CompareRunLevel.cpp — run-level tests (task P15.3 split of simc_compare.cpp, no logic change).
+// validation/compare/CompareRunLevel.cpp — the run-level tests of simc_compare: pulls of the .hist/summary numbers
+// (counters, wtcontr, averages, normalisation) and of the .geni stop counters, with their statistical errors.
 #include "CompareCommon.h"
 
 namespace simccmp {
@@ -64,7 +65,7 @@ void RunLevelTests(Session& st) {
         add(t);
     }
     // wtcontr (.hist): sum of main%weight over the pass_cuts events only (simc.f:229-241, 311-313), times normfac/nevent.
-    // P12.3 (D-053): its relative error is that of the pass_cuts subset of the tree, sqrt(sum w^2)/sum w of the events in
+    // D-053: its relative error is that of the pass_cuts subset of the tree, sqrt(sum w^2)/sum w of the events in
     // the run's own pass_cuts window (perTriedMean over Ntried as the tree yield); without the window data (SPedge, slop,
     // electron_arm, the mode) the relative error of the whole tree yield is used, with a note.
     if (const Scalar *wa = RA.scalar("wtcontr"), *wb = RB.scalar("wtcontr"); wa && wb) {
@@ -156,7 +157,7 @@ void RunLevelTests(Session& st) {
         }
     }
     // AVERAGE.sigcc = sum(sigcc over successes)/nevent (simc.f:248,959). The pion/kaon/delta ntuple calls the same
-    // quantity "siglab" (results_write.f:146, NtupleInit.f:129; P9.2): used when the configured branch is absent.
+    // quantity "siglab" (results_write.f:146, NtupleInit.f:129): used when the configured branch is absent.
     std::string sigcc_b = cfg.sigccBranch;
     if ((!TA.col(sigcc_b) || !TB.col(sigcc_b)) && TA.col("siglab") && TB.col("siglab")) sigcc_b = "siglab";
     if (const Scalar *sa = RA.scalar("sigcc_average"), *sb = RB.scalar("sigcc_average");
@@ -248,7 +249,7 @@ void RunLevelTests(Session& st) {
                 continue;
             }
             const auto& mB = itB->second;
-            // Only the counters reported by BOTH runs are compared (P9.2): the Fortran .geni does not print every
+            // Only the counters reported by BOTH runs are compared: the Fortran .geni does not print every
             // counter (SHMS q3_mid, D1_men, targ_*, cer1/2, BP_in/out; OUTPUT_FORMAT.md), while the SIMC++ summary
             // carries all of them; a counter missing on one side is not a measured 0. Such keys are listed as warnings
             // when they are non-zero; their counts end up in the 'unaccounted' cell of the partition test.

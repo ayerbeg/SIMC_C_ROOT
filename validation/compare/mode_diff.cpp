@@ -1,4 +1,4 @@
-// validation/compare/mode_diff.cpp — task P8.2.
+// validation/compare/mode_diff.cpp — the simc_mode_diff tool.
 //
 // Event-by-event difference of two SIMC++ runs made with the SAME seed and input but different modes (fortran_compat
 // vs the corrected default, D-031). When a correction does not change the random-number consumption, the two runs

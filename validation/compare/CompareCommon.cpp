@@ -1,4 +1,4 @@
-// validation/compare/CompareCommon.cpp — see CompareCommon.h (task P15.3 split of simc_compare.cpp).
+// validation/compare/CompareCommon.cpp — see CompareCommon.h: the simc_compare internals shared by its stages.
 #include "CompareCommon.h"
 
 namespace simccmp {

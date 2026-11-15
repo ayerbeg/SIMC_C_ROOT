@@ -107,6 +107,8 @@ int main(int argc, char** argv) {
         return 2;
     }
 
+    // _source: where every value came from (files, the line that set each variable, the unregistered names), for
+    // traceability; simc++ ignores keys that start with '_'
     Json out;
     out["_source"]["generator"] = "inp2json (SIMC++ P1.3)";
     out["_source"]["files"] = reader.filesLoaded();

@@ -1,4 +1,5 @@
-// validation/compare/CompareTreeLevel.cpp — tree-level tests (task P15.3 split of simc_compare.cpp, no logic change).
+// validation/compare/CompareTreeLevel.cpp — the tree-level tests of simc_compare: per ntuple variable, the weighted
+// histograms of the two runs (chi2 and Kolmogorov-Smirnov), plus the non-finite and empty-tree checks.
 #include "CompareCommon.h"
 
 namespace simccmp {
@@ -29,7 +30,7 @@ void TreeLevelTests(Session& st) {
     if (!onlyA.empty()) { std::string s; for (auto& x : onlyA) s += " " + x; warnings.push_back("branches only in A:" + s); }
     if (!onlyB.empty()) { std::string s; for (auto& x : onlyB) s += " " + x; warnings.push_back("branches only in B:" + s); }
 
-    // Non-finite tree entries (P7.4): counted per run at the EVENT level (an event with any NaN/inf branch among the
+    // Non-finite tree entries: counted per run at the EVENT level (an event with any NaN/inf branch among the
     // compared variables or the weight) and reported as an info test; the per-variable tests below exclude them and
     // warn per variable. The Fortran can write NaN events (e.g. K2 norad, D-028 F2).
     {
@@ -67,7 +68,7 @@ void TreeLevelTests(Session& st) {
                                (nA ? " [" + brA + "]" : "") + " B=" + std::to_string(nB) + (nB ? " [" + brB + "]" : ""));
     }
 
-    // Empty trees (P7.4): both empty (e.g. Ncontribute = 0 in both runs) -> nothing to compare per variable, the
+    // Empty trees: both empty (e.g. Ncontribute = 0 in both runs) -> nothing to compare per variable, the
     // run-level tests decide; exactly one empty -> a real difference (deterministic FAIL).
     const bool emptyA = TA.n == 0, emptyB = TB.n == 0;
     if (emptyA && emptyB) {

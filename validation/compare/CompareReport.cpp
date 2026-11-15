@@ -1,4 +1,5 @@
-// validation/compare/CompareReport.cpp — verdict, summary.txt/.json and the PDF (task P15.3 split of simc_compare.cpp, no logic change).
+// validation/compare/CompareReport.cpp — the last stage of simc_compare: the verdict (PASS/FAIL from the run-level and
+// tree-level tests), summary.txt / summary.json and the overlay/ratio PDF.
 #include "CompareCommon.h"
 
 namespace simccmp {

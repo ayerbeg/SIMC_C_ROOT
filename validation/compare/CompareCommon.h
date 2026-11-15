@@ -1,4 +1,4 @@
-// validation/compare/CompareCommon.h — simc_compare internals (task P15.3 split of simc_compare.cpp, no logic change):
+// validation/compare/CompareCommon.h — simc_compare internals:
 // configuration, tree loading, test/result records, normalisation, text pages, the CLI helpers and the comparison
 // session shared by the run-level (CompareRunLevel.cpp), tree-level (CompareTreeLevel.cpp) and report
 // (CompareReport.cpp) stages. simc_compare.cpp keeps main (CLI, loading, console, exit status).

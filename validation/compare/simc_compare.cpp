@@ -1,5 +1,5 @@
 // simc_compare - decide whether two SIMC runs (Fortran or C++) are statistically
-// the same. Task P1.5. Formulas and formats: validation/README.md.
+// the same. Formulas and formats: validation/README.md.
 //
 // Usage:
 //   simc_compare --a SPEC --b SPEC --out DIR [--config CFG.json]
@@ -10,7 +10,7 @@
 // SPEC: <run>.summary.json | <run>.hist | <run>.root | directory (see RunSummary.h)
 // Exit: 0 = PASS (or expectation met), 1 = FAIL (or expectation not met), 2 = error.
 //
-// Task P15.3: the stages are in CompareRunLevel.cpp, CompareTreeLevel.cpp, CompareReport.cpp (helpers: CompareCommon.*).
+// The stages are in CompareRunLevel.cpp, CompareTreeLevel.cpp, CompareReport.cpp (helpers: CompareCommon.*).
 #include "CompareCommon.h"
 
 using namespace simccmp;
@@ -99,7 +99,7 @@ int main(int argc, char** argv) {
         fs::create_directories(outDir);
         RA = loadRun(specA, !preferHist);
         RB = loadRun(specB, !preferHist);
-        // D-054 (P15.1): the run summaries carry run.fortran_compat (a Fortran .hist is compat); an explicit --mode-a/-b
+        // The run summaries carry run.fortran_compat (a Fortran .hist is compat); an explicit --mode-a/-b
         // overrides it, with a warning when the two disagree
         auto applyMode = [&](RunSummary& R, int mode, const char* which) {
             if (mode == -2) return;
