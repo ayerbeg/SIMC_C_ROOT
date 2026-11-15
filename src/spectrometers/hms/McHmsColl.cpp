@@ -11,7 +11,7 @@ namespace simc {
 namespace hms {
 
 namespace {
-// FORTRAN-QUIRK(P6.4): `sigA = sigA*1.d-27` (pion_coll_absorb.f:76, 82): 1.d-27 is a DOUBLE PRECISION literal, which
+// FORTRAN-QUIRK: `sigA = sigA*1.d-27` (pion_coll_absorb.f:76, 82): 1.d-27 is a DOUBLE PRECISION literal, which
 // -fdefault-real-8 promotes to real*16, so the product is formed in quad precision with the quad value of 1e-27 and
 // rounded to real*8 (objdump of pion_coll_absorb.o: __extenddftf2, __multf3, __trunctfdf2). The double product differs
 // by 1 ulp for 7 of the 788 rows of reference/functions/pion_coll_absorb. 1e-27 = 1/(5**27 * 2**27): 5**27 fits in 64
@@ -176,7 +176,7 @@ bool McHms::mcHmsColl(optics::DecayState& d, double p_spec, double& pathlen, IRa
             // FORTRAN-BUG(D-037 F4): original Fortran hms/mc_hms_coll.f:121-124: `if(epart.lt.sqrt(m2)) goto 500` is
             // never true, because enerloss_new (enerloss_new.f:75-77) clamps the loss to (E-m)-1e-7: a particle that
             // ranges out in the collimator continues with p = sqrt((m+1e-7)**2-m**2) ~ 5e-3 MeV/c (up to a path of
-            // 4.65e9 cm in the P6.F2 tables). Corrected: a clamped loss stops the particle (counted in hSTOP_coll), as
+            // 4.65e9 cm in the Fortran reference tables). Corrected: a clamped loss stops the particle (counted in hSTOP_coll), as
             // the branch intends. fortran_compat keeps the Fortran.
             if (!fortranCompat() && mat_.lastEnergyLossClamped()) {
                 if (collTrace_) collTrace_->ranged_out = true;

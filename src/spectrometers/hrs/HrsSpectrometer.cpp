@@ -1,4 +1,6 @@
 // src/spectrometers/hrs/HrsSpectrometer.cpp — see include/simc/spectrometers/hrs/HrsSpectrometer.h.
+// The ISpectrometer plug-ins "hrsr" and "hrsl" (Hall A High Resolution Spectrometers, right and left of the beam)
+// around the one kernel hrs::McHrs with a side parameter, and their registration.
 #include "simc/spectrometers/hrs/HrsSpectrometer.h"
 
 #include "simc/core/Registry.h"
@@ -16,6 +18,8 @@ HrslSpectrometer::HrslSpectrometer() : HrsSpectrometer(Side::Left) {}
 
 std::string HrsSpectrometer::name() const { return k_->params().name; }
 
+// Stage configuration: the run parameters first, then the optional JSON keys of the pipeline (matrix_dir, use_sieve,
+// and ms_flag/wcs_flag/decay, which override the per-event flags of the event chain; verbose = false silences it).
 void HrsSpectrometer::configure(const Json& config, const SimcParameters& params) {
     ctau_ = params.ctau;
     if (!config.is_object()) return;

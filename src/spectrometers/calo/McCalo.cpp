@@ -1,4 +1,6 @@
 // src/spectrometers/calo/McCalo.cpp — see include/simc/spectrometers/calo/kernel/McCalo.h (kernel).
+// mc_calo (calo/mc_calo.f): straight-line drift of a photon or charged particle to the calorimeter face, the
+// rectangular acceptance of the block array, optional smearing, and the trivial reconstruction (mc_calo_recon.f).
 #include "simc/spectrometers/calo/kernel/McCalo.h"
 
 #include <cmath>

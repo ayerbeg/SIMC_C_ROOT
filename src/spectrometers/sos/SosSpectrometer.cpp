@@ -13,6 +13,8 @@ namespace sos {
 SosSpectrometer::SosSpectrometer() : k_(std::make_unique<McSos>()) {}
 SosSpectrometer::~SosSpectrometer() = default;
 
+// Stage configuration: the run parameters first, then the optional JSON keys of the pipeline (matrix_dir, use_sieve,
+// and ms_flag/wcs_flag/decay, which override the per-event flags of the event chain; verbose = false silences it).
 void SosSpectrometer::configure(const Json& config, const SimcParameters& params) {
     ctau_ = params.ctau;
     if (!config.is_object()) return;

@@ -16,6 +16,8 @@ namespace shms {
 ShmsSpectrometer::ShmsSpectrometer() : k_(std::make_unique<McShms>()) {}
 ShmsSpectrometer::~ShmsSpectrometer() = default;
 
+// Stage configuration: the run parameters first, then the optional JSON keys of the pipeline (matrix_dir, spectr,
+// using_SHMScoll, ctau, and ms_flag/wcs_flag/decay, which override the per-event flags of the event chain; verbose = false silences it).
 void ShmsSpectrometer::configure(const Json& config, const SimcParameters& params) {
     usingColl_ = params.using_SHMScoll;
     ctau_ = params.ctau;

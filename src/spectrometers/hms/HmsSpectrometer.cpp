@@ -13,6 +13,8 @@ namespace hms {
 HmsSpectrometer::HmsSpectrometer() : k_(std::make_unique<McHms>()) {}
 HmsSpectrometer::~HmsSpectrometer() = default;
 
+// Stage configuration: the run parameters first, then the optional JSON keys of the pipeline (matrix_dir, use_sieve,
+// and ms_flag/wcs_flag/decay, which override the per-event flags of the event chain; verbose = false silences it).
 void HmsSpectrometer::configure(const Json& config, const SimcParameters& params) {
     usingColl_ = params.using_HMScoll;
     ctau_ = params.ctau;
@@ -39,6 +41,8 @@ const std::map<std::string, long>& HmsSpectrometer::stopCounters() const {
     return cntMap_;
 }
 
+// The ISpectrometer contract: copy the event chain's input into the Fortran argument list of the kernel, run it, and
+// return the focal-plane and reconstructed values (only valid where the Fortran had computed them).
 // simc.f:montecarlo l.1459-1467 (m2 = Mh2, pathlen = 0, ms = wcs = mc_smear, decay = doing_decay,
 // resmult -> ntup%resfac, fry argument = xtar_init) and l.1491-1500 (RECON <- arguments).
 SpecResult HmsSpectrometer::transport(const SpecInput& in, IRandom& rng) {

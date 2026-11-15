@@ -1,4 +1,6 @@
 // src/spectrometers/calo/CaloSpectrometer.cpp — see include/simc/spectrometers/calo/CaloSpectrometer.h.
+// The ISpectrometer plug-in "calo" (arm codes 7/8: a bare calorimeter at drift_to_cal from the target, the NPS-type
+// photon detector) around the kernel calo::McCalo: no magnets, a drift to the calorimeter face and its acceptance.
 #include "simc/spectrometers/calo/CaloSpectrometer.h"
 
 #include "simc/core/Registry.h"
