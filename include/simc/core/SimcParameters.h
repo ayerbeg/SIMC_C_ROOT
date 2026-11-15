@@ -1,31 +1,28 @@
-// include/simc/core/SimcParameters.h
-//
-// SimcParameters: every input variable the Fortran SIMC reads from a .inp file.
-//
-// Fortran: dbase.f:regallvars (l.967-1128) registers exactly 106 CTP variables.
-// This struct has one field for each of them, grouped like the Fortran
-// COMMON blocks / derived types (simulate.inc, target.inc, radc.inc, structures.inc).
-//
-// Conventions
-//  * Values are stored EXACTLY as written in the .inp (same units as the .inp:
-//    MeV, MeV/c, deg, mrad, mg/cm^2, % ...). No dbase.f / init.f conversion is
-//    applied here; that is the job of RunSetup (see docs/ARCHITECTURE.md §2).
-//    effectiveValues() (input/EffectiveValues.h) shows the Fortran-converted values.
-//  * Defaults are the TRUE Fortran defaults when a variable is absent from the .inp:
-//    zero-initialised COMMON (0 / .false. / blank), except
-//      - SPedge%*%*%min/max = -/+1.0d10 and cuts%Em%min/max = -/+1.0d10
-//        (init.f:min_max_init l.921+, called before dbase_read),
-//      - use_benhar_sf=.false., random_state_file=' ', random_seed=0,
-//        extra_dbase_file=' ' (dbase.f:69-76).
-//    NOTE: the 3rd argument of regparm*() is a CTP title pointer, NOT a default
-//    (CTP/daVarRegister.c); e.g. doing_hplus/sigc_nbin/sigc_kin_max default to 0.
-//    Source: reference/functions/_inputs/inp_variables.csv (D-005).
-//  * Fortran "*_int" flags that dbase.f:convert_to_logical (l.1129-1166) turns into
-//    logicals (int > 0 => .true.) are stored as bool. Integer codes that the Fortran
-//    tests numerically (use_expon, Nntu, rad_flag, ...) stay int.
-//
-// The JSON path of each field is its Fortran name split on '%'
-// (e.g. "targ%thick" -> {"targ":{"thick":...}}). See ParameterTable().
+/**
+ * @file
+ * @ingroup core
+ * @brief simc::SimcParameters: every input variable of a SIMC `.inp` file, and the parameter table that drives the
+ *        `.inp` reader, the JSON (de)serialisation and the reference tables.
+ *
+ * The struct has exactly one field for each of the 106 input variables of the original program, grouped like its
+ * COMMON blocks / derived types.
+ *
+ * Conventions:
+ *  - Values are stored EXACTLY as written in the `.inp`, in the `.inp` units (MeV, MeV/c, deg, mrad, mg/cm^2, %, ...).
+ *    No conversion is applied here: that is the job of simc::RunSetup. simc::EffectiveValues (input/EffectiveValues.h)
+ *    shows the converted values.
+ *  - Defaults are the TRUE defaults of the original program when a variable is absent from the `.inp`: zero / false /
+ *    blank, except SPedge.*.*.min/max = -/+1e10 and cuts.Em.min/max = -/+1e10 (set before the input is read), and
+ *    use_benhar_sf = false, random_state_file = blank, random_seed = 0, extra_dbase_file = blank.
+ *  - The `*_int` integer flags of the original that are converted to logicals (int > 0 means true) are stored as
+ *    `bool`. Integer codes that are tested numerically (use_expon, Nntu, rad_flag, ...) stay `int`.
+ *  - The JSON path of each field is its original name split on '%' (e.g. "targ%thick" -> {"targ":{"thick":...}});
+ *    see simc::ParameterTable().
+ *
+ * @note Origin: Fortran SIMC dbase.f:regallvars (l.967-1128, 106 CTP variables) and dbase.f:convert_to_logical
+ *       (l.1129-1166). The third argument of the CTP regparm*() calls is a title pointer, NOT a default (e.g.
+ *       doing_hplus, sigc_nbin and sigc_kin_max default to 0); source: the reference input-variable table (D-005).
+ */
 #ifndef SIMC_CORE_SIMCPARAMETERS_H
 #define SIMC_CORE_SIMCPARAMETERS_H
 
@@ -37,12 +34,21 @@
 
 namespace simc {
 
+/** @addtogroup core
+ *  @{ */
+
 /// Fortran: cutstype / rangetype (structures.inc) — a min/max pair.
 struct ParamRange {
-    double min{0.0};
-    double max{0.0};
+    double min{0.0};   ///< Lower bound (unit of the parameter).
+    double max{0.0};   ///< Upper bound (unit of the parameter).
 };
 
+/**
+ * @brief Every input variable of a SIMC run, in `.inp` units (see the file description for the conventions).
+ *
+ * Filled by simc::InpReader (from `.inp` files) or simc::FromJson (from JSON); converted into the run constants by
+ * simc::BuildRunSetup. Field documentation: original name, [unit or kind], meaning. Plain copyable value type.
+ */
 struct SimcParameters {
     // ------------------------------------------------------------------
     // dbase.f:984-992 ("RESTSW" section of regallvars)
@@ -62,9 +68,10 @@ struct SimcParameters {
     // ------------------------------------------------------------------
     double Ebeam{0.0};               ///< Fortran: Ebeam [MeV]
     double dEbeam{0.0};              ///< Fortran: dEbeam [% of Ebeam, full width, flat]; dbase.f:238 -> MeV
+    /// Experiment-level quantities (Fortran EXPER).
     struct Exper {
         double charge{0.0};          ///< Fortran: EXPER%charge [mC]
-    } EXPER;
+    } EXPER;                         ///< Fortran: EXPER
     bool doing_kaon{false};          ///< Fortran: doing_kaon (doing_kaon_int) [flag]
     int which_kaon{0};               ///< Fortran: which_kaon [code] 0/1/2 Lambda/Sigma0/Sigma-, 10/11/12 coherent
     bool doing_pion{false};          ///< Fortran: doing_pion (doing_pion_int) [flag]
@@ -86,6 +93,7 @@ struct SimcParameters {
     // ------------------------------------------------------------------
     // dbase.f:1018-1035 (TARGET), target.inc
     // ------------------------------------------------------------------
+    /// The target as written in the input (Fortran targ, target.inc).
     struct Target {
         double A{0.0};               ///< Fortran: targ%A [nucleons]
         double Z{0.0};               ///< Fortran: targ%Z [charge]
@@ -102,7 +110,7 @@ struct SimcParameters {
         double angle{0.0};           ///< Fortran: targ%angle [deg]; dbase.f:453 -> rad
         double abundancy{0.0};       ///< Fortran: targ%abundancy [%]
         int can{0};                  ///< Fortran: targ%can [code] 1=beer can 2=pudding can 3=cryo17
-    } targ;
+    } targ;                          ///< Fortran: targ
     double targ_Bangle{0.0};         ///< Fortran: targ_Bangle [deg] polarized target field angle
     double targ_Bphi{0.0};           ///< Fortran: targ_Bphi [deg]
     double targ_pol{0.0};            ///< Fortran: targ_pol [dimensionless]
@@ -110,6 +118,7 @@ struct SimcParameters {
     // ------------------------------------------------------------------
     // dbase.f:1039-1063 (E_ARM_MAIN, P_ARM_MAIN, *_OFFSET)
     // ------------------------------------------------------------------
+    /// Mispointing offsets of a spectrometer arm.
     struct Offset {
         double x{0.0};               ///< Fortran: spec%?%offset%x [cm]
         double y{0.0};               ///< Fortran: spec%?%offset%y [cm]
@@ -117,19 +126,22 @@ struct SimcParameters {
         double xptar{0.0};           ///< Fortran: spec%?%offset%xptar [mrad]; dbase.f:472-475 -> rad
         double yptar{0.0};           ///< Fortran: spec%?%offset%yptar [mrad]
     };
+    /// Central setting of a spectrometer arm.
     struct Arm {
         double P{0.0};               ///< Fortran: spec%?%P [MeV/c] central momentum
         double theta{0.0};           ///< Fortran: spec%?%theta [deg]; dbase.f:239-244 abs()/degrad
-        Offset offset;
+        Offset offset;               ///< Fortran: spec%?%offset
     };
+    /// The two spectrometer arms (Fortran spec).
     struct Spec {
         Arm e;                       ///< Fortran: spec%e
         Arm p;                       ///< Fortran: spec%p
-    } spec;
+    } spec;                          ///< Fortran: spec
+    /// Beam spot size (Fortran gen%xwid, gen%ywid).
     struct Gen {
         double xwid{0.0};            ///< Fortran: gen%xwid [cm, 1 sigma]
         double ywid{0.0};            ///< Fortran: gen%ywid [cm, 1 sigma]
-    } gen;
+    } gen;                           ///< Fortran: gen (beam spot widths)
 
     // ------------------------------------------------------------------
     // dbase.f:1067-1069 (MISC2INT, radc.inc)
@@ -146,9 +158,10 @@ struct SimcParameters {
     bool using_rad{false};           ///< Fortran: using_rad (using_rad_int) [flag]
     int spect_mode{0};               ///< Fortran: spect_mode [code] 0=e+p -1=p only -2=e only 1=none
     bool doing_phsp{false};          ///< Fortran: doing_phsp (doing_phsp_int) [flag] (acceptance mode, D-008)
+    /// Cuts on the reconstructed event (Fortran cuts).
     struct Cuts {
         ParamRange Em{-1.0e10, 1.0e10};  ///< Fortran: cuts%Em%min/max [MeV]; default init.f:min_max_init
-    } cuts;
+    } cuts;                          ///< Fortran: cuts
     bool using_Eloss{false};         ///< Fortran: using_Eloss (using_Eloss_int) [flag]
     bool correct_Eloss{false};       ///< Fortran: correct_Eloss (correct_eloss_int) [flag]
     bool correct_raster{false};      ///< Fortran: correct_raster (correct_raster_int) [flag]
@@ -178,15 +191,17 @@ struct SimcParameters {
     // ------------------------------------------------------------------
     // dbase.f:1108-1122 (E_ARM_ACCEPT, P_ARM_ACCEPT)
     // ------------------------------------------------------------------
+    /// Acceptance edges of one arm applied to the generated and reconstructed target quantities.
     struct ArmEdge {
         ParamRange delta{-1.0e10, 1.0e10};  ///< Fortran: SPedge%?%delta%min/max [%]
         ParamRange yptar{-1.0e10, 1.0e10};  ///< Fortran: SPedge%?%yptar%min/max [mrad]
         ParamRange xptar{-1.0e10, 1.0e10};  ///< Fortran: SPedge%?%xptar%min/max [mrad]
     };
+    /// Acceptance edges of both arms (Fortran SPedge).
     struct SPEdge {
         ArmEdge e;                   ///< Fortran: SPedge%e
         ArmEdge p;                   ///< Fortran: SPedge%p
-    } SPedge;
+    } SPedge;                        ///< Fortran: SPedge
 };
 
 // ----------------------------------------------------------------------
@@ -205,39 +220,76 @@ enum class ParamKind {
     DoubleArray   ///< regparmdoublearray (lambda)
 };
 
+/**
+ * @brief Description of one input variable: name, storage kind, units, origin and typed accessors into a
+ *        simc::SimcParameters.
+ *
+ * The table of descriptors (simc::ParameterTable) is the single list of the input variables: the `.inp` reader, the
+ * JSON (de)serialisation, the completeness test and the effective-value table iterate over it. The strings are static
+ * literals; descriptors are immutable and safe to share between threads.
+ */
 struct ParamDescriptor {
     const char* name;        ///< Fortran/CTP name as registered (case preserved), e.g. "targ%thick"
-    ParamKind kind;
+    ParamKind kind;          ///< Storage kind (selects the accessor to use).
     int size;                ///< array length (debug 6, lambda 3), string length (60/80), else 1
     const char* units;       ///< units as written in the .inp
     const char* fortran;     ///< Fortran target variable and dbase.f registration line
     // Accessors (never null for the matching kind)
-    int* (*asInt)(SimcParameters&);
+    int* (*asInt)(SimcParameters&);          ///< Int: pointer to the field in the given parameters (else null)
     bool* (*asBool)(SimcParameters&);        ///< Flag: the bool; FlagArray: first element
     double* (*asDouble)(SimcParameters&);    ///< Double: the value; DoubleArray: first element
-    std::string* (*asString)(SimcParameters&);
+    std::string* (*asString)(SimcParameters&);   ///< String: pointer to the field (else null)
 
-    /// JSON path components (Fortran name split on '%').
+    /**
+     * @brief The JSON path of the parameter.
+     * @return The components of #name split on '%' (e.g. {"targ", "thick"}).
+     */
     std::vector<std::string> jsonPath() const;
 };
 
-/// All 106 descriptors, in dbase.f:regallvars order.
+/**
+ * @brief The table of all input variables.
+ * @return All 106 descriptors, in the registration order of the original program (dbase.f:regallvars); a static
+ *         table, built on first use (thread-safe).
+ */
 const std::vector<ParamDescriptor>& ParameterTable();
 
-/// Case-insensitive lookup by Fortran name (CTP semantics); nullptr if not registered.
+/**
+ * @brief Looks up an input variable by its original name.
+ * @param fortran_name The name as written in a `.inp` file, e.g. "targ%thick"; matched case-insensitively (as the
+ *        original CTP parser does).
+ * @return The descriptor, or nullptr if no variable has this name.
+ */
 const ParamDescriptor* FindParameter(const std::string& fortran_name);
 
-/// Serialise to a JSON object keyed by the Fortran names split on '%'.
+/**
+ * @brief Serialises the parameters to JSON.
+ * @param p The parameters.
+ * @return A JSON object keyed by the original names split on '%' (nested objects), one entry per variable.
+ */
 Json ToJson(const SimcParameters& p);
 
-/// Deserialise. Keys are matched case-insensitively against the Fortran names.
-/// Unknown keys and type problems are appended to `warnings` (never fatal).
-/// Missing keys keep the value already in `p` (default-constructed = Fortran default).
-/// Throws std::invalid_argument for a rejected input (electron_arm/hadron_arm = 6, the retired SHMS LSA tune; D-032).
+/**
+ * @brief Reads parameters from JSON (the inverse of simc::ToJson).
+ *
+ * Keys are matched case-insensitively against the original names. Missing keys keep the value already in @p p (a
+ * default-constructed simc::SimcParameters holds the original defaults).
+ * @param j A JSON object in the layout of simc::ToJson.
+ * @param p The parameters to update.
+ * @param warnings If not null, receives one message per unknown key or type problem (never fatal).
+ * @throws std::invalid_argument for a rejected input (electron_arm / hadron_arm = 6, the retired SHMS LSA tune; D-032).
+ */
 void FromJson(const Json& j, SimcParameters& p, std::vector<std::string>* warnings = nullptr);
 
-/// Value of one parameter rendered as text (for tables and tests).
+/**
+ * @brief The value of one parameter as text (for tables and tests).
+ * @param d The descriptor of the parameter.
+ * @param p The parameters to read.
+ * @return The value formatted for its kind (arrays as a comma-separated list).
+ */
 std::string FormatValue(const ParamDescriptor& d, const SimcParameters& p);
+
+/** @} */
 
 }  // namespace simc
 

@@ -1,10 +1,21 @@
-// include/simc/core/SimcConstants.h
-// Physical constants of SIMC (constants.inc). Units: simc/core/Units.h (MeV, cm, rad).
-
+/**
+ * @file
+ * @ingroup core
+ * @brief Physical and mathematical constants of SIMC (masses, alpha, hbar c, pi, ...).
+ *
+ * The values are those of the original program, so that results agree bit for bit; units follow simc::units
+ * (MeV, MeV^2, fm, rad).
+ * @note Origin: Fortran SIMC constants.inc.
+ */
 #ifndef SIMC_CONSTANTS_H
 #define SIMC_CONSTANTS_H
 
 namespace simc {
+/**
+ * @ingroup core
+ * @brief Physical and mathematical constants of SIMC (constants.inc values): masses [MeV], squared masses [MeV^2],
+ *        alpha, hbar c [MeV fm], pi, the Delta width [MeV].
+ */
 namespace constants {
 
 // ============================================================================
@@ -27,15 +38,15 @@ constexpr double MDelta = 1232.0;          ///< Delta resonance mass
 // ============================================================================
 // Squared Masses (MeV^2) - Pre-calculated for efficiency
 // ============================================================================
-constexpr double Me2    = Me * Me;
-constexpr double Mp2    = Mp * Mp;
-constexpr double Mn2    = Mn * Mn;
-constexpr double Mpi2   = Mpi * Mpi;
-constexpr double Mpi02  = Mpi0 * Mpi0;
-constexpr double Mmu2   = Mmu * Mmu;
-constexpr double Mk2    = Mk * Mk;
-constexpr double Mrho2  = Mrho * Mrho;
-constexpr double Md2    = Md * Md;
+constexpr double Me2    = Me * Me;   ///< Electron mass squared [MeV^2]
+constexpr double Mp2    = Mp * Mp;   ///< Proton mass squared [MeV^2]
+constexpr double Mn2    = Mn * Mn;   ///< Neutron mass squared [MeV^2]
+constexpr double Mpi2   = Mpi * Mpi;   ///< Charged pion mass squared [MeV^2]
+constexpr double Mpi02  = Mpi0 * Mpi0;   ///< Neutral pion mass squared [MeV^2]
+constexpr double Mmu2   = Mmu * Mmu;   ///< Muon mass squared [MeV^2]
+constexpr double Mk2    = Mk * Mk;   ///< Kaon mass squared [MeV^2]
+constexpr double Mrho2  = Mrho * Mrho;   ///< Rho meson mass squared [MeV^2]
+constexpr double Md2    = Md * Md;   ///< Deuteron mass squared [MeV^2]
 
 // ============================================================================
 // Physical Constants
@@ -49,8 +60,8 @@ constexpr double euler  = 0.577215665;     ///< Euler's constant
 // ============================================================================
 // Mathematical Constants
 // ============================================================================
-constexpr double pi     = 3.141592653589793;
-constexpr double twopi  = 2.0 * pi;
+constexpr double pi     = 3.141592653589793;   ///< pi (the literal of constants.inc)
+constexpr double twopi  = 2.0 * pi;            ///< 2 pi
 constexpr double degrad = 180.0 / pi;      ///< Degrees per radian (rad to deg)
 
 // Unit conversions: see simc/core/Units.h (the single unit convention of SIMC++).

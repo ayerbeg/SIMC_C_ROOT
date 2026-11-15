@@ -358,7 +358,7 @@ class Checker:
                     stmt, doc, cur = [], [], None
                     continue
                 # function body or brace initializer
-                if self.is_function(text):
+                if self.is_function(text) and text.count("(") == text.count(")"):
                     e = self.function_entity(text, stmt_line, doc, stack)
                     if e is not None and self.visible(stack):
                         finish(e)

@@ -1,15 +1,22 @@
-// include/simc/core/random/RanluxRandom.h
-//
-// IRandom "ranlux" (task P13.2): the random-number generator of the Fortran SIMC, ported bit for bit, so that a SIMC++ run
-// can reproduce the random stream of a Fortran run exactly (bitwise replays of whole runs; D-002 keeps mt64 the default).
-//   cern/ranlux.f: RANLUX (Luescher's luxury subtract-with-borrow, F. James 1993), RLUXGO (initialisation from one integer),
-//                  RLUXIN / RLUXUT (the 25-integer state); compiled with -fdefault-real-8 (REAL = double; every value is a
-//                  multiple of 2^-48, so the arithmetic is exact in double precision).
-//   call_ranlux.f: sgrnd(seed) = RLUXGO(3, seed, 0, 0); grnd() hands out RVEC(1..999) of each block of 1000 numbers and
-//                  refills when latest reaches 1000 (the 1000th number of every block is never used).
-//   gauss1.f:      gauss1 on this uniform stream (gauss1Polar).
-// JSON config (optional): { "seed": <integer> } (default: the .inp random_seed, simc.f:107 sgrnd(random_seed)), or
-// { "state": [25 integers] } (simc.f:109 start_file_random_state -> RLUXIN; the *_start_random_state.dat content).
+/**
+ * @file
+ * @ingroup core
+ * @brief simc::RanluxRandom ("ranlux"): the random-number generator of the original SIMC, ported bit for bit.
+ *
+ * With it a SIMC++ run can reproduce the random stream of an original run exactly (bitwise replays of whole runs;
+ * decision D-002 keeps "mt64" the default). Task P13.2.
+ *  - RANLUX: Luescher's luxury subtract-with-borrow generator (F. James 1993), RLUXGO (initialisation from one
+ *    integer), RLUXIN / RLUXUT (the 25-integer state); every value is a multiple of 2^-48, so the arithmetic is exact in
+ *    double precision.
+ *  - grnd: uniform() hands out RVEC(1..999) of each block of 1000 numbers and refills when latest reaches 1000 (the
+ *    1000th number of every block is never used); seed(s) = RLUXGO(3, s, 0, 0).
+ *  - gauss1(): simc::gauss1Polar on this uniform stream.
+ *
+ * JSON configuration (optional): `{ "seed": <integer> }` (default: the `.inp` random_seed), or
+ * `{ "state": [25 integers] }` (a saved RANLUX state, the `*_start_random_state.dat` content).
+ * @note Origin: Fortran SIMC cern/ranlux.f (compiled with -fdefault-real-8), call_ranlux.f (sgrnd, grnd), gauss1.f;
+ *       simc.f:107-109.
+ */
 #ifndef SIMC_CORE_RANDOM_RANLUXRANDOM_H
 #define SIMC_CORE_RANDOM_RANLUXRANDOM_H
 
@@ -21,28 +28,70 @@
 
 namespace simc {
 
+/** @addtogroup core
+ *  @{ */
+
+/**
+ * @brief Bitwise port of the RANLUX generator and of the grnd/sgrnd wrappers of the original program.
+ *
+ * Holds the full generator state (no globals); not thread-safe.
+ */
 class RanluxRandom : public IRandom {
 public:
+    /// Creates an unseeded generator (as a fresh process: the first call initialises it like RANLUX does).
     RanluxRandom();
 
     std::string name() const override { return "ranlux"; }
     void configure(const Json& config, const SimcParameters& params) override;
     void init(const StageContext&) override {}
 
-    /// call_ranlux.f:grnd
+    /**
+     * @brief The next number of the grnd stream.
+     * @return A uniform number in (0, 1), a multiple of 2^-48.
+     * @note Origin: Fortran SIMC call_ranlux.f:grnd.
+     */
     double uniform() override;
-    /// gauss1.f on grnd()
+    /**
+     * @brief gauss1 on the grnd stream (simc::gauss1Polar).
+     * @param nsig_max The truncation in standard deviations.
+     * @return The truncated Gaussian deviate.
+     * @note Origin: Fortran SIMC gauss1.f.
+     */
     double gauss1(double nsig_max) override;
-    /// call_ranlux.f:sgrnd(seed) = RLUXGO(3, seed, 0, 0); also resets grnd's block pointer as a fresh process.
+    /**
+     * @brief Seeds as sgrnd(seed) = RLUXGO(3, seed, 0, 0) and resets grnd's block pointer as a fresh process.
+     * @param s The seed (used as a 32-bit integer, as the original).
+     * @note Origin: Fortran SIMC call_ranlux.f:sgrnd.
+     */
     void seed(std::uint64_t s) override;
 
-    /// ranlux.f:RLUXGO(lux, ins, k1, k2)
+    /**
+     * @brief Initialises the generator (RLUXGO).
+     * @param lux Luxury level 0..4 (SIMC uses 3).
+     * @param ins The seed integer.
+     * @param k1 Number of numbers already generated, modulo 10^9 (skip-ahead), normally 0.
+     * @param k2 Number of numbers already generated, multiple of 10^9, normally 0.
+     * @note Origin: Fortran SIMC ranlux.f:RLUXGO(lux, ins, k1, k2).
+     */
     void rluxgo(int lux, int ins, int k1, int k2);
-    /// ranlux.f:RLUXIN(isdext)
+    /**
+     * @brief Restores a saved state (RLUXIN).
+     * @param isdext The 25 integers written by rluxut().
+     * @note Origin: Fortran SIMC ranlux.f:RLUXIN(isdext).
+     */
     void rluxin(const std::array<int, 25>& isdext);
-    /// ranlux.f:RLUXUT(isdext)
+    /**
+     * @brief Saves the state (RLUXUT).
+     * @return The 25 integers that rluxin() accepts.
+     * @note Origin: Fortran SIMC ranlux.f:RLUXUT(isdext).
+     */
     std::array<int, 25> rluxut() const;
-    /// ranlux.f:RANLUX(rvec, lenv)
+    /**
+     * @brief Generates a vector of numbers (RANLUX).
+     * @param rvec Output array of at least @p lenv numbers in (0, 1).
+     * @param lenv Number of values to generate.
+     * @note Origin: Fortran SIMC ranlux.f:RANLUX(rvec, lenv).
+     */
     void ranlux(double* rvec, int lenv);
 
 private:
@@ -55,6 +104,8 @@ private:
     double rvec_[1001]{};
     int latest_{0};
 };
+
+/** @} */
 
 }  // namespace simc
 

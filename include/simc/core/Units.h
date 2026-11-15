@@ -1,26 +1,38 @@
-// include/simc/core/Units.h
-//
-// THE unit convention of SIMC++ (task P7.4). Everything inside the framework — RunSetup, events, stage interfaces,
-// kernels — uses the Fortran SIMC internal units:
-//
-//   energy, mass        MeV            momentum   MeV/c          mass^2   MeV^2
-//   length, position    cm             angle      rad            slopes   dx/dz, dy/dz (dimensionless)
-//   target thickness    g/cm^2         density    g/cm^3         delta    dp/p in %
-//   cross sections      as the Fortran physics routines return them (documented per model)
-//
-// Exceptions are the INPUT units of the .inp / JSON parameters (SimcParameters, e.g. degrees, mg/cm^2, mrad), converted
-// once by the set-up (dbase.f), and the OUTPUT units of the ntuple (GeV, mrad, ...; results_write.f), converted by the
-// output code. Both conversions use the named factors below. Fortran kernels keep their own literals where the Fortran
-// writes them (e.g. brem.f works in GeV with "/1000."), so that the ports stay line-by-line comparable.
-//
-// Every factor is exact and is used with the SAME operation as the Fortran (x / 1000. stays a division by 1000), so
-// replacing a literal by its name does not change a single bit.
+/**
+ * @file
+ * @ingroup core
+ * @brief THE unit convention of SIMC++ and the named conversion factors.
+ *
+ * Everything inside the framework (simc::RunSetup, the events, the stage interfaces, the kernels) uses the internal
+ * units of the original SIMC:
+ *
+ * | quantity | unit | quantity | unit | quantity | unit |
+ * |---|---|---|---|---|---|
+ * | energy, mass | MeV | momentum | MeV/c | mass^2 | MeV^2 |
+ * | length, position | cm | angle | rad | slopes | dx/dz, dy/dz |
+ * | target thickness | g/cm^2 | density | g/cm^3 | delta | dp/p in % |
+ *
+ * Cross sections are in the units the physics routines return (documented per model).
+ *
+ * Exceptions are the INPUT units of the `.inp` / JSON parameters (simc::SimcParameters: degrees, mg/cm^2, mrad, ...),
+ * converted once by the set-up, and the OUTPUT units of the ntuple (GeV, mrad, ...), converted by the output code.
+ * Both conversions use the named factors of simc::units. Kernels keep their own literals where the original writes
+ * them (e.g. the bremsstrahlung code works in GeV with "/1000."), so that the ports stay line-by-line comparable.
+ *
+ * Every factor is exact and is used with the SAME operation as the original (x / 1000. stays a division by 1000), so
+ * replacing a literal by its name does not change a single bit. Task P7.4.
+ */
 #ifndef SIMC_CORE_UNITS_H
 #define SIMC_CORE_UNITS_H
 
 #include "simc/core/SimcConstants.h"
 
 namespace simc {
+/**
+ * @ingroup core
+ * @brief Named, exact unit-conversion factors between the input / output units and the internal units (see the file
+ *        description of core/Units.h).
+ */
 namespace units {
 
 constexpr double kMeVPerGeV = 1000.0;     ///< x[GeV] = x[MeV] / kMeVPerGeV
