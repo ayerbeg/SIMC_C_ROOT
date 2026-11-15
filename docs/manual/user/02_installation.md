@@ -106,7 +106,7 @@ A missing data file is an error at start-up (exit status 3), not in the middle o
 
 ```bash
 cd build
-ctest -j8                      # everything (about an hour on 8 threads; the slow tests dominate)
+ctest -j8                      # everything (the sequential check_all run takes about 75 min; the slow tests dominate)
 ctest -L docs                  # the user-manual checks (seconds)
 ctest -LE slow -j8             # everything except the long full-run tests
 ```
