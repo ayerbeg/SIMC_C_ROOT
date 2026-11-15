@@ -12,15 +12,16 @@
 # Note: in the corrected mode the HRS runs differ from the Fortran by construction (D-061 F1: FP path -3.134e+232 in the
 # Fortran, physical in the corrected mode; F1e: 45 degree VDC rotation), so the corrected HRS comparison must show them.
 set -uo pipefail
-PROJ=/home/ayerbe/NewDisk/SIMC++_Project
-REF=/home/ayerbe/NewDisk/reference/runs
+source "$(dirname "${BASH_SOURCE[0]}")/simc_env.sh"   # SIMC_PROJECT_DIR, SIMC_REFERENCE, ROOTSYS -> LD_LIBRARY_PATH
+simc_need SIMC_REFERENCE
+PROJ=$SIMC_PROJECT_DIR
+REF=$SIMC_REFERENCE/runs
 SRC="$PROJ/SIMC++_Claude"
 BUILD="$1"; CMP="$2"; MD="$3"; shift 3
 CFG="$SRC/validation/config/compare_default.json"
 NGEN=${NGEN:-100000}; SEED=${SEED:-4242}; JOBS=${JOBS:-4}
 TAGS=("$@")
 [[ ${#TAGS[@]} -eq 0 ]] && TAGS=(eep_sos pion_sos delta_sos kaon_sos sidis_sos hrs_LeRp_rad hrs_LeRp_norad hrs_ReLp_rad)
-export LD_LIBRARY_PATH="${ROOTSYS:-/home/ayerbe/Builds/ROOT6_install}/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 STAMP=$(date +%Y%m%d_%H%M%S)
 LIST="$PROJ/simc_runs/p14_sos_hrs_l2_${STAMP}.list"
 : > "$LIST"

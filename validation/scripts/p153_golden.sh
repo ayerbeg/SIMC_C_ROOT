@@ -6,7 +6,8 @@
 #          trees with simc_root_identity (the ROOT file header holds a date), the compare PDF by size only; exit 0 if identical
 #          (env GOLDEN_A_ORIG / GOLDEN_B_ORIG: the directory a set was MADE in, if it was moved since — P15.4)
 set -uo pipefail
-REF=/home/ayerbe/NewDisk/reference/runs
+source "$(dirname "${BASH_SOURCE[0]}")/simc_env.sh"   # SIMC_PROJECT_DIR, SIMC_REFERENCE, ROOTSYS -> LD_LIBRARY_PATH
+REF=$SIMC_REFERENCE/runs
 RUNS=(eep_h_elastic_rad_A:4000 acc_phsp_hms_shms_A:4000 eep_d_rad_A:2000 eep_fe56_rad_A:2000 eep_fe56_bh_rad_A:1000
       pion_h_k1_rad_dec1_A:2000 pion_d_k1_pim_rad_dec1_A:1000 kaon_h_k1_rad_dec1_A:1000 kaon_d_k1_sigm_rad_dec1_A:500
       delta_h_d1_rad_A:2000 sidis_h_k1_pip_rad_A:2000 rho_h_k1_rad_A:100 p14f2_excl_h_ng2_A:300 p14f2_sidis_h_A:200
@@ -14,6 +15,7 @@ RUNS=(eep_h_elastic_rad_A:4000 acc_phsp_hms_shms_A:4000 eep_d_rad_A:2000 eep_fe5
       shipped_poltar_exclusivepion_example:300)
 mode=$1; shift
 if [[ $mode == make ]]; then
+  simc_need SIMC_REFERENCE
   SIMC=$1; CMP=$2; OUT=$3; mkdir -p "$OUT"
   for e in "${RUNS[@]}"; do
     f=${e%%:*}; n=${e##*:}; d=$REF/$f; [[ -d $d ]] || continue

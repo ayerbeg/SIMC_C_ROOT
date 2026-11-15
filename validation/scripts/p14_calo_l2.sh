@@ -11,15 +11,16 @@
 # Note: in the corrected mode the pi0 runs differ from the Fortran by construction in FP%p%path (D-062 G3: one photon
 # instead of the sum of both) and in the reaction corrections of the earlier phases (pion D-038, delta D-048, SIDIS D-051).
 set -uo pipefail
-PROJ=/home/ayerbe/NewDisk/SIMC++_Project
-REF=/home/ayerbe/NewDisk/reference/runs
+source "$(dirname "${BASH_SOURCE[0]}")/simc_env.sh"   # SIMC_PROJECT_DIR, SIMC_REFERENCE, ROOTSYS -> LD_LIBRARY_PATH
+simc_need SIMC_REFERENCE
+PROJ=$SIMC_PROJECT_DIR
+REF=$SIMC_REFERENCE/runs
 SRC="$PROJ/SIMC++_Claude"
 BUILD="$1"; CMP="$2"; MD="$3"; shift 3
 CFG="$SRC/validation/config/compare_default.json"
 NGEN=${NGEN:-100000}; SEED=${SEED:-4242}; JOBS=${JOBS:-4}
 TAGS=("$@")
 [[ ${#TAGS[@]} -eq 0 ]] && TAGS=(excl_h_ng2 excl_h_ng1 excl_d_p excl_d_n delta_h sidis_h eep_caloe)
-export LD_LIBRARY_PATH="${ROOTSYS:-/home/ayerbe/Builds/ROOT6_install}/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 STAMP=$(date +%Y%m%d_%H%M%S)
 LIST="$PROJ/simc_runs/p14_calo_l2_${STAMP}.list"
 : > "$LIST"

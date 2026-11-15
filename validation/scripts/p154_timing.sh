@@ -9,7 +9,9 @@
 # the table on stdout. Run it on an otherwise idle machine.
 set -uo pipefail
 SIMC=$1; OUT=$2; THREADS=($3); shift 3
-REF=/home/ayerbe/NewDisk/reference/runs
+source "$(dirname "${BASH_SOURCE[0]}")/simc_env.sh"   # SIMC_PROJECT_DIR, SIMC_REFERENCE, ROOTSYS -> LD_LIBRARY_PATH
+simc_need SIMC_REFERENCE
+REF=$SIMC_REFERENCE/runs
 mkdir -p "$OUT"
 TSV="$OUT/timing.tsv"
 printf "case\tngen\tthreads\twall_s\tntried\tus_per_try\tms_per_event\tspeedup\tfortran_us_per_try\n" > "$TSV"

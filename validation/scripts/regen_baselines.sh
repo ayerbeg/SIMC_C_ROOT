@@ -6,17 +6,18 @@
 #   --tag TAG      toolchain tag in the folder names; default glibc<major><minor> of this machine (e.g. glibc243)
 #   --jobs N       simc++ runs in parallel (default 4)
 #   --only SUBSTR  only the baselines whose folder suffix contains SUBSTR
-# Writes NEW folders SIMC++_Project/baselines/<rev>_<tag>_<suffix>/ (refuses to overwrite an existing one) with the
+# Writes NEW folders $SIMC_BASELINES (default <project>/baselines)/<rev>_<tag>_<suffix>/ (refuses to overwrite an existing one) with the
 # outputs of exactly the command the regression test runs (tests/regression/CMakeLists.txt, output_identity.sh), plus
 # README.txt (commit, command, toolchain line read by tests/toolchain_guard.sh) and MD5SUMS. Old folders are untouched.
 set -uo pipefail
-PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-SRC_DIR="$PROJECT_DIR/SIMC++_Claude"
-BASEDIR="$PROJECT_DIR/baselines"
-REF=/home/ayerbe/NewDisk/reference
-FORTRAN=/home/ayerbe/NewDisk/simc_gfortran
-ROOT_DIR="${ROOTSYS:-/home/ayerbe/Builds/ROOT6_install}"
-export LD_LIBRARY_PATH="$ROOT_DIR/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+source "$(dirname "${BASH_SOURCE[0]}")/simc_env.sh"   # SIMC_* data paths and ROOTSYS (environment or check_all.env)
+simc_need SIMC_REFERENCE SIMC_FORTRAN ROOTSYS
+PROJECT_DIR="$SIMC_PROJECT_DIR"
+SRC_DIR="$SIMC_SRC_DIR"
+BASEDIR="${SIMC_BASELINES:-$PROJECT_DIR/baselines}"
+REF=$SIMC_REFERENCE
+FORTRAN=$SIMC_FORTRAN
+ROOT_DIR="$ROOTSYS"
 FP="$SRC_DIR/tools/toolchain_fingerprint.sh"
 REV=HEAD; TAG=""; JOBS=4; ONLY=""
 while [[ $# -gt 0 ]]; do
@@ -102,7 +103,8 @@ run_one() {
     echo "FAILED: $suffix (log $out/.run.log)"; return 1
   fi
   rm -f "$out/.run.log"
-  local cmd="simc++ ${input#/home/ayerbe/NewDisk/} --seed 4242 --run-name $run -o <dir> --quiet${extra:+ $extra}"
+  local shown=${input/#$FORTRAN/\$SIMC_FORTRAN}; shown=${shown/#$REF/\$SIMC_REFERENCE}   # no machine path in README.txt
+  local cmd="simc++ $shown --seed 4242 --run-name $run -o <dir> --quiet${extra:+ $extra}"
   {
     echo "simc++ (commit $SHORT, task P10.4, Release build of the committed tree in a clean worktree by cpp-translator,"
     echo "validation/scripts/regen_baselines.sh) on: $cmd"

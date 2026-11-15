@@ -11,15 +11,16 @@
 # Note: the off-arm FP/ytar columns are 0.0 in every event in both codes (D-065 S1); the corrected mode differs from the
 # Fortran only by the corrections of earlier phases (eep D-006 pass_cuts, pion D-038).
 set -uo pipefail
-PROJ=/home/ayerbe/NewDisk/SIMC++_Project
-REF=/home/ayerbe/NewDisk/reference/runs
+source "$(dirname "${BASH_SOURCE[0]}")/simc_env.sh"   # SIMC_PROJECT_DIR, SIMC_REFERENCE, ROOTSYS -> LD_LIBRARY_PATH
+simc_need SIMC_REFERENCE
+PROJ=$SIMC_PROJECT_DIR
+REF=$SIMC_REFERENCE/runs
 SRC="$PROJ/SIMC++_Claude"
 BUILD="$1"; CMP="$2"; MD="$3"; shift 3
 CFG="$SRC/validation/config/compare_default.json"
 NGEN=${NGEN:-100000}; SEED=${SEED:-4242}; JOBS=${JOBS:-4}
 TAGS=("$@")
 [[ ${#TAGS[@]} -eq 0 ]] && TAGS=(eep_sm1 eep_smm1 eep_smm2 phsp_sm1 pion_sm1)
-export LD_LIBRARY_PATH="${ROOTSYS:-/home/ayerbe/Builds/ROOT6_install}/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 STAMP=$(date +%Y%m%d_%H%M%S)
 LIST="$PROJ/simc_runs/p15_spect_mode_l2_${STAMP}.list"
 : > "$LIST"

@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
-# Run the P1.5 simc_compare self-tests and store the outputs next to the references:
+# Run the simc_compare self-tests and store the outputs next to the references:
 #   reference/comparisons/F_vs_F/<tag>/            Fortran A vs Fortran B (must PASS)
 #   reference/comparisons/sensitivity/<name>/      rad vs norad, hsdelta+0.1 (must FAIL)
 # Usage: validation/scripts/run_compare_selftests.sh [BUILD_DIR]
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD="${1:-$HERE/build}"
-export LD_LIBRARY_PATH=/home/ayerbe/Builds/ROOT6_install/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
-R=/home/ayerbe/NewDisk/reference/runs
-C=/home/ayerbe/NewDisk/reference/comparisons
+source "$(dirname "${BASH_SOURCE[0]}")/simc_env.sh"   # SIMC_PROJECT_DIR, SIMC_REFERENCE, ROOTSYS -> LD_LIBRARY_PATH
+simc_need SIMC_REFERENCE
+R=$SIMC_REFERENCE/runs
+C=$SIMC_REFERENCE/comparisons
 CFG="$HERE/config/compare_default.json"
 EXE="$BUILD/simc_compare"
 rc=0

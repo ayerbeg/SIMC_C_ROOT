@@ -8,13 +8,14 @@
 # Expected corrected-mode differences: D-067 T1/T2 (not active for the example: targ_Bphi = 270, targ_Bangle > theta),
 # T14 (no pi0 here), and the corrections of earlier phases (pion D-038 F5 CENTRAL.sigcc, D-006 pass_cuts).
 set -uo pipefail
-PROJ=/home/ayerbe/NewDisk/SIMC++_Project
-REF=/home/ayerbe/NewDisk/reference/runs/shipped_poltar_exclusivepion_example
+source "$(dirname "${BASH_SOURCE[0]}")/simc_env.sh"   # SIMC_PROJECT_DIR, SIMC_REFERENCE, ROOTSYS -> LD_LIBRARY_PATH
+simc_need SIMC_REFERENCE
+PROJ=$SIMC_PROJECT_DIR
+REF=$SIMC_REFERENCE/runs/shipped_poltar_exclusivepion_example
 SRC="$PROJ/SIMC++_Claude"
 BUILD="$1"; CMP="$2"; MD="$3"
 CFG="$SRC/validation/config/compare_default.json"
 SEED=${SEED:-4242}; NGEN=${NGEN:-50000}
-export LD_LIBRARY_PATH="${ROOTSYS:-/home/ayerbe/Builds/ROOT6_install}/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 STAMP=$(date +%Y%m%d_%H%M%S)
 run=poltar_exclusivepion_example
 for mode in compat corrected; do

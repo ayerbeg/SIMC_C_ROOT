@@ -10,15 +10,16 @@
 #   (D-040: the compare tools must come from the same commit as the build)
 # Env: NGEN (100000), SEED (4242), JOBS (4).
 set -uo pipefail
-PROJ=/home/ayerbe/NewDisk/SIMC++_Project
-REF=/home/ayerbe/NewDisk/reference/runs
+source "$(dirname "${BASH_SOURCE[0]}")/simc_env.sh"   # SIMC_PROJECT_DIR, SIMC_REFERENCE, ROOTSYS -> LD_LIBRARY_PATH
+simc_need SIMC_REFERENCE
+PROJ=$SIMC_PROJECT_DIR
+REF=$SIMC_REFERENCE/runs
 SRC="$PROJ/SIMC++_Claude"
 BUILD="$1"; CMP="$2"; MD="$3"; shift 3
 CFG="$SRC/validation/config/compare_default.json"
 NGEN=${NGEN:-100000}; SEED=${SEED:-4242}; JOBS=${JOBS:-4}
 TAGS=("$@")
 [[ ${#TAGS[@]} -eq 0 ]] && TAGS=(h_k1_rad h_k1_norad d_k1_rad he3_k1_rad h_k1_dec1_rad h_k1_pim_rad h_k2_rad)
-export LD_LIBRARY_PATH="${ROOTSYS:-/home/ayerbe/Builds/ROOT6_install}/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 STAMP=$(date +%Y%m%d_%H%M%S)
 LIST="$PROJ/simc_runs/p13_rho_l2_${STAMP}.list"
 : > "$LIST"

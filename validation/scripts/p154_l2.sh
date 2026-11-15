@@ -8,13 +8,14 @@
 # Usage: p154_l2.sh <simc++> <simc_compare> case[:ngen] ...      (default ngen: the reference's)
 # Env: THREADS (8), JOBS_T1 (number of --threads 1 runs made at the same time, default 1).
 set -uo pipefail
-PROJ=/home/ayerbe/NewDisk/SIMC++_Project
-REF=/home/ayerbe/NewDisk/reference/runs
+source "$(dirname "${BASH_SOURCE[0]}")/simc_env.sh"   # SIMC_PROJECT_DIR, SIMC_REFERENCE, ROOTSYS -> LD_LIBRARY_PATH
+simc_need SIMC_REFERENCE
+PROJ=$SIMC_PROJECT_DIR
+REF=$SIMC_REFERENCE/runs
 SRC="$PROJ/SIMC++_Claude"
 SIMC="$1"; CMP="$2"; shift 2
 CFG="$SRC/validation/config/compare_default.json"
 N=${THREADS:-8}
-export LD_LIBRARY_PATH="${ROOTSYS:-/home/ayerbe/Builds/ROOT6_install}/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 STAMP=$(date +%Y%m%d_%H%M%S)
 
 run_one() {   # case ngen threads dir

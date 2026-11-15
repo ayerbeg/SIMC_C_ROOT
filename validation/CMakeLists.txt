@@ -77,9 +77,13 @@ if(EXISTS ${R}/eep_h_elastic_norad_A/eep_h_elastic_norad_A.hist)
   add_test(NAME compare_dump_summary
     COMMAND simc_compare --dump-summary ${R}/eep_h_elastic_rad_A/eep_h_elastic_rad_A.hist
             ${T}/eep_h_elastic_rad_A.summary.json)
+  # the example summaries name their tree file as @SIMC_REFERENCE_DIR@/runs/...: configured into the build tree (D-073)
+  foreach(ex eep_h_elastic_rad_A acc_phsp_hms_shms_A)
+    configure_file(examples/${ex}.summary.json ${CMAKE_CURRENT_BINARY_DIR}/examples/${ex}.summary.json @ONLY)
+  endforeach()
   add_test(NAME compare_json_vs_hist_identical
     COMMAND simc_compare --a ${R}/eep_h_elastic_rad_A/eep_h_elastic_rad_A.hist
-            --b ${CMAKE_CURRENT_SOURCE_DIR}/examples/eep_h_elastic_rad_A.summary.json
+            --b ${CMAKE_CURRENT_BINARY_DIR}/examples/eep_h_elastic_rad_A.summary.json
             --out ${T}/json_vs_hist --config ${CFG} --no-pdf --expect IDENTICAL)
   set_tests_properties(compare_json_vs_hist_identical PROPERTIES DEPENDS compare_dump_summary)
   # P7.4: exactly one tree empty -> deterministic FAIL (the run-level numbers are identical here)

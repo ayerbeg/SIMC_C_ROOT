@@ -129,7 +129,7 @@
     }
   },
   "tree": {
-    "file": "/home/ayerbe/NewDisk/reference/runs/eep_h_elastic_rad_A/eep_h_elastic_rad_A.root",
+    "file": "@SIMC_REFERENCE_DIR@/runs/eep_h_elastic_rad_A/eep_h_elastic_rad_A.root",
     "name": "h10",
     "weight_branch": "Weight"
   }

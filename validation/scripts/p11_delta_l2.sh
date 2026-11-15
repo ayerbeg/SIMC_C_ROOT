@@ -4,8 +4,10 @@
 # then simc_compare (vs A, and vs B for h_d1_rad) and, for the corrected runs, simc_mode_diff vs the compat run.
 # Usage: p11_delta_l2.sh <simc_compare> <simc_mode_diff> [tag ...]   (D-040: the compare tools from the same commit)
 set -uo pipefail
-PROJ=/home/ayerbe/NewDisk/SIMC++_Project
-REF=/home/ayerbe/NewDisk/reference/runs
+source "$(dirname "${BASH_SOURCE[0]}")/simc_env.sh"   # SIMC_PROJECT_DIR, SIMC_REFERENCE, ROOTSYS -> LD_LIBRARY_PATH
+simc_need SIMC_REFERENCE
+PROJ=$SIMC_PROJECT_DIR
+REF=$SIMC_REFERENCE/runs
 CMP="$1"; MD="$2"; shift 2
 CFG="$PROJ/SIMC++_Claude/validation/config/compare_default.json"
 TAGS=("$@")

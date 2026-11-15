@@ -7,9 +7,11 @@
 # new sigma of A and B, the new verdict.
 # Usage: p12_wtcontr_recompare.sh <simc_compare> [glob ...]   (D-040: simc_compare from the same commit)
 set -uo pipefail
-PROJ=/home/ayerbe/NewDisk/SIMC++_Project
+source "$(dirname "${BASH_SOURCE[0]}")/simc_env.sh"   # SIMC_PROJECT_DIR, SIMC_REFERENCE, ROOTSYS -> LD_LIBRARY_PATH
+simc_need SIMC_REFERENCE
+PROJ=$SIMC_PROJECT_DIR
 RUNS=$PROJ/simc_runs
-REF=/home/ayerbe/NewDisk/reference/runs
+REF=$SIMC_REFERENCE/runs
 CMP="$(realpath "$1")"; shift
 CFG="$PROJ/SIMC++_Claude/validation/config/compare_default.json"
 GLOBS=("$@")

@@ -7,14 +7,15 @@
 # shipped file name). Folders whose run the C++ refuses (NotPorted) are reported as REFUSED; since P15.2b (using_tgt_field
 # ported) nothing is refused, so REFUSED counts as a failure unless ALLOW_REFUSED=1.
 # usage: p15_shipped_regression.sh <simc++> <simc_root_identity> <outdir> [run folder name ...]
-# env: JOBS (default 4), REF (default /home/ayerbe/NewDisk/reference/runs)
+# env: JOBS (default 4), REF (default $SIMC_REFERENCE/runs; SIMC_REFERENCE from the environment or check_all.env, see simc_env.sh)
 # writes <outdir>/<folder>/ (outputs, run.log, identity.txt) and <outdir>/summary.tsv; exit 0 if every run is IDENTICAL or
 # (with ALLOW_REFUSED=1) REFUSED, 1 otherwise (77 when a single requested folder is absent: CTest skip).
 # The CTest label regression_shipped (tests/regression/CMakeLists.txt) runs this script once per folder.
 set -uo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/simc_env.sh"   # SIMC_PROJECT_DIR, SIMC_REFERENCE, ROOTSYS -> LD_LIBRARY_PATH
 SIMC=$1; IDENT=$2; OUT=$3; shift 3
-REF=${REF:-/home/ayerbe/NewDisk/reference/runs}; JOBS=${JOBS:-4}
-export LD_LIBRARY_PATH="${ROOTSYS:-/home/ayerbe/Builds/ROOT6_install}/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+[[ -n ${REF-} ]] || simc_need SIMC_REFERENCE
+REF=${REF:-$SIMC_REFERENCE/runs}; JOBS=${JOBS:-4}
 LIST=("$@")
 # CTest regression_shipped_<folder> (one folder per test): skip (77) when that reference folder is absent
 if [[ ${#LIST[@]} -eq 1 && ! -d "$REF/${LIST[0]}" ]]; then echo "reference $REF/${LIST[0]} missing: SKIP"; exit 77; fi
