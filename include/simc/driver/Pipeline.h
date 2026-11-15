@@ -15,7 +15,9 @@
 //     "physics":  "sigep",                     // or "deforest", "deforest_cc1", ...
 //     "radiator": "simc_rad",
 //     "spectrometers": {"hadron": "hms", "electron": {"type": "shms"}},
-//     "sinks":    ["root_tree", "run_summary", "gen_hist", "fortran_hist"]   // replaces the whole list
+//     "sinks":    ["root_tree", "run_summary", "gen_hist", "fortran_hist"],  // replaces the whole list
+//     "threads":  8                            // P15.4: worker threads of the event loop (default 1; the CLI
+//                                              // --threads wins; > 1 refused with fortran_compat / rng != mt64)
 //   }
 // Defaults() reproduces the Fortran choices from the run flags (dbase.f / event.f / simc.f dispatch):
 //   reaction    doing_phsp -> "phase_space", doing_hyd_elast -> "hydrogen_elastic" (D-009: H + phsp is phase_space,
@@ -50,6 +52,7 @@ struct PipelineConfig {
     StageSpec rng, target, beam, reaction, physics, radiator;
     StageSpec hadron_arm, electron_arm;   ///< type "" = from the arm code
     std::vector<StageSpec> sinks;
+    int threads{0};   ///< P15.4: "threads" (0 = not given = 1 thread)
 
     static PipelineConfig Defaults(const RunSetup& setup);
     /// The target type a "pipeline" JSON section selects ("hallc_cryo" if it does not say). Needed BEFORE the set-up

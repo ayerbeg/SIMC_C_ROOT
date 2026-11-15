@@ -223,3 +223,22 @@ foreach(_f ${SIMC_SHIPPED_FOLDERS})
     set_tests_properties(regression_shipped_${_f} PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 1800
                          ENVIRONMENT "REF=${SIMC_REFERENCE_DIR}/runs;JOBS=1" LABELS "regression_shipped;slow")
 endforeach()
+
+# P15.4: the parallel event loop (--threads N; docs/PERFORMANCE.md). Reproducibility: two runs with the same (seed, N) are
+# identical (H(e,e'p) rad: HMS+SHMS; the polarized-target pion example: target field + pion + SHMS); --threads 1 is the
+# sequential loop bit for bit; --threads > 1 is refused with --fortran-compat and with the rng "ranlux".
+add_test(NAME threads_reproducibility_eep
+         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/threads_test.sh repro $<TARGET_FILE:simcpp> $<TARGET_FILE:simc_root_identity>
+                 ${SIMC_FORTRAN_DIR}/infiles/eep_h_elastic_rad_A.inp ${CMAKE_CURRENT_BINARY_DIR}/threads_repro_eep 3 3001)
+add_test(NAME threads_reproducibility_poltar
+         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/threads_test.sh repro $<TARGET_FILE:simcpp> $<TARGET_FILE:simc_root_identity>
+                 ${SIMC_REFERENCE_DIR}/runs/shipped_poltar_exclusivepion_example/poltar_exclusivepion_example.inp
+                 ${CMAKE_CURRENT_BINARY_DIR}/threads_repro_poltar 4 200)
+add_test(NAME threads_one_is_sequential
+         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/threads_test.sh one $<TARGET_FILE:simcpp> $<TARGET_FILE:simc_root_identity>
+                 ${SIMC_FORTRAN_DIR}/infiles/eep_h_elastic_rad_A.inp ${CMAKE_CURRENT_BINARY_DIR}/threads_one 2000)
+add_test(NAME threads_refusal
+         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/threads_test.sh refuse $<TARGET_FILE:simcpp>
+                 ${SIMC_FORTRAN_DIR}/infiles/eep_h_elastic_rad_A.inp ${CMAKE_CURRENT_BINARY_DIR}/threads_refusal)
+set_tests_properties(threads_reproducibility_eep threads_reproducibility_poltar threads_one_is_sequential threads_refusal
+                     PROPERTIES TIMEOUT 900 LABELS "regression;threads")

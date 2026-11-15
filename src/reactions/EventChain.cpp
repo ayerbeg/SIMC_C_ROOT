@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <ostream>
 #include <stdexcept>
+#include <utility>
 
 #include "simc/core/Errors.h"
 #include "simc/core/SimcConstants.h"
@@ -71,6 +72,56 @@ void updateRange(double val, Range& range) {
 void updateSlopRange(double val, SlopItem& slop) {
     slop.lo = fminF(slop.lo, val);
     slop.hi = fmaxF(slop.hi, val);
+}
+
+// P15.4: parallel event loop (EventChain.h).
+void mergeRange(Range& into, const Range& w) {
+    into.lo = fminF(into.lo, w.lo);
+    into.hi = fmaxF(into.hi, w.hi);
+}
+
+void mergeSlopRange(SlopItem& into, const SlopItem& w) {
+    into.lo = fminF(into.lo, w.lo);
+    into.hi = fmaxF(into.hi, w.hi);
+}
+
+void mergeContrib(Contrib& a, const Contrib& b) {
+    auto arm = [](ArmRange& x, const ArmRange& y) {
+        mergeRange(x.delta, y.delta);
+        mergeRange(x.yptar, y.yptar);
+        mergeRange(x.xptar, y.xptar);
+        mergeRange(x.z, y.z);
+    };
+    arm(a.gen.e, b.gen.e);
+    arm(a.gen.p, b.gen.p);
+    mergeRange(a.gen.Trec, b.gen.Trec);
+    mergeRange(a.gen.sumEgen, b.gen.sumEgen);
+    mergeRange(a.tru.e.E, b.tru.e.E);
+    mergeRange(a.tru.e.yptar, b.tru.e.yptar);
+    mergeRange(a.tru.e.xptar, b.tru.e.xptar);
+    mergeRange(a.tru.p.E, b.tru.p.E);
+    mergeRange(a.tru.p.yptar, b.tru.p.yptar);
+    mergeRange(a.tru.p.xptar, b.tru.p.xptar);
+    mergeRange(a.tru.Em, b.tru.Em);
+    mergeRange(a.tru.Pm, b.tru.Pm);
+    mergeRange(a.tru.Trec, b.tru.Trec);
+    arm(a.SP.e, b.SP.e);
+    arm(a.SP.p, b.SP.p);
+    mergeRange(a.vertex.Trec, b.vertex.Trec);
+    mergeRange(a.vertex.Em, b.vertex.Em);
+    mergeRange(a.vertex.Pm, b.vertex.Pm);
+    for (std::size_t i = 0; i < a.rad.Egamma.size(); ++i) mergeRange(a.rad.Egamma[i], b.rad.Egamma[i]);
+    mergeRange(a.rad.Egamma_total, b.rad.Egamma_total);
+}
+
+void mergeSlops(Slops& a, const Slops& b) {
+    mergeSlopRange(a.total.Em, b.total.Em);
+    mergeSlopRange(a.total.Pm, b.total.Pm);
+    for (auto [x, y] : {std::pair<Slops::Arm*, const Slops::Arm*>{&a.MC.e, &b.MC.e}, {&a.MC.p, &b.MC.p}}) {
+        mergeSlopRange(x->delta, y->delta);
+        mergeSlopRange(x->yptar, y->yptar);
+        mergeSlopRange(x->xptar, y->xptar);
+    }
 }
 
 // Fortran: event.f:limits_update (l.1-91)

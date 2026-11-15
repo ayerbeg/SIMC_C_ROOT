@@ -372,7 +372,7 @@ void SimcRun::finish() {
     }
     report_.end_time = FortranCtime(static_cast<long>(std::time(nullptr)));
     report_.norm = Normalise(setup_, T, reaction_->genVolume());
-    report_.stops = collectStops();
+    report_.stops = mergedStopsSet_ ? mergedStops_ : collectStops();
     finished_ = true;
 
     // l.446: if (ngen.eq.0) goto 1000 — no output files
@@ -383,7 +383,7 @@ void SimcRun::finish() {
     // The report prints the COMMON state as it is at the end of the run (simc.f:844 targ%Mrec_struck, overwritten per
     // event for the pion Delta final states): the reaction may update its part of it (IReaction::finalTargetState).
     RunSetup reportSetup = setup_;
-    reaction_->finalTargetState(reportSetup.targ);
+    (finalStateReaction_ ? finalStateReaction_ : reaction_.get())->finalTargetState(reportSetup.targ);
     const RunSummary summary = MakeRunSummary(reportSetup, report_);
     for (auto& s : sinks_) {
         s->endRun(summary);
@@ -394,6 +394,11 @@ void SimcRun::finish() {
 
 void SimcRun::run() {
     initialise();
+    const int n = threadCount();
+    if (n > 1) {
+        runThreaded(n);
+        return;
+    }
     while (!done()) step();
     finish();
 }

@@ -9,6 +9,7 @@
 include(CMakeFindDependencyMacro)
 find_dependency(nlohmann_json 3.9)
 find_dependency(ROOT 6.40 COMPONENTS Core Tree Hist RIO)
+find_dependency(Threads)
 
 include("${CMAKE_CURRENT_LIST_DIR}/SIMCTargets.cmake")
 set(SIMC_DATA_DIR "${PACKAGE_PREFIX_DIR}/share/simc/data")

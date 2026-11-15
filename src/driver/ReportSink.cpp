@@ -41,6 +41,31 @@ void FortranHistSink::beginRun(const RunSetup& setup) {
     }
 }
 
+// P15.4: parallel event loop (IParallelSink).
+std::unique_ptr<IOutputSink> FortranHistSink::makeWorkerSink(int, int) const {
+    return std::make_unique<FortranHistSink>();
+}
+
+void FortranHistSink::mergeWorkerSink(IOutputSink& sink) {
+    auto& w = dynamic_cast<FortranHistSink&>(sink);
+    auto add = [](Hist& a, const Hist& b) {
+        for (std::size_t i = 0; i < a.buf.size(); ++i) a.buf[i] = a.buf[i] + b.buf[i];
+    };
+    auto addSet = [&](HistSet& a, const HistSet& b) {
+        add(a.e.delta, b.e.delta);
+        add(a.e.yptar, b.e.yptar);
+        add(a.e.xptar, b.e.xptar);
+        add(a.p.delta, b.p.delta);
+        add(a.p.yptar, b.p.yptar);
+        add(a.p.xptar, b.p.xptar);
+        add(a.Em, b.Em);
+        add(a.Pm, b.Pm);
+    };
+    addSet(RECON_, w.RECON_);
+    addSet(gen_, w.gen_);
+    addSet(geni_, w.geni_);
+}
+
 // Fortran: simc.f:inc (l.624-640). ibin = nint(0.5+(val-min)/bin) (integer*4; values far outside never land in 1..50).
 void FortranHistSink::Inc(Hist& h, double val, double weight) {
     const double x = 0.5 + (val - h.ax.min) / h.ax.bin;

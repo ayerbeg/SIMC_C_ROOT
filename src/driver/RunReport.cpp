@@ -9,6 +9,7 @@
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
+#include <utility>
 
 #include "simc/core/Errors.h"
 #include "simc/core/SimcConstants.h"
@@ -27,6 +28,26 @@ using namespace report_detail;
 
 
 // Fortran: simc.f l.360-432
+// P15.4: parallel event loop (RunReport.h).
+void MergeTotals(RunTotals& a, const RunTotals& b) {
+    a.ntried = a.ntried + b.ntried;
+    a.nevent = a.nevent + b.nevent;
+    a.ncontribute = a.ncontribute + b.ncontribute;
+    a.ncontribute_no_rad_proton = a.ncontribute_no_rad_proton + b.ncontribute_no_rad_proton;
+    a.npasscuts = a.npasscuts + b.npasscuts;
+    a.wtcontribute = a.wtcontribute + b.wtcontribute;
+    a.sum_sigcc = a.sum_sigcc + b.sum_sigcc;
+    for (auto [x, y] : {std::pair<TwoArmSums*, const TwoArmSums*>{&a.sumerr, &b.sumerr}, {&a.sumerr2, &b.sumerr2}})
+        for (auto [u, v] : {std::pair<TwoArmSums::Arm*, const TwoArmSums::Arm*>{&x->e, &y->e}, {&x->p, &y->p}}) {
+            u->delta = u->delta + v->delta;
+            u->xptar = u->xptar + v->xptar;
+            u->yptar = u->yptar + v->yptar;
+            u->ytar = u->ytar + v->ytar;
+        }
+    reactions::mergeContrib(a.contrib, b.contrib);
+    reactions::mergeSlops(a.slop, b.slop);
+}
+
 Normalisation Normalise(const RunSetup& s, const RunTotals& t, double genvol) {
     Normalisation n;
     n.targetfac = s.targetfac;
@@ -218,6 +239,7 @@ RunSummary MakeRunSummary(const RunSetup& s, const RunReport& r) {
                 {"begin_time", r.begin_time},
                 {"end_time", r.end_time}};
     if (s.flags.doing_heavy) x["run"]["theory_file"] = s.theory.file;
+    if (r.threads > 1) x["run"]["threads"] = r.threads;   // P15.4 (absent for the sequential loop)
     return sum;
 }
 

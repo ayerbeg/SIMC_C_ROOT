@@ -19,13 +19,14 @@
 #include "simc/core/RunSetup.h"
 #include "simc/output/NtupleLayout.h"
 #include "simc/stages/IOutputSink.h"
+#include "simc/stages/IParallelSink.h"
 
 class TFile;
 class TTree;
 
 namespace simc {
 
-class RootTreeSink : public IOutputSink {
+class RootTreeSink : public IOutputSink, public IParallelSink {
 public:
     RootTreeSink();
     ~RootTreeSink() override;
@@ -36,6 +37,10 @@ public:
     void fill(const MainEvent& main, const Event& vertex, const Event& orig, const Event& recon,
               bool success) override;
     void endRun(const RunSummary& summary) override;
+    /// P15.4 (--threads N): a worker writes its tree to the temporary file <file>.w<k>.tmp; mergeWorkerSink() appends
+    /// its entries to this tree (worker order) and removes the file.
+    std::unique_ptr<IOutputSink> makeWorkerSink(int worker, int nworkers) const override;
+    void mergeWorkerSink(IOutputSink& worker) override;
 
     const std::string& fileName() const { return file_; }
     long entries() const { return entries_; }
@@ -48,6 +53,8 @@ private:
     std::vector<double> ntu_;                               // static like the Fortran array (layout size)
     std::vector<float> out_;                                // make_root_tree: real*4 ntup_out
     long entries_{0};
+    bool worker_{false};   ///< a worker sink of the parallel loop (temporary file, removed at destruction)
+    void closeFile();
 };
 
 }  // namespace simc

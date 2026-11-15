@@ -7,6 +7,7 @@
 #   FortranWriter.cpp : gfortran formatted-output emulation for the .hist/.geni text
 #   Pipeline.cpp      : the JSON plug-in choice per stage (docs/DRIVER.md)
 #   SimcRun.cpp       : the main loop (simc.f l.1-623)
+#   SimcRunParallel.cpp : the parallel event loop (--threads N; not Fortran; P15.4, docs/PERFORMANCE.md)
 # Consumers must also link simcfw_hms, simcfw_shms, simcfw_sos (OBJECT libraries: their registrations), simcfw_optics,
 # simcfw_material and simcfw_setup — or simply ${SIMC_DRIVER_LIBS} (everything a full run needs).
 add_library(simcfw_driver STATIC
@@ -21,9 +22,11 @@ add_library(simcfw_driver STATIC
     RunReportGeni.cpp       #   .geni
     RunReportRecords.cpp    #   reaction lines and FORMAT records of the report
     SimcRun.cpp
+    SimcRunParallel.cpp     # the parallel event loop (--threads N, P15.4)
     TargetFieldAngles.cpp   # simc.f:120-155 arm angles of the polarized-target field (P15.2b)
 )
-target_link_libraries(simcfw_driver PUBLIC simcfw simcfw_kinematics simcfw_material simcfw_setup)
+find_package(Threads REQUIRED)
+target_link_libraries(simcfw_driver PUBLIC simcfw simcfw_kinematics simcfw_material simcfw_setup Threads::Threads)
 # Default directory of the spectral-function files (data/spectral: copies of the Fortran theory/Benhar files, P8.1)
 target_compile_definitions(simcfw_driver PRIVATE SIMC_SPECTRAL_DATA_DIR="${CMAKE_SOURCE_DIR}/data/spectral"
     SIMC_FIELD_DATA_DIR="${CMAKE_SOURCE_DIR}/data/field")   # trg_field_map.dat (P15.2b)

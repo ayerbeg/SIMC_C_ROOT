@@ -2,6 +2,7 @@
 //
 //   simc++ <file.inp | file.json> [-o OUTDIR] [--seed N] [--ngen N] [--pipeline overrides.json]
 //          [--run-name NAME] [--data-dir DIR] [--infiles-dir DIR] [--quiet] [--print-pipeline] [--fortran-compat]
+//          [--threads N]
 //
 // Input:
 //   * a Fortran .inp (CTP syntax, + its extra_dbase_file), read exactly like dbase.f (InpReader), or
@@ -9,6 +10,9 @@
 //                     "run": {"name": ..., "output_dir": ..., "fortran_compat": false} (optional)}.
 // --fortran-compat (or "run": {"fortran_compat": true}) keeps the exact Fortran behaviour, including the clear Fortran
 // bugs that SIMC++ corrects by default (D-031, docs/FORTRAN_DIFFERENCES.md). It exists for the bitwise validation.
+// --threads N (P15.4, docs/PERFORMANCE.md): the event loop on N threads with independent mt64 streams (reproducible for a
+// given seed and N; statistically equivalent to, not bitwise equal to, the one-thread run). Default 1 (or the pipeline
+// "threads"). Refused (exit 2) with --fortran-compat and with an rng other than mt64.
 // --pipeline FILE merges a pipeline JSON (either the section itself or {"pipeline": {...}}) over the input's.
 // Outputs in OUTDIR (default "."): <run>.root (tree h10, if Nntu > 0), <run>.summary.json/.txt, <run>.gen.root,
 // <run>.hist and <run>.geni (simc.f report layout). <run> defaults to the input file stem (Fortran `base`).
@@ -36,7 +40,10 @@ namespace {
 void usage() {
     std::cerr << "usage: simc++ <file.inp|file.json> [-o OUTDIR] [--seed N] [--ngen N] [--pipeline FILE]\n"
                  "               [--run-name NAME] [--data-dir DIR] [--infiles-dir DIR] [--quiet] [--print-pipeline]\n"
-                 "               [--fortran-compat]\n";
+                 "               [--fortran-compat] [--threads N]\n"
+                 "  --fortran-compat  exact Fortran behaviour (known Fortran bugs kept; bitwise validation)\n"
+                 "  --threads N       event loop on N threads (independent mt64 streams per thread; a given seed and N\n"
+                 "                    always give the same output; not with --fortran-compat or rng ranlux). Default 1.\n";
 }
 
 std::string stem(const std::string& path) {
@@ -86,6 +93,16 @@ int CommandLineMain(int argc, char** argv) {
         else if (a == "--quiet") quiet = true;
         else if (a == "--print-pipeline") printPipeline = true;
         else if (a == "--fortran-compat") compatFlag = true;
+        else if (a == "--threads") {
+            next(v);
+            char* end = nullptr;
+            const long n = std::strtol(v.c_str(), &end, 10);
+            if (end == v.c_str() || *end != '\0' || n < 1 || n > 1024) {
+                std::cerr << "simc++: --threads: expected an integer 1..1024, got '" << v << "'\n";
+                return 1;
+            }
+            opt.threads = static_cast<int>(n);
+        }
         else if (a == "-h" || a == "--help") { usage(); return 0; }
         else if (!a.empty() && a[0] == '-') { usage(); return 1; }
         else if (input.empty()) input = a;
@@ -149,14 +166,29 @@ int CommandLineMain(int argc, char** argv) {
     opt.data_dir = dataDir;
     opt.quiet_stages = quiet;
     if (compatFlag) opt.fortran_compat = true;   // the CLI flag wins over the JSON
+    if (opt.threads > 1 && opt.fortran_compat) {  // P15.4 (refused before the run starts; SimcRun::threadsRefusal)
+        std::cerr << "simc++: --threads " << opt.threads
+                  << " (more than one event-loop thread) cannot be used with --fortran-compat: the exact Fortran "
+                     "reproduction needs the single random stream in the Fortran order (run with --threads 1)\n";
+        return 2;
+    }
 
     try {
         std::filesystem::create_directories(outdir);   // like the Fortran outfiles/, but created on demand
         driver::SimcRun run(params, pipeline, opt);
         run.initialise();
         if (printPipeline) std::cout << run.pipeline().toJson().dump(2) << "\n";
-        while (!run.done()) run.step();
-        run.finish();
+        const int nthreads = run.threadCount();
+        if (nthreads > 1) {   // P15.4: the parallel event loop (refused with a message for compat / ranlux)
+            if (const std::string why = run.threadsRefusal(nthreads); !why.empty()) {
+                std::cerr << "simc++: " << why << "\n";
+                return 2;
+            }
+            run.runThreaded(nthreads);
+        } else {
+            while (!run.done()) run.step();
+            run.finish();
+        }
     } catch (const std::invalid_argument& e) {   // a configuration rejected at start-up (e.g. D-037 F9)
         std::cerr << "simc++: configuration error: " << e.what() << "\n";
         return 2;

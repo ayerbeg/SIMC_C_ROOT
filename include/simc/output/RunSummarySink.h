@@ -12,10 +12,11 @@
 
 #include "simc/core/RunSetup.h"
 #include "simc/stages/IOutputSink.h"
+#include "simc/stages/IParallelSink.h"
 
 namespace simc {
 
-class RunSummarySink : public IOutputSink {
+class RunSummarySink : public IOutputSink, public IParallelSink {
 public:
     std::string name() const override { return "run_summary"; }
     void configure(const Json& config, const SimcParameters& params) override;
@@ -23,6 +24,9 @@ public:
     void beginRun(const RunSetup& setup) override;
     void fill(const MainEvent&, const Event&, const Event&, const Event&, bool) override {}
     void endRun(const RunSummary& summary) override;
+    /// P15.4: nothing per event (the summary is written from the merged report at endRun).
+    std::unique_ptr<IOutputSink> makeWorkerSink(int, int) const override { return nullptr; }
+    void mergeWorkerSink(IOutputSink&) override {}
 
     const std::string& fileName() const { return file_; }
     const Json& written() const { return last_; }

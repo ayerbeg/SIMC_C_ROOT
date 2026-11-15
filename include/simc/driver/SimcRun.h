@@ -59,6 +59,9 @@ struct RunOptions {
     /// D-031: false (default) = clear Fortran bugs corrected; true = exact Fortran behaviour (--fortran-compat,
     /// JSON "run": {"fortran_compat": true}). Passed to the set-up (RunSetup::fortran_compat).
     bool fortran_compat{false};
+    /// P15.4: worker threads of the event loop (--threads N); 0 = from the pipeline "threads" (default 1). N > 1:
+    /// runThreaded() (docs/PERFORMANCE.md); refused with fortran_compat and with an rng other than mt64.
+    int threads{0};
 };
 
 /// Fortran: simc.f l.226-238, the SPedge test on the reconstructed event (`pass_cuts`). With setup.fortran_compat the
@@ -80,7 +83,22 @@ public:
     bool done() const;
     void step();
     void finish();
+    /// initialise(), then the event loop on threadCount() threads (step() loop or runThreaded()), then finish().
     void run();
+
+    // ---- parallel event loop (task P15.4, docs/PERFORMANCE.md) ------------------------------------------------
+    /// The number of event-loop threads of this run: RunOptions::threads if > 0, else the pipeline "threads", else 1
+    /// (after initialise()).
+    int threadCount() const;
+    /// Why `n` > 1 threads cannot be used for this run ("" if they can): fortran_compat, an rng other than mt64 or a
+    /// random source set with setRandom(), a sink without IParallelSink. After initialise().
+    std::string threadsRefusal(int n) const;
+    /// The event loop on n worker threads (n > 1), each with its own stages (built from the same set-up) and its own
+    /// mt64 stream Mt64Random::seedStream(seed, k); worker k makes ngen/n (+1 for k < ngen%n) of the successes (or of
+    /// the tries for ngen < 0). The totals, stop counters and sinks are then merged in the worker order 0..n-1 and
+    /// finish() writes the outputs. A given (seed, n) gives the same outputs on every run. Throws
+    /// std::invalid_argument if threadsRefusal(n) is not empty. Calls initialise() and finish().
+    void runThreaded(int n);
 
     // ---- access -------------------------------------------------------------------------------------------
     const RunSetup& setup() const { return setup_; }
@@ -123,6 +141,10 @@ private:
     EventState ev_;
     RunReport report_;
     long ninform_{1000};
+    // P15.4: set by runThreaded() for finish(): the merged stop counters and the reaction of the last worker
+    bool mergedStopsSet_{false};
+    std::vector<StopCounters> mergedStops_;
+    const IReaction* finalStateReaction_{nullptr};
 };
 
 }  // namespace driver

@@ -7,12 +7,41 @@
 #include <stdexcept>
 
 #include <TFile.h>
+#include <TROOT.h>
 #include <TH1D.h>
 
 #include "simc/core/Event.h"
 #include "simc/core/Registry.h"
 
 namespace simc {
+
+namespace {
+// slots_ indices (beginRun books geni, gen, recon x e_delta, e_yptar, e_xptar, p_delta, p_yptar, p_xptar, Em, Pm)
+constexpr int kGeni_e_delta = 0;
+constexpr int kGeni_e_yptar = 1;
+constexpr int kGeni_e_xptar = 2;
+constexpr int kGeni_p_delta = 3;
+constexpr int kGeni_p_yptar = 4;
+constexpr int kGeni_p_xptar = 5;
+constexpr int kGeni_Em = 6;
+constexpr int kGeni_Pm = 7;
+constexpr int kGen_e_delta = 8;
+constexpr int kGen_e_yptar = 9;
+constexpr int kGen_e_xptar = 10;
+constexpr int kGen_p_delta = 11;
+constexpr int kGen_p_yptar = 12;
+constexpr int kGen_p_xptar = 13;
+constexpr int kGen_Em = 14;
+constexpr int kGen_Pm = 15;
+constexpr int kRecon_e_delta = 16;
+constexpr int kRecon_e_yptar = 17;
+constexpr int kRecon_e_xptar = 18;
+constexpr int kRecon_p_delta = 19;
+constexpr int kRecon_p_yptar = 20;
+constexpr int kRecon_p_xptar = 21;
+constexpr int kRecon_Em = 22;
+constexpr int kRecon_Pm = 23;
+}  // namespace
 
 GenHistSink::GenHistSink() = default;
 GenHistSink::~GenHistSink() = default;
@@ -34,6 +63,7 @@ void GenHistSink::book(const std::string& name, const HistAxis& ax) {
     auto h = std::make_unique<TH1D>(name.c_str(), name.c_str(), kNHbins, ax.min, ax.min + kNHbins * ax.bin);
     h->SetDirectory(nullptr);
     h->Sumw2();
+    slots_.push_back(Slot{h.get(), ax});
     h_[name] = std::move(h);
     ax_[name] = ax;
 }
@@ -43,6 +73,7 @@ void GenHistSink::beginRun(const RunSetup& setup) {
     rhoGenFromOrig_ = setup.flags.doing_rho && !setup.fortran_compat;   // D-057 F18
     if (file_.empty()) file_ = setup.output_dir + "/" + setup.run_name + ".gen.root";
     const auto& H = setup.hist;
+    slots_.clear();
     for (const char* set : {"geni", "gen", "recon"}) {
         const std::string s = set;
         book(s + "_e_delta", H.e.delta);
@@ -56,10 +87,11 @@ void GenHistSink::beginRun(const RunSetup& setup) {
     }
 }
 
-void GenHistSink::inc(const std::string& name, double val, double weight) {
-    const int ibin = FortranBin(val, ax_.at(name));
+void GenHistSink::inc(int slot, double val, double weight) {
+    const Slot& sl = slots_[static_cast<std::size_t>(slot)];
+    const int ibin = FortranBin(val, sl.ax);
     if (ibin < 1 || ibin > kNHbins) return;   // no under/overflow in the Fortran
-    TH1D* h = h_.at(name).get();
+    TH1D* h = sl.h;
     const double entries = h->GetEntries();
     const double err = h->GetBinError(ibin);   // x*x, not std::pow(x,2): gcc 16 calls libm pow (P10.4)
     const double err2 = err * err + weight * weight;
@@ -74,33 +106,55 @@ void GenHistSink::fill(const MainEvent& main, const Event& vertex, const Event& 
     // doing_rho is the rho (its lab theta/phi in the slope fields); corrected: the decay pion (orig%p).
     const ArmFull& hp = GeneratedHadronArm(rhoGenFromOrig_, vertex, orig);
     // simc.f:253-262 — every tried event
-    inc("geni_e_delta", vertex.e.delta, 1.0);
-    inc("geni_e_yptar", vertex.e.yptar, 1.0);
-    inc("geni_e_xptar", -vertex.e.xptar, 1.0);
-    inc("geni_p_delta", hp.delta, 1.0);
-    inc("geni_p_yptar", hp.yptar, 1.0);
-    inc("geni_p_xptar", -hp.xptar, 1.0);
-    inc("geni_Em", vertex.Em, 1.0);
-    inc("geni_Pm", vertex.Pm, 1.0);
+    inc(kGeni_e_delta, vertex.e.delta, 1.0);
+    inc(kGeni_e_yptar, vertex.e.yptar, 1.0);
+    inc(kGeni_e_xptar, -vertex.e.xptar, 1.0);
+    inc(kGeni_p_delta, hp.delta, 1.0);
+    inc(kGeni_p_yptar, hp.yptar, 1.0);
+    inc(kGeni_p_xptar, -hp.xptar, 1.0);
+    inc(kGeni_Em, vertex.Em, 1.0);
+    inc(kGeni_Pm, vertex.Pm, 1.0);
     if (!success) return;
     // simc.f:272-286
-    inc("recon_e_delta", main.RECON.e.delta, main.weight);
-    inc("recon_e_yptar", main.RECON.e.yptar, main.weight);
+    inc(kRecon_e_delta, main.RECON.e.delta, main.weight);
+    inc(kRecon_e_yptar, main.RECON.e.yptar, main.weight);
     // FORTRAN-DIFF-CANDIDATE(D-011): simc.f:274/277 fill H%RECON xptar NOT negated, while H%gen/H%geni use -vertex%xptar
     // (simc.f:256/262), so the .gen recon and generated xptar distributions are mirror images. Intended convention?
-    inc("recon_e_xptar", main.RECON.e.xptar, main.weight);
-    inc("recon_p_delta", main.RECON.p.delta, main.weight);
-    inc("recon_p_yptar", main.RECON.p.yptar, main.weight);
-    inc("recon_p_xptar", main.RECON.p.xptar, main.weight);   // FORTRAN-DIFF-CANDIDATE(D-011): not negated, see above
-    inc("recon_Em", recon.Em, 1.0);
-    inc("recon_Pm", recon.Pm, 1.0);
-    inc("gen_e_delta", vertex.e.delta, 1.0);
-    inc("gen_e_yptar", vertex.e.yptar, 1.0);
-    inc("gen_e_xptar", -vertex.e.xptar, 1.0);
-    inc("gen_p_delta", hp.delta, 1.0);
-    inc("gen_p_yptar", hp.yptar, 1.0);
-    inc("gen_p_xptar", -hp.xptar, 1.0);
-    inc("gen_Em", vertex.Em, 1.0);
+    inc(kRecon_e_xptar, main.RECON.e.xptar, main.weight);
+    inc(kRecon_p_delta, main.RECON.p.delta, main.weight);
+    inc(kRecon_p_yptar, main.RECON.p.yptar, main.weight);
+    inc(kRecon_p_xptar, main.RECON.p.xptar, main.weight);   // FORTRAN-DIFF-CANDIDATE(D-011): not negated, see above
+    inc(kRecon_Em, recon.Em, 1.0);
+    inc(kRecon_Pm, recon.Pm, 1.0);
+    inc(kGen_e_delta, vertex.e.delta, 1.0);
+    inc(kGen_e_yptar, vertex.e.yptar, 1.0);
+    inc(kGen_e_xptar, -vertex.e.xptar, 1.0);
+    inc(kGen_p_delta, hp.delta, 1.0);
+    inc(kGen_p_yptar, hp.yptar, 1.0);
+    inc(kGen_p_xptar, -hp.xptar, 1.0);
+    inc(kGen_Em, vertex.Em, 1.0);
+}
+
+// P15.4: parallel event loop (IParallelSink).
+std::unique_ptr<IOutputSink> GenHistSink::makeWorkerSink(int, int) const {
+    ROOT::EnableThreadSafety();   // every worker fills its own TH1Ds (no directory) in its own thread
+    return std::make_unique<GenHistSink>();
+}
+
+void GenHistSink::mergeWorkerSink(IOutputSink& sink) {
+    auto& w = dynamic_cast<GenHistSink&>(sink);
+    if (w.slots_.size() != slots_.size()) throw std::logic_error("GenHistSink::mergeWorkerSink: different bookings");
+    for (std::size_t i = 0; i < slots_.size(); ++i) {
+        TH1D* h = slots_[i].h;
+        const TH1D* g = w.slots_[i].h;
+        const double entries = h->GetEntries() + g->GetEntries();
+        for (int b = 1; b <= kNHbins; ++b) {
+            const double e1 = h->GetBinError(b), e2 = g->GetBinError(b);
+            h->SetBinContent(b, h->GetBinContent(b) + g->GetBinContent(b));
+            h->SetBinError(b, std::sqrt(e1 * e1 + e2 * e2));
+        }
+        h->SetEntries(entries);
+    }
 }
 
 const TH1D* GenHistSink::hist(const std::string& name) const {

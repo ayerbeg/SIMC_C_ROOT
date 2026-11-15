@@ -16,11 +16,13 @@
 #define SIMC_DRIVER_REPORTSINK_H
 
 #include <array>
+#include <memory>
 #include <string>
 
 #include "simc/core/RunSetup.h"
 #include "simc/driver/RunReport.h"
 #include "simc/stages/IOutputSink.h"
+#include "simc/stages/IParallelSink.h"
 
 namespace simc {
 namespace driver {
@@ -31,7 +33,7 @@ public:
     virtual void writeReport(const RunSetup& setup, const RunReport& report) = 0;
 };
 
-class FortranHistSink : public IOutputSink, public IReportSink {
+class FortranHistSink : public IOutputSink, public IReportSink, public IParallelSink {
 public:
     static constexpr int kNHbins = 50;   ///< histograms.inc nHbins
 
@@ -53,6 +55,9 @@ public:
     void fill(const MainEvent& main, const Event& vertex, const Event& orig, const Event& recon, bool success) override;
     void endRun(const RunSummary&) override {}
     void writeReport(const RunSetup& setup, const RunReport& report) override;
+    /// P15.4 (--threads N): worker histograms in memory; merge = the 50-bin buffers summed (worker order).
+    std::unique_ptr<IOutputSink> makeWorkerSink(int worker, int nworkers) const override;
+    void mergeWorkerSink(IOutputSink& worker) override;
 
     /// Fortran: simc.f:inc(hist, val, weight) (l.624-640).
     static void Inc(Hist& h, double val, double weight);

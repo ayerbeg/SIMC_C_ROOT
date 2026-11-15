@@ -140,6 +140,10 @@ void PipelineConfig::apply(const Json& j) {
                 s.apply(e, "sinks[]");
                 sinks.push_back(s);
             }
+        } else if (k == "threads") {
+            if (!it.value().is_number_integer() || it.value().get<long>() < 1 || it.value().get<long>() > 1024)
+                throw std::invalid_argument("pipeline.threads: expected an integer 1..1024");
+            threads = it.value().get<int>();
         } else {
             throw std::invalid_argument("pipeline: unknown stage '" + k + "'");
         }
@@ -157,6 +161,7 @@ Json PipelineConfig::toJson() const {
     j["spectrometers"] = {{"hadron", hadron_arm.toJson()}, {"electron", electron_arm.toJson()}};
     j["sinks"] = Json::array();
     for (const auto& s : sinks) j["sinks"].push_back(s.toJson());
+    if (threads > 0) j["threads"] = threads;   // (P15.4; absent unless given)
     return j;
 }
 

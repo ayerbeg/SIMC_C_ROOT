@@ -42,6 +42,10 @@ struct RunTotals {
     Slops slop;                          ///< slop%MC / slop%total ranges (limits_update; .used from the setup)
 };
 
+/// P15.4 (parallel event loop): add the accumulators of one worker to the run's (counters and sums added, the
+/// contrib/slop ranges combined with mergeContrib/mergeSlops). The workers are merged in the fixed order 0..N-1.
+void MergeTotals(RunTotals& into, const RunTotals& worker);
+
 /// simc.f l.94-101 and l.360-432.
 struct Normalisation {
     double targetfac{0}, luminosity{0};  ///< from the setup (simc.f:94-101)
@@ -63,6 +67,7 @@ struct RunReport {
     RunTotals totals;
     Normalisation norm;
     std::vector<StopCounters> stops;     ///< one entry per spectrometer type in use
+    int threads{1};                      ///< P15.4: worker threads of the event loop (1 = the sequential loop)
 };
 
 /// Fortran: simc.f l.360-432 (normalisation and resolutions). `genvol` from IReaction::genVolume().

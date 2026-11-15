@@ -2,6 +2,8 @@
 // Fortran: NtupleInit.f, results_write.f:results_ntu_write (l.1-271).
 #include "simc/output/NtupleLayout.h"
 
+#include <mutex>
+
 #include "simc/core/SpectrometerId.h"
 #include "simc/core/Units.h"
 
@@ -419,6 +421,8 @@ namespace {
 // NtupleInit.f:101-191 with using_tgt_field: pion 53 + 8 angles [+ saghai, factor (kaon)] [+ 12 photons (pi0)]
 const std::vector<NtupleColumn>& PionFieldNtupleColumns(bool kaon, bool pizero) {
     static std::vector<NtupleColumn> cache[2][2];
+    static std::mutex mutex;   // (P15.4: sinks of worker threads may ask at the same time)
+    std::lock_guard<std::mutex> lock(mutex);
     std::vector<NtupleColumn>& c = cache[kaon][pizero];
     if (c.empty()) {
         c = PionNtupleColumns(false);
@@ -440,6 +444,8 @@ const std::vector<NtupleColumn>& PionFieldNtupleColumns(bool kaon, bool pizero) 
 // NtupleInit.f:192-264 with using_tgt_field: semi 56 + 8 angles [+ Mrho, Thrho, mmnuc (rho)] [+ 12 photons (pi0)]
 const std::vector<NtupleColumn>& SemiFieldNtupleColumns(bool rho, bool pizero) {
     static std::vector<NtupleColumn> cache[2][2];
+    static std::mutex mutex;   // (P15.4: sinks of worker threads may ask at the same time)
+    std::lock_guard<std::mutex> lock(mutex);
     std::vector<NtupleColumn>& c = cache[rho][pizero];
     if (c.empty()) {
         c = rho ? std::vector<NtupleColumn>(RhoNtupleColumns().begin(), RhoNtupleColumns().begin() + kSemiNtupleSize)

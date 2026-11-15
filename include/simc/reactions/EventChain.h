@@ -69,6 +69,13 @@ void limitsUpdate(const MainEvent& main, const Event& vertex, const Event& orig,
                   const ReactionFlags& f, const std::array<double, 3>& Egamma_used, Contrib& contrib, Slops& slop,
                   bool rho_gen_from_orig = false);
 
+/// P15.4 (parallel event loop): combine the ranges found by one worker into the run's: lo = min, hi = max, with the
+/// update_range comparisons (a worker that never updated a range, lo = +1e10 / hi = -1e10, changes nothing).
+void mergeRange(Range& into, const Range& worker);
+void mergeSlopRange(SlopItem& into, const SlopItem& worker);   ///< lo/hi as mergeRange; `used` is the set-up value
+void mergeContrib(Contrib& into, const Contrib& worker);
+void mergeSlops(Slops& into, const Slops& worker);
+
 /// Outputs of jacobians.f:transform_to_cm.
 struct CmTransform {
     double gstar{0}, bstar{0}, bstarx{0}, bstary{0}, bstarz{0};

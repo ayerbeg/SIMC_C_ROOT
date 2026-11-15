@@ -18,15 +18,17 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "simc/core/RunSetup.h"
 #include "simc/stages/IOutputSink.h"
+#include "simc/stages/IParallelSink.h"
 
 class TH1D;
 
 namespace simc {
 
-class GenHistSink : public IOutputSink {
+class GenHistSink : public IOutputSink, public IParallelSink {
 public:
     static constexpr int kNHbins = 50;   // histograms.inc nHbins
 
@@ -39,6 +41,9 @@ public:
     void fill(const MainEvent& main, const Event& vertex, const Event& orig, const Event& recon,
               bool success) override;
     void endRun(const RunSummary& summary) override;
+    /// P15.4 (--threads N): worker histograms in memory; merge = bin contents summed, errors in quadrature, entries summed.
+    std::unique_ptr<IOutputSink> makeWorkerSink(int worker, int nworkers) const override;
+    void mergeWorkerSink(IOutputSink& worker) override;
 
     /// Fortran inc(): ibin = nint(0.5+(val-min)/bin); counted only for 1 <= ibin <= nHbins.
     static int FortranBin(double val, const HistAxis& ax);
@@ -49,12 +54,19 @@ public:
 private:
     bool rhoGenFromOrig_{false};   ///< D-057 F18
     void book(const std::string& name, const HistAxis& ax);
-    void inc(const std::string& name, double val, double weight);
+    /// P15.4: the histograms are resolved once at beginRun (slot = set*8 + variable, in booking order) instead of two
+    /// std::map<string> lookups per inc() call; same TH1D operations, same results.
+    struct Slot {
+        TH1D* h{nullptr};
+        HistAxis ax;
+    };
+    void inc(int slot, double val, double weight);
 
     std::string file_;
     RunSetup setup_;
     std::map<std::string, std::unique_ptr<TH1D>> h_;
     std::map<std::string, HistAxis> ax_;
+    std::vector<Slot> slots_;
 };
 
 }  // namespace simc
