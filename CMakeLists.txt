@@ -152,6 +152,7 @@ unset(CMAKE_TEST_LAUNCHER)
 add_subdirectory(tests/regression)     # C++ baselines: output_identity.sh prints the baseline toolchain itself
 add_subdirectory(tests/user_manual)    # P15.D2: user-manual checks (parameter reference complete, Markdown links), label "docs"
 add_subdirectory(tests/developer_manual)   # P15.D1: developer-manual checks (header coverage, verbatim snippets, links), label "docs"
+add_subdirectory(docs/doxygen)             # P15.D3: Doxygen API reference: target `doc`, tests docs_doc_coverage / docs_doxygen (label "docs")
 
 # ============================================================================
 # Installation

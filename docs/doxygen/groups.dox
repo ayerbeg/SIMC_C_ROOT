@@ -1,0 +1,133 @@
+/**
+@file groups.dox
+@brief The modules (Doxygen groups) of the SIMC++ API reference.
+
+Every public header of `include/simc` puts its entities into one of the modules defined here (with `@addtogroup`),
+so that the "Modules" page of the reference follows the architecture of the framework: the data model and services
+(core), the input and the derived run set-up (input), the stage interfaces (stages), the implementations of the stages
+(reactions, physics, radiation, spectrometers, optics, output) and the driver that runs them, plus the pieces that exist
+for testing (validation).
+*/
+
+/**
+@namespace simc
+@brief Everything of SIMC++: the data model, the stage interfaces, the stage implementations and the run driver.
+
+The namespace is flat for the framework types (simc::SimcParameters, simc::RunSetup, simc::Event, simc::IReaction,
+...). Sub-namespaces group the kernels of one subsystem (simc::optics, simc::radiation, simc::physics, ...) and the run
+driver (simc::driver). Names in a `detail` namespace are implementation details that the public headers have to show.
+*/
+
+/**
+@defgroup core Core: data model and services
+@brief The value types every stage exchanges, and the framework services.
+
+The input parameters (simc::SimcParameters, exactly the variables of a `.inp` file), the derived run constants
+(simc::RunSetup), the per-event structures (simc::Event, simc::MainEvent), the end-of-run numbers
+(simc::RunSummary), the spectrometer numbering (simc::SpectrometerId), the unit convention (simc::units), the physical
+constants (simc::constants), the exception hierarchy (simc::Error), the plug-in registry (simc::Registry,
+#SIMC_REGISTER), the data directory (simc::DataRoot) and the random-number sources (simc::Mt64Random,
+simc::RanluxRandom, simc::ScriptedRandom).
+*/
+
+/**
+@defgroup input Input and run set-up
+@brief Reading `.inp` / JSON inputs and deriving the run constants from them.
+
+simc::InpReader reads the Fortran-style `.inp` files (with `extra_dbase_file` chaining) into simc::SimcParameters;
+simc::EffectiveValues shows the values after the unit conversions of the set-up; simc::BuildRunSetup turns the
+parameters into the simc::RunSetup used by every stage (limits, cuts, target, radiative set-up, spectral functions).
+*/
+
+/**
+@defgroup stages Stage interfaces
+@brief The abstract plug-in interfaces of the event chain and their dependency-injection context.
+
+Every replaceable piece of a run is an interface derived from simc::IStage: random source (simc::IRandom), target
+(simc::ITarget), material model (simc::IMaterialModel), beam (simc::IBeam), reaction (simc::IReaction),
+cross-section model (simc::IPhysicsModel), spectral function (simc::ISpectralFunction), radiative corrections
+(simc::IRadiator), spectrometer arm (simc::ISpectrometer) and output sinks (simc::IOutputSink,
+simc::IParallelSink). An implementation registers a name with #SIMC_REGISTER and is chosen by that name in the JSON
+`pipeline` section; the driver only knows the interfaces. Collaborators are passed at `init()` in a
+simc::StageContext.
+*/
+
+/**
+@defgroup reactions Reactions and beam
+@brief The event generators: beam, (e,e'p), pion, kaon, Delta, SIDIS, rho and phase-space reactions.
+
+The reaction stages (simc::IReaction implementations) generate the vertex kinematics of one try, complete the event
+(simc::EventChain) and compute its weight with the physics model. simc::StandardBeam is the beam stage.
+*/
+
+/**
+@defgroup physics Physics models
+@brief Cross sections, spectral functions, structure functions and decays.
+
+The simc::IPhysicsModel implementations of every reaction family (proton, pion, kaon, Delta, SIDIS, rho), the
+nuclear spectral functions (simc::ISpectralFunction implementations and their tables), the parton distributions and
+fragmentation functions of SIDIS, and the pi0 decay.
+*/
+
+/**
+@defgroup material Target and material
+@ingroup physics
+@brief Target geometry, energy loss, multiple scattering and material constants.
+
+The simc::IMaterialModel implementation, the Hall C cryogenic-target geometry (simc::HallCCryoTarget), the target
+description and the material constants used by the energy-loss and multiple-scattering formulas.
+*/
+
+/**
+@defgroup radiation Radiative corrections
+@brief Internal and external bremsstrahlung: the simc::IRadiator implementation and its kernels.
+
+simc::SimcRadiator implements the radiative tails (radiation by the incoming electron, the scattered electron and the
+hadron), their probability distributions and the radiative weight; the kernel headers hold the per-event state and the
+bremsstrahlung formulas.
+*/
+
+/**
+@defgroup spectrometers Spectrometers
+@brief The spectrometer arms (HMS, SHMS, SOS, HRS, calorimeter): transport, apertures, reconstruction.
+
+Each simc::ISpectrometer implementation transports a particle from the target through the magnets with the COSY
+forward maps, applies the apertures (counting the losses per aperture), smears the focal-plane track and reconstructs
+the target quantities. The kernel headers expose the per-spectrometer Monte Carlo routines used by those stages and by
+the routine-level tests.
+*/
+
+/**
+@defgroup optics Optics
+@brief The COSY transport engine, forward-map chains, target magnetic field and the least-squares helper.
+
+simc::optics::CosyEngine reads COSY matrices and applies them (transport, projection, decay in flight); the
+target-field tracking implements the polarised-target magnetic field.
+*/
+
+/**
+@defgroup output Output
+@brief Output sinks and formats: ROOT tree, run summary JSON, generated histograms, ntuple layout.
+
+The simc::IOutputSink implementations write the ROOT tree (simc::RootTreeSink, column layout from
+simc::NtupleLayout), the run summary (simc::RunSummarySink, simc::SummaryJson) and the generated-quantity histograms
+(simc::GenHistSink).
+*/
+
+/**
+@defgroup driver Driver
+@brief Running a simulation: the command line, simc::driver::SimcRun, the Monte Carlo of one try, the reports.
+
+simc::driver::SimcRun owns a run: it reads the input, builds the set-up and the stages (simc::driver::Pipeline),
+computes the central event, loops over tries (simc::driver::MonteCarlo), normalises and writes the reports
+(`.hist`, `.geni`, `.gen`) and the outputs. simc::driver::CommandLineMain is the `simc++` command line.
+*/
+
+/**
+@defgroup validation Validation API
+@brief Pieces that exist to test SIMC++ against the reference: scripted random numbers and kernel-level entry points.
+
+simc::ScriptedRandom replays fixed random numbers (routine-level reference tables); the `kernel/` headers of the
+spectrometer and radiation modules expose the internal routines with their state so that the L1 runners can compare
+them with the reference tables one call at a time. These headers are not installed.
+*/

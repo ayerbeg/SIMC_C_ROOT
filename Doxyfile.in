@@ -1,0 +1,148 @@
+# Doxyfile.in - Doxygen configuration of the SIMC++ API reference (task P15.D3).
+#
+# Configured by docs/doxygen/CMakeLists.txt (configure_file, @ONLY) into <build>/docs/doxygen/Doxyfile; the paths
+# below are filled in by CMake, so this file holds no machine-specific path (D-073).
+#   cmake --build <build> --target doc         -> <build>/docs/doxygen/html/index.html
+#   ctest -R docs_doxygen                       -> runs Doxygen and requires 0 warnings for include/
+# Only the tags that differ from the Doxygen defaults (or matter for the policy) are set.
+
+#---------------------------------------------------------------------------
+# Project
+#---------------------------------------------------------------------------
+PROJECT_NAME           = "SIMC++"
+PROJECT_NUMBER         = "@PROJECT_VERSION@"
+PROJECT_BRIEF          = "C++ Monte Carlo of Hall C coincidence (e,e'X) experiments: API reference"
+OUTPUT_DIRECTORY       = "@SIMC_DOXYGEN_OUT@"
+CREATE_SUBDIRS         = NO
+STRIP_FROM_PATH        = "@CMAKE_SOURCE_DIR@"
+STRIP_FROM_INC_PATH    = "@CMAKE_SOURCE_DIR@/include"
+FULL_PATH_NAMES        = YES
+JAVADOC_AUTOBRIEF      = YES
+QT_AUTOBRIEF           = YES
+MULTILINE_CPP_IS_BRIEF = NO
+INHERIT_DOCS           = YES
+TAB_SIZE               = 4
+MARKDOWN_SUPPORT       = YES
+TOC_INCLUDE_HEADINGS   = 3
+AUTOLINK_SUPPORT       = YES
+BUILTIN_STL_SUPPORT    = YES
+DISTRIBUTE_GROUP_DOC   = YES
+GROUP_NESTED_COMPOUNDS = YES
+SUBGROUPING            = YES
+INLINE_SIMPLE_STRUCTS  = NO
+TYPEDEF_HIDES_STRUCT   = NO
+
+#---------------------------------------------------------------------------
+# What is extracted: the documented public API (EXTRACT_ALL = NO, so that every undocumented entity is reported)
+#---------------------------------------------------------------------------
+EXTRACT_ALL            = NO
+EXTRACT_PRIVATE        = NO
+EXTRACT_PACKAGE        = NO
+EXTRACT_STATIC         = YES
+EXTRACT_LOCAL_CLASSES  = YES
+EXTRACT_ANON_NSPACES   = NO
+HIDE_UNDOC_MEMBERS     = NO
+HIDE_UNDOC_CLASSES     = NO
+HIDE_FRIEND_COMPOUNDS  = NO
+INTERNAL_DOCS          = NO
+CASE_SENSE_NAMES       = YES
+HIDE_SCOPE_NAMES       = NO
+SHOW_INCLUDE_FILES     = YES
+SORT_MEMBER_DOCS       = NO
+SORT_BRIEF_DOCS        = NO
+SHOW_USED_FILES        = YES
+SHOW_FILES             = YES
+SHOW_NAMESPACES        = YES
+
+#---------------------------------------------------------------------------
+# Warnings (policy of P15.D3: every public entity documented, every parameter and return value described)
+#---------------------------------------------------------------------------
+QUIET                  = YES
+WARNINGS               = YES
+WARN_IF_UNDOCUMENTED   = YES
+WARN_IF_DOC_ERROR      = YES
+WARN_IF_INCOMPLETE_DOC = YES
+WARN_NO_PARAMDOC       = YES
+WARN_AS_ERROR          = NO
+WARN_FORMAT            = "$file:$line: $text"
+WARN_LOGFILE           = "@SIMC_DOXYGEN_OUT@/doxygen_warnings.log"
+
+#---------------------------------------------------------------------------
+# Input: the public headers, the module definitions and main page, and (optionally) the Markdown manuals
+#---------------------------------------------------------------------------
+INPUT                  = "@CMAKE_SOURCE_DIR@/docs/doxygen" \
+                         "@CMAKE_SOURCE_DIR@/include" \
+                         @SIMC_DOXYGEN_MANUAL_INPUTS@
+INPUT_ENCODING         = UTF-8
+FILE_PATTERNS          = *.h *.dox *.md
+RECURSIVE              = YES
+EXCLUDE_PATTERNS       = */tools/* */examples/* VERIFIED_EXAMPLES.md
+EXCLUDE_SYMBOLS        =
+EXAMPLE_PATH           = "@CMAKE_SOURCE_DIR@/examples"
+EXAMPLE_RECURSIVE      = YES
+USE_MDFILE_AS_MAINPAGE = "@CMAKE_SOURCE_DIR@/docs/doxygen/mainpage.md"
+
+#---------------------------------------------------------------------------
+# Source browsing: the headers are shown verbatim (they hold the Fortran-origin notes), not the implementation
+#---------------------------------------------------------------------------
+SOURCE_BROWSER         = NO
+INLINE_SOURCES         = NO
+STRIP_CODE_COMMENTS    = NO
+VERBATIM_HEADERS       = YES
+REFERENCED_BY_RELATION = NO
+REFERENCES_RELATION    = NO
+
+#---------------------------------------------------------------------------
+# Index and HTML output (no LaTeX)
+#---------------------------------------------------------------------------
+ALPHABETICAL_INDEX     = YES
+GENERATE_HTML          = YES
+HTML_OUTPUT            = html
+HTML_FILE_EXTENSION    = .html
+HTML_DYNAMIC_SECTIONS  = YES
+GENERATE_TREEVIEW      = YES
+ENUM_VALUES_PER_LINE   = 1
+SEARCHENGINE           = YES
+SERVER_BASED_SEARCH    = NO
+USE_MATHJAX            = NO
+GENERATE_LATEX         = NO
+GENERATE_RTF           = NO
+GENERATE_MAN           = NO
+GENERATE_XML           = NO
+GENERATE_DOCBOOK       = NO
+GENERATE_AUTOGEN_DEF   = NO
+GENERATE_PERLMOD       = NO
+
+#---------------------------------------------------------------------------
+# Preprocessor: the headers are plain C++20; SIMC_REGISTER is documented as a macro, not expanded
+#---------------------------------------------------------------------------
+ENABLE_PREPROCESSING   = YES
+MACRO_EXPANSION        = NO
+EXPAND_ONLY_PREDEF     = NO
+SEARCH_INCLUDES        = YES
+INCLUDE_PATH           = "@CMAKE_SOURCE_DIR@/include"
+SKIP_FUNCTION_MACROS   = YES
+
+#---------------------------------------------------------------------------
+# Graphs (graphviz dot): class hierarchy, collaboration, include / included-by, module graphs
+#---------------------------------------------------------------------------
+HAVE_DOT               = @SIMC_DOXYGEN_HAVE_DOT@
+DOT_PATH               = "@SIMC_DOXYGEN_DOT_PATH@"
+DOT_NUM_THREADS        = 0
+CLASS_GRAPH            = YES
+COLLABORATION_GRAPH    = YES
+GROUP_GRAPHS           = YES
+UML_LOOK               = NO
+TEMPLATE_RELATIONS     = YES
+INCLUDE_GRAPH          = YES
+INCLUDED_BY_GRAPH      = YES
+CALL_GRAPH             = NO
+CALLER_GRAPH           = NO
+GRAPHICAL_HIERARCHY    = YES
+DIRECTORY_GRAPH        = YES
+DOT_IMAGE_FORMAT       = svg
+INTERACTIVE_SVG        = YES
+DOT_GRAPH_MAX_NODES    = 60
+MAX_DOT_GRAPH_DEPTH    = 0
+DOT_MULTI_TARGETS      = YES
+DOT_CLEANUP            = YES
