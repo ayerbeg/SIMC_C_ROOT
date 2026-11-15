@@ -4,6 +4,7 @@
 #          field) in both modes (seed 4242, mt64, short ngen) and one simc_compare, keeping every output
 #   check <dirA> <dirB> <simc_root_identity> : cmp of every file; .hist/.log/.summary.* without the begin/end time lines, .root
 #          trees with simc_root_identity (the ROOT file header holds a date), the compare PDF by size only; exit 0 if identical
+#          (env GOLDEN_A_ORIG / GOLDEN_B_ORIG: the directory a set was MADE in, if it was moved since — P15.4)
 set -uo pipefail
 REF=/home/ayerbe/NewDisk/reference/runs
 RUNS=(eep_h_elastic_rad_A:4000 acc_phsp_hms_shms_A:4000 eep_d_rad_A:2000 eep_fe56_rad_A:2000 eep_fe56_bh_rad_A:1000
@@ -33,8 +34,8 @@ elif [[ $mode == check ]]; then
     [[ -f $b ]] || { echo "missing in B: $f"; bad=1; continue; }
     case $f in
       *.hist|*.log|*.out|*.txt|*.json)   # (time stamps and the output directory names excluded)
-        flt() { grep -v -E '^ (BEGIN|END) Time:|^ *"?(begin|end)_time"? *[=:]' "$1" | sed "s|$2|<DIR>|g"; }
-        diff -q <(flt "$a" "$A") <(flt "$b" "$B") > /dev/null || { echo "DIFF $f"; bad=1; } ;;
+        flt() { grep -v -E '^ (BEGIN|END) Time:|^ *"?(begin|end)_time"? *[=:]' "$1" | sed "s|$2|<DIR>|g;s|$3|<DIR>|g"; }
+        diff -q <(flt "$a" "$A" "${GOLDEN_A_ORIG:-$A}") <(flt "$b" "$B" "${GOLDEN_B_ORIG:-$B}") > /dev/null || { echo "DIFF $f"; bad=1; } ;;
       *.root) "$IDENT" "$a" "$b" > /dev/null 2>&1 || { echo "DIFF $f"; bad=1; } ;;
       *.pdf) [[ $(stat -c %s "$a") == $(stat -c %s "$b") ]] || { echo "PDF size differs $f"; } ;;
       *) cmp -s "$a" "$b" || { echo "DIFF $f"; bad=1; } ;;

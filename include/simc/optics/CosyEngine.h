@@ -101,6 +101,7 @@ public:
         double length{0};      ///< !LENGTH: comment in cm (0 if absent)   (transp.f local `length`)
         bool adrift{true};     ///< COMMON /driftdistances/ adrift
         double driftdist{0};   ///< COMMON /driftdistances/ driftdist (cm)
+        std::array<int, 5> max_expon{};   ///< largest exponent of each variable in `terms` (P15.4 power tables)
     };
     /// One recon element: coefficients for delta_phi (xptar), y_tgt, delta_t (yptar), delta_p;
     /// exponents of xfp, xpfp, yfp, ypfp, fry.
@@ -155,6 +156,7 @@ private:
     std::map<int, std::vector<ForwardClass>> fwd_;
     std::map<int, std::vector<ReconTerm>> rec_;
     std::map<int, int> recMaxOrder_;
+    std::map<int, std::array<int, 5>> recMaxExpon_;   ///< largest exponent of each hut variable (P15.4 power tables)
     std::ostream* log_;
     bool fortranCompat_{false};
 };

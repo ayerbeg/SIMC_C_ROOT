@@ -1,6 +1,8 @@
 // src/optics/CosyEngine.cpp — see include/simc/optics/CosyEngine.h.
 #include "simc/optics/CosyEngine.h"
 
+#include <algorithm>
+#include <array>
 #include <cctype>
 #include <cmath>
 #include <cstdlib>
@@ -28,6 +30,22 @@ double powi(double x, int m) {
 }
 
 namespace {
+
+// P15.4 (performance): the powers x**k (k = 0..max_expon) of the five map variables, each one computed ONCE per call with
+// the same powi as before (k = 0 gives 1, as powi(x, 0)), then looked up by every term: bitwise the same products as
+// calling powi in every term. Exponents outside 0..kMaxPow (never in the COSY files: one digit) fall back to powi.
+constexpr int kMaxPow = 9;
+struct PowerTable {
+    double p[5][kMaxPow + 1];
+    int m[5];
+    PowerTable(const double* x, const std::array<int, 5>& max_expon) {
+        for (int j = 0; j < 5; ++j) {
+            m[j] = std::min(std::max(max_expon[j], 0), kMaxPow);
+            for (int k = 0; k <= m[j]; ++k) p[j][k] = powi(x[j], k);
+        }
+    }
+    double operator()(const double* x, int j, int k) const { return (k >= 0 && k <= m[j]) ? p[j][k] : powi(x[j], k); }
+};
 
 // Fortran: loren.f:loren (l.1-26). Single implementation in setup/KinematicsUtils (P2.2).
 void loren(double gam, double bx, double by, double bz, double e, double x, double y, double z, double& ef1,
@@ -475,6 +493,7 @@ int CosyEngine::loadForward(int spectr, const std::string& path) {
                     throw FortranStop("TRANSP_INIT: non-zero TOF terms!");
             } else {
                 c.terms.push_back(t);
+                for (int j = 0; j < 5; ++j) c.max_expon[j] = std::max(c.max_expon[j], t.expon[j]);
                 // Check to see if element is inconsistent with a field-free drift.
                 if (c.adrift) {
                     const int e1 = t.expon[0], e2 = t.expon[1], e3 = t.expon[2], e4 = t.expon[3];
@@ -550,6 +569,7 @@ int CosyEngine::loadRecon(int spectr, const std::string& path) {
     }
     std::vector<ReconTerm> terms;
     int max_order = 0;
+    std::array<int, 5> max_expon{};
     while (line.compare(0, 4, " ---") != 0) {
         if (static_cast<int>(terms.size()) + 1 > kMaxElements) throw FortranStop("WCRECON: too many COSY terms!");
         // format(1x,4g16.9,1x,5i1)
@@ -557,11 +577,13 @@ int CosyEngine::loadRecon(int spectr, const std::string& path) {
         for (int i = 0; i < 4; ++i) t.coeff[i] = detail::readFortranReal(line.substr(1 + 16 * i, 16), 9);
         for (int j = 0; j < 5; ++j) t.expon[j] = detail::readFortranInt(line.substr(66 + j, 1));
         terms.push_back(t);
+        for (int j = 0; j < 5; ++j) max_expon[j] = std::max(max_expon[j], t.expon[j]);
         if (!next(line)) throw FortranStop("recon: end of file before ' ---' in " + path);
         max_order = std::max(max_order, t.expon[0] + t.expon[1] + t.expon[2] + t.expon[3] + t.expon[4]);
     }
     rec_[spectr] = std::move(terms);
     recMaxOrder_[spectr] = max_order;
+    recMaxExpon_[spectr] = max_expon;
     return static_cast<int>(rec_[spectr].size());
 }
 
@@ -641,11 +663,12 @@ double CosyEngine::transp(int spectr, int cls, Track& t, double zd, double& path
     // Pack local copy of input coordinates.
     const double ray[5] = {t.xs, t.dxdzs * 1000.e0, t.ys, t.dydzs * 1000.e0, t.dpps};
     double sum[5] = {0., 0., 0., 0., 0.};
+    const PowerTable pw(ray, c.max_expon);   // (P15.4: powi(ray(j), expon) looked up, same values)
     for (const ForwardTerm& e : c.terms) {
         double term = 1.0e0;
         for (int j = 0; j < 5; ++j) {
             double temp = 1.0e0;
-            if (e.expon[j] != 0) temp = powi(ray[j], e.expon[j]);
+            if (e.expon[j] != 0) temp = pw(ray, j, e.expon[j]);
             term = term * temp;
         }
         sum[0] = sum[0] + term * e.coeff[0];   // NEW "X"
@@ -712,9 +735,11 @@ void CosyEngine::recon(int spectr, const Track& t, double fry, double& delta_p, 
     } else {
         if (std::fabs(hut[4]) <= 1.e-30) hut[4] = 1.e-30;   // FORTRAN-QUIRK (D-015): avoid 0.0**0
     }
-    for (const ReconTerm& e : terms) {
-        const double term = powi(hut[0], e.expon[0]) * powi(hut[1], e.expon[1]) * powi(hut[2], e.expon[2]) *
-                            powi(hut[3], e.expon[3]) * powi(hut[4], e.expon[4]);
+    const auto mx = recMaxExpon_.find(spectr);
+    const PowerTable pw(hut, mx != recMaxExpon_.end() ? mx->second : std::array<int, 5>{kMaxPow, kMaxPow, kMaxPow, kMaxPow, kMaxPow});
+    for (const ReconTerm& e : terms) {   // (P15.4: powi(hut(j), expon) looked up, same values)
+        const double term = pw(hut, 0, e.expon[0]) * pw(hut, 1, e.expon[1]) * pw(hut, 2, e.expon[2]) *
+                            pw(hut, 3, e.expon[3]) * pw(hut, 4, e.expon[4]);
         sum[0] = sum[0] + term * e.coeff[0];
         sum[1] = sum[1] + term * e.coeff[1];
         sum[2] = sum[2] + term * e.coeff[2];

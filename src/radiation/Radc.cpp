@@ -144,7 +144,7 @@ double peakedRadWeight(const RadcRun& run, RadcState& st, const Event& vertex, d
         (void)dsoft_int_prime;
     }
 
-    // ... All together now (l.634-643). gamma = intrinsic = libm tgamma (D-019).
+    // ... All together now (l.634-643). gamma = intrinsic = libm tgamma (D-019), through the bitwise memo st.gamma (P15.4).
     double w;
     if (emin > 0) {
         w = st.c_ext[0] / st.g_ext *
@@ -154,8 +154,8 @@ double peakedRadWeight(const RadcRun& run, RadcState& st, const Event& vertex, d
         w = st.c_ext[0] / st.g_ext * (std::exp(-st.prw_dsoft_intmax) * std::pow(emax, st.g_ext));
     }
     const double g4 = st.g[4];
-    w = w * std::exp(-eul * g4) / std::tgamma(1. + g4) * std::tgamma(1. + g4 - st.bt[1] - st.bt[2]) *
-        std::tgamma(1. + st.bt[1]) * std::tgamma(1. + st.bt[2]) / std::tgamma(1. + g4);
+    w = w * std::exp(-eul * g4) / st.gamma(1. + g4) * st.gamma(1. + g4 - st.bt[1] - st.bt[2]) *
+        st.gamma(1. + st.bt[1]) * st.gamma(1. + st.bt[2]) / st.gamma(1. + g4);
     if (w < 0) w = 0;
     return w;
 }
@@ -185,7 +185,7 @@ double extradPhi(const RadcRun& run, const RadcState& st, int itail, double E1, 
             const double x = Egamma / E[itail];
             const double t = st.bt[itail] / run.etatzai;
             phi = phi * (1. - x + sq(x) / run.etatzai) *
-                  std::exp(t * ((run.etatzai - 0.5) - run.etatzai * x + sq(x) / 2.)) * std::tgamma(1. + st.bt[itail]);
+                  std::exp(t * ((run.etatzai - 0.5) - run.etatzai * x + sq(x) / 2.)) * st.gamma(1. + st.bt[itail]);
         }
     }
     return phi;

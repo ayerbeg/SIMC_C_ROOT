@@ -9,6 +9,7 @@
 #include "simc/physics/pion/PionCrossSections.h"
 
 #include <algorithm>
+#include <charconv>
 #include <cmath>
 #include <cstdlib>
 #include <fstream>
@@ -188,8 +189,16 @@ double readFField(const std::string& rec, std::size_t pos, std::size_t w, int d)
     for (std::size_t i = pos; i < pos + w && i < rec.size(); ++i)
         if (rec[i] != ' ') s += rec[i];
     if (s.empty()) return 0.0;
-    char* end = nullptr;
-    double v = std::strtod(s.c_str(), &end);
+    // P15.4: std::from_chars (correctly rounded, as strtod: the same double) is several times faster than strtod on the
+    // 1.9 million MAID numbers; anything it does not take whole (a '+' sign, ...) still goes through strtod.
+    double v = 0.0;
+    const char* b = s.data();
+    const char* e = s.data() + s.size();
+    const auto [ptr, ec] = std::from_chars(b, e, v);
+    if (ec != std::errc() || ptr != e) {
+        char* end = nullptr;
+        v = std::strtod(s.c_str(), &end);
+    }
     if (s.find('.') == std::string::npos && s.find_first_of("eEdD") == std::string::npos) v = v / std::pow(10.0, d);
     return v;
 }

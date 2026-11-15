@@ -24,6 +24,9 @@
 #define SIMC_RADIATION_RADCSTATE_H
 
 #include <array>
+#include <cmath>
+#include <cstdint>
+#include <cstring>
 #include <stdexcept>
 #include <string>
 
@@ -77,6 +80,31 @@ struct RadcRun {
     static RadcRun FromSetup(const RunSetup& s);
 };
 
+/// Memo of std::tgamma (task P15.4, performance): radc_init_ev/basicrad_init_ev and peaked_rad_weight call gamma() about
+/// 29 times per try on 12 distinct arguments (1+lambda(i), 1+bt(i), 1+g(i), ...), and libm tgamma was 20-56% of the run
+/// time. tgamma is a pure function, so returning the value computed earlier for the SAME argument (compared bit for bit,
+/// so -0/+0 and NaN payloads are distinct keys) gives bitwise-identical results. 16 slots, round-robin replacement: the
+/// values of one try stay in it until the try's last use. One instance per RadcState (per radiator, per worker thread).
+struct TgammaMemo {
+    static constexpr int kSlots = 16;
+    std::array<std::uint64_t, kSlots> key{};
+    std::array<double, kSlots> val{};
+    std::array<bool, kSlots> used{};
+    int next{0};
+    double operator()(double x) {
+        std::uint64_t k;
+        std::memcpy(&k, &x, sizeof k);
+        for (int i = 0; i < kSlots; ++i)
+            if (used[i] && key[i] == k) return val[i];
+        const double y = std::tgamma(x);
+        key[next] = k;
+        val[next] = y;
+        used[next] = true;
+        next = (next + 1) % kSlots;
+        return y;
+    }
+};
+
 /// Per-event COMMON /radccom/ + /radctest/ quantities and the SAVEd locals of the radiation routines.
 struct RadcState {
     // ---- /radccom/ per-event part (radc_init_ev, basicrad_init_ev) --------------------------------
@@ -103,6 +131,8 @@ struct RadcState {
     double initev_dsoft{0}, initev_dhard{0}, initev_dsoft_prime{0};   ///< init.f:radc_init_ev locals
     double prw_dsoft_intmin{0}, prw_dsoft_intmax{0};                  ///< radc.f:peaked_rad_weight locals
     bool lambda_warned{false};                                        ///< radc.f:lambda_dave DATA warned
+    // ---- not Fortran state: the gamma() memo (P15.4); mutable because extrad_phi reads a const RadcState ------------
+    mutable TgammaMemo gamma;
 };
 
 }  // namespace radiation

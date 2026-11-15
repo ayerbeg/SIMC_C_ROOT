@@ -123,7 +123,7 @@ void radcInitEv(const RadcRun& run, RadcState& st, const MainEvent& main, const 
     for (int i = 1; i <= 3; ++i) st.frac[i] = st.g[i] / st.g[0];   // l.723-725
 }
 
-// Fortran: init.f:basicrad_init_ev (l.732-813). gamma = intrinsic = libm tgamma (D-019).
+// Fortran: init.f:basicrad_init_ev (l.732-813). gamma = intrinsic = libm tgamma (D-019), through the bitwise memo st.gamma (P15.4).
 void basicradInitEv(RadcState& st, double e1, double e2, double e3) {
     using constants::euler;
     using constants::Mp;
@@ -146,31 +146,31 @@ void basicradInitEv(RadcState& st, double e1, double e2, double e3) {
     c_int[1] = lambda[1] / std::pow(e[1] * e[2], lambda[1] / 2.);
     c_int[2] = lambda[2] / std::pow(e[1] * e[2], lambda[2] / 2.);
     c_int[3] = lambda[3] / std::pow(Mp * e[3], lambda[3] / 2.);
-    for (int i = 1; i <= 3; ++i) c_int[i] = c_int[i] * std::exp(-euler * lambda[i]) / std::tgamma(one + lambda[i]);
+    for (int i = 1; i <= 3; ++i) c_int[i] = c_int[i] * std::exp(-euler * lambda[i]) / st.gamma(one + lambda[i]);
     st.g_int = lambda[1] + lambda[2] + lambda[3];
     c_int[0] = c_int[1] * c_int[2] * st.g_int / lambda[1] / lambda[2];
     if (lambda[3] > 0) c_int[0] = c_int[0] * c_int[3] / lambda[3];
-    c_int[0] = c_int[0] * std::tgamma(one + lambda[1]) * std::tgamma(one + lambda[2]) * std::tgamma(one + lambda[3]) /
-               std::tgamma(one + st.g_int);
+    c_int[0] = c_int[0] * st.gamma(one + lambda[1]) * st.gamma(one + lambda[2]) * st.gamma(one + lambda[3]) /
+               st.gamma(one + st.g_int);
 
     // External constants (l.785-791)
-    for (int i = 1; i <= 2; ++i) c_ext[i] = bt[i] / std::pow(e[i], bt[i]) / std::tgamma(one + bt[i]);
+    for (int i = 1; i <= 2; ++i) c_ext[i] = bt[i] / std::pow(e[i], bt[i]) / st.gamma(one + bt[i]);
     c_ext[3] = 0.0;
     st.g_ext = bt[1] + bt[2];
     c_ext[0] = c_ext[1] * c_ext[2] * st.g_ext / bt[1] / bt[2];
-    c_ext[0] = c_ext[0] * std::tgamma(one + bt[1]) * std::tgamma(one + bt[2]) / std::tgamma(one + st.g_ext);
+    c_ext[0] = c_ext[0] * st.gamma(one + bt[1]) * st.gamma(one + bt[2]) / st.gamma(one + st.g_ext);
 
     // Internal + external constants (l.795-799)
     for (int i = 1; i <= 2; ++i)
-        c[i] = c_int[i] * c_ext[i] * g[i] / lambda[i] / bt[i] * std::tgamma(one + lambda[i]) *
-               std::tgamma(one + bt[i]) / std::tgamma(one + g[i]);
+        c[i] = c_int[i] * c_ext[i] * g[i] / lambda[i] / bt[i] * st.gamma(one + lambda[i]) *
+               st.gamma(one + bt[i]) / st.gamma(one + g[i]);
     c[3] = c_int[3];
 
     // Combined tails (l.803-810)
     c[0] = c[1] * c[2] * g[0] / g[1] / g[2];
     if (g[3] > 0) c[0] = c[0] * c[3] / g[3];
-    c[0] = c[0] * std::tgamma(one + g[1]) * std::tgamma(one + g[2]) * std::tgamma(one + g[3]) / std::tgamma(one + g[0]);
-    c[4] = g[4] / std::pow(e1 * e2, g[4]) / std::tgamma(one + g[4]);
+    c[0] = c[0] * st.gamma(one + g[1]) * st.gamma(one + g[2]) * st.gamma(one + g[3]) / st.gamma(one + g[0]);
+    c[4] = g[4] / std::pow(e1 * e2, g[4]) / st.gamma(one + g[4]);
     if (g[3] > 0) c[4] = c[4] / std::pow(e3, g[4]);
 }
 
