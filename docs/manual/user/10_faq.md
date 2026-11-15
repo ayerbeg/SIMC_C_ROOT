@@ -48,7 +48,7 @@ files ([2.5](02_installation.md#25-where-the-data-files-are-found)). An installe
 ## `error while loading shared libraries` or crashes in ROOT at start-up
 
 `LD_LIBRARY_PATH` must contain the `lib` of the ROOT 6.40 that SIMC++ was built with, and **not** a directory with an older
-ROOT or libtbb (on the development machine: `/usr/local/lib`) ([2.1](02_installation.md#21-requirements)).
+ROOT or libtbb (for example `/usr/local/lib`) ([2.2](02_installation.md#22-requirements)).
 
 ## NaN or constant columns in the tree
 

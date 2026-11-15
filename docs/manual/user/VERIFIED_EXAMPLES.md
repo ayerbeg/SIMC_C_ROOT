@@ -1,27 +1,29 @@
 # Verified examples (transcript)
 
-Every command shown in this manual was run as recorded below (task P15.D2). Commit of the code and the manual text:
-`8db5f23` (branch `translation`); this transcript file was added in the next commit. Toolchain: GCC 16.2.1, ROOT
-6.40.04, Fedora 44 (glibc 2.43), Release build installed with `cmake --install build --prefix $PREFIX`.
+Every command shown in this manual was run as recorded below. Code and manual text: commit `b045ce6` (branch
+`translation`); this transcript file was added in the next commit. Toolchain: GCC 16.2.1, ROOT 6.40.04, glibc 2.43,
+Release build installed with `cmake --install`.
 
-Environment of the run (`.tmp_P15.D2/verify/run_cmds.sh`; each block runs in a fresh `bash -c` in one work directory,
-output and non-zero exit status shown under it):
+**Paths.** The outputs are real, but the machine-specific paths of the run were rewritten into the layout of
+[2.1](02_installation.md#21-directory-layout-used-in-this-manual): `~/src/simcpp` ($SIMCPP_SRC), `~/build/simcpp`
+($SIMCPP_BUILD), `~/build/simcpp-validation` (the comparison tool's build), `~/opt/simcpp` ($SIMCPP_PREFIX),
+`~/src/simc_gfortran` ($SIMC_FORTRAN), `~/simc_reference` ($SIMC_REFERENCE), `~/opt/root` ($ROOTSYS) and `~/work`
+(the working directory). The environment was:
 
 ```
-ROOTSYS=/home/ayerbe/Builds/ROOT6_install   LD_LIBRARY_PATH=$ROOTSYS/lib   (not /usr/local/lib)
-PREFIX=/home/ayerbe/NewDisk/SIMC++_Project/.tmp_P15.D2/install      PATH=$PREFIX/bin:$ROOTSYS/bin:/usr/bin:/bin
-SIMC_SRC=/home/ayerbe/NewDisk/SIMC++_Project/SIMC++_Claude          (the source tree)
-SIMC_FORTRAN=/home/ayerbe/NewDisk/simc_gfortran                     SIMC_REF=/home/ayerbe/NewDisk/reference
+export ROOTSYS=~/opt/root LD_LIBRARY_PATH=$ROOTSYS/lib
+export SIMCPP_SRC=~/src/simcpp SIMCPP_BUILD=~/build/simcpp SIMCPP_PREFIX=~/opt/simcpp
+export SIMC_FORTRAN=~/src/simc_gfortran SIMC_REFERENCE=~/simc_reference
+export EX=$SIMCPP_PREFIX/share/simc/docs/manual/user/examples
+export PATH=$SIMCPP_PREFIX/bin:$ROOTSYS/bin:/usr/bin:/bin
 ```
 
-The build commands of chapter 2 were run with these paths (`cmake -S SIMC++_Claude -B build ...`, `cmake --build build
--j8`, the same for `validation` into `build-val`, `cmake --install`), with no compiler warning. The complete test suite
-(`ctest`, chapter 2.5) is run by `tools/check_all.sh` on the final commit (its result is in the task report). The
-`ctest -L docs` run at the end of the transcript was made before this file existed, so its link test reports the
-then-missing `VERIFIED_EXAMPLES.md` links only.
-
-Where the manual abbreviates an output (`...`), the full output is here. The tiny differences between the chapters and this
-transcript are only paths printed by the tools.
+Each block ran in a fresh `bash -c` in one working directory; its output and non-zero exit status follow it. The build
+commands of chapter 2 were run with this layout without compiler warnings. The full test suite is run by
+`tools/check_all.sh` on the final commit. The `ctest -L docs` run at the end was made before this file existed, so the
+link test then reported only the not-yet-existing `VERIFIED_EXAMPLES.md` links, and `docs_no_machine_paths` reported
+files of other documents that were still being edited. The `$SIMC_FORTRAN` and `$SIMC_REFERENCE` commands (chapter 8.4
+and `docs/translation/user_comparing_with_fortran.md`) need the optional legacy data.
 
 ```
 $ simc++ --help
@@ -34,55 +36,37 @@ usage: simc++ <file.inp|file.json> [-o OUTDIR] [--seed N] [--ngen N] [--pipeline
   --print-data-dir  print the default data directory (env SIMC_DATA_DIR overrides it) and exit
 
 $ simc++ --print-data-dir
-/home/ayerbe/NewDisk/SIMC++_Project/.tmp_P15.D2/install/share/simc/data
+~/opt/simcpp/share/simc/data
 
 $ SIMC_DATA_DIR=/data/simc simc++ --print-data-dir
 /data/simc
 
-$ simc++ $SIMC_FORTRAN/infiles/eep_h_elastic_rad_A.inp -o out --ngen 5000 > out.log; echo "exit status $?"
+$ simc++ $EX/h_elastic_rad.inp -o out --ngen 5000 > out.log; echo "exit status $?"
 exit status 0
 
 $ ls out
-eep_h_elastic_rad_A.gen
-eep_h_elastic_rad_A.geni
-eep_h_elastic_rad_A.gen.root
-eep_h_elastic_rad_A.hist
-eep_h_elastic_rad_A.root
-eep_h_elastic_rad_A.summary.json
-eep_h_elastic_rad_A.summary.txt
+h_elastic_rad.gen
+h_elastic_rad.geni
+h_elastic_rad.gen.root
+h_elastic_rad.hist
+h_elastic_rad.root
+h_elastic_rad.summary.json
+h_elastic_rad.summary.txt
 
-$ grep -E "fortran_compat|random seed|Ntried|Ncontribute" out.log
+$ grep -E "fortran_compat|random seed" out.log
  Use random seed = 12345
  SIMC++: fortran_compat = false (clear Fortran bugs corrected, docs/FORTRAN_DIFFERENCES.md)
 
-$ grep -E "^ *(Ngen|Ntried|Ncontribute)|wtcontr|normfac" out/eep_h_elastic_rad_A.hist
+$ grep -E "^ *(Ngen|Ntried|Ncontribute)|wtcontr|normfac" out/h_elastic_rad.hist
             Ngen (request) =       5000
             Ntried         =     102995
             Ncontribute    =       5000
                MeV: wtcontr=   0.20906661E+03
                    normfac =     0.407176E+06       
 
-$ inp2json -o run.json $SIMC_FORTRAN/infiles/eep_h_elastic_rad_A.inp && head -c 300 run.json; echo
-{
-  "_source": {
-    "files": [
-      "/home/ayerbe/NewDisk/simc_gfortran/infiles/eep_h_elastic_rad_A.inp"
-    ],
-    "generator": "inp2json (SIMC++ P1.3)",
-    "not_registered": {},
-    "note": "parameters = every dbase.f:regallvars variable, in .inp units; extra_dbase_file is already merged",
-    
-
-$ simc++ run.json -o out_json --ngen 5000 > out_json.log && diff <(sed 2,3d out/eep_h_elastic_rad_A.hist) <(sed 2,3d out_json/run.hist) && echo ".hist identical (apart from the time lines)"
-.hist identical (apart from the time lines)
-
-$ simc_root_identity out/eep_h_elastic_rad_A.root out_json/run.root
-  h10                      TTree  5000 entries x 46 leaves: identical
-out/eep_h_elastic_rad_A.root vs out_json/run.root: IDENTICAL
-
 $ cat > peek_h10.C <<'MACRO'
   // peek_h10.C: open a SIMC++ tree, print its size and the weighted Em distribution
-  void peek_h10(const char* file = "out/eep_h_elastic_rad_A.root") {
+  void peek_h10(const char* file = "out/h_elastic_rad.root") {
     TFile f(file);
     TTree* t = (TTree*)f.Get("h10");
     std::cout << t->GetEntries() << " events, " << t->GetListOfBranches()->GetEntries() << " branches" << std::endl;
@@ -106,6 +90,32 @@ Processing peek_h10.C...
 ************************************************************************
 sum of weights in [-0.02, 0.2] GeV: 2.24626, mean Em 0.0176472 GeV
 
+$ inp2json -o run.json $EX/h_elastic_rad.inp && head -c 300 run.json; echo
+{
+  "_source": {
+    "files": [
+      "~/opt/simcpp/share/simc/docs/manual/user/examples/h_elastic_rad.inp"
+    ],
+    "generator": "inp2json (SIMC++ P1.3)",
+    "not_registered": {},
+    "note": "parameters = every dbase.f:regallvars variable, in .inp unit
+
+$ simc++ run.json -o out_json --ngen 5000 > out_json.log && diff <(sed 2,3d out/h_elastic_rad.hist) <(sed 2,3d out_json/run.hist) && echo ".hist identical (apart from the time lines)"
+.hist identical (apart from the time lines)
+
+$ simc_root_identity out/h_elastic_rad.root out_json/run.root
+  h10                      TTree  5000 entries x 46 leaves: identical
+out/h_elastic_rad.root vs out_json/run.root: IDENTICAL
+
+$ simc++ $SIMCPP_PREFIX/share/simc/data/config/h_elastic_rad.json -o out_cfg --ngen 5000 > out_cfg.log; echo "exit status $?"; ls out_cfg | head -3
+exit status 0
+h_elastic_rad.gen
+h_elastic_rad.geni
+h_elastic_rad.gen.root
+
+$ $SIMCPP_BUILD/bin/simc++ $SIMCPP_SRC/docs/manual/user/examples/h_elastic_rad.inp -o out_readme --ngen 5000 > /dev/null; echo "exit status $?"
+exit status 0
+
 $ simc++ run.json -o out_t4 --ngen 5000 --threads 4 > out_t4.log; echo "exit status $?"; grep -E "Ntried|Ncontribute" out_t4/run.hist
 exit status 0
             Ntried         =     102516
@@ -118,7 +128,7 @@ $ simc++ run.json -o out_compat --ngen 5000 --threads 4 --fortran-compat
 simc++: --threads 4 (more than one event-loop thread) cannot be used with --fortran-compat: the exact Fortran reproduction needs the single random stream in the Fortran order (run with --threads 1)
 [exit 2]
 
-$ simc++ run.json -o out_ideal --ngen 200 --pipeline $PREFIX/share/simc/examples/ideal_box/hadron_arm.json --print-pipeline --quiet | sed -n '/"spectrometers"/,/^  }/p'
+$ simc++ run.json -o out_ideal --ngen 200 --pipeline $SIMCPP_PREFIX/share/simc/examples/ideal_box/hadron_arm.json --print-pipeline --quiet | sed -n '/"spectrometers"/,/^  }/p'
   "spectrometers": {
     "electron": {
       "type": ""
@@ -134,7 +144,7 @@ $ simc++ run.json -o out_ideal --ngen 200 --pipeline $PREFIX/share/simc/examples
     }
   },
 
-$ simc++ $SIMC_FORTRAN/infiles/test_eep_h.inp -o legacy > legacy.log 2> legacy.err; echo "exit status $?"; cat legacy.err; tail -2 legacy.log
+$ simc++ $EX/legacy_names.inp -o legacy > legacy.log 2> legacy.err; echo "exit status $?"; cat legacy.err
 exit status 3
 simc++: WARNING: 46 input variable(s) are not SIMC variables and are IGNORED, as by the Fortran (their defaults are used):
   EXPER.charge, spec.e.P, spec.e.theta, spec.p.P, spec.p.theta, targ.A
@@ -148,21 +158,16 @@ simc++: WARNING: 46 input variable(s) are not SIMC variables and are IGNORED, as
   Legacy '.' names (targ.A, spec.e.P, ...) must be converted to '%' names with simc_gfortran/infiles/convert_inputfile.sh.
 simc++: Fortran STOP during the setup: STOP bad targ.can value
 simc++: note: the input has 46 ignored variable(s) (listed above), so their defaults were used — the likely cause of this STOP. Convert legacy '.' names with simc_gfortran/infiles/convert_inputfile.sh.
-cuts.Em.max not registered, registering as int
- targ.Mrec replaced by the expectation M - Mp (dbase.f:283-284)
 
-$ mkdir -p converted && cp $SIMC_FORTRAN/infiles/test_eep_h.inp $SIMC_FORTRAN/infiles/extra_hydrogen.inp converted/ && cd converted && for f in test_eep_h.inp extra_hydrogen.inp; do sh $SIMC_FORTRAN/infiles/convert_inputfile.sh $f; done && rm -f temp.inp && grep -c '%' test_eep_h.inp extra_hydrogen.inp
-test_eep_h.inp:27
-extra_hydrogen.inp:20
-
-$ simc++ converted/test_eep_h.inp -o converted_out > converted.log 2>&1; echo "exit status $?"; grep -c "IGNORED" converted.log; grep -E "Ntried|Ncontribute" converted_out/test_eep_h.hist
+$ sed -E ':a; s/^(\s*(targ|spec|SPedge|gen|cuts|EXPER)[A-Za-z_%]*)\./\1%/; ta' $EX/legacy_names.inp > converted.inp
+  simc++ converted.inp -o converted_out > converted.log 2>&1; echo "exit status $?"; grep -c "IGNORED" converted.log; grep -E "Ntried|Ncontribute" converted_out/converted.hist
 exit status 0
 0
-            Ntried         =       4069
-            Ncontribute    =       1000
+            Ntried         =    4158458
+            Ncontribute    =     200000
 
 $ echo '{"pipeline": {"rng": {"type": "ranlux"}}}' > ranlux.json
-  R=$SIMC_REF/runs/eep_h_test_pctnames
+  R=$SIMC_REFERENCE/runs/eep_h_test_pctnames
   simc++ $R/eep_h_test_pctnames.inp -o exact --fortran-compat --pipeline ranlux.json > exact.log; echo "exit status $?"
   diff <(sed 2,3d exact/eep_h_test_pctnames.hist) <(sed 2,3d $R/eep_h_test_pctnames.hist) && echo ".hist: identical apart from the time lines"
   cmp exact/eep_h_test_pctnames.geni $R/eep_h_test_pctnames.geni && cmp exact/eep_h_test_pctnames.gen $R/eep_h_test_pctnames.gen && echo ".geni, .gen: identical"
@@ -170,9 +175,9 @@ $ echo '{"pipeline": {"rng": {"type": "ranlux"}}}' > ranlux.json
 exit status 0
 .hist: identical apart from the time lines
 .geni, .gen: identical
-exact/eep_h_test_pctnames.root vs /home/ayerbe/NewDisk/reference/runs/eep_h_test_pctnames/eep_h_test_pctnames.root: IDENTICAL
+exact/eep_h_test_pctnames.root vs ~/simc_reference/runs/eep_h_test_pctnames/eep_h_test_pctnames.root: IDENTICAL
 
-$ R=$SIMC_REF/runs/eep_h_test_pctnames
+$ R=$SIMC_REFERENCE/runs/eep_h_test_pctnames
   simc++ $R/eep_h_test_pctnames.inp -o exact_corr --pipeline ranlux.json > /dev/null; diff <(sed 2,3d exact_corr/eep_h_test_pctnames.hist) <(sed 2,3d $R/eep_h_test_pctnames.hist) | head -12
 65c65
 <                using_Eloss= T        using_Coulomb= F        deForest_flag= 0
@@ -211,9 +216,8 @@ edited.summary.txt
 $ simc++ $SIMC_FORTRAN/infiles/eep_h_elastic_rad_A.inp -o l2 --seed 4242 --threads 4 > l2.log; echo "exit status $?"
 exit status 0
 
-$ VAL=/home/ayerbe/NewDisk/SIMC++_Project/.tmp_P15.D2/build-val
-  $VAL/simc_compare --a $SIMC_REF/runs/eep_h_elastic_rad_A --b l2/eep_h_elastic_rad_A.summary.json --out cmp \
-                    --config $SIMC_SRC/validation/config/compare_default.json > cmp.log; echo "exit status $?"
+$ $SIMCPP_BUILD-validation/simc_compare --a $SIMC_REFERENCE/runs/eep_h_elastic_rad_A --b l2/eep_h_elastic_rad_A.summary.json --out cmp \
+                         --config $SIMCPP_SRC/validation/config/compare_default.json > cmp.log; echo "exit status $?"
   ls cmp; sed -n '1,25p' cmp/summary.txt
 exit status 0
 compare.pdf
@@ -222,7 +226,7 @@ runB.summary.json
 summary.json
 summary.txt
 simc_compare  A=A  B=B
-A: /home/ayerbe/NewDisk/reference/runs/eep_h_elastic_rad_A/eep_h_elastic_rad_A.hist  [fortran-hist]  tree /home/ayerbe/NewDisk/reference/runs/eep_h_elastic_rad_A/eep_h_elastic_rad_A.root (200000 entries)
+A: ~/simc_reference/runs/eep_h_elastic_rad_A/eep_h_elastic_rad_A.hist  [fortran-hist]  tree ~/simc_reference/runs/eep_h_elastic_rad_A/eep_h_elastic_rad_A.root (200000 entries)
 B: l2/eep_h_elastic_rad_A.summary.json  [summary-json]  tree l2/eep_h_elastic_rad_A.root (200000 entries)
 normalisation: A Weight/Ntried, B Weight/Ntried
 VERDICT: PASS   tests counted N=214  failed (p<0.01) F=0  expected 2.14  fraction 0.0000  P(X>=F|N,alpha)=1.000e+00 (need >= 1.000e-03)  gross failures=0 (det mismatch or p<1.000e-05)
@@ -247,28 +251,34 @@ hms.slit_hor/Ntried                           binomial          0.671944    0.00
 hms.slit_vert/Ntried                          binomial          0.146327   0.000173      0.146589   0.000174    -1.07      0.286  ok
 hms.slit_oct/Ntried                           binomial        0.00695011   4.08e-05    0.00697492   4.08e-05    -0.43      0.667  ok
 
-$ (cd /home/ayerbe/NewDisk/SIMC++_Project/.tmp_P15.D2/build && ctest -L docs)
-Test project /home/ayerbe/NewDisk/SIMC++_Project/.tmp_P15.D2/build
+$ (cd $SIMCPP_BUILD && ctest -L docs)
+Test project ~/build/simcpp
     Start 434: docs_user_manual_parameters
-1/4 Test #434: docs_user_manual_parameters ......   Passed    0.12 sec
+1/7 Test #434: docs_user_manual_parameters ......   Passed    0.11 sec
     Start 435: docs_user_manual_links
-2/4 Test #435: docs_user_manual_links ...........***Failed    0.04 sec
-    Start 436: docs_dev_manual
-3/4 Test #436: docs_dev_manual ..................   Passed    0.24 sec
-    Start 437: docs_dev_manual_links
-4/4 Test #437: docs_dev_manual_links ............   Passed    0.08 sec
+2/7 Test #435: docs_user_manual_links ...........   Passed    0.04 sec
+    Start 436: docs_no_machine_paths
+3/7 Test #436: docs_no_machine_paths ............***Failed    0.03 sec
+    Start 437: docs_dev_manual
+4/7 Test #437: docs_dev_manual ..................   Passed    0.04 sec
+    Start 438: docs_dev_manual_links
+5/7 Test #438: docs_dev_manual_links ............   Passed    0.04 sec
+    Start 439: docs_translation
+6/7 Test #439: docs_translation .................   Passed    0.19 sec
+    Start 440: docs_translation_links
+7/7 Test #440: docs_translation_links ...........   Passed    0.04 sec
 
-75% tests passed, 1 tests failed out of 4
+86% tests passed, 1 tests failed out of 7
 
 Label Time Summary:
-docs    =   0.49 sec*proc (4 tests)
+docs    =   0.48 sec*proc (7 tests)
 
-Total Test time (real) =   0.56 sec
+Total Test time (real) =   0.57 sec
 
 The following tests FAILED:
-	435 - docs_user_manual_links (Failed)                   docs
+	436 - docs_no_machine_paths (Failed)                    docs
 Errors while running CTest
-Output from these tests are in: /home/ayerbe/NewDisk/SIMC++_Project/.tmp_P15.D2/build/Testing/Temporary/LastTest.log
+Output from these tests are in: ~/build/simcpp/Testing/Temporary/LastTest.log
 Use "--rerun-failed --output-on-failure" to re-run the failed cases verbosely.
 [exit 8]
 ```
