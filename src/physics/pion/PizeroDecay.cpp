@@ -1,4 +1,6 @@
-// src/physics/pion/PizeroDecay.cpp — Fortran: pizero_decay.f (l.1-94), task P9.1. See PizeroDecay.h.
+// src/physics/pion/PizeroDecay.cpp — Fortran: pizero_decay.f (l.1-94). See PizeroDecay.h.
+// pi0 -> 2 gamma: an isotropic decay in the pi0 rest frame, boosted to the lab; the photons are then tracked to the
+// calorimeter (driver/PizeroCalorimeter.cpp) or stored in the ntuple.
 #include "simc/physics/pion/PizeroDecay.h"
 
 #include <cmath>

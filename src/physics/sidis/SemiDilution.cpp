@@ -1,4 +1,4 @@
-// src/physics/sidis/SemiDilution.cpp — semi_dilution.f (task P12.1). DEAD CODE in SIMC: the only call, event.f:1524,
+// src/physics/sidis/SemiDilution.cpp — semi_dilution.f. DEAD CODE in SIMC: the only call, event.f:1524,
 // is commented out. Ported for completeness (cheap) and covered by a unit test only; no plug-in calls it.
 // REAL(8) arithmetic in the source order (D-024); sv**3 = sv*(sv*sv) (powi).
 #include <cmath>

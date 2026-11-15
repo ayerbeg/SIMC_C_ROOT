@@ -1,4 +1,5 @@
-// src/physics/delta/DeltaModel.cpp — physics_delta.f:peedelta and the IPhysicsModel "delta" (task P11.1).
+// src/physics/delta/DeltaModel.cpp — physics_delta.f:peedelta (the H/D/A(e,e'p)pi0 cross section through the Delta
+// resonance) and the IPhysicsModel "delta" that wraps it for reactions/delta/DeltaProduction.cpp.
 // See include/simc/physics/delta/DeltaModel.h.
 //
 // Numerics: as physics_delta.f compiled with -fdefault-real-8 (D-010): double literals except the DOUBLE PRECISION

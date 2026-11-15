@@ -1,4 +1,7 @@
-// src/physics/kaon/KaonModel.cpp — IPhysicsModel "kaon" (task P10.1). See include/simc/physics/kaon/KaonModel.h.
+// src/physics/kaon/KaonModel.cpp — IPhysicsModel "kaon". See include/simc/physics/kaon/KaonModel.h.
+// The kaon-electroproduction cross section of SIMC as a physics-model plug-in: physics_kaon.f:peeK
+// (KaonCrossSections.cpp: the factorized model and the Saghai tables, read from the data tree), including the kaon
+// survival probability. The corrected mode switches on the D-043 fixes; --fortran-compat keeps the Fortran.
 #include "simc/physics/kaon/KaonModel.h"
 
 #include "simc/core/DataPath.h"
@@ -48,6 +51,8 @@ void KaonModel::init(const StageContext& ctx) {
         for (const auto& m : msgs) std::cout << " kaon: " << m << "\n";
 }
 
+// sigcc: the side-effect-free evaluation (IPhysicsModel contract): the Fortran routine writes event fields and SAVEd
+// state, so it runs on copies here. sigccMain is the complete_main call that keeps those writes.
 double KaonModel::sigcc(const Event& vertex, const MainEvent& main) {
     MainEvent m = main;
     PeekState st = st_;

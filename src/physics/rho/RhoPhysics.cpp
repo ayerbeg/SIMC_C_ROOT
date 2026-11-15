@@ -1,4 +1,5 @@
-// src/physics/rho/RhoPhysics.cpp — rho_physics.f:peerho, generate_rho.f:generate_rho, rho_decay.f:rho_decay (task P13.1).
+// src/physics/rho/RhoPhysics.cpp — rho_physics.f:peerho, generate_rho.f:generate_rho, rho_decay.f:rho_decay:
+// the rho cross section, the Breit-Wigner generation of the rho mass and its decay to pi+ pi- (one pion detected).
 // See include/simc/physics/rho/RhoPhysics.h for the numerics and the Fortran findings (D-057).
 #include "simc/physics/rho/RhoPhysics.h"
 

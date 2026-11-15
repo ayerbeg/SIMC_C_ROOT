@@ -1,4 +1,7 @@
-// src/physics/pion/PionModel.cpp — IPhysicsModel "pion" (task P9.1). See include/simc/physics/pion/PionModel.h.
+// src/physics/pion/PionModel.cpp — IPhysicsModel "pion". See include/simc/physics/pion/PionModel.h.
+// The pion-electroproduction cross section of SIMC as a physics-model plug-in: physics_pion.f:peepi
+// (PionCrossSections.cpp) with the model chosen by which_pion and the MAID tables read from the data tree. The
+// reaction (reactions/pion/PionProduction.cpp) calls it in complete_main.
 #include "simc/physics/pion/PionModel.h"
 
 #include "simc/core/DataPath.h"
@@ -22,6 +25,7 @@ void PionModel::configure(const Json& config, const SimcParameters&) {
     }
 }
 
+// The model reads its run constants from the set-up and loads the MAID tables once.
 void PionModel::init(const StageContext& ctx) {
     const RunSetup& s = ctx.setup;
     cfg_.which_pion = s.params.which_pion;
@@ -37,6 +41,8 @@ void PionModel::init(const StageContext& ctx) {
                                     " (JSON key \"data_dir\" of the physics model)");
 }
 
+// sigcc: the side-effect-free evaluation (IPhysicsModel contract): the Fortran routine writes event fields and SAVEd
+// state, so it runs on copies here. sigccMain is the complete_main call that keeps those writes.
 double PionModel::sigcc(const Event& vertex, const MainEvent& main) {
     MainEvent m = main;
     return peepi(vertex, m, cfg_, maid_, verbose_ ? &std::cout : nullptr);

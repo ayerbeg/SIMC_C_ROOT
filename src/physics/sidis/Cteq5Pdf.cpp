@@ -1,4 +1,5 @@
-// src/physics/sidis/Cteq5Pdf.cpp — cteq5/Ctq5Pdf.f (task P12.1). See include/simc/physics/sidis/Cteq5Pdf.h.
+// src/physics/sidis/Cteq5Pdf.cpp — cteq5/Ctq5Pdf.f (the CTEQ5 parton distributions, table + polynomial interpolation
+// in x and Q). See include/simc/physics/sidis/Cteq5Pdf.h.
 // Operation order follows the Fortran source (D-024). All arithmetic is REAL(8) (the Implicit Double Precision lines of
 // Ctq5Pdf.f are commented out; -fdefault-real-8).
 #include "simc/physics/sidis/Cteq5Pdf.h"

@@ -1,6 +1,6 @@
 // src/physics/pion/SigMultipole.cpp
 //
-// Fortran: physics_pion.f:sig_multipole (l.197-398), task P9.1. Not called by SIMC (its call in peepi is commented
+// Fortran: physics_pion.f:sig_multipole (l.197-398). Not called by SIMC (its call in peepi is commented
 // out, physics_pion.f:157-163); ported for the L1 table sig_multipole.
 //
 // FORTRAN-DIFF-CANDIDATE(D-038 F12): COMPLEX*8 amplitudes under -fdefault-real-8 (kept in both modes; Question: is

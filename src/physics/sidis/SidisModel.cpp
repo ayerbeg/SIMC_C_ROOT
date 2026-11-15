@@ -1,4 +1,7 @@
-// src/physics/sidis/SidisModel.cpp — IPhysicsModel "sidis" (task P12.1). See include/simc/physics/sidis/SidisModel.h.
+// src/physics/sidis/SidisModel.cpp — IPhysicsModel "sidis". See include/simc/physics/sidis/SidisModel.h.
+// The semi-inclusive (e,e'pi)X / (e,e'K)X cross section of SIMC as a physics-model plug-in: semi_physics.f:peepiX
+// (SidisCrossSection.cpp) with the CTEQ5 parton distributions and, for kaons, the fDSS fragmentation functions read
+// from the data tree. Refuses the flag combinations for which peepiX is not the cross section (checkSupported).
 #include "simc/physics/sidis/SidisModel.h"
 
 #include "simc/core/DataPath.h"
@@ -15,6 +18,7 @@
 namespace simc {
 namespace sidis {
 
+// The input problems that make the "sidis" model inapplicable (each one a message; empty = OK).
 std::vector<std::string> checkSupported(const RunSetup& s) {
     std::vector<std::string> v;
     const ReactionFlags& f = s.flags;
@@ -28,6 +32,7 @@ std::vector<std::string> checkSupported(const RunSetup& s) {
     return v;
 }
 
+// Inputs that the Fortran reads but never uses: said once at start-up so that nobody tunes them in vain.
 std::vector<std::string> ignoredInputNotes(const RunSetup& s) {
     std::vector<std::string> v;
     const SimcParameters& p = s.params;
@@ -40,6 +45,7 @@ std::vector<std::string> ignoredInputNotes(const RunSetup& s) {
     return v;
 }
 
+// The run constants of peepiX, and the corrected-mode switches (each one a catalogued Fortran bug).
 PeepiXConfig makeConfig(const RunSetup& s) {
     PeepiXConfig c;
     c.targA = s.targ.A;
@@ -102,6 +108,8 @@ void SidisModel::init(const StageContext& ctx) {
         for (const auto& n : ignoredInputNotes(s)) std::cout << " sidis: " << n << "\n";
 }
 
+// sigcc: the side-effect-free evaluation (IPhysicsModel contract): the Fortran routine writes event fields and SAVEd
+// state, so it runs on copies here. sigccMain is the complete_main call that keeps those writes.
 double SidisModel::sigcc(const Event& vertex, const MainEvent& main) {
     MainEvent m = main;
     PeepiXState st = st_;

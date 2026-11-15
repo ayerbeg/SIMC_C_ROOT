@@ -1,4 +1,7 @@
 // src/physics/nuclear/SpectralFunctions.cpp — see include/simc/physics/nuclear/SpectralFunctions.h.
+// The ISpectralFunction plug-ins of D/A(e,e'p): the weight S(Em, Pm) of a generated (Em, Pm) point. "theory" uses the
+// momentum-distribution table that the set-up read (h2.theory, the shell-model files), "benhar" the Benhar spectral
+// function table (sf_lookup.f, SpectralFunctionTables.cpp) times Z and the transparency.
 #include "simc/physics/nuclear/SpectralFunctions.h"
 
 #include <iostream>

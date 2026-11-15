@@ -1,7 +1,8 @@
 // src/physics/pion/PionCrossSections.cpp
 //
-// physics_pion.f: sig_blok, sig_param04, sig_param_3000, sig_param_2021, exclfit, sigmaid (+ the MAID tables), peepi
-// (task P9.1). See include/simc/physics/pion/PionCrossSections.h. sig_multipole is in SigMultipole.cpp.
+// physics_pion.f: sig_blok, sig_param04, sig_param_3000, sig_param_2021, exclfit, sigmaid (+ the MAID tables), peepi:
+// the pion-electroproduction models of SIMC (which_pion selects the parametrisation) and the transformation of the
+// centre-of-mass cross section to the lab with its Jacobian. See include/simc/physics/pion/PionCrossSections.h. sig_multipole is in SigMultipole.cpp.
 //
 // Numerics (D-010, D-024): all literals are double (-fdefault-real-8); Fortran x**2 -> x*x; real exponents -> pow;
 // products and quotients are evaluated left to right as written in the Fortran (a*b/c*d = ((a*b)/c)*d); the
@@ -32,12 +33,12 @@ inline bool isPiMinus(int which_pion) { return which_pion == 1 || which_pion == 
 double sigBlok(double thetacm, double phicm, double t, double q2_gev, double s_gev, double eps, double mtar_gev,
                int which_pion) {
     // exp(-11.5*abs(t)) is compiled as exp(-(abs(t)*11.5)) (mulsd, then xorpd): same value, and for t = NaN the
-    // argument is -NaN (the C++ -11.5*fabs(t) would be +NaN), which glibc exp returns unchanged (P14.2).
+    // argument is -NaN (the C++ -11.5*fabs(t) would be +NaN), which glibc exp returns unchanged.
     double sigl = 27.8 * std::exp(-(std::fabs(t) * 11.5));
     double sigt = 10.0 * (5. * std::fabs(t)) * std::exp(-(std::fabs(t) * 5.));
     const double siglt = 0.0 * std::sin(thetacm);
     // -(a)*b as the object code computes it: the product first, then the sign flip (xorpd after mulsd, physics_pion.o);
-    // identical for finite values, and gives the Fortran sign of a NaN (D-048 F3 garbage arguments, P14.2).
+    // identical for finite values, and gives the Fortran sign of a NaN (D-048 F3 garbage arguments).
     double sigtt = -((4.0 * sigl + 0.5 * sigt) * sq(std::sin(thetacm)));
 
     if (isPiMinus(which_pion)) {
@@ -50,7 +51,7 @@ double sigBlok(double thetacm, double phicm, double t, double q2_gev, double s_g
 
     // Operand order of the object code (physics_pion.o, sig_blok__): identical values for finite numbers (commuted
     // products/sums), and the Fortran sign of a NaN (x86 returns the first operand's NaN when both are NaN; D-048 F3
-    // garbage arguments give NaN for ~0.05 % of the SOS Delta events, P14.2).
+    // garbage arguments give NaN for ~0.05 % of the SOS Delta events).
     sigl = ((fpi2 * q2_gev) * sigl) / 0.1215;
     sigt = sigt / (0.3 + q2_gev);
     sigtt = sigtt / (0.3 + q2_gev);
@@ -189,7 +190,7 @@ double readFField(const std::string& rec, std::size_t pos, std::size_t w, int d)
     for (std::size_t i = pos; i < pos + w && i < rec.size(); ++i)
         if (rec[i] != ' ') s += rec[i];
     if (s.empty()) return 0.0;
-    // P15.4: std::from_chars (correctly rounded, as strtod: the same double) is several times faster than strtod on the
+    // std::from_chars (correctly rounded, as strtod: the same double) is several times faster than strtod on the
     // 1.9 million MAID numbers; anything it does not take whole (a '+' sign, ...) still goes through strtod.
     double v = 0.0;
     const char* b = s.data();
@@ -321,7 +322,7 @@ SigmaidResult sigmaid(int ipi, double q2, double w, double e0, double costh, dou
 double peepi(const Event& vertex, MainEvent& main, const PeepiConfig& cfg, const MaidTables& maid, std::ostream* log) {
     const FermiMomentum& f = main.pfermi;   // COMMON /pfermi/
 
-    // l.47-60: photon-NUCLEON C.M. frame (jacobians.f, task P4.1 port)
+    // l.47-60: photon-NUCLEON C.M. frame (jacobians.f)
     const reactions::CmTransform cm =
         reactions::transformToCm(vertex, main, f.pfer, f.pferx, f.pfery, f.pferz, f.efer, log);
 

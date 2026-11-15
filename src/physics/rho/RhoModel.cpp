@@ -1,4 +1,6 @@
-// src/physics/rho/RhoModel.cpp — IPhysicsModel "rho" (task P13.1). See include/simc/physics/rho/RhoModel.h.
+// src/physics/rho/RhoModel.cpp — IPhysicsModel "rho". See include/simc/physics/rho/RhoModel.h.
+// The exclusive rho-electroproduction cross section of SIMC as a physics-model plug-in (rho_physics.f:peerho in
+// RhoPhysics.cpp), plus the configuration of the rho generation and decay used by reactions/rho/RhoProduction.cpp.
 #include "simc/physics/rho/RhoModel.h"
 
 #include <iostream>
@@ -13,6 +15,8 @@ namespace simc {
 namespace rho {
 
 namespace {
+// Prefix of a checkSupported problem that is a missing feature (NotPorted) rather than an input error. No problem
+// carries it at present (every arm is supported); the mechanism is kept for a future refusal of that kind.
 const char* const kNotPortedTag = "[not ported]";
 }
 
@@ -91,6 +95,8 @@ void RhoModel::init(const StageContext& ctx) {
     diag_.str("");
 }
 
+// sigcc: the side-effect-free evaluation (IPhysicsModel contract): the Fortran routine writes event fields and SAVEd
+// state, so it runs on copies here. sigccMain is the complete_main call that keeps those writes.
 double RhoModel::sigcc(const Event& vertex, const MainEvent& main) {
     MainEvent m = main;
     return peerho(vertex, m, cfg_, nullptr);

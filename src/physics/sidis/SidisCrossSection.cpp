@@ -1,4 +1,5 @@
-// src/physics/sidis/SidisCrossSection.cpp — semi_physics.f (peepiX, slacemcfit, Rhad_global), task P12.1.
+// src/physics/sidis/SidisCrossSection.cpp — semi_physics.f (peepiX, slacemcfit, Rhad_global): the SIDIS cross section
+// (PDFs x fragmentation functions with a Gaussian pt2 dependence, the radiative-tail F1/F2 fits, R = sigma_L/sigma_T).
 // See include/simc/physics/sidis/SidisCrossSection.h. REAL(8) arithmetic in the source order (D-024).
 #include "simc/physics/sidis/SidisCrossSection.h"
 
@@ -222,7 +223,7 @@ double peepiX(const Event& vertex, const Event& vertex0, MainEvent& main, double
     tr.phad = phad;
     tr.cthpq = cthpq;
     if (mmpi2 < sq(mtargev + mhad / 1000.)) {
-        // FORTRAN-QUIRK(P12.1 Q1): early return: davejac, ntup%sigcm and the survival probability (decdist) keep the
+        // FORTRAN-QUIRK: early return: davejac, ntup%sigcm and the survival probability (decdist) keep the
         // values of the previous event (the weight is 0).
         tr.threshold_return = true;
         if (trace) *trace = tr;

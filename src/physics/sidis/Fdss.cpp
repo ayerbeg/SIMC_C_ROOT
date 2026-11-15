@@ -1,4 +1,5 @@
-// src/physics/sidis/Fdss.cpp — fdss/fdss.f (task P12.1). See include/simc/physics/sidis/Fdss.h.
+// src/physics/sidis/Fdss.cpp — fdss/fdss.f (the de Florian-Sassot-Stratmann fragmentation functions, grid +
+// interpolation in z and Q2). See include/simc/physics/sidis/Fdss.h.
 // Operation order follows the Fortran source (D-024); the binary128 parts of fdss.o (REAL(16) literals under
 // -fdefault-real-8, _gfortran_pow_r16_i4, __multf3, __subtf3) are reproduced with __float128.
 #include "simc/physics/sidis/Fdss.h"

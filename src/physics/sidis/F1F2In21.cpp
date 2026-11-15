@@ -1,4 +1,5 @@
-// src/physics/sidis/F1F2In21.cpp — the A = 1 part of F1F2IN21_v1.0.f (task P12.1). See
+// src/physics/sidis/F1F2In21.cpp — the A = 1 part of F1F2IN21_v1.0.f (the Christy-Bosted proton F1/F2 fit, resonances +
+// non-resonant background), used by the SIDIS cross section. See
 // include/simc/physics/sidis/F1F2In21.h. REAL(8) everywhere; operation order of the source (D-024); x**2 and x**2.
 // -> x*x, x**1. -> x, real exponents -> std::pow (the pow call sites of F1F2IN21_v1.0.o).
 #include "simc/physics/sidis/F1F2In21.h"
@@ -183,7 +184,7 @@ double resmod(Nucleon n, int sf, double w2, double q2, const double* xv) {
     }
 
     double sig = sig_res + sig_nr;
-    // FORTRAN-QUIRK(P12.1 Q3): (w-mp) < wdif(1) = w-(mp+mpi) is never true: the intended threshold cut is a no-op
+    // FORTRAN-QUIRK: (w-mp) < wdif(1) = w-(mp+mpi) is never true: the intended threshold cut is a no-op
     if ((W - mp) < wdif[1]) sig = 0.0;
     return sig;
 }

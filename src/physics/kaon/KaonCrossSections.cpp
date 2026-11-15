@@ -1,4 +1,6 @@
-// src/physics/kaon/KaonCrossSections.cpp — see include/simc/physics/kaon/KaonCrossSections.h (task P10.1).
+// src/physics/kaon/KaonCrossSections.cpp — see include/simc/physics/kaon/KaonCrossSections.h.
+// The kaon-electroproduction cross sections of SIMC: peeK (lab cross section, kaon survival), the factorized model
+// sig_factorized, the Saghai tables (eekeek/eekeeks, interpolated with CERNLIB fint), and the phase-space weight.
 // Fortran: simc_gfortran/physics_kaon.f (peeK, sig_factorized, eekeek, eekeeks, phspwght), cern/fint.f, dbase.f:624-679.
 // Operation order follows the Fortran source; x**2 is x*x (D-024); every literal is double (-fdefault-real-8, D-010).
 #include "simc/physics/kaon/KaonCrossSections.h"
@@ -572,7 +574,7 @@ double peeK(const Event& vertex, MainEvent& main, double& survivalprob, const Pe
     using constants::pi;
     const FermiMomentum& f = main.pfermi;   // COMMON /pfermi/
 
-    // l.41-59: photon-NUCLEON C.M. frame (jacobians.f, task P4.1 port)
+    // l.41-59: photon-NUCLEON C.M. frame (jacobians.f)
     const reactions::CmTransform cm =
         reactions::transformToCm(vertex, main, f.pfer, f.pferx, f.pfery, f.pferz, f.efer, log);
     const double pkcm = cm.phadcm;
