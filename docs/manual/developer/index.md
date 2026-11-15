@@ -2,7 +2,7 @@
 
 This manual is for people who maintain, extend or re-validate SIMC++, the C++20 / ROOT 6 translation of the Hall C
 Monte Carlo SIMC (Fortran, `simc_gfortran`). Users who only want to run SIMC++ should read the user manual in
-[`../user/`](../user/index.md) instead.
+[`docs/manual/user/`](../user/) instead.
 
 The chapters are the entry point. The detailed reference documents in `docs/` are linked from the chapters and kept
 up to date with them:
@@ -24,7 +24,7 @@ up to date with them:
    `check_all.sh`, the installed package.
 3. [Architecture and data flow](03_architecture.md): driver, event structures, kernels and stages, the registry,
    every stage interface with its contract, the order of calls in one try, the normalisation, and the
-   [public header reference](03_architecture.md#9-public-header-reference).
+   [public header reference](03_architecture.md#39-public-header-reference).
 4. [Fortran → C++ map](04_fortran_map.md): conventions and the curated map. The generated table of every
    routine is in [fortran_routine_map.md](fortran_routine_map.md).
 5. [Numerical conventions](05_numerics.md): units, float and double, REAL(16), `powi`, NaN signs, operand order, libm,
