@@ -1,4 +1,6 @@
-// src/reactions/sidis/SidisProduction.cpp — see include/simc/reactions/SidisProduction.h (task P12.2).
+// src/reactions/sidis/SidisProduction.cpp — see include/simc/reactions/SidisProduction.h.
+// The "sidis_production" reaction, semi-inclusive (e,e'pi)X / (e,e'K)X: the hadron momentum is generated (no two-body
+// solution) and the weight is the peepiX cross section.
 // Fortran: simc_gfortran/event.f (generate, complete_ev, complete_main: doing_semi branches).
 // Operation order follows the Fortran source; x**2 is x*x, r**3 is (r*r)*r (D-024).
 #include "simc/reactions/SidisProduction.h"

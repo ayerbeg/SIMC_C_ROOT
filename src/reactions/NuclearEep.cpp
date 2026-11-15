@@ -1,4 +1,7 @@
 // src/reactions/NuclearEep.cpp — see include/simc/reactions/NuclearEep.h.
+// The "deuterium_eep" and "nucleus_eep" reactions: D(e,e'p) and A(e,e'p) quasi-elastic knock-out, where the missing
+// energy and momentum are generated (flat, within the VERTEXedge limits) and weighted by the spectral function
+// (ISpectralFunction: the theory momentum distribution or the Benhar table).
 // Fortran: simc_gfortran/event.f:generate (D and heavy branches). Operation order follows the Fortran; x**2 is x*x.
 #include "simc/reactions/NuclearEep.h"
 

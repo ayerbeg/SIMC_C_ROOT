@@ -1,4 +1,8 @@
 // src/reactions/EventChain.cpp — see include/simc/reactions/EventChain.h.
+// Reaction-independent pieces of the event chain shared by every IReaction: the beam + reaction generate step, the
+// (e,e'p)/phase-space weight assembly of complete_main, the limits_update bookkeeping (the CONTRIB/slop ranges printed
+// in the .hist), their merge for the parallel loop, and the transformation to the photon-nucleon c.m. frame
+// (jacobians.f) used by the meson-production cross sections.
 #include "simc/reactions/EventChain.h"
 
 #include <cmath>
@@ -16,10 +20,12 @@ namespace reactions {
 
 namespace {
 inline double sq(double x) { return x * x; }
+// gfortran MAX/MIN of two reals: the second argument wins when the first is NaN (not std::fmax/fmin semantics)
 inline double fmaxF(double a, double b) { return (b > a || std::isnan(a)) ? b : a; }
 inline double fminF(double a, double b) { return (b < a || std::isnan(a)) ? b : a; }
 }  // namespace
 
+// Fortran: event.f:generate = the beam part (vertex position, raster, beam energy loss) then the reaction part.
 bool generateEvent(IBeam& beam, IReaction& reaction, MainEvent& main, Event& vertex, Event& orig, IRandom& rng) {
     beam.generate(main, vertex, rng);                    // event.f:150-212
     return reaction.generate(main, vertex, orig, rng);   // event.f:214-428
@@ -50,7 +56,8 @@ bool assembleWeight(bool force_sigcc, MainEvent& main, const Event& vertex, cons
         main.sigcc = model.sigcc(vertex, main);
         main.sigcc_recon = model.sigccRecon(recon, main);
     } else {
-        throw NotPorted("complete_main: pion/kaon/delta/rho/semi cross sections not ported");
+        // (the meson-production reactions assemble their own weight and never come here)
+        throw NotPorted("assembleWeight: the pion/kaon/delta/rho/semi weights are assembled by their own reactions");
     }
 
     // Coulomb focusing factor (l.1533-1535)
@@ -74,7 +81,7 @@ void updateSlopRange(double val, SlopItem& slop) {
     slop.hi = fmaxF(slop.hi, val);
 }
 
-// P15.4: parallel event loop (EventChain.h).
+// Parallel event loop (EventChain.h): the ranges of a worker merged into the run's (min of the lows, max of the highs).
 void mergeRange(Range& into, const Range& w) {
     into.lo = fminF(into.lo, w.lo);
     into.hi = fmaxF(into.hi, w.hi);
@@ -124,7 +131,8 @@ void mergeSlops(Slops& a, const Slops& b) {
     }
 }
 
-// Fortran: event.f:limits_update (l.1-91)
+// Fortran: event.f:limits_update (l.1-91): the observed ranges of the generated, true, spectrometer and vertex
+// quantities of the contributing events (the .hist CONTRIB block) and of the slops.
 void limitsUpdate(const MainEvent& main, const Event& vertex, const Event& orig, const Event& recon,
                   const ReactionFlags& f, const std::array<double, 3>& Egamma_used, Contrib& contrib, Slops& slop,
                   bool rho_gen_from_orig) {

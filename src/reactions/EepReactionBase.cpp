@@ -1,4 +1,8 @@
 // src/reactions/EepReactionBase.cpp — see include/simc/reactions/EepReactionBase.h.
+// The (e,e'p) event chain common to H, D and A targets (and the base of the meson-production reactions):
+// complete_ev (from the generated angles and energies, solve the kinematics: q, the hadron momentum, missing energy
+// and momentum, the spectrometer quantities), complete_recon_ev (the same from the reconstructed arms) and the weight
+// of complete_main (spectral function x Jacobian x generation weight x cross section).
 // Fortran: simc_gfortran/event.f. Operation order follows the Fortran source; x**2 is x*x (D-024), x**3 is (x*x)*x
 // (__powidf2).
 #include "simc/reactions/EepReactionBase.h"
@@ -49,7 +53,7 @@ CompleteEvFn EepReactionBase::completeEvFn() {
 }
 
 // Fortran: event.f:complete_ev (l.432-1054), branches doing_hyd_elast / doing_deuterium / doing_heavy / doing_phsp and the
-// common part. (The pion/kaon/delta/rho/semi branches l.611-903 are refused by the plug-ins' init.)
+// common part. (The pion/kaon/delta/rho/semi branches l.611-903 are the completeEv overrides of PionProduction & co.)
 bool EepReactionBase::completeEv(MainEvent& main, Event& vertex, IRandom& rng) {
     using constants::Me;
     using constants::Mp;
@@ -140,7 +144,8 @@ bool EepReactionBase::completeEv(MainEvent& main, Event& vertex, IRandom& rng) {
         vertex.p.E = std::sqrt(Mh2 + sq(vertex.p.P));
         vertex.p.delta = (vertex.p.P - s.spec.p.P) * 100. / s.spec.p.P;
     }
-    // doing_heavy: no p-side block (E_p, P_p, delta were generated); pion/kaon/delta/rho/semi (l.611-903): not ported
+    // doing_heavy: no p-side block (E_p, P_p, delta were generated); pion/kaon/delta/rho/semi (l.611-903): in the
+    // completeEv overrides of PionProduction and its subclasses
 
     // l.914-926
     vertex.Pmx = vertex.p.P * vertex.up.x - vertex.q * vertex.uq.x;

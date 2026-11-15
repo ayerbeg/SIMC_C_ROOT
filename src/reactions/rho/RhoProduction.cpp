@@ -1,4 +1,6 @@
-// src/reactions/rho/RhoProduction.cpp — see include/simc/reactions/RhoProduction.h (task P13.2).
+// src/reactions/rho/RhoProduction.cpp — see include/simc/reactions/RhoProduction.h.
+// The "rho_production" reaction, exclusive (e,e'rho) on H/D/3He with rho -> pi+ pi-: the rho mass is drawn from a
+// Breit-Wigner, the rho is decayed and one pion goes to the hadron arm.
 // Fortran: simc_gfortran/event.f (generate, complete_ev, complete_main: doing_rho branches), generate_rho.f, rho_decay.f.
 // Operation order follows the Fortran source; x**2 is x*x, r**3 is (r*r)*r (D-024).
 #include "simc/reactions/RhoProduction.h"

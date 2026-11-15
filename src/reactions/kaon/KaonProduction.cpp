@@ -1,4 +1,6 @@
-// src/reactions/kaon/KaonProduction.cpp — see include/simc/reactions/KaonProduction.h (task P10.2).
+// src/reactions/kaon/KaonProduction.cpp — see include/simc/reactions/KaonProduction.h.
+// The "kaon_production" reaction (K+ Lambda/Sigma0, Sigma-, coherent hypernuclei): PionProduction with the kaon flags;
+// complete_main differs (the kaon cross section, the target weight and the survival weight).
 // Fortran: simc_gfortran/event.f:complete_main (l.1363-1569, doing_kaon branch).
 #include "simc/reactions/KaonProduction.h"
 

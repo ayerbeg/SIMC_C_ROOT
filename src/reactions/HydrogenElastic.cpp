@@ -1,4 +1,6 @@
 // src/reactions/HydrogenElastic.cpp — see include/simc/reactions/HydrogenElastic.h.
+// The "hydrogen_elastic" and phase-space reactions: H(e,e'p), where only the electron angles are generated and the
+// rest follows from two-body kinematics (complete_ev in EepReactionBase), and doing_phsp (no cross section).
 // Fortran: simc_gfortran/event.f. Operation order follows the Fortran source; x**2 is x*x (D-024).
 #include "simc/reactions/HydrogenElastic.h"
 
@@ -25,7 +27,9 @@ void HydrogenElastic::init(const StageContext& ctx) {
                                     "'nucleus_eep'");
     if (f.doing_pion || f.doing_kaon || f.doing_delta || f.doing_rho || f.doing_semi)
         throw NotPorted("reaction '" + name_ +
-                                    "': only H(e,e'p) (doing_hyd_elast) and doing_phsp are ported (event.f, P4.1)");
+                                    "': handles only H(e,e'p) (doing_hyd_elast) and doing_phsp; meson production is the "
+                                    "reaction 'pion_production', 'kaon_production', 'delta_production', 'sidis_production' "
+                                    "or 'rho_production'");
     if (!f.doing_hyd_elast && !f.doing_phsp)
         throw NotPorted("reaction '" + name_ + "': the setup is neither doing_hyd_elast nor doing_phsp");
     EepReactionBase::init(ctx);

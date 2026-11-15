@@ -1,4 +1,5 @@
-// src/reactions/delta/DeltaProduction.cpp — see include/simc/reactions/DeltaProduction.h (task P11.1).
+// src/reactions/delta/DeltaProduction.cpp — see include/simc/reactions/DeltaProduction.h.
+// The "delta_production" reaction, H/D/A(e,e'p)pi0 through the Delta(1232): the proton is detected, the pion is missing.
 // Fortran: simc_gfortran/event.f:complete_main (l.1363-1569, doing_delta branch l.1511-1513). generate, complete_ev and
 // complete_recon_ev are PionProduction / EepReactionBase with the delta flags.
 #include "simc/reactions/DeltaProduction.h"

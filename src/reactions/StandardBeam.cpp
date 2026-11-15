@@ -1,4 +1,7 @@
 // src/reactions/StandardBeam.cpp — see include/simc/reactions/StandardBeam.h.
+// The "standard" IBeam plug-in: the beam part of event.f:generate — the vertex position (Gaussian beam spot plus the
+// fast-raster pattern, z from the target model), the beam energy loss and Coulomb correction in the target, and the
+// beam energy spread. Every reaction runs it first (EventChain.cpp:generateEvent).
 #include "simc/reactions/StandardBeam.h"
 
 #include <cmath>

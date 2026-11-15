@@ -1,4 +1,6 @@
-// src/reactions/pion/PionProduction.cpp — see include/simc/reactions/PionProduction.h (task P9.2).
+// src/reactions/pion/PionProduction.cpp — see include/simc/reactions/PionProduction.h.
+// The "pion_production" reaction (exclusive pi+/pi-/pi0 electroproduction on H, D, A, quasi-free or coherent), and the
+// base class of the kaon, Delta, SIDIS and rho reactions, which reuse its generate/complete_ev with their own flags.
 // Fortran: simc_gfortran/event.f (generate, complete_ev, complete_main: doing_pion branches), simc.f:calculate_central.
 // Operation order follows the Fortran source; x**2 is x*x, x**3 is (x*x)*x (__powidf2), D-024.
 #include "simc/reactions/PionProduction.h"
@@ -184,7 +186,7 @@ bool PionProduction::generate(MainEvent& main, Event& vertex, Event& orig, IRand
     vertex.Em = 0.0;
     F.efer = s.targ.Mtar_struck;   // used for pion/kaon xsec calcs.
     // event.f:336-338 doing_deutpi.or.doing_hepi.or.doing_deutkaon.or.doing_hekaon.or.doing_deutdelta.or.doing_hedelta
-    // (kaon: P10.2; delta: P11.1); l.362 and l.368 select the D / A branch with the same flags.
+    // (the kaon and Delta reactions share this branch); l.362 and l.368 select the D / A branch with the same flags.
     const bool deut = f.doing_deutpi || f.doing_deutkaon || f.doing_deutdelta,
                he = f.doing_hepi || f.doing_hekaon || f.doing_hedelta;
     if (deut || he) {
