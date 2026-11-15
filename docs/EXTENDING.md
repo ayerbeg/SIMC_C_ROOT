@@ -1,6 +1,6 @@
 # Extending SIMC++ with plug-ins
 
-Status: P7.4 (2026-10-01), updated in P8.2 (reaction-owned weight, spectral functions). This page shows how to add a spectrometer, reaction, physics model, target or output
+Status: P7.4 (2026-10-01), updated in P8.2 (reaction-owned weight, spectral functions), P15.3/P15.4 (package, threads) and P15.D1 (compiled examples, stale notes). The step-by-step recipes are in the developer manual, [chapter 8](manual/developer/08_extending.md). This page shows how to add a spectrometer, reaction, physics model, target or output
 sink without touching the driver. The worked example is `examples/ideal_box/`, a complete ISpectrometer plug-in
 with its test. Read [ARCHITECTURE.md](ARCHITECTURE.md) first for the layers and the per-event data flow.
 
@@ -67,9 +67,10 @@ target_link_libraries(my_simc PRIVATE SIMC::simc)            # all built-in stag
 int main(int argc, char** argv) { return simc::driver::CommandLineMain(argc, argv); }
 ```
 
-Only the installed public headers are available (include/simc without the kernel/ directories). The data directories
-compiled into the libraries are those of the SIMC++ source tree; after moving the installation use `--data-dir` and
-the `matrix_dir`/`data_dir` JSON keys with the installed data (`${SIMC_DATA_DIR}` = <prefix>/share/simc/data).
+Only the installed public headers are available (include/simc without the kernel/ directories). A program linked with
+`SIMC::simc` finds the installed data (`${SIMC_DATA_DIR}` = <prefix>/share/simc/data) by default (D-069/D-070,
+`include/simc/core/DataPath.h`); the environment variable `SIMC_DATA_DIR`, `--data-dir` and the `matrix_dir`/`data_dir` JSON
+keys override it.
 
 ## 2. What every stage has (`IStage`)
 
@@ -185,8 +186,7 @@ class IReaction : public IStage {
 
 The (e,e'p) plug-ins share `reactions::EepReactionBase` (complete_ev, complete_recon_ev, complete_main, genvol of
 event.f/simc.f); a new (e,e'p)-like reaction can derive from it and implement `generate()` and `spectralWeight()`.
-The cross sections of the Fortran reactions that are not ported yet (Delta, rho, SIDIS) throw `NotPorted`
-in `assembleWeight`. The exclusive pion reaction `pion_production` (P9.2, `include/simc/reactions/PionProduction.h`)
+`assembleWeight` serves the (e,e'p) family; the other reactions assemble their own weight. The exclusive pion reaction `pion_production` (P9.2, `include/simc/reactions/PionProduction.h`)
 also derives from `EepReactionBase` (it reuses complete_recon_ev and genvol) and overrides `generate`, `completeEv` and
 `completeMain`: an example of a reaction with its own kinematics, Fermi motion (`MainEvent::pfermi`), extra random
 numbers (Delta mass, pi0 decay) and its own weight assembly. Its JSON keys: `data_dir` (delta_relativistic_bw.inp),
@@ -250,22 +250,9 @@ class IPhysicsModel : public IStage {
 
 A cross-section model takes the completed vertex (MeV, rad) and returns the cross section in the units of the
 Fortran routine it replaces (for H(e,e'p): those of physics_proton.f:sigep). Select it with `"physics": "name"`.
-Minimal example:
-
-```cpp
-class FlatModel : public simc::IPhysicsModel {
-public:
-    std::string name() const override { return "flat"; }
-    void configure(const simc::Json& c, const simc::SimcParameters&) override { value_ = c.value("value", 1.0); }
-    void init(const simc::StageContext&) override {}
-    double sigcc(const simc::Event&, const simc::MainEvent&) override { return value_; }
-    double sigccRecon(const simc::Event&, const simc::MainEvent&) override { return value_; }
-private:
-    double value_{1.0};
-};
-SIMC_REGISTER(simc::IPhysicsModel, "flat", FlatModel)
-```
-`{"pipeline": {"physics": {"type": "flat", "value": 2.5}}}`. Templates: `src/physics/proton/ProtonModels.cpp`;
+Minimal, compiled and tested example: `examples/dev_manual/FlatModel.cpp` (IPhysicsModel `example_flat`, a constant
+cross section; CTest `example_dev_manual_plugins`; quoted in the developer manual, chapter 8):
+`{"pipeline": {"physics": {"type": "example_flat", "value": 2.5}}}`. Templates: `src/physics/proton/ProtonModels.cpp`;
 `src/physics/pion/PionModel.cpp`, `src/physics/kaon/KaonModel.cpp`, `src/physics/sidis/SidisModel.cpp` and `src/physics/rho/RhoModel.cpp` (models that also
 write `main` through `sigccMain` and read data tables, JSON key `data_dir`; `sidis` also refuses unsupported input
 combinations in `init()`, `sidis::checkSupported`).
@@ -311,7 +298,8 @@ to select the contributing events and `main.weight` as their weight. A sink that
 {"pipeline": {"sinks": ["root_tree", "run_summary", {"type": "my_sink", "file": "out.csv"}]}}
 ```
 
-Templates: `src/output/RunSummarySink.cpp` (simplest), `src/output/RootTreeSink.cpp`. A sink created in code
+Templates: `src/output/RunSummarySink.cpp` (simplest), `src/output/RootTreeSink.cpp`; a compiled and tested sink with
+`IParallelSink`: `examples/dev_manual/CountSink.cpp` (`example_count`). A sink created in code
 (tests, a user program) can be added with `SimcRun::addSink(std::make_unique<MySink>())`, no registration needed.
 
 **Threads (P15.4).** With `--threads N > 1` every worker thread fills its own sinks. A sink takes part by also
@@ -328,7 +316,7 @@ the one-thread run does not need it. Examples: `RootTreeSink` (worker temporary 
 `IBeam` (`standard`: beam spread, raster, vertex z; template `StandardBeam`), `IRadiator` (`simc_rad`; it must also
 report `currentValues()`, `photonEnergies()` and `hadronRadiates()` if the driver should report them, the
 defaults are zero/false), `IMaterialModel` (`simc_material`, used inside `hallc_cryo` via its `"material"` key) and
-`IRandom` (`mt64`). They follow the same three steps.
+`IRandom` (`mt64`, `ranlux`). They follow the same three steps.
 
 ## 9. Checklist for a new plug-in
 
