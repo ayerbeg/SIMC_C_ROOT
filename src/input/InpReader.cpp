@@ -1,4 +1,8 @@
-// src/input/InpReader.cpp
+// src/input/InpReader.cpp — see include/simc/input/InpReader.h.
+// Reads a Fortran SIMC input file (.inp, CTP "begin parm ... end parm" blocks) into SimcParameters, reproducing the
+// CTP parser that the Fortran links (block scanning, comments, expressions, arrays, unregistered variables) and the
+// extra_dbase_file chaining of dbase.f. Used by simc++ when it is given a .inp and by inp2json; every diagnostic is
+// kept with its file:line (messages()) and the origin of every value (provenance()).
 // Fortran: dbase.f:dbase_read (l.66-122); CTP thLoad.c:getblock, thParm.c:thParmLineSet.
 #include "simc/input/InpReader.h"
 
@@ -51,6 +55,8 @@ const char* kTypes[] = {"parm", "gethit", "test", "hist", "uhist", "tree", "repo
 const char* kQualifiers[] = {"obey", "read", "write", nullptr};
 
 // ---------------------------------------------------------------- expression evaluator
+// Recursive descent over CTP numeric expressions: sum = product {(+|-) product}, product = primary {(*|/) primary},
+// primary = (sum) | unary sign primary | hex or decimal literal. ok is cleared on a syntax error.
 struct Expr {
     const std::string& s;
     size_t i{0};
@@ -115,6 +121,7 @@ struct Expr {
     }
 };
 
+// A plain (optionally signed) decimal or hex integer literal: CTP stores such values exactly.
 bool isIntToken(const std::string& t) {
     size_t i = 0;
     if (i < t.size() && (t[i] == '+' || t[i] == '-')) ++i;
@@ -172,7 +179,7 @@ void InpReader::note(const std::string& file, int line, const std::string& text)
     messages_.push_back({file, line, text});
 }
 
-// Fortran: dbase.f:78-117
+// Fortran: dbase.f:78-117. The main file, then the optional extra_dbase_file it names (its values override).
 bool InpReader::loadRun(const std::string& main_file) {
     p_.extra_dbase_file.clear();   // dbase.f:76 extra_dbase_file=' '
     if (!loadFile(main_file)) return false;
@@ -205,7 +212,8 @@ bool InpReader::loadFile(const std::string& path) {
         raw.push_back(l);
     }
 
-    // ---- thLoad.c:getblock — collect blocks
+    // ---- thLoad.c:getblock — collect blocks: a block starts at a line "begin [qualifier] <type> <name>" and ends
+    //      at "end <type>"; text outside blocks is ignored (that is how the .inp files carry free comments)
     std::vector<Block> blocks;
     size_t n = 0;
     while (n < raw.size()) {
@@ -219,7 +227,7 @@ bool InpReader::loadFile(const std::string& path) {
         for (std::string t; ts >> t;) toks.push_back(t);
         if (toks.empty()) continue;
         if (lower(toks[0]) == "#include") {
-            note(path, lineno, "#include is not supported by inp2json (no Fortran input uses it); line ignored");
+            note(path, lineno, "#include is not supported by the SIMC++ .inp reader (no Fortran input uses it); line ignored");
             continue;
         }
         if (lower(toks[0]) != "begin") continue;
@@ -252,12 +260,12 @@ bool InpReader::loadFile(const std::string& path) {
             size_t s = 0;
             while (s < l.size() && std::isspace(static_cast<unsigned char>(l[s]))) ++s;
             if (istartsWith(l, s, "#include")) {
-                note(path, ln, "#include is not supported by inp2json; line ignored");
+                note(path, ln, "#include is not supported by the SIMC++ .inp reader; line ignored");
                 continue;
             }
             b.lines.push_back({ln, l});
             if (!istartsWith(l, s, "end")) continue;
-            s += 4;                                        // strlen(ENDSTR)+1
+            s += 4;                                        // strlen(ENDSTR)+1 (CTP skips one character after END)
             while (s < l.size() && std::isspace(static_cast<unsigned char>(l[s]))) ++s;
             if (!istartsWith(l, s, b.type)) continue;
             ended = true;
@@ -281,10 +289,10 @@ bool InpReader::loadFile(const std::string& path) {
         }
     }
 
-    // ---- thbook: book parm blocks
+    // ---- thbook: book parm blocks (the only blocks SIMC uses; hist/test/report blocks are CTP features it does not)
     for (const auto& b : blocks) {
         if (b.type != "parm") {
-            note(path, b.first_line, "block type '" + b.type + "' is not a parameter block; ignored by inp2json");
+            note(path, b.first_line, "block type '" + b.type + "' is not a parameter block; ignored by the SIMC++ .inp reader");
             continue;
         }
         bookParm(b, path);
@@ -306,7 +314,7 @@ void InpReader::bookParm(const Block& b, const std::string& file) {
         }
         std::string t = trim(text);
         if (!t.empty() && t[0] == '#') {            // thSpecial directives (#real, #int, ...)
-            note(file, ln, "CTP directive '" + t + "' ignored by inp2json");
+            note(file, ln, "CTP directive '" + t + "' ignored by the SIMC++ .inp reader");
             continue;
         }
         parmLine(text, file, ln);
@@ -315,7 +323,8 @@ void InpReader::bookParm(const Block& b, const std::string& file) {
 
 // CTP thParm.c:thParmLineSet
 void InpReader::parmLine(std::string line, const std::string& file, int lineno) {
-    // Remove comment (outside strings), turn white space into blanks.
+    // --- 1. remove the comment (';' outside strings; a doubled quote inside a string is a literal quote), turn white
+    //        space into blanks; a blank line does nothing
     {
         char q = 0;
         bool blank = true;
@@ -341,6 +350,8 @@ void InpReader::parmLine(std::string line, const std::string& file, int lineno) 
         if (blank) return;
     }
 
+    // --- 2. "name = v1, v2, ..." starts a new variable; a line without '=' continues the previous one (array values
+    //        spread over several lines)
     std::string varnam, orgargs, rhs;
     const size_t eq = line.find('=');
     const bool has_name = eq != std::string::npos;
@@ -401,6 +412,7 @@ void InpReader::parmLine(std::string line, const std::string& file, int lineno) 
         return;
     }
 
+    // --- 3. store the values
     // ---- Unregistered (auto-allocated dynamic) variable: keep the values for reference only.
     if (!cur_.desc) {
         auto& vals = unreg_values_[cur_.unreg];

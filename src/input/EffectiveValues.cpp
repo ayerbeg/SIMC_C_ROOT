@@ -1,4 +1,7 @@
-// src/input/EffectiveValues.cpp
+// src/input/EffectiveValues.cpp — see include/simc/input/EffectiveValues.h.
+// The "effective values" table of inp2json / simc++ --show-effective: for every input parameter, the raw value of the
+// .inp and the value the Fortran actually uses after dbase.f has converted units and applied its overrides, with the
+// rule that changed it. Diagnostic only: the set-up (setup/SetupBuilder.cpp) applies the same rules on its own.
 // Fortran rules reproduced here (all from dbase.f:dbase_read unless stated):
 //   convert_to_logical (l.1129-1166), random_seed -1 -> time() (l.119),
 //   doing_phsp => rad_flag=0 and reaction flags off (l.227-234),
@@ -37,7 +40,7 @@ std::vector<EffectiveRow> EffectiveValues(const SimcParameters& in) {
     std::vector<EffectiveRow> rows;
     auto& table = ParameterTable();
 
-    // Cross-variable rules first (they change what later rows show).
+    // --- 1. cross-variable rules first (they change what later rows show).
     std::string phsp_rule;
     if (p.doing_phsp) {
         p.rad_flag = 0;
@@ -56,6 +59,7 @@ std::vector<EffectiveRow> EffectiveValues(const SimcParameters& in) {
         extrad_rule = "init.f:621-626 (0 => 3 if rad_flag=0, 1 if rad_flag=1..3)";
     }
 
+    // --- 2. one row per registered parameter: raw value, effective value, units, rule (the first matching rule wins)
     for (const auto& d : table) {
         EffectiveRow r;
         r.name = d.name;
@@ -97,11 +101,13 @@ std::vector<EffectiveRow> EffectiveValues(const SimcParameters& in) {
             r.units = "rad";
             r.rule = "dbase.f:454-455 /degrad";
         } else if (n.find("offset%xptar") != std::string::npos || n.find("offset%yptar") != std::string::npos) {
+            // n = "spec%e%offset%..." or "spec%p%offset%...": character 5 is the arm letter
             const SimcParameters::Offset& o = (n[5] == 'e') ? p.spec.e.offset : p.spec.p.offset;
             r.effective = num((n.find("xptar") != std::string::npos ? o.xptar : o.yptar) / units::kMradPerRad);
             r.units = "rad";
             r.rule = "dbase.f:472-475 /1000";
         } else if (n.rfind("SPedge%", 0) == 0) {
+            // n = "SPedge%e%...": character 7 is the arm letter
             const SimcParameters::ArmEdge& a = (n[7] == 'e') ? p.SPedge.e : p.SPedge.p;
             const bool is_min = n.compare(n.size() - 3, 3, "min") == 0;
             if (n.find("delta") != std::string::npos) {
