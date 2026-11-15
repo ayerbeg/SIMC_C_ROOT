@@ -1,5 +1,5 @@
 // examples/dev_manual/CountSink.cpp — the IOutputSink + IParallelSink example of the developer manual (task P15.D1,
-// docs/manual/developer/08_extending.md). "example_count": counts the tries and the successes and sums the weights of
+// docs/manual/developer/04_extending.md). "example_count": counts the tries and the successes and sums the weights of
 // the successes; writes "<output_dir>/<run_name>.count.txt" at the end of the run. It works with --threads N: every
 // worker fills its own CountSink, the run's sink adds them up in the worker order.
 #include <fstream>

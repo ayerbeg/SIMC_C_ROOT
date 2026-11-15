@@ -1,11 +1,11 @@
-# 8. Extending SIMC++
+# 4. Extending SIMC++
 
 The mechanics of every stage interface (signatures, configuration keys, the in-tree and out-of-tree build) are in
 [EXTENDING.md](../../EXTENDING.md). This chapter gives the step-by-step recipes with code that is compiled and tested:
 `examples/dev_manual/` (CTest `example_dev_manual_plugins`), `examples/ideal_box/` (`example_ideal_box_*`) and
 `examples/out_of_tree_plugin/` (`package_out_of_tree_plugin`).
 
-## 8.1 The three steps (every plug-in)
+## 4.1 The three steps (every plug-in)
 
 1. Implement one interface from `include/simc/stages/` (§3.5 of chapter 3 gives the contracts).
 2. Register it under a name in its `.cpp`: `SIMC_REGISTER(simc::<Interface>, "<name>", <Class>)`, and compile it into an
@@ -17,17 +17,17 @@ Where to put the code:
 
 * **in tree** (a new built-in stage): `src/<module>/` with its own `CMakeLists.txt` (OBJECT library), added with
   `add_subdirectory` in the top-level CMakeLists.txt and appended to `SIMC_DRIVER_LIBS` in src/driver/CMakeLists.txt; the
-  public header in `include/simc/<module>/`, Fortran-mirror state in `include/simc/<module>/kernel/`; then add the header
+  public header in `include/simc/<module>/`, private kernel state in `include/simc/<module>/kernel/`; then add the header
   to the reference table of chapter 3 §3.9 (the `docs_dev_manual` test checks it).
 * **examples**: an OBJECT library in examples/CMakeLists.txt; append it to `SIMC_EXAMPLE_PLUGINS` to make it available in
   `simc++` (like `ideal_box`), or link it only into its test (like `dev_manual`).
 * **out of tree**: compile the plug-in source into your own executable that links `SIMC::simc` from the installed
-  package and calls `simc::driver::CommandLineMain` (§8.6).
+  package and calls `simc::driver::CommandLineMain` (§4.6).
 
-## 8.2 A new physics model (`IPhysicsModel`)
+## 4.2 A new physics model (`IPhysicsModel`)
 
-The model receives the completed vertex and returns the cross section in the units of the Fortran routine it replaces
-(for H(e,e'p): physics_proton.f:sigep). Complete example:
+The model receives the completed vertex and returns the cross section in the units the reaction expects
+(for H(e,e'p): those of the `sigep` model). Complete example:
 
 <!-- from: examples/dev_manual/FlatModel.cpp -->
 ```cpp
@@ -52,15 +52,16 @@ SIMC_REGISTER(simc::IPhysicsModel, "example_flat", mylab::FlatModel)
 
 Select it with `{"pipeline": {"physics": {"type": "example_flat", "value": 2.5}}}`. The test runs H(e,e'p) with it and
 checks that every success has `sigcc = 2.5`. A model that must also write event fields (CM angles, jacobians,
-`ntup.sigcm`, as physics_pion.f:peepi does) overrides `sigccMain(vertex, main&)`; the reactions call that one. Models
+`ntup.sigcm`, as the `pion` model does) overrides `sigccMain(vertex, main&)`; the reactions call that one. Models
 that read tables take a `data_dir` key and default to `simc::DataDir("<sub>")`, and read the tables in `init()` (a missing
 file is a start-up error). Templates: src/physics/proton/ProtonModels.cpp, src/physics/pion/PionModel.cpp.
 
-If the model ports a Fortran routine: put the routine in a kernel function (`double peeX(const Event&, MainEvent&,
-const XConfig&)`) with a config struct for the COMMON values and `fortran_compat`, cite the Fortran, and add an L1 test
-against a Fortran table (chapter 7 §7.7).
+Put the numerical part in a kernel function (`double peeX(const Event&, MainEvent&, const XConfig&)`) with a config
+struct for the run constants (and `fortran_compat` if the model has a compat behaviour), and test it on fixed inputs. A
+model ported from the Fortran also needs a reference table (see the
+[translation report](../../translation/02_validation.md#77-adding-a-new-fortran-reference-end-to-end)).
 
-## 8.3 A new output sink (`IOutputSink`, `IParallelSink`)
+## 4.3 A new output sink (`IOutputSink`, `IParallelSink`)
 
 `fill` sees **every** try (use `success` to select contributing events, `main.weight` as their weight); `endRun` gets
 the `RunSummary`. To work with `--threads N`, also implement `IParallelSink`: `makeWorkerSink` returns a new, configured
@@ -105,7 +106,7 @@ with `SimcRun::addSink(std::make_unique<MySink>())` (no registration). A sink th
 limits) also implements `driver::IReportSink::writeReport`. Templates: src/output/RunSummarySink.cpp (simplest),
 RootTreeSink.cpp (worker temporary files), GenHistSink.cpp (histograms summed).
 
-## 8.4 A new spectrometer (`ISpectrometer`)
+## 4.4 A new spectrometer (`ISpectrometer`)
 
 The input is the track in the TRANSPORT frame at z = 0 (cm, slopes, delta %, central momentum MeV/c, mass² MeV²);
 return `SpecResult` with `ok`/`stop_reason`, the reconstructed target quantities, the focal plane, the path length,
@@ -141,19 +142,18 @@ optionally `resolution_factor`, and `m2_final`/`Mh2_final` (= `in.m2` without de
 
 Select it per arm: `{"pipeline": {"spectrometers": {"hadron": {"type": "toy_window", "delta_max": 8.0}}}}`. Arms with the
 same type and the same config share one object (one counter block). The arm *codes* of the input still select the
-default plug-in, the target-window materials in `hallc_cryo` and the Fortran `.geni` blocks; a plug-in replaces the
+default plug-in, the target-window materials in `hallc_cryo` and the built-in `.geni` blocks; a plug-in replaces the
 single-arm Monte Carlo only, and its counters appear in a generic `.geni` block and in the summary JSON. For real optics
-reuse `optics::CosyEngine` (COSY maps, `transp`, `project`, recon); put the Fortran-mirror state (`/track/`, counters,
-argument mirrors) in `include/simc/spectrometers/<name>/kernel/` behind a pimpl, as `HmsSpectrometer` does. A port of a
-Fortran spectrometer needs ray tables (`mc_<arm>` with ms/wcs off and with scripted smearing), a capture replay and a
-RANLUX full run (chapter 7). For the target-field tracking implement `reconstructLastTrack`.
+reuse `optics::CosyEngine` (COSY maps, `transp`, `project`, recon); put the kernel state (track, counters,
+argument mirrors) in `include/simc/spectrometers/<name>/kernel/` behind a pimpl, as `HmsSpectrometer` does. A spectrometer ported
+from the Fortran also needs reference ray tables and a full-run identity test (translation report). For the target-field tracking implement `reconstructLastTrack`.
 
-## 8.5 A new reaction (`IReaction`)
+## 4.5 A new reaction (`IReaction`)
 
 A reaction is the largest plug-in: it owns the generation, the vertex completion and the weight. Steps:
 
 1. **Choose a base.** An (e,e'p)-like reaction derives from `reactions::EepReactionBase` and implements `generate()` and
-   `spectralWeight()`; `completeEv`, `completeRecon`, `completeMain` and `genVolume` are the shared event.f branches.
+   `spectralWeight()`; `completeEv`, `completeRecon`, `completeMain` and `genVolume` are shared by the family.
    The structure, from `include/simc/reactions/HydrogenElastic.h`:
 
    <!-- from: include/simc/reactions/HydrogenElastic.h -->
@@ -182,17 +182,17 @@ A reaction is the largest plug-in: it owns the generation, the vertex completion
 6. **`completeMain`**: `main.SF_weight`, then `sigcc`/`sigcc_recon`/`weight` with the model (for the (e,e'p) family
    `reactions::assembleWeight(force_sigcc, main, vertex, vertex0, recon, model, MainContext::FromSetup(setup))`); return
    false when the event cannot contribute unless `force_sigcc` (the central event).
-7. **`genVolume`**: the generated phase-space volume (simc.f:383-396 for the Fortran reactions).
+7. **`genVolume`**: the generated phase-space volume.
 8. Optional: `prepareCentral`, `finalTargetState`, `beginTry`.
 9. **Register and select**: `SIMC_REGISTER(IReaction, "my_reaction", MyReaction)`, `{"pipeline": {"reaction":
    "my_reaction", "physics": "my_model"}}`. `PipelineConfig::Defaults` picks the built-in reactions from the `doing_*`
    flags; a new reaction is selected through the JSON (or add its flag rule to `Defaults` in src/driver/Pipeline.cpp).
    The ntuple layout follows the reaction flags (output/NtupleLayout.h); a reaction with new columns needs a layout there.
-10. **Tests**: a run through the driver (like `example_dev_manual_plugins`), and for a Fortran port the L1 tables of
-    generate/complete_ev/complete_recon_ev/complete_main (`*_fixedrng`), a capture replay, a RANLUX full run, a
-    regression baseline in both modes and an L2 comparison.
+10. **Tests**: a run through the driver (like `example_dev_manual_plugins`), tests of the kernels on fixed inputs (with a
+    `ScriptedRandom`), a regression baseline in both modes (`tests/regression`) and a statistical comparison with
+    `simc_compare`. A reaction ported from the Fortran needs the reference tests of the translation report.
 
-## 8.6 Out of tree
+## 4.6 Out of tree
 
 <!-- from: examples/out_of_tree_plugin/CMakeLists.txt -->
 ```cmake
@@ -211,11 +211,11 @@ int main(int argc, char** argv) { return simc::driver::CommandLineMain(argc, arg
 
 `cmake -S my_plugin -B build -DCMAKE_PREFIX_PATH="<prefix>;<ROOT install>"`, then `build/my_simc run.inp --pipeline
 toy_window.json -o out`. The installed data are found without `--data-dir` (chapter 2 §2.7). Only the installed public
-headers are available (no `kernel/` headers). Plug-ins are linked, not loaded at run time (no dlopen; D-069).
+headers are available (no `kernel/` headers). Plug-ins are linked, not loaded at run time (no dlopen).
 
-## 8.7 Rules: state and thread safety
+## 4.7 Rules: state and thread safety
 
-* **No global or static mutable state.** Fortran COMMON blocks and SAVEd locals become members of the object; caches
+* **No global or static mutable state.** Values kept between calls become members of the object; caches
   are members too. With `--threads N` every worker builds its own instance of every stage, so a `static` cache would be
   shared between threads (a data race) and between runs. The only process-wide mutable state is the Registry (filled at
   static initialisation, read-only afterwards) and the column lists of `NtupleLayout` (under a mutex).

@@ -1,17 +1,17 @@
-# 9. Parallelism and performance internals
+# 5. Parallelism and performance internals
 
 User-level description, numbers and the L2 validation of the threaded runs: [PERFORMANCE.md](../../PERFORMANCE.md).
 This chapter is the implementation view.
 
-## 9.1 The parallel event loop (`SimcRun::runThreaded`, src/driver/SimcRunParallel.cpp)
+## 5.1 The parallel event loop (`SimcRun::runThreaded`, src/driver/SimcRunParallel.cpp)
 
-Not a Fortran feature. `SimcRun::run()` calls `runThreaded(n)` when `threadCount() > 1` (`RunOptions::threads`, i.e.
+`SimcRun::run()` calls `runThreaded(n)` when `threadCount() > 1` (`RunOptions::threads`, i.e.
 `--threads N`, else the pipeline `"threads"`, else 1). Sequence:
 
 1. **Master** `initialise()`: the set-up, the messages, the master stages and sinks (`beginRun`). The master's stages
    are used only for the central event and the report; the master runs no tries.
 2. **Refusals** (`threadsRefusal(n)`, `std::invalid_argument`, `simc++` exit 2): `fortran_compat` (the exact
-   reproduction needs one stream in the Fortran order), an rng other than `mt64` or a source set with `setRandom`
+   reproduction of the original program needs one sequential stream), an rng other than `mt64` or a source set with `setRandom`
    (RANLUX and scripted streams are sequential), a sink that does not implement `IParallelSink`.
 3. **Workers**, built one after the other in the master thread: `nw = min(n, |ngen|)` `SimcRun` objects with the same
    parameters and pipeline but no registry sinks and a silent driver log; worker k gets `ngen_k = ngen/nw` (+1 for
@@ -41,21 +41,20 @@ bitwise equal to, the one-thread output (validated by L2, PERFORMANCE.md §3).
 appended in worker order, files removed), `GenHistSink` and `FortranHistSink` (histograms summed; TH1D errors in
 quadrature), `RunSummarySink` (`nullptr`: works at `endRun` from the merged report).
 
-**Thread safety**: one `SimcRun` = one Fortran process; every stage and every COMMON/SAVEd mirror is per worker. The only
+**Thread safety**: every stage and every piece of kernel state is per worker (one `SimcRun` per worker). The only
 process-wide mutable state is the Registry (read-only after static initialisation; workers are built in the master
 thread) and the `NtupleLayout` column lists (guarded by a mutex). ROOT: per-worker `TFile`/`TTree`/`TH1D` without
-directory, `ROOT::EnableThreadSafety()` called in `makeWorkerSink`. Stage warnings (Fortran `write(6,*)` mirrors) go to
+directory, `ROOT::EnableThreadSafety()` called in `makeWorkerSink`. Stage warnings go to
 `std::cout` from each worker and may interleave (`--quiet` silences them). ThreadSanitizer (clang, `-fsanitize=thread`)
 runs of six representative inputs report no race (P15.4). A new stage with a `static` mutable cache breaks this
-(chapter 8 §8.7).
+(chapter 4 §4.7).
 
 **Cost**: each worker builds its stages (0.1-0.3 s, mostly the pion MAID tables) and holds its own tables (pion: about
 +15 MB per worker).
 
-## 9.2 Single-thread hot spots
+## 5.2 Single-thread hot spots
 
-Profile (callgrind, PERFORMANCE.md §1): before P15.4 libm `tgamma` was 20-56 % of radiative runs (29 calls per try in
-init.f:radc_init_ev/basicrad_init_ev and radc.f:peaked_rad_weight, on 12 distinct arguments), then the COSY `transp`
+Profile (callgrind, PERFORMANCE.md §1): before P15.4 libm `tgamma` was 20-56 % of radiative runs (29 calls per try in the per-event radiation set-up and the peaked radiation weight, on 12 distinct arguments), then the COSY `transp`
 maps, `trip_thru_target` (energy loss: log/pow), `generate_rad`, the target-field Runge-Kutta (`TargetField::rk4`), the
 MAID table parsing at start-up, and `std::map` lookups in `GenHistSink::fill`.
 

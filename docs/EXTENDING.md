@@ -1,6 +1,6 @@
 # Extending SIMC++ with plug-ins
 
-Status: P7.4 (2026-10-01), updated in P8.2 (reaction-owned weight, spectral functions), P15.3/P15.4 (package, threads) and P15.D1 (compiled examples, stale notes). The step-by-step recipes are in the developer manual, [chapter 8](manual/developer/08_extending.md). This page shows how to add a spectrometer, reaction, physics model, target or output
+Status: P7.4 (2026-10-01), updated in P8.2 (reaction-owned weight, spectral functions), P15.3/P15.4 (package, threads) and P15.D1 (compiled examples, stale notes). The step-by-step recipes are in the developer manual, [chapter 4](manual/developer/04_extending.md). This page shows how to add a spectrometer, reaction, physics model, target or output
 sink without touching the driver. The worked example is `examples/ideal_box/`, a complete ISpectrometer plug-in
 with its test. Read [ARCHITECTURE.md](ARCHITECTURE.md) first for the layers and the per-event data flow.
 
@@ -251,7 +251,7 @@ class IPhysicsModel : public IStage {
 A cross-section model takes the completed vertex (MeV, rad) and returns the cross section in the units of the
 Fortran routine it replaces (for H(e,e'p): those of physics_proton.f:sigep). Select it with `"physics": "name"`.
 Minimal, compiled and tested example: `examples/dev_manual/FlatModel.cpp` (IPhysicsModel `example_flat`, a constant
-cross section; CTest `example_dev_manual_plugins`; quoted in the developer manual, chapter 8):
+cross section; CTest `example_dev_manual_plugins`; quoted in the developer manual, chapter 4):
 `{"pipeline": {"physics": {"type": "example_flat", "value": 2.5}}}`. Templates: `src/physics/proton/ProtonModels.cpp`;
 `src/physics/pion/PionModel.cpp`, `src/physics/kaon/KaonModel.cpp`, `src/physics/sidis/SidisModel.cpp` and `src/physics/rho/RhoModel.cpp` (models that also
 write `main` through `sigccMain` and read data tables, JSON key `data_dir`; `sidis` also refuses unsupported input

@@ -17,10 +17,11 @@ cmake --build build -j8
 
 Flags: `-Wall -Wextra -pedantic` everywhere (the build has 0 warnings; keep it so), Release `-O3 -DNDEBUG`. **Do not
 add `-march=native`, `-ffast-math` or `-ffp-contract=fast`**: FMA contraction and value-unsafe optimisations change the
-floating-point results and break every bitwise comparison with the Fortran (chapter 5).
+floating-point results and break every bitwise reference test (the numerical rules are in the
+[translation report](../../translation/04_numerics.md)).
 
 The comparison tool `simc_compare` is a separate CMake project in `validation/` (its own build directory and CTest
-suite; chapter 7).
+suite; the statistics are documented in [validation/README.md](../../../validation/README.md)).
 
 ## 2.2 Layout and targets
 
@@ -34,7 +35,7 @@ module (so that parallel tasks never edit the same file):
 | `simcfw_root` | OBJECT | src/output/{RootTreeSink,RunSummarySink,GenHistSink} | sinks `root_tree`, `run_summary`, `gen_hist` |
 | `simcfw_physics` | OBJECT | src/physics/{proton,nuclear} | models `sigep`, `deforest*`; spectral functions `theory`, `benhar` |
 | `simcfw_material` | OBJECT | src/material | target `hallc_cryo`, material `simc_material` |
-| `simcfw_kinematics`, `simcfw_setup` | STATIC | src/setup | `loren`, angles; `BuildRunSetup` (dbase.f/init.f) |
+| `simcfw_kinematics`, `simcfw_setup` | STATIC | src/setup | `loren`, angles; `BuildRunSetup` (run set-up) |
 | `simcfw_optics` | STATIC | src/optics | COSY engine, forward chains, `lfit`, target field |
 | `simcfw_hms`, `_shms`, `_sos`, `_hrs`, `_calo` | OBJECT | src/spectrometers/* | the spectrometer plug-ins and kernels |
 | `simcfw_pion`, `_kaon`, `_delta`, `_sidis`, `_rho` | OBJECT | src/physics/* | cross sections and their `IPhysicsModel` plug-ins |
@@ -43,7 +44,7 @@ module (so that parallel tasks never edit the same file):
 | `simcfw_driver` | STATIC | src/driver | `SimcRun`, `MonteCarlo`, report, pipeline, command line |
 | `simcfw_driver_sinks` | OBJECT | src/driver/ReportSink.cpp | sink `fortran_hist` |
 | `simcpp` (output name `simc++`) | executable | tools/simc_main.cpp | `return simc::driver::CommandLineMain(argc, argv);` |
-| `inp2json`, `hist2json` | executables | tools/ | `.inp` → JSON; Fortran `.hist` → summary JSON |
+| `inp2json`, `hist2json` | executables | tools/ | `.inp` → JSON; `.hist` text report → summary JSON |
 | `simc_root_identity` | executable | tests/regression/root_identity.cpp | bitwise comparison of trees/histograms (ignores ROOT dates) |
 | `simc` / `SIMC::simc` | INTERFACE | — | everything a complete run links (the installed package's target) |
 
@@ -64,15 +65,15 @@ passes them explicitly as `INTERFACE_SOURCES` (`$<TARGET_OBJECTS:...>`), in the 
 every built-in stage without whole-archive flags.
 
 A new module: add `src/<module>/CMakeLists.txt` with an OBJECT library if it registers plug-ins (STATIC otherwise),
-`add_subdirectory` it in the top-level file, and append it to `SIMC_DRIVER_LIBS` (chapter 8).
+`add_subdirectory` it in the top-level file, and append it to `SIMC_DRIVER_LIBS` (chapter 4).
 
 ## 2.4 Options and cache variables
 
 | variable | default | meaning |
 |---|---|---|
 | `SIMC_BUILD_EXAMPLES` | ON | build `examples/` and link the example plug-ins (`ideal_box`) into `simc++` |
-| `SIMC_REFERENCE_DIR` | /home/ayerbe/NewDisk/reference | Fortran reference data; tests whose reference is absent are skipped (exit 77) |
-| `SIMC_FORTRAN_DIR` | /home/ayerbe/NewDisk/simc_gfortran | Fortran source tree (its `infiles/` are test inputs; read-only) |
+| `SIMC_REFERENCE_DIR` | /home/ayerbe/NewDisk/reference | reference data of the reference tests; tests whose reference is absent are skipped (exit 77) |
+| `SIMC_FORTRAN_DIR` | /home/ayerbe/NewDisk/simc_gfortran | directory whose `infiles/` provide the shipped test inputs (read-only) |
 | `SIMC_BASELINE_DIR` | /home/ayerbe/NewDisk/SIMC++_Project/baselines | C++ regression baselines |
 | `SIMC_*_BASELINE_COMMIT` | `55cf7a0_glibc243` | the baseline folder prefix per family (tests/regression/CMakeLists.txt) |
 
@@ -86,12 +87,12 @@ Tests are grouped by directory and labelled:
 | label | where | what | count at P15.D1 |
 |---|---|---|---|
 | `unit` | tests/unit, tests/fortran_diff | parameters, `.inp` reader, sinks, summary/hist2json, stage headers and registry, `lint_no_pow_square` | 75 |
-| `l1` | tests/l1 | routine tables against `reference/functions` (bitwise or a stated tolerance), replays, RANLUX full runs | 282 |
-| `replay` | tests/l1 | subset of `l1`: the complete MonteCarlo / SimcRun driven by a captured Fortran RANLUX stream (test names with `_replay_`) | 53 |
+| `l1` | tests/l1 | routine-level reference tables (bitwise or a stated tolerance), replays, full-run identity tests | 282 |
+| `replay` | tests/l1 | subset of `l1`: the complete MonteCarlo / SimcRun driven by a recorded random stream (`ScriptedRandom`; names with `_replay_`) | 53 |
 | `cli` | tests/l1, tests/fortran_diff, examples | the `simc++` command line (.inp vs JSON, refusals, `--pipeline`) | 10 |
-| `fortran_diff` | tests/fortran_diff | one test per corrected Fortran bug, both modes; shipped-input refusals | 47 |
+| `fortran_diff` | tests/fortran_diff | one test per behaviour that differs between the default and the `fortran_compat` mode, both modes; input refusals | 47 |
 | `regression` | tests/regression | before/after output identity against the C++ baselines (both modes, every family) | 30 |
-| `regression_shipped` | tests/regression | full-run identity of `simc++` (RANLUX, `--fortran-compat`) against every shipped-input Fortran reference run (also `slow`) | 41 |
+| `regression_shipped` | tests/regression | full-run identity of `simc++` (`ranlux`, `--fortran-compat`) against the reference run of every shipped input (also `slow`) | 41 |
 | `threads` | tests/regression | `--threads N` reproducibility, `--threads 1` = sequential, refusals | 4 |
 | `examples` | examples | the example plug-ins through the complete driver | 5 |
 | `package` | examples | install into a temporary prefix, out-of-tree plug-in build with `find_package(SIMC)`, run | 1 |
@@ -100,16 +101,17 @@ Tests are grouped by directory and labelled:
 
 `ctest -L l1`, `ctest -LE slow`, `ctest -R replay_pion` select subsets. Tests return 77 (`SKIP_RETURN_CODE`) when
 their reference input is missing. The L1 and fortran_diff tests run through `tests/toolchain_guard.sh`
-(`CMAKE_TEST_LAUNCHER`): on a failure it prints the toolchain of the Fortran references (`reference/TOOLCHAIN.txt`)
-next to the current one, because a libm update changes bits (D-044).
+(`CMAKE_TEST_LAUNCHER`): on a failure it prints the toolchain of the references (`reference/TOOLCHAIN.txt`) next to
+the current one, because a libm update changes bits. What each reference test proves is described in the
+[translation report](../../translation/02_validation.md).
 
 The `simc_compare` project has its own suite (`cmake -S validation -B vbuild && cmake --build vbuild && ctest
---test-dir vbuild`): A-vs-A, Fortran-vs-Fortran, sensitivity (rad vs norad, shifted `hsdelta`), JSON vs `.hist`,
+--test-dir vbuild`): A-vs-A, reference-vs-reference, sensitivity (rad vs norad, shifted `hsdelta`), JSON vs `.hist`,
 empty trees, NaN entries, the wtcontr subset and mode detection.
 
 ## 2.6 `tools/check_all.sh`
 
-The acceptance check of every task (D-013): a clean build of everything plus both test suites, logged.
+The acceptance check of every change: a clean build of everything plus both test suites, logged.
 
 ```bash
 TMPDIR=/home/ayerbe/NewDisk/SIMC++_Project/.tmp_<task> ROOTSYS=/home/ayerbe/Builds/ROOT6_install \
@@ -141,5 +143,5 @@ OBJECT libraries), `lib/cmake/SIMC` (`SIMCConfig.cmake`, `SIMCConfigVersion.cmak
 provides `SIMC::simc` and `SIMC_DATA_DIR`. `SIMCConfig.cmake` adds the interface source `SimcInstalledDataRoot.cpp`
 to `SIMC::simc`, compiled into the consumer with `SIMC_INSTALLED_DATA_DIR=<prefix>/share/simc/data`: it registers the
 package's data directory at start-up (`simc::detail::SetInstalledDataRoot`), so a consumer program finds the installed
-data without `--data-dir` (D-069/D-070). The CTest `package_out_of_tree_plugin`
+data without `--data-dir`. The CTest `package_out_of_tree_plugin`
 (`examples/out_of_tree_plugin/package_check.sh`) proves the whole chain on every `check_all`.
