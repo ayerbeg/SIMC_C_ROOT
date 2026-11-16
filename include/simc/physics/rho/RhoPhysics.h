@@ -20,7 +20,7 @@
  *                                         generate_rho, the pion mass after rho_decay; owned by the P13.2 reaction)
  *   ntup%rhomass, ntup%rhotheta, ntup%sigcm -> NtupVars
  *
- * Fortran findings (D-057; P13.F1 ids F1..F22, reference/P13.F1_report.md; docs/FORTRAN_DIFFERENCES.md). Corrected by
+ * Fortran findings (D-057; P13.F1 ids F1..F22, reference/P13.F1_report.md; docs/translation/markdown/FORTRAN_DIFFERENCES.md). Corrected by
  * default, kept by fortran_compat:
  *   F3  generate_rho.f:80        `Mh2_final = Mh` (a mass, not a mass squared) -> Mh2 (GenerateRhoConfig).
  *   F6  rho_physics.f:88-93      peerho recomputes the COMMON efer on shell (the A > 1 branch tests the PION flags) and

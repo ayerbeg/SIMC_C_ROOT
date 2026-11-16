@@ -25,7 +25,7 @@
  * COMMON /gnrl/ (Mh, Mh2, Mh2_final) changes per try: MainEvent::gnrl with gnrl_per_event = true; the radiation and the
  * montecarlo use it (the BW rho mass in generate_rad, the decay pion in the spectrometer, recon E and Eloss).
  *
- * fortran_compat (D-031; D-057, docs/FORTRAN_DIFFERENCES.md):
+ * fortran_compat (D-031; D-057, docs/translation/markdown/FORTRAN_DIFFERENCES.md):
  *   FORTRAN-BUG(D-057 F1)  event.f:325, 1034: trip_thru_target(3) uses the stale hadron angle; corrected: the rho's lab
  *                          angles (generate_rho.f:123-124) are used.
  *   FORTRAN-BUG(D-057 F2)  event.f:420-422: rho_decay runs after a failed generate_rad on the stale orig (random numbers

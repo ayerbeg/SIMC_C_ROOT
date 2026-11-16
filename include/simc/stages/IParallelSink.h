@@ -7,7 +7,7 @@
  * (master) sinks then take the workers' content in the fixed worker order 0..N-1 and write the outputs once. A worker
  * sink sees only the fill() arguments (main, vertex, orig, recon, success): the simc::StageContext collaborators it got
  * in init() belong to the master run. A sink that does not implement IParallelSink makes `--threads N > 1` fail at
- * start-up with a clear message (the single-thread run is unaffected). Task P15.4, docs/PERFORMANCE.md.
+ * start-up with a clear message (the single-thread run is unaffected). Task P15.4, docs/manual/markdown/reference/PERFORMANCE.md.
  */
 #ifndef SIMC_STAGES_IPARALLELSINK_H
 #define SIMC_STAGES_IPARALLELSINK_H

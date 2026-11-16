@@ -11,7 +11,7 @@
  *   run.finish();         // simc.f l.354-620: normalisation, resolutions, sinks (.root, summary, .gen.root, .hist)
  * or simply run.run().
  *
- * Ownership and data flow (docs/DRIVER.md):
+ * Ownership and data flow (docs/manual/markdown/reference/DRIVER.md):
  *   * the run owns every stage (unique_ptr, created by name through the Registry from the PipelineConfig) and hands
  *     the collaborators to them through a StageContext at init(), as INTERFACES (beam -> target, reaction -> target +
  *     radiator, montecarlo -> target + arms); the driver never casts a stage to a concrete class;
@@ -68,7 +68,7 @@ struct RunOptions {
     /// JSON "run": {"fortran_compat": true}). Passed to the set-up (RunSetup::fortran_compat).
     bool fortran_compat{false};
     /// P15.4: worker threads of the event loop (--threads N); 0 = from the pipeline "threads" (default 1). N > 1:
-    /// runThreaded() (docs/PERFORMANCE.md); refused with fortran_compat and with an rng other than mt64.
+    /// runThreaded() (docs/manual/markdown/reference/PERFORMANCE.md); refused with fortran_compat and with an rng other than mt64.
     int threads{0};
 };
 
@@ -113,7 +113,7 @@ public:
     /// initialise(), then the event loop on threadCount() threads (step() loop or runThreaded()), then finish().
     void run();
 
-    // ---- parallel event loop (task P15.4, docs/PERFORMANCE.md) ------------------------------------------------
+    // ---- parallel event loop (task P15.4, docs/manual/markdown/reference/PERFORMANCE.md) ------------------------------------------------
     /// The number of event-loop threads of this run: RunOptions::threads if > 0, else the pipeline "threads", else 1
     /// (after initialise()).
     /// @return the thread count.

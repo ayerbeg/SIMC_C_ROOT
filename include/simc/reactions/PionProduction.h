@@ -36,7 +36,7 @@
  * JSON config (all optional): {"data_dir": "<dir with delta_relativistic_bw.inp>" (default data/pion), "verbose": bool}.
  * The momentum distributions and the Benhar table come from RunSetup::data_dir (data/spectral).
  *
- * fortran_compat (D-031, docs/FORTRAN_DIFFERENCES.md):
+ * fortran_compat (D-031, docs/translation/markdown/FORTRAN_DIFFERENCES.md):
  *   FORTRAN-BUG(D-038 F5)  simc.f:1236-1290: the central cross section (.hist CENTRAL.sigcc) is computed with
  *                          main0%epsilon = t = phi_pq = 0 (only complete_recon_ev(vertex0) is called). Corrected: main0
  *                          gets the central W, epsilon, theta_pq, t, tmin, q2, phi_pq (complete_ev formulas on vertex0).

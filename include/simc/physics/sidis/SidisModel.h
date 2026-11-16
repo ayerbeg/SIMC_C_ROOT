@@ -20,7 +20,7 @@
  * fortran_compat (D-031) restores the Fortran as built; the default corrects D-051 F1 (0/0 when all PDFs are 0),
  * F2 (negative Fermi x_Bj: weight 0 instead of the STOP), F4 (pi0 dbar FF and mass) and F6 (survival probability:
  * hadron momentum, zaero for the SHMS, sqrt in the path). Unsupported
- * combinations are refused in init() (sidis::checkSupported). docs/FORTRAN_DIFFERENCES.md.
+ * combinations are refused in init() (sidis::checkSupported). docs/translation/markdown/FORTRAN_DIFFERENCES.md.
  */
 #ifndef SIMC_PHYSICS_SIDIS_SIDISMODEL_H
 #define SIMC_PHYSICS_SIDIS_SIDISMODEL_H

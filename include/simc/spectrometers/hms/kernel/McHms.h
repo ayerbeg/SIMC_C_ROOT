@@ -34,7 +34,7 @@
  *   * decay: grnd() in project/transp (optics::project); collimator: 1 grnd per hit step for pions
  *     (pion_coll_absorb) + musc + enerloss_new gauss1(10).
  *
- * Fortran behaviour (see the .cpp for file:line and the marker; docs/FORTRAN_DIFFERENCES.md):
+ * Fortran behaviour (see the .cpp for file:line and the marker; docs/translation/markdown/FORTRAN_DIFFERENCES.md):
  *   * the calorimeter aperture test is commented out (mc_hms_hut.f:582-588): hSTOP_cal is never incremented;
  *   * the second hodoscope planes are tested with the FIRST hodoscope limits/offsets (mc_hms_hut.f:537-551);
  *   * multiple scattering in the Cherenkov exit foil is applied twice (mc_hms_hut.f:523-529);
@@ -97,7 +97,7 @@ enum StopCode : int {
 /// Number of HMS stop counters.
 constexpr int kNumCounters = 22;
 
-/// Key of counter `idx` (1..22) in the summary JSON / .geni (docs/OUTPUT_FORMAT.md "Stop counters"):
+/// Key of counter `idx` (1..22) in the summary JSON / .geni (docs/manual/markdown/reference/OUTPUT_FORMAT.md "Stop counters"):
 /// trials, slit_hor, slit_vert, slit_oct, Q1_in, ..., D1_out, hut, dc1, dc2, scin, cal, successes, coll.
 /// @param idx counter index (1..22).
 /// @return the key (a string literal).

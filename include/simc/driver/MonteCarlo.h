@@ -26,7 +26,7 @@
  * the vertex before the drift to z = 0 (simc.f:1425-1432, 1693-1701) and track_to_tgt after a successful arm
  * (simc.f:1573-1590, 1777-1794, ISpectrometer::reconstructLastTrack). A calorimeter arm with the field STOPs (T17).
  *
- * Fortran behaviour reproduced (docs/FORTRAN_DIFFERENCES.md):
+ * Fortran behaviour reproduced (docs/translation/markdown/FORTRAN_DIFFERENCES.md):
  *   * the electron-arm resmult goes through the SAVEd local tmpfact (simc.f:1334): if the electron-arm MC stops
  *     before writing it (HMS before the hut), ntup%resfac gets the value of an EARLIER call; it is added before
  *     the ok check, so it also happens for failed electron arms;

@@ -3,7 +3,7 @@
  * @ingroup output
  * @brief simc::RunSummarySink: sink "run_summary", the summary.json and summary.txt files of a run.
  *
- * Writes \<run\>.summary.json (schema docs/summary.schema.json) and a human-readable
+ * Writes \<run\>.summary.json (schema docs/manual/markdown/reference/summary.schema.json) and a human-readable
  * \<run\>.summary.txt at the end of the run. The numbers are those of simc.f:report (.hist)
  * and the .geni stop counters.
  *

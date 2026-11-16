@@ -3,7 +3,7 @@
  * @ingroup output
  * @brief The run-summary JSON ("simc_run_summary"): builder for the C++ run, parser for the Fortran .hist/.geni.
  *
- * The run-summary JSON ("simc_run_summary", docs/summary.schema.json, docs/OUTPUT_FORMAT.md):
+ * The run-summary JSON ("simc_run_summary", docs/manual/markdown/reference/summary.schema.json, docs/manual/markdown/reference/OUTPUT_FORMAT.md):
  * one format for both codes so the comparison tool reads a single layout.
  *   * C++:     BuildSummaryJson(setup, summary)       (RunSummarySink)
  *   * Fortran: ParseFortranHist(.hist, .geni)          (tools/hist2json)

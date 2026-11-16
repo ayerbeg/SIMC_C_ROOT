@@ -13,7 +13,7 @@
  *
  * JSON config (all optional): { "verbose": true }. No data files.
  * Run state read from the set-up: targ%Mtar_struck, targ%M, the reaction flags, fortran_compat (D-057 F6, F20). Unsupported input
- * combinations are refused in init() (rho::checkSupported). docs/FORTRAN_DIFFERENCES.md.
+ * combinations are refused in init() (rho::checkSupported). docs/translation/markdown/FORTRAN_DIFFERENCES.md.
  */
 #ifndef SIMC_PHYSICS_RHO_RHOMODEL_H
 #define SIMC_PHYSICS_RHO_RHOMODEL_H

@@ -103,7 +103,7 @@ std::string FormatHist(const RunSetup& setup, const RunReport& r);
 std::string FormatGeni(const RunSetup& setup, const RunReport& r);
 
 /// The RunSummary for the output sinks, with the optional summary sections (central, target, radiative,
-/// recon_summary, limits, slop, kinematics) in the summary.json layout (docs/OUTPUT_FORMAT.md §2).
+/// recon_summary, limits, slop, kinematics) in the summary.json layout (docs/manual/markdown/reference/OUTPUT_FORMAT.md §2).
 /// @param setup the run set-up.
 /// @param r the run report.
 /// @return the run summary.

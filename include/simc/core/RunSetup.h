@@ -308,7 +308,7 @@ struct RunSetup {
     std::string run_name{"simc"};   ///< Fortran `base` (file stem)
     std::string output_dir{"."};    ///< Fortran 'outfiles/' and 'worksim/'
     /// Run option `fortran_compat` (D-031, task P7.5). false (default) = the clear Fortran bugs listed in
-    /// docs/FORTRAN_DIFFERENCES.md are CORRECTED (code marked `FORTRAN-BUG(D-xxx)`); true = the exact Fortran
+    /// docs/translation/markdown/FORTRAN_DIFFERENCES.md are CORRECTED (code marked `FORTRAN-BUG(D-xxx)`); true = the exact Fortran
     /// behaviour, used by the bitwise L1/replay/regression tests. Set once from SetupOptions::fortran_compat by
     /// BuildRunSetup and read by every stage through StageContext::setup (no global).
     bool fortran_compat{false};

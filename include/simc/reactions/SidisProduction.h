@@ -23,7 +23,7 @@
  *                    meaningful as it is (D-051 F13); main0 epsilon/t are not read by peepiX.
  * Random numbers (H): 10 grnd + 4 gauss1 in generate/beam, + 8 gauss1 when complete_ev passes the semi tests; D: + 4 grnd.
  *
- * fortran_compat (D-031; docs/FORTRAN_DIFFERENCES.md):
+ * fortran_compat (D-031; docs/translation/markdown/FORTRAN_DIFFERENCES.md):
  *   FORTRAN-BUG(D-051 F9, as D-033 F5) event.f:922: PmPer from the previous try's vertex%Pm; corrected: from this Pm.
  *   FORTRAN-DIFF-CANDIDATE(D-051 F8) event.f:979-996: the two-pion threshold (Mp+Mpi0)^2 for every hadron, Mtar_struck
  *                    and no Fermi motion; the z > 1 test is unreachable. Kept.

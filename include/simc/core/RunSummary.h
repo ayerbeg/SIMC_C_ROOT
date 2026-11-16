@@ -19,7 +19,7 @@ namespace simc {
 /** @addtogroup core
  *  @{ */
 
-/// Per-aperture stop counters of one spectrometer. Keys are documented in docs/OUTPUT_FORMAT.md.
+/// Per-aperture stop counters of one spectrometer. Keys are documented in docs/manual/markdown/reference/OUTPUT_FORMAT.md.
 struct StopCounters {
     std::string spectrometer;            ///< "hms", "shms", "sos", "hrsr", "hrsl", "calo"
     std::string role;                    ///< "electron", "hadron" or "both"

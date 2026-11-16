@@ -18,7 +18,7 @@
  *   * The energy losses go through an IMaterialModel (default: own SimcMaterial "simc_material"),
  *     which carries the enerloss_new static state (numerr, x). In SIMC only target.f calls
  *     enerloss_new, so one target instance reproduces the Fortran process state.
- *   Markers (docs/FORTRAN_DIFFERENCES.md): FORTRAN-QUIRK = documented Fortran behaviour, FORTRAN-DIFF-CANDIDATE = kept,
+ *   Markers (docs/translation/markdown/FORTRAN_DIFFERENCES.md): FORTRAN-QUIRK = documented Fortran behaviour, FORTRAN-DIFF-CANDIDATE = kept,
  *   open question, FORTRAN-BUG = corrected unless fortran_compat.
  *   * FORTRAN-DIFF-CANDIDATE(D-012 F4): th_can of the pudding can (can 2) is a static local. When
  *     |z_can/R| > 1 + 1e-6 it is NOT updated (only a warning is printed) and the previous call's value

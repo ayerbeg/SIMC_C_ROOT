@@ -33,7 +33,7 @@
  *     202 gauss1 for a success (and for a stop on the fitted-track calorimeter cut), 196 s2, 154 dc2, 84 dc1;
  *   * decay: grnd() in project/transp; collimator (using_SHMScoll, pions/muons): as mc_hms_coll.
  *
- * Fortran behaviour (see the .cpp for file:line and the marker; docs/FORTRAN_DIFFERENCES.md):
+ * Fortran behaviour (see the .cpp for file:line and the marker; docs/translation/markdown/FORTRAN_DIFFERENCES.md):
  *   * the drifts use the hard-coded mc_shms.f lengths (39.47, 60.68, 307.95) that differ from the COSY drift
  *     classes (D-015 F5); the ray is projected to the Cherenkov entrance zd_fp + hcer_1_zentrance = 16.25 cm;
  *   * stop_id: reset to 0 on every call, set to 1..31 by the magnet apertures and 18..25 by the hut, NOT set by
@@ -124,7 +124,7 @@ enum StopCode : int {
 /// Number of counter slots of COMMON /spectrometer_shms/ (including the stop_id slot).
 constexpr int kNumSlots = 52;
 
-/// Summary/.geni key of slot `idx` (docs/OUTPUT_FORMAT.md): trials, successes, targ_hor, ..., hb_in, ..., q1_in,
+/// Summary/.geni key of slot `idx` (docs/manual/markdown/reference/OUTPUT_FORMAT.md): trials, successes, targ_hor, ..., hb_in, ..., q1_in,
 /// ..., D1_in, D1_flr, D1_men, D1_mid1..7, D1_mex, D1_out, BP_in, BP_out, hut, dc1, dc2, cer1, cer2, s1, s2, s3,
 /// cal, "stop_id" (51), coll.
 /// @param idx slot index (1..52).

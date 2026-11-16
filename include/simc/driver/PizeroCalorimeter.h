@@ -11,7 +11,7 @@
  * Fortran: simc.f:montecarlo l.1489-1556 (rotation l.1495-1515, the two mc_calo calls l.1517-1544, ok_P_arm l.1546-1556)
  * and l.1597-1609 (FP / RECON copies).
  *
- * Fortran behaviour (docs/FORTRAN_DIFFERENCES.md, D-062):
+ * Fortran behaviour (docs/translation/markdown/FORTRAN_DIFFERENCES.md, D-062):
  *   * FORTRAN-BUG(D-062 G1), corrected unless fortran_compat: the photons are passed m2 = Mh2 = Mpi0^2 and decay_flag =
  *     doing_decay (simc.f:1518-1522/1535-1539), so every pi0 run with doing_decay = 1 STOPs in project.f:76-90 ('cannot
  *     decay particle with mass= 134.98'). Corrected: a photon is massless and never decays (m2 = 0, decay_flag = false).

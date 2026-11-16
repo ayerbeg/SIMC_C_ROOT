@@ -13,7 +13,7 @@
  * 8 = calorimeter on the SHMS side. Code 6 (SHMS with the LSA tune) is RETIRED: the original program stops for it,
  * although parts of it still treat 6 as SHMS. SIMC++ rejects 6 when the input is read (InpReader::loadRun,
  * simc::FromJson, and simc::BuildRunSetup for programmatic parameters) with the message of simc::ArmCodeError();
- * 6 is not a SpectrometerId. Decision D-032 (docs/FORTRAN_DIFFERENCES.md), task P7.5.
+ * 6 is not a SpectrometerId. Decision D-032 (docs/translation/markdown/FORTRAN_DIFFERENCES.md), task P7.5.
  * @note Origin: Fortran SIMC dbase.f:883-930, infiles/inputfile_protoype.inp:22-23; code 6: dbase.f:895-897/915-917,
  *       mc_shms.f:335-340.
  */

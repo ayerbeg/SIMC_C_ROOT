@@ -19,7 +19,7 @@
  * Collaborators (StageContext at init(), through their interfaces): the target (trip_thru_target arms 2/3), the
  * radiator (radc_init_ev at the end of complete_ev, generate_rad), the physics model (complete_main).
  *
- * fortran_compat (D-031, docs/FORTRAN_DIFFERENCES.md):
+ * fortran_compat (D-031, docs/translation/markdown/FORTRAN_DIFFERENCES.md):
  *   FORTRAN-BUG(D-033 F5)  event.f:926 vertex%PmPer from the previous try's vertex%Pm (D, A): corrected after l.940/943.
  *   FORTRAN-BUG(D-033 F7)  event.f:944 heavy Mrec = sqrt(Emiss**2-Pmiss**2) without a guard (NaN, success = .true.):
  *                          corrected: the try fails (success = false) when Emiss**2 - Pmiss**2 < 0 or NaN.

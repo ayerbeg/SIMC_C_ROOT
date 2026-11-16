@@ -14,7 +14,7 @@
  *   TheorySfWeight    event.f:complete_main (l.1402-1430): SF_weight of D(e,e'p) / A(e,e'p) from the theory-file
  *                     momentum distributions (init.f:theory_init, RunSetup::theory).
  *
- * fortran_compat (D-031, docs/FORTRAN_DIFFERENCES.md):
+ * fortran_compat (D-031, docs/translation/markdown/FORTRAN_DIFFERENCES.md):
  *   * FORTRAN-BUG(D-033 F6): sf_lookup leaves Em1, Em2, sf1, sf2 unassigned for Em == Emval(numEm) (and NaN Em) and
  *     then uses the SAVEd values of the PREVIOUS call (NaN on the first call of a process). Corrected: Em ==
  *     Emval(numEm) uses the last interval; no state is carried between calls (NaN Em -> 0).

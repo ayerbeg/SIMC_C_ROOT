@@ -19,7 +19,7 @@
  *   /trgFieldStrength/ (Bz, Br, zz, rr), /trgFieldAngles_e/, /trgFieldAngles_p/ (TargetField members),
  *   /trgConversionFactor/ factor (factor(): set at the entry of every trackToPlane call with ok = true; T9).
  *
- * FORTRAN-QUIRKs kept (D-067 class b/d, docs/FORTRAN_DIFFERENCES.md §17): pi180 = 3.141592653/180 (T7); field zero
+ * FORTRAN-QUIRKs kept (D-067 Categories B/D, docs/translation/markdown/FORTRAN_DIFFERENCES.md §17): pi180 = 3.141592653/180 (T7); field zero
  * for z' >= 100 or r >= 100 cm and for non-finite coordinates (T8: INT() of NaN/Inf/huge = -2147483648); signed dist0 in
  * the step limit (T4); convergence test on the start-of-iteration distance (T5); factor = 90/E (T6); the restart from
  * the wrong-direction step after the direction test (T10); phi treated as 0 (T17).

@@ -19,7 +19,7 @@
  *       source tree, SIMC_KAON_DATA_DIR), "verbose": true }
  * fortran_compat (D-031, setup.fortran_compat) restores the Fortran as built; the default corrects D-043 F1 (fint
  * value), F2 (saghai_sigma0.dat records), F3 (eekeek s nodes), F5 (survival probability from the kaon momentum) and F6
- * (zaero for the SHMS, sqrt in the path). docs/FORTRAN_DIFFERENCES.md.
+ * (zaero for the SHMS, sqrt in the path). docs/translation/markdown/FORTRAN_DIFFERENCES.md.
  */
 #ifndef SIMC_PHYSICS_KAON_KAONMODEL_H
 #define SIMC_PHYSICS_KAON_KAONMODEL_H

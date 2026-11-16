@@ -5,7 +5,7 @@
  *
  * the `simc++` command line as a library function (task P15.3).
  * tools/simc_main.cpp is `return simc::driver::CommandLineMain(argc, argv);`. A program that links extra plug-ins
- * (classes registered with SIMC_REGISTER, docs/EXTENDING.md) calls the same function and gets the full simc++ command
+ * (classes registered with SIMC_REGISTER, docs/manual/markdown/reference/EXTENDING.md) calls the same function and gets the full simc++ command
  * line with its plug-ins selectable from the JSON pipeline (examples/out_of_tree_plugin).
  * Usage, options and exit status: src/driver/CommandLine.cpp (or `simc++` without arguments).
  */
