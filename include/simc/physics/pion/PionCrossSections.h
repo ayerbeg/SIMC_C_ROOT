@@ -81,7 +81,7 @@ struct ExclfitResult {
 };
 /// Fortran: physics_pion.f:exclfit (l.807-854). p = p(1:17) at [0..16]. mtar_gev is the local 0.938 and pi the
 /// literal 3.1415928 of the Fortran (FORTRAN-DIFF-CANDIDATE D-038 F4: the nucleon mass also for coherent production).
-/// @param t -t [GeV^2].
+/// @param t t as peepi passes it (main%t/1e6) [GeV^2].
 /// @param thetacm,phicm CM angles [rad].
 /// @param q2_gev Q2 [GeV^2].
 /// @param s_gev s = W^2 [GeV^2].
@@ -105,7 +105,7 @@ struct Excmn {
 /// fpifact = 0; pi- for which_pion 1, 11, 3; pi+ otherwise. `excmn` (optional) receives COMMON /excmn/ after the call
 /// (for pi0: the values of the second, pi-, exclfit call).
 /// @param thcm,phicm CM angles [rad].
-/// @param t -t [GeV^2].
+/// @param t t as peepi passes it (main%t/1e6) [GeV^2].
 /// @param q2 Q2 [GeV^2].
 /// @param wsq W^2 [GeV^2].
 /// @param eps virtual photon polarization.
