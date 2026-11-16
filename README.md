@@ -83,7 +83,7 @@ Jefferson Lab and the Hall C (and Hall A) collaborations; the credit for them be
 re-implements their work in C++ and documents the differences found during the translation; it is not an official
 Jefferson Lab product. Results should be checked as for any simulation code.
 
-C++ translation: Carlos.
+C++ translation: Carlos Ayerbe (gayoso@jlab.org).
 
 ## License
 
@@ -94,4 +94,3 @@ of the original code, which will be clarified with its maintainers.
 
 - The Hall C collaboration and all contributors to the original Fortran SIMC
 - Jefferson Lab for the detector specifications and test data
-- The ROOT team for the framework
