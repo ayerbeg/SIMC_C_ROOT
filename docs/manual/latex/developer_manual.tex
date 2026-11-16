@@ -1,9 +1,35 @@
-% docs/latex/developer_manual.tex — LaTeX skeleton of the book "developer_manual" (task P15.D5).
-% The text is generated from the Markdown sources by tools/md2latex.py into developer_manual_meta.tex / developer_manual_body.tex (build
-% directory); the design is docs/latex/simcpp.cls; parts and chapters: docs/latex/books.json.
-% Build: cmake --build <build> --target pdf   (or tools/build_docs_pdf.py --build-dir <dir>)
+% docs/manual/latex/developer_manual.tex - main file of the LaTeX edition of the book "developer_manual" (SIMC++ documentation).
+%   Compile: cmake --build <build> --target pdf, or tools/build_docs_pdf.py (figures, xelatex passes,
+%   makeindex with docs/common/latex/simcpp.ist); by hand, see docs/README.md. XeLaTeX, class
+%   docs/common/latex/simcpp.cls (packages: fontspec, tikz, xcolor, hyperref, listings, longtable, booktabs,
+%   titlesec, titletoc, fancyhdr, makeidx, preview, ...); fonts TeX Gyre Pagella, TeX Gyre Heros, DejaVu Sans
+%   Mono. The figures are built first from docs/{manual,translation}/figures/*.tex (preview.sty) into PDFs.
+%   Structure (parts, chapter order) is edited HERE; docs/common/latex/books.json only drives
+%   tools/md2latex.py when chapters are re-converted from the Markdown.
 \documentclass{simcpp}
-\input{developer_manual_meta}
+\simcsetmeta{SIMC++ Developer Manual}
+  {Architecture,\allowbreak{} interfaces, build, plug-ins and parallelism of the SIMC++ framework}
+  {\simcbuildversion}{\simcbuilddate}{SIMC++ documentation}
 \begin{document}
-\input{developer_manual_body}
+\simcfrontmatter
+\input{developer/index}
+\input{front/developer_reading}
+\input{conventions}
+\simcmainmatter
+
+\simcpart{Foundations}
+  {What the framework is made of, where the code lives, and how it is built and tested.}
+\input{developer/01_overview}
+\input{developer/02_build}
+
+\simcpart{Architecture}
+  {The driver, the events, the stage interfaces with their contracts, and the public headers.}
+\input{developer/03_architecture}
+
+\simcpart{Extending and maintaining}
+  {New plug-ins step by step, the parallel event loop, and the rules of the code base.}
+\input{developer/04_extending}
+\input{developer/05_parallel}
+\input{developer/06_standards}
+\simcbackmatter
 \end{document}

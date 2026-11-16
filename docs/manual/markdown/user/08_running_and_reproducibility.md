@@ -36,10 +36,10 @@ In a JSON input: `"run": {"fortran_compat": true}`. The log says which mode is a
 (` SIMC++: fortran_compat = true (exact Fortran behaviour, known Fortran bugs kept)`).
 
 > **Legacy SIMC:** what each correction changes in the results, and which run types are affected, is listed in
-> `docs/translation/user_differences.md`; how to compare SIMC++ with legacy SIMC runs statistically is in
-> `docs/translation/user_comparing_with_fortran.md`.
+> `docs/translation/markdown/user_differences.md`; how to compare SIMC++ with legacy SIMC runs statistically is in
+> `docs/translation/markdown/user_comparing_with_fortran.md`.
 
-![The two behaviour modes: what each class of finding does by default and with --fortran-compat, and how the switch reaches the code](../../figures/compat_switch.png)
+![The two behaviour modes: what each Category of finding does by default and with --fortran-compat, and how the switch reaches the code](../../../translation/figures/compat_switch.png)
 
 ## 8.4 Reproducing legacy SIMC results exactly
 
@@ -76,7 +76,7 @@ Notes:
 ## 8.5 Threads: `--threads N`
 
 `--threads N` (or `"pipeline": {"threads": N}`; the option wins) runs the event loop on N threads
-(`docs/PERFORMANCE.md` §3):
+(`docs/manual/markdown/reference/PERFORMANCE.md` §3):
 
 * each thread has its own copy of every stage and its own mt64 random stream, derived from (seed, thread number);
 * the events are split: thread k makes ngen/N events (+1 for k < ngen mod N), so the total is exactly ngen (successes
@@ -105,7 +105,7 @@ $ simc++ run.json -o out_compat --ngen 5000 --threads 4 --fortran-compat
 simc++: --threads 4 (more than one event-loop thread) cannot be used with --fortran-compat: the exact Fortran reproduction needs the single random stream in the Fortran order (run with --threads 1)
 ```
 
-Statistical comparisons of 8-thread and one-thread runs agree (`docs/PERFORMANCE.md` §3).
+Statistical comparisons of 8-thread and one-thread runs agree (`docs/manual/markdown/reference/PERFORMANCE.md` §3).
 
 ![The parallel event loop: the master builds N workers with their own stages and random streams, the workers run independently, and the results are merged in a fixed order](../../figures/parallel_mode.png)
 

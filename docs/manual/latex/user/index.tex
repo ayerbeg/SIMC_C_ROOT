@@ -1,0 +1,41 @@
+% docs/manual/latex/user/index.tex - chapter of the LaTeX edition of the book "user_manual" (SIMC++ documentation).
+%   Converted once from docs/manual/markdown/user/index.md by tools/md2latex.py; from then on THIS FILE is the source of the
+%   LaTeX edition and may be edited by hand. Re-running tools/md2latex.py --write-sources for this
+%   chapter OVERWRITES the hand edits (see docs/README.md).
+%   Compile: cmake --build <build> --target pdf, or tools/build_docs_pdf.py (figures, xelatex passes,
+%   makeindex with docs/common/latex/simcpp.ist); by hand, see docs/README.md. XeLaTeX, class
+%   docs/common/latex/simcpp.cls (packages: fontspec, tikz, xcolor, hyperref, listings, longtable, booktabs,
+%   titlesec, titletoc, fancyhdr, makeidx, preview, ...); fonts TeX Gyre Pagella, TeX Gyre Heros, DejaVu Sans
+%   Mono. The figures are built first from docs/{manual,translation}/figures/*.tex (preview.sty) into PDFs.
+\chapter*{About this manual}\addcontentsline{toc}{chapter}{About this manual}\markboth{About this manual}{About this manual}\label{user_manual-index}
+How to install and run SIMC++. No knowledge of the legacy Fortran SIMC is needed. The developer manual
+(../\allowbreak{}developer/\allowbreak{}index.\allowbreak{}md\footnote{SIMC++ Developer Manual, ``SIMC++ developer manual'' (\code{docs/\allowbreak{}manual/\allowbreak{}markdown/\allowbreak{}developer/\allowbreak{}index.\allowbreak{}md})}) covers maintaining and extending the code.
+
+\begin{simctable}{small}{2}{>{\raggedright\arraybackslash}p{\dimexpr 0.298\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.655\linewidth-2\tabcolsep\relax}}
+\caption{About this manual}\\%
+\toprule\rowcolor{simchead}\simcth{chapter} & \simcth{content} \\\midrule\endfirsthead
+\multicolumn{2}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{chapter} & \simcth{content} \\\midrule\endhead
+\midrule\multicolumn{2}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+\hyperref[user_manual-01u5fintroduction]{1. Introduction} & what SIMC++ simulates, run modes, limitations \\
+\hyperref[user_manual-02u5finstallation]{2. Installation} & requirements,\allowbreak{} build, install, data directory (\code{SIMC\_\allowbreak{}DATA\_\allowbreak{}DIR}, \code{-{}-{}print-{}data-{}dir}\simcidx{Command-line options!print-data-dir@\code{-{}-{}print-{}data-{}dir}}), tests \\
+\hyperref[user_manual-03u5fquicku5fstart]{3. Quick start} & run an example input, the outputs, look at the tree in ROOT, the same run from JSON \\
+\hyperref[user_manual-04u5finputs]{4. Inputs} & \code{.\allowbreak{}inp} syntax, old names, JSON, plug-in selection, \textbf{complete parameter reference} \\
+\hyperref[user_manual-05u5freactions]{5. Reactions} & (e,e'p), pion, kaon, Delta, SIDIS, rho, phase space: what each computes and its limitations \\
+\hyperref[user_manual-06u5fspectrometers]{6. Spectrometers} & HMS, SHMS, SOS, HRS, calorimeter; spectrometer numbers; \hyperref[param:spectu5fmode]{\code{spect\_\allowbreak{}mode}}\simcidx{Parameters!spect_mode@\code{spect\_mode}}; target field \\
+\hyperref[user_manual-07u5foutputs]{7. Outputs} & tree branches per reaction, \code{.\allowbreak{}hist}, \code{.\allowbreak{}geni}, \code{.\allowbreak{}gen}, summary JSON, exit status \\
+\hyperref[user_manual-08u5frunningu5fandu5freproducibility]{8. Running modes and reproducibility} & seeds, mt64 vs RANLUX, the legacy-compatible mode, reproducing legacy SIMC results exactly, \code{-{}-{}threads}\simcidx{Command-line options!threads@\code{-{}-{}threads}} \\
+\hyperref[user_manual-09u5fperformance]{9. Performance tips} & speed, threads, memory \\
+\hyperref[user_manual-10u5ffaq]{10. FAQ and troubleshooting} & common stops, old inputs, data not found, NaN columns, ... \\
+Example inputs\footnotemark{} & \code{h\_\allowbreak{}elastic\_\allowbreak{}rad.\allowbreak{}inp} (chapter 3), \code{legacy\_\allowbreak{}names.\allowbreak{}inp} (chapter 4.1.3) \\
+\hyperref[user_manual-VERIFIEDu5fEXAMPLES]{Verified examples} & transcript of every command of this manual, as run on the stated commit \\
+\end{simctable}
+\addtocounter{footnote}{-1}
+\stepcounter{footnote}\footnotetext{\code{docs/\allowbreak{}manual/\allowbreak{}markdown/\allowbreak{}user/\allowbreak{}examples/}}
+Reference documents: \code{docs/\allowbreak{}manual/\allowbreak{}markdown/\allowbreak{}reference/\allowbreak{}INP\_\allowbreak{}JSON\_\allowbreak{}MAPPING.\allowbreak{}md} (the \code{.\allowbreak{}inp} → JSON table), \code{docs/\allowbreak{}manual/\allowbreak{}markdown/\allowbreak{}reference/\allowbreak{}OUTPUT\_\allowbreak{}FORMAT.\allowbreak{}md} (every output value),
+\code{docs/\allowbreak{}manual/\allowbreak{}markdown/\allowbreak{}reference/\allowbreak{}DRIVER.\allowbreak{}md}, \code{docs/\allowbreak{}manual/\allowbreak{}markdown/\allowbreak{}reference/\allowbreak{}PERFORMANCE.\allowbreak{}md}. Comparison with the legacy Fortran SIMC and the list of differences:
+\code{docs/\allowbreak{}translation/}.
+
+Conventions: commands are shown as typed in a shell with \code{\$SIMCPP\_\allowbreak{}PREFIX/\allowbreak{}bin} on the \code{PATH} (directory layout: \hyperref[user_manual-02u5finstallation:21-directory-layout-used-in-this-manual]{2.1}). \code{\$EX} is the directory of the example inputs (\code{\$SIMCPP\_\allowbreak{}PREFIX/\allowbreak{}share/\allowbreak{}simc/\allowbreak{}docs/\allowbreak{}manual/\allowbreak{}markdown/\allowbreak{}user/\allowbreak{}examples}).
+\code{\$SIMC\_\allowbreak{}REFERENCE} (the project's reference runs of the legacy program) is needed only for the example of chapter 8.4.
+

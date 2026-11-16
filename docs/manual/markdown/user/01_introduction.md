@@ -59,7 +59,7 @@ inputs distributed with SIMC reproduce the original output files exactly in the 
 agree statistically, except where a known bug of the original is corrected. The test suite keeps this true for every
 change ([2.6](02_installation.md#26-running-the-tests)); the evidence is in `docs/translation/`.
 
-![The validation ladder: single routines on fixed inputs, the whole event chain on the random numbers of the original program, complete runs identical bit for bit, and complete runs compared statistically](../../figures/validation_ladder.png)
+![The validation ladder: single routines on fixed inputs, the whole event chain on the random numbers of the original program, complete runs identical bit for bit, and complete runs compared statistically](../../../translation/figures/validation_ladder.png)
 
 ## 1.5 Limitations
 

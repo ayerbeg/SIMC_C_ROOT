@@ -1,5 +1,5 @@
 // tests/unit/test_stage_headers.cpp — every stage interface compiles, can be implemented,
-// and self-registers in the name-keyed Registry (docs/ARCHITECTURE.md §3).
+// and self-registers in the name-keyed Registry (docs/manual/markdown/reference/ARCHITECTURE.md §3).
 #include <stdexcept>
 
 #include "TestUtil.h"

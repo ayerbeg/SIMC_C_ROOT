@@ -1,0 +1,157 @@
+% docs/translation/latex/chapters/01_methodology.tex - chapter of the LaTeX edition of the book "translation_report" (SIMC++ documentation).
+%   Converted once from docs/translation/markdown/01_methodology.md by tools/md2latex.py; from then on THIS FILE is the source of the
+%   LaTeX edition and may be edited by hand. Re-running tools/md2latex.py --write-sources for this
+%   chapter OVERWRITES the hand edits (see docs/README.md).
+%   Compile: cmake --build <build> --target pdf, or tools/build_docs_pdf.py (figures, xelatex passes,
+%   makeindex with docs/common/latex/simcpp.ist); by hand, see docs/README.md. XeLaTeX, class
+%   docs/common/latex/simcpp.cls (packages: fontspec, tikz, xcolor, hyperref, listings, longtable, booktabs,
+%   titlesec, titletoc, fancyhdr, makeidx, preview, ...); fonts TeX Gyre Pagella, TeX Gyre Heros, DejaVu Sans
+%   Mono. The figures are built first from docs/{manual,translation}/figures/*.tex (preview.sty) into PDFs.
+\chapter{\texorpdfstring{Methodology}{Methodology}}\label{translation_report-01u5fmethodology}
+\simcabstract{This chapter explains what was translated, how the translation was organised, and how it was proved. The later
+chapters give the details: the validation framework (chapter 2), the routine map (chapter 3), the numerical rules
+(chapter 4), the compatibility switch (chapter 5) and the catalogue of every Fortran bug and quirk (chapter 6).}
+\section{\texorpdfstring{The Fortran SIMC in one page}{The Fortran SIMC in one page}}\label{translation_report-01u5fmethodology:11-the-fortran-simc-in-one-page}
+SIMC is the Hall C Monte Carlo for coincidence (e,e'X) experiments. The version translated here is
+\code{\$SIMC\_\allowbreak{}FORTRAN} (the \code{simc\_\allowbreak{}gfortran} tree; gfortran build, flags \code{-{}O\ -{}w\ -{}ffixed-{}line-{}length-{}132\ -{}ff2c\ -{}fno-{}automatic\ -{}fdefault-{}real-{}8}). Its structure:
+
+\begin{itemize}
+\item \textbf{Main program} \code{simc.\allowbreak{}f} (l.1-623):
+
+\begin{enumerate}
+\item start-up (l.53-160): \code{dbase\_\allowbreak{}read} (dbase.f: the CTP \code{.\allowbreak{}inp} reader and every derived quantity), \code{init.\allowbreak{}f}
+(\code{min\_\allowbreak{}max\_\allowbreak{}init}, \code{target\_\allowbreak{}init}, \code{limits\_\allowbreak{}init}, \code{radc\_\allowbreak{}init}, \code{theory\_\allowbreak{}init}), the target factor and luminosity,
+\code{calculate\_\allowbreak{}central} (the central event and \code{CENTRAL.\allowbreak{}sigcc}), the \code{using\_\allowbreak{}tgt\_\allowbreak{}field}\simcidx{Parameters!using_tgt_field@\code{using\_tgt\_field}} arm angles (l.120-151);
+\item the event loop (l.169-352): \code{do\ while\ (\allowbreak{}nevent\ <\ |\allowbreak{}ngen|\allowbreak{})}. One pass is one \textbf{try}:
+\code{generate} (event.f) → \code{montecarlo} (simc.f l.1310-1853: both spectrometer arms) → \code{complete\_\allowbreak{}recon\_\allowbreak{}ev} →
+\code{complete\_\allowbreak{}main} (the weight) → \code{pass\_\allowbreak{}cuts} (l.226-238) and \code{hard\_\allowbreak{}cuts}\simcidx{Parameters!hard_cuts@\code{hard\_cuts}} → histograms (\code{inc}, l.250-287) →
+\code{results\_\allowbreak{}ntu\_\allowbreak{}write} (the ntuple) → the accumulators and \code{limits\_\allowbreak{}update};
+\item the end (l.354-620): normalisation (\code{normfac}, \code{genvol}, resolutions),\allowbreak{} the \code{.\allowbreak{}geni} and \code{.\allowbreak{}gen} files, and
+\code{report} (the \code{.\allowbreak{}hist} file).
+\end{enumerate}
+\item \textbf{Event generation} \code{event.\allowbreak{}f}: \code{generate} (beam, vertex, reaction variables, \code{complete\_\allowbreak{}ev}, \code{generate\_\allowbreak{}rad}),
+\code{complete\_\allowbreak{}ev}, \code{complete\_\allowbreak{}recon\_\allowbreak{}ev}, \code{complete\_\allowbreak{}main}, \code{limits\_\allowbreak{}update}, \code{physics\_\allowbreak{}angles}, \code{spectrometer\_\allowbreak{}angles}.
+Every reaction is a set of \code{if\ (\allowbreak{}doing\_\allowbreak{}pion)\ .\allowbreak{}.\allowbreak{}.} branches inside these routines.
+\item \textbf{Physics}: \code{physics\_\allowbreak{}proton.\allowbreak{}f} (sigep, deForest), \code{physics\_\allowbreak{}pion.\allowbreak{}f}, \code{physics\_\allowbreak{}kaon.\allowbreak{}f}, \code{physics\_\allowbreak{}delta.\allowbreak{}f},
+\code{semi\_\allowbreak{}physics.\allowbreak{}f} (+ CTEQ5, fDSS, F1F2IN21), \code{rho\_\allowbreak{}physics.\allowbreak{}f}, \code{generate\_\allowbreak{}rho.\allowbreak{}f}, \code{rho\_\allowbreak{}decay.\allowbreak{}f}, \code{pizero\_\allowbreak{}decay.\allowbreak{}f},
+\code{sf\_\allowbreak{}lookup.\allowbreak{}f}, \code{jacobians.\allowbreak{}f}.
+\item \textbf{Radiation} \code{radc.\allowbreak{}f}, \code{brem.\allowbreak{}f}, \code{init.\allowbreak{}f:\allowbreak{}radc\_\allowbreak{}init*}. \textbf{Target} \code{target.\allowbreak{}f}, \code{enerloss\_\allowbreak{}new.\allowbreak{}f}, \code{shared/\allowbreak{}musc*.\allowbreak{}f}.
+\item \textbf{Spectrometers} \code{hms/}, \code{shms/}, \code{sos/}, \code{hrsl/}, \code{hrsr/}, \code{calo/} (one \code{mc\_\allowbreak{}<arm>} single-arm Monte Carlo each,
+with hut and reconstruction),\allowbreak{} sharing the COSY transport \code{shared/\allowbreak{}transp.\allowbreak{}f}, \code{project.\allowbreak{}f}, \code{rotate\_\allowbreak{}*axis.\allowbreak{}f}.
+\item \textbf{Polarized-target field} \code{trg\_\allowbreak{}track.\allowbreak{}f}. \textbf{Random numbers} \code{call\_\allowbreak{}ranlux.\allowbreak{}f} + \code{cern/\allowbreak{}ranlux.\allowbreak{}f} (RANLUX luxury 3),
+\code{gauss1.\allowbreak{}f}.
+\item \textbf{State} lives in COMMON blocks and in static locals (\code{-{}fno-{}automatic}: every local is SAVEd):
+\code{simulate.\allowbreak{}inc} (\code{/\allowbreak{}gnrl/} masses and beam, \code{/\allowbreak{}theory/}, \code{/\allowbreak{}decd/} decay, \code{/\allowbreak{}ntuple\_\allowbreak{}variables/} ntup and decdist,
+\code{/\allowbreak{}sigkaon/}, \code{/\allowbreak{}pfermi/} Fermi motion), \code{structures.\allowbreak{}inc} (the derived types \code{event}, \code{event\_\allowbreak{}main}, cuts, limits),
+\code{target.\allowbreak{}inc} (\code{/\allowbreak{}target\_\allowbreak{}info/\ targ}), \code{radc.\allowbreak{}inc} (\code{/\allowbreak{}radccom/}), \code{brem.\allowbreak{}inc}, \code{sf\_\allowbreak{}lookup.\allowbreak{}inc} (\code{/\allowbreak{}sftable/}),
+\code{spectrometers.\allowbreak{}inc} (\code{/\allowbreak{}track/}, \code{/\allowbreak{}driftdistances/}), \code{hms/\allowbreak{}struct\_\allowbreak{}hms.\allowbreak{}inc} and \code{shms/\allowbreak{}struct\_\allowbreak{}shms.\allowbreak{}inc} (the
+aperture stop counters), \code{histograms.\allowbreak{}inc} (the \code{.\allowbreak{}gen} histograms),\allowbreak{} \code{constants.\allowbreak{}inc}.
+\item \textbf{Outputs}: \code{<run>\allowbreak{}.\allowbreak{}hist} (report), \code{<run>\allowbreak{}.\allowbreak{}geni} (stop counters), \code{<run>\allowbreak{}.\allowbreak{}gen} (histograms),\allowbreak{} \code{<run>\allowbreak{}.\allowbreak{}bin} (HBOOK-like
+ntuple, converted to ROOT by \code{util/\allowbreak{}root\_\allowbreak{}tree/\allowbreak{}make\_\allowbreak{}root\_\allowbreak{}tree}).
+\end{itemize}
+The machine-readable routine list is \hyperref[translation_report-fortranu5froutineu5fmap]{fortran\_\allowbreak{}routine\_\allowbreak{}map.\allowbreak{}md} (172 routines of the files
+the Makefile links into \code{simc}).
+
+\section{\texorpdfstring{How SIMC++ maps it}{How SIMC++ maps it}}\label{translation_report-01u5fmethodology:12-how-simc-maps-it}
+\begin{simctable}{small}{2}{>{\raggedright\arraybackslash}p{\dimexpr 0.338\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.615\linewidth-2\tabcolsep\relax}}
+\caption{How SIMC++ maps it}\\%
+\toprule\rowcolor{simchead}\simcth{Fortran} & \simcth{SIMC++} \\\midrule\endfirsthead
+\multicolumn{2}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{Fortran} & \simcth{SIMC++} \\\midrule\endhead
+\midrule\multicolumn{2}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+simc.f main program & \code{driver::\allowbreak{}SimcRun}\simcidx{Classes and interfaces!SimcRun@\code{SimcRun}} (\code{initialise} / \code{step} / \code{finish}, include/\allowbreak{}simc/\allowbreak{}driver/\allowbreak{}SimcRun.\allowbreak{}h) \\
+simc.\allowbreak{}f:\allowbreak{}montecarlo & \code{driver::\allowbreak{}Monte\allowbreak{}Carlo::\allowbreak{}run}\simcidx{Classes and interfaces!MonteCarlo@\code{MonteCarlo}} (+ \code{driver::\allowbreak{}Pizero\allowbreak{}Calorimeter}\simcidx{Classes and interfaces!PizeroCalorimeter@\code{PizeroCalorimeter}} for π0 → 2γ) \\
+simc.\allowbreak{}f:\allowbreak{}calculate\_\allowbreak{}central & \code{driver::\allowbreak{}calculate\allowbreak{}Central} (Central.h) \\
+simc.\allowbreak{}f:\allowbreak{}report,\allowbreak{} .geni, .gen, normalisation & \code{driver::\allowbreak{}RunReport}\simcidx{Classes and interfaces!RunReport@\code{RunReport}} (\code{Normalise}, \code{FormatHist}, \code{FormatGeni}), sink \code{fortran\_\allowbreak{}hist} \\
+dbase.f + init.f start-up & \code{BuildRunSetup} → \code{RunSetup}\simcidx{Classes and interfaces!RunSetup@\code{RunSetup}} (include/\allowbreak{}simc/\allowbreak{}setup/\allowbreak{}SetupBuilder.\allowbreak{}h,\allowbreak{} core/\allowbreak{}RunSetup.\allowbreak{}h) \\
+CTP \code{.\allowbreak{}inp} reader & \code{InpReader}\simcidx{Classes and interfaces!InpReader@\code{InpReader}} → \code{SimcParameters}\simcidx{Classes and interfaces!SimcParameters@\code{SimcParameters}} (input/\allowbreak{}InpReader.\allowbreak{}h,\allowbreak{} core/\allowbreak{}SimcParameters.\allowbreak{}h) \\
+event.\allowbreak{}f:\allowbreak{}generate (beam part) & \code{IBeam}\simcidx{Classes and interfaces!IBeam@\code{IBeam}} plug-in \code{standard} \\
+event.\allowbreak{}f:\allowbreak{}generate/\allowbreak{}complete\_\allowbreak{}ev/\allowbreak{}complete\_\allowbreak{}recon\_\allowbreak{}ev/\allowbreak{}complete\_\allowbreak{}main per reaction & one \code{IReaction}\simcidx{Classes and interfaces!IReaction@\code{IReaction}} plug-in per reaction (\code{hydrogen\_\allowbreak{}elastic}, \code{phase\_\allowbreak{}space}, \code{deuterium\_\allowbreak{}eep}, \code{nucleus\_\allowbreak{}eep}, \code{pion\_\allowbreak{}production}, \code{kaon\_\allowbreak{}production}, \code{delta\_\allowbreak{}production}, \code{sidis\_\allowbreak{}production}, \code{rho\_\allowbreak{}production}) \\
+physics\_\allowbreak{}*.f & \code{IPhysicsModel}\simcidx{Classes and interfaces!IPhysicsModel@\code{IPhysicsModel}} plug-ins (\code{sigep}, \code{deforest*}, \code{pion}, \code{kaon}, \code{delta}, \code{sidis}, \code{rho}); \code{ISpectralFunction}\simcidx{Classes and interfaces!ISpectralFunction@\code{ISpectralFunction}} (\code{theory}, \code{benhar}) \\
+radc.f, brem.f & \code{IRadiator}\simcidx{Classes and interfaces!IRadiator@\code{IRadiator}} plug-in \code{simc\_\allowbreak{}rad} around the \code{radiation/\allowbreak{}kernel} \\
+target.f, enerloss\_\allowbreak{}new.\allowbreak{}f,\allowbreak{} musc*.f & \code{ITarget}\simcidx{Classes and interfaces!ITarget@\code{ITarget}} plug-in \code{hallc\_\allowbreak{}cryo} with \code{IMaterialModel}\simcidx{Classes and interfaces!IMaterialModel@\code{IMaterialModel}} \code{simc\_\allowbreak{}material} \\
+mc\_hms.f, mc\_shms.f, mc\_sos.f, mc\_\allowbreak{}hrs[lr].f,\allowbreak{} mc\_calo.f & \code{ISpectrometer}\simcidx{Classes and interfaces!ISpectrometer@\code{ISpectrometer}} plug-ins \code{hms}, \code{shms}, \code{sos}, \code{hrsr}, \code{hrsl}, \code{calo} around their kernels \\
+transp.f, project.f, recon & \code{optics::\allowbreak{}Cosy\allowbreak{}Engine}\simcidx{Classes and interfaces!CosyEngine@\code{CosyEngine}} \\
+trg\_\allowbreak{}track.\allowbreak{}f & \code{optics::\allowbreak{}Target\allowbreak{}Field}\simcidx{Classes and interfaces!TargetField@\code{TargetField}} (owned by \code{MonteCarlo}\simcidx{Classes and interfaces!MonteCarlo@\code{MonteCarlo}}) \\
+call\_\allowbreak{}ranlux.\allowbreak{}f,\allowbreak{} ranlux.f, gauss1.f & \code{IRandom}\simcidx{Classes and interfaces!IRandom@\code{IRandom}}: \code{mt64} (default), \code{ranlux} (bit-for-bit Fortran stream), \code{ScriptedRandom}\simcidx{Classes and interfaces!ScriptedRandom@\code{ScriptedRandom}} (tests); \code{Gauss1} \\
+results\_\allowbreak{}write.\allowbreak{}f + NtupleInit.\allowbreak{}f + make\_\allowbreak{}root\_\allowbreak{}tree & sink \code{root\_\allowbreak{}tree} (\code{RootTreeSink}\simcidx{Classes and interfaces!RootTreeSink@\code{RootTreeSink}}, \code{NtupleLayout}) \\
+(none) & sinks \code{run\_\allowbreak{}summary} (\code{.\allowbreak{}summary.\allowbreak{}json/\allowbreak{}.\allowbreak{}txt}), \code{gen\_\allowbreak{}hist} (\code{.\allowbreak{}gen.\allowbreak{}root}); \code{simc\_\allowbreak{}compare} \\
+\end{simctable}
+COMMON blocks become members of the object that plays the role of "one Fortran process": \code{RunSetup}\simcidx{Classes and interfaces!RunSetup@\code{RunSetup}} (start-up
+constants: \code{/\allowbreak{}gnrl/} except the per-try masses, \code{/\allowbreak{}target\_\allowbreak{}info/}, cuts, limits), \code{EventState}\simcidx{Classes and interfaces!EventState@\code{EventState}} (the main-loop locals
+\code{main}, \code{vertex}, \code{orig}, \code{recon}), \code{MainEvent::\allowbreak{}ntup}\simcidx{Classes and interfaces!MainEvent@\code{MainEvent}} (\code{/\allowbreak{}ntuple\_\allowbreak{}variables/}), \code{MainEvent::\allowbreak{}pfermi}\simcidx{Classes and interfaces!MainEvent@\code{MainEvent}} (\code{/\allowbreak{}pfermi/}),
+\code{MainEvent::\allowbreak{}gnrl}\simcidx{Classes and interfaces!MainEvent@\code{MainEvent}} (the per-try \code{/\allowbreak{}gnrl/} masses of doing\_\allowbreak{}rho),\allowbreak{} \code{radiation::\allowbreak{}Radc\allowbreak{}State}\simcidx{Classes and interfaces!RadcState@\code{RadcState}} (\code{/\allowbreak{}radccom/}), the spectrometer
+kernels (\code{/\allowbreak{}track/}, stop counters), \code{nuclear::\allowbreak{}SfTable}\simcidx{Classes and interfaces!SfTable@\code{SfTable}} (\code{/\allowbreak{}sftable/} and the SAVEd locals of sf\_\allowbreak{}lookup),\allowbreak{}
+\code{optics::\allowbreak{}Target\allowbreak{}Field}\simcidx{Classes and interfaces!TargetField@\code{TargetField}} (the trg\_track COMMONs). Nothing is a global variable. The developer manual (chapter 3\footnote{SIMC++ Developer Manual, ``3. Architecture and data flow'' (\code{docs/\allowbreak{}manual/\allowbreak{}markdown/\allowbreak{}developer/\allowbreak{}03\_\allowbreak{}architecture.\allowbreak{}md})})
+describes these classes; chapter 3 here gives the routine-level map.
+
+\section{\texorpdfstring{Design principles}{Design principles}}\label{translation_report-01u5fmethodology:13-design-principles}
+\begin{itemize}
+\item \textbf{D-001 / D-007 / D-026: an object-oriented,\allowbreak{} plug-in framework around faithful kernels.} Spectrometers,\allowbreak{}
+reactions, targets, physics models and outputs are plug-ins (abstract interface + registration by name), and
+"the design must let any stage of the chain be replaced" (D-007). The Fortran is the specification of the physics:
+each ported routine reproduces the algorithm, the operation order (bitwise results) and the random-number calls
+of the routine it replaces, and cites it (\code{/\allowbreak{}/\ Fortran:\ file.\allowbreak{}f:\allowbreak{}routine\ (\allowbreak{}l.\allowbreak{}a-{}b)}). Fortran-isms (COMMON mirrors,
+1-based arrays, SAVEd locals, stale values) are confined to the \textbf{kernel layer} behind the stage interfaces
+(D-026), so they can be refactored without touching users.
+\item \textbf{D-031: clear Fortran bugs are corrected by default; \code{-{}-{}fortran-{}compat}\simcidx{Command-line options!fortran-compat@\code{-{}-{}fortran-{}compat}} restores the Fortran.} Each correction is
+marked \code{/\allowbreak{}/\ FORTRAN-{}BUG(\allowbreak{}D-{}xxx):\ original\ Fortran\ <file:\allowbreak{}line>:\ <code>\allowbreak{};\ corrected\ because\ .\allowbreak{}.\allowbreak{}.}. The compat switch exists
+so that the bitwise L1, replay and regression tests can still prove the translation. Ambiguous cases keep the
+Fortran behaviour in both modes (\code{FORTRAN-{}DIFF-{}CANDIDATE}, the "expert list"), the acceptance-mode question is
+\code{FORTRAN-{}OPEN(\allowbreak{}D-{}031\ flag\ 1)}, faithful oddities are \code{FORTRAN-{}QUIRK}. Chapter 5.
+\item \textbf{D-002: validation is statistical.} The acceptance test of a run is L2: \code{.\allowbreak{}hist} normalisation pulls plus
+weighted χ²/KS per tree variable against the Fortran (\code{simc\_\allowbreak{}compare}). L1 (routine tables, bitwise) is the
+debugging and unit-test tool. In practice SIMC++ goes further: with the bit-for-bit RANLUX port (D-058) and
+\code{-{}-{}fortran-{}compat}\simcidx{Command-line options!fortran-compat@\code{-{}-{}fortran-{}compat}} a complete run is identical to the Fortran run of the same seed, which is proved for every
+shipped input (chapter 2).
+\item \textbf{D-003: the JSON input is a superset of the \code{.\allowbreak{}inp}}, with a documented mapping and the converter \code{inp2json}.
+\item \textbf{D-032: one number per spectrometer} (\code{core/\allowbreak{}Spectrometer\allowbreak{}Id.\allowbreak{}h}; arm code 6 is rejected).
+\item \textbf{D-044: bitwise references are tied to a toolchain} (glibc libm, compilers; \code{reference/\allowbreak{}TOOLCHAIN.\allowbreak{}txt}).
+\item \textbf{D-055: finish the translation first, debug later}: non-blocking items are collected in the P15.X list
+(the expert list, chapter 6).
+\end{itemize}
+\section{\texorpdfstring{How the translation was done}{How the translation was done}}\label{translation_report-01u5fmethodology:14-how-the-translation-was-done}
+\begin{itemize}
+\item \textbf{Roles.} Three kinds of agents worked under a director (\code{project\_\allowbreak{}control/}): the \emph{fortran-reference} agent built
+and ran the Fortran program and the L1 harness and produced every reference (\code{\$SIMC\_\allowbreak{}REFERENCE}), the
+\emph{cpp-translator} agents wrote the C++ against those references, and the director reviewed every task, recorded the
+decisions (\code{DECISIONS.\allowbreak{}md}, D-001 ... D-070) and the evidence (\code{VALIDATION\_\allowbreak{}LEDGER.\allowbreak{}md}), and ran \code{tools/\allowbreak{}check\_\allowbreak{}all.\allowbreak{}sh} at
+every task close. The Fortran source was never modified; the C++ never wrote a reference for itself.
+\item \textbf{One subsystem per phase}, always in the same order: (F) the Fortran side first — reference tables of every routine
+of the subsystem, captures of real runs, A/B reference runs for L2, and a findings report
+(\code{reference/\allowbreak{}P<n>\allowbreak{}.\allowbreak{}F<k>\allowbreak{}\_\allowbreak{}report.\allowbreak{}md}) listing every bug and oddity found while instrumenting the code; (C) the C++ port,
+routine by routine, each with its L1 test; then the integration into the driver with replays of the captures, a
+regression baseline and an L2 comparison in both modes; (R) the director's review and classification of the findings
+(Categories A/B/C/D, chapter 5).
+\item \textbf{Reading order of a port.} Read the whole Fortran routine and its callers, the COMMON blocks and includes; note units,
+1-based and column-major indexing, implicit typing (\code{i}-\code{n} integers), \code{real*4} vs \code{real*8}, \code{-{}fno-{}automatic}
+(static locals), \code{save}/\code{data} initialisation and GOTO flow; port the same algorithm with the same operation order and
+the \textbf{same number and order of random-number calls}; cite the origin; then prove it.
+\item \textbf{Proof levels} (chapter 2): L1 routine tables (bitwise in practice), replays of captured Fortran random streams
+through the whole chain, complete-run identity with the bit-for-bit RANLUX port, and the statistical L2 comparison
+that D-002 defines as the acceptance test. Every refactor is protected by C++-against-C++ output identity.
+\item \textbf{Fortran bugs} found on the way were reproduced first (so that the bitwise tests prove the port), then — after the
+user's decision D-031 — corrected by default behind the \code{fortran\_\allowbreak{}compat} switch, each with a test that shows both
+behaviours (chapter 5 and 6).
+\end{itemize}
+\section{\texorpdfstring{History (phases)}{History (phases)}}\label{translation_report-01u5fmethodology:15-history-phases}
+The project ran in phases (\code{project\_\allowbreak{}control/\allowbreak{}PLAN.\allowbreak{}md}, decisions in \code{DECISIONS.\allowbreak{}md}):
+
+\begin{simctable}{small}{2}{>{\raggedright\arraybackslash}p{\dimexpr 0.084\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.869\linewidth-2\tabcolsep\relax}}
+\caption{History (phases)}\\%
+\toprule\rowcolor{simchead}\simcth{phase} & \simcth{content} \\\midrule\endfirsthead
+\multicolumn{2}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{phase} & \simcth{content} \\\midrule\endhead
+\midrule\multicolumn{2}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+P0 & audit of the pre-existing C++ (found unfaithful, D-004), Fortran reference build and runs \\
+P1 & validation infrastructure: L1 runner, \code{simc\_\allowbreak{}compare}, summary JSON, \code{.\allowbreak{}inp} reader, architecture v1 \\
+P2–P3 & core, set-up (dbase.\allowbreak{}f/\allowbreak{}init.\allowbreak{}f),\allowbreak{} target and energy loss \\
+P4–P6 & H(e,e'p) generation, radiation, HMS and SHMS (COSY engine) \\
+P7 & main loop, first L2 PASS, modernisation (P7.4: StageContext,\allowbreak{} kernel/ layers, Errors, Units, examples), corrections (P7.5, D-031) \\
+P8–P13 & D/A(e,e'p), exclusive pion, kaon, Delta, SIDIS, rho; RANLUX port (P13.2) \\
+P14 & SOS, HRS-L/R, calorimeter arms and π0 → 2γ \\
+P15 & hardening: RANLUX settles, shipped-input suite, target-field tracking (P15.2b), clean-up and CMake package (P15.3), performance and \code{-{}-{}threads}\simcidx{Command-line options!threads@\code{-{}-{}threads}} (P15.4), manuals (P15.D1/D2) \\
+\end{simctable}
+The legacy pre-translation C++ (snapshot \code{ab6cd87} on \code{main}) was removed in P7.2 (\code{f9cea51}); it is in git history
+and is not trusted (D-004).
+

@@ -1,5 +1,5 @@
 // examples/dev_manual/test_dev_manual.cpp — runs the developer-manual example plug-ins through the complete driver
-// (task P15.D1, docs/manual/developer/04_extending.md):
+// (task P15.D1, docs/manual/markdown/developer/04_extending.md):
 //
 //   test_dev_manual <file.inp> <outdir>
 //

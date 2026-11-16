@@ -1,0 +1,81 @@
+% docs/manual/latex/developer/01_overview.tex - chapter of the LaTeX edition of the book "developer_manual" (SIMC++ documentation).
+%   Converted once from docs/manual/markdown/developer/01_overview.md by tools/md2latex.py; from then on THIS FILE is the source of the
+%   LaTeX edition and may be edited by hand. Re-running tools/md2latex.py --write-sources for this
+%   chapter OVERWRITES the hand edits (see docs/README.md).
+%   Compile: cmake --build <build> --target pdf, or tools/build_docs_pdf.py (figures, xelatex passes,
+%   makeindex with docs/common/latex/simcpp.ist); by hand, see docs/README.md. XeLaTeX, class
+%   docs/common/latex/simcpp.cls (packages: fontspec, tikz, xcolor, hyperref, listings, longtable, booktabs,
+%   titlesec, titletoc, fancyhdr, makeidx, preview, ...); fonts TeX Gyre Pagella, TeX Gyre Heros, DejaVu Sans
+%   Mono. The figures are built first from docs/{manual,translation}/figures/*.tex (preview.sty) into PDFs.
+\chapter{\texorpdfstring{Overview}{Overview}}\label{developer_manual-01u5foverview}
+\section{\texorpdfstring{What SIMC++ is}{What SIMC++ is}}\label{developer_manual-01u5foverview:11-what-simc-is}
+SIMC++ is a C++20 / ROOT 6 Monte Carlo for coincidence (e,e'X) experiments in Hall C (and Hall A / NPS-like
+detector configurations): it generates events for a reaction, propagates the particles through the target and the
+spectrometers,\allowbreak{} reconstructs them, weights them with a cross-section model and writes ROOT trees, histograms and text
+reports.
+
+SIMC++ originates from the Fortran SIMC (\code{simc\_\allowbreak{}gfortran}): its physics and its numerical results reproduce that program,
+and its text outputs keep the Fortran formats. How the translation was done and validated, the routine-by-routine map,
+the numerical rules for bitwise fidelity and the catalogue of every Fortran bug and quirk are in the separate
+\textbf{translation report\footnote{From SIMC to SIMC++, ``SIMC Fortran → SIMC++ translation report'' (\code{docs/\allowbreak{}translation/\allowbreak{}markdown/\allowbreak{}index.\allowbreak{}md})}}. This manual is about the SIMC++ framework itself.
+
+\section{\texorpdfstring{The framework in one page}{The framework in one page}}\label{developer_manual-01u5foverview:12-the-framework-in-one-page}
+\begin{itemize}
+\item \textbf{A run} is a \code{driver::\allowbreak{}SimcRun}\simcidx{Classes and interfaces!SimcRun@\code{SimcRun}}: it reads the input (\code{.\allowbreak{}inp} or JSON) into \code{SimcParameters}\simcidx{Classes and interfaces!SimcParameters@\code{SimcParameters}}, builds the derived run
+constants (\code{RunSetup}\simcidx{Classes and interfaces!RunSetup@\code{RunSetup}}), creates the \textbf{stages} of the run by name, computes the central event, loops over tries
+(\code{step(\allowbreak{})}), and finally normalises and writes the outputs (\code{finish(\allowbreak{})}).
+\item \textbf{Stages are plug-ins.} Every replaceable piece of the event chain is an abstract interface in
+\code{include/\allowbreak{}simc/\allowbreak{}stages/}: random source (\code{IRandom}\simcidx{Classes and interfaces!IRandom@\code{IRandom}}), target (\code{ITarget}\simcidx{Classes and interfaces!ITarget@\code{ITarget}}), material (\code{IMaterialModel}\simcidx{Classes and interfaces!IMaterialModel@\code{IMaterialModel}}), beam (\code{IBeam}\simcidx{Classes and interfaces!IBeam@\code{IBeam}}),
+reaction (\code{IReaction}\simcidx{Classes and interfaces!IReaction@\code{IReaction}}), cross-section model (\code{IPhysicsModel}\simcidx{Classes and interfaces!IPhysicsModel@\code{IPhysicsModel}}), spectral function (\code{ISpectralFunction}\simcidx{Classes and interfaces!ISpectralFunction@\code{ISpectralFunction}}), radiative
+corrections (\code{IRadiator}\simcidx{Classes and interfaces!IRadiator@\code{IRadiator}}), spectrometer arm (\code{ISpectrometer}\simcidx{Classes and interfaces!ISpectrometer@\code{ISpectrometer}}) and outputs (\code{IOutputSink}\simcidx{Classes and interfaces!IOutputSink@\code{IOutputSink}}). Implementations register a
+name (\code{SIMC\_\allowbreak{}REGISTER}\simcidx{SIMC_REGISTER@\code{SIMC\_REGISTER}}) and are chosen from the JSON \code{pipeline} section. The driver depends only on the interfaces.
+\item \textbf{Dependencies are injected} at \code{init(\allowbreak{})} through a \code{StageContext}\simcidx{Classes and interfaces!StageContext@\code{StageContext}} (the run set-up and the collaborators: target,
+radiator, physics model).
+\item \textbf{Kernels and stages.} The numerical core consists of \emph{kernels}: functions and classes that implement the physics
+algorithms exactly (operation order, random-number order), some of them with internal state in \code{kernel/} headers that
+are private to their module. \emph{Stages} are the clean classes around them that implement the interfaces.
+\item \textbf{Events} are value types (\code{Event}\simcidx{Classes and interfaces!Event@\code{Event}}, \code{MainEvent}\simcidx{Classes and interfaces!MainEvent@\code{MainEvent}}) held in one \code{EventState}\simcidx{Classes and interfaces!EventState@\code{EventState}} for the whole run; fields that a try does not
+rewrite keep their previous values, which is part of the defined behaviour (chapter 3 §3.4).
+\item \textbf{Outputs} are sinks: the ROOT tree, the run summary JSON, the generated histograms and the text reports.
+\item \textbf{Parallel event loop}: \code{-{}-{}threads\ N}\simcidx{Command-line options!threads@\code{-{}-{}threads}} runs N independent workers with their own stages and random streams and merges
+their results in a fixed order (chapter 5).
+\item \textbf{Validation} is part of the build: unit tests, routine-level reference tables, full-run identity tests, regression
+baselines and a statistical comparison tool (chapter 2 §2.5; methodology in the translation report).
+\end{itemize}
+\begin{figure}[htbp]
+\simcfigure{run_flow}
+\caption[A run of SIMC++]{A run of SIMC++: the inputs are read into SimcParameters and RunSetup, the pipeline creates the stages by name, the event loop calls them once per try, and finish() normalises and writes the outputs through the sinks}\label{fig:runu5fflow}
+\end{figure}
+\section{\texorpdfstring{Design principles}{Design principles}}\label{developer_manual-01u5foverview:13-design-principles}
+\begin{enumerate}
+\item \textbf{Everything is a plug-in} chosen by name from the JSON pipeline; a plug-in has exactly the possibilities of a
+built-in stage, in tree or out of tree (chapter 4).
+\item \textbf{Explicit inputs and outputs, no global state}: RAII and \code{unique\_\allowbreak{}ptr} ownership, value types for events,
+const-correct interfaces, collaborators through the \code{StageContext}\simcidx{Classes and interfaces!StageContext@\code{StageContext}}; every mutable state belongs to an object (which is
+what makes the parallel event loop safe).
+\item \textbf{Faithful kernels behind clean interfaces}: the numerical code keeps its exact operation order; refactors happen
+around it and are proved by output identity (chapter 6).
+\item \textbf{One unit convention} (\code{core/\allowbreak{}Units.\allowbreak{}h}): MeV, MeV/c, MeV², cm, rad, g/cm², delta in \%, slopes; input and output
+units are converted once, at the borders.
+\item \textbf{Reproducibility}: a given input, seed and thread count always give the same files.
+\item \textbf{Two behaviour modes}: the default mode corrects known defects of the original program; the run option
+\code{fortran\_\allowbreak{}compat} (\code{-{}-{}fortran-{}compat}\simcidx{Command-line options!fortran-compat@\code{-{}-{}fortran-{}compat}}) restores the original behaviour exactly (chapter 3 §3.7).
+\end{enumerate}
+\section{\texorpdfstring{Where things are}{Where things are}}\label{developer_manual-01u5foverview:14-where-things-are}
+\begin{simcplain}[basicstyle=\ttfamily\scriptsize]
+include/simc/core/        parameters, RunSetup, events, Registry, Errors, Units, constants, random sources
+include/simc/stages/      the stage interfaces and StageContext
+include/simc/<module>/    plug-in classes and kernel libraries; <module>/kernel/ = private headers
+src/<module>/             one CMake target per module
+src/driver/               SimcRun, MonteCarlo, reports, pipeline, command line
+tools/                    simc++ main, inp2json, hist2json, check_all.sh, check_md_links.py
+examples/                 ideal_box (in tree), dev_manual (this manual's examples), out_of_tree_plugin
+tests/                    unit, l1, fortran_diff, regression, user_manual, developer_manual
+validation/               simc_compare (own CMake project) and scripts
+data/                     model tables, optics maps, spectral functions, field map
+docs/                     reference documents, manual/user, manual/developer, translation
+\end{simcplain}
+\begin{figure}[htbp]
+\simcfigure{source_layout}
+\caption[The source tree and the installed layout]{The source tree and the installed layout: cmake -{}-build compiles the code, cmake -{}-install puts programs, libraries, headers, data and documentation under the prefix}\label{fig:sourceu5flayout}
+\end{figure}

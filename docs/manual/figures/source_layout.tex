@@ -1,5 +1,9 @@
-% docs/latex/figures/source_layout.tex — the source tree and the installed layout (D-073), task P15.D5.
-% Builds alone (xelatex with TEXINPUTS=docs/latex//:) and is included by the books; PNG: docs/figures/source_layout.png.
+% docs/manual/figures/source_layout.tex - TikZ figure of the SIMC++ documentation: the source tree and the installed layout (D-073), task P15.D5.
+%   Compile alone (tools/build_docs_pdf.py does it for every figure): with TEXINPUTS=docs/common/latex//: run
+%   xelatex <name>.tex -> <name>.pdf (preview.sty crops the page to the picture); the books include that PDF.
+%   Packages: tikz, xcolor, fontspec, preview (simcfig.sty, simcfonts.sty); fonts TeX Gyre Pagella, TeX Gyre Heros,
+%   DejaVu Sans Mono. After a change, re-export the PNG of the Markdown edition (build_docs_pdf.py --png) and
+%   commit both.
 \documentclass{article}
 \usepackage{simcfonts,simcfig}
 \usepackage[active,tightpage]{preview}

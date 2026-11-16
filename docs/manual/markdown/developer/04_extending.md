@@ -1,7 +1,7 @@
 # 4. Extending SIMC++
 
 The mechanics of every stage interface (signatures, configuration keys, the in-tree and out-of-tree build) are in
-[EXTENDING.md](../../EXTENDING.md). This chapter gives the step-by-step recipes with code that is compiled and tested:
+[EXTENDING.md](../reference/EXTENDING.md). This chapter gives the step-by-step recipes with code that is compiled and tested:
 `examples/dev_manual/` (CTest `example_dev_manual_plugins`), `examples/ideal_box/` (`example_ideal_box_*`) and
 `examples/out_of_tree_plugin/` (`package_out_of_tree_plugin`).
 
@@ -59,7 +59,7 @@ file is a start-up error). Templates: src/physics/proton/ProtonModels.cpp, src/p
 Put the numerical part in a kernel function (`double peeX(const Event&, MainEvent&, const XConfig&)`) with a config
 struct for the run constants (and `fortran_compat` if the model has a compat behaviour), and test it on fixed inputs. A
 model ported from the Fortran also needs a reference table (see the
-[translation report](../../translation/02_validation.md#27-adding-a-new-fortran-reference-end-to-end)).
+[translation report](../../../translation/markdown/02_validation.md#27-adding-a-new-fortran-reference-end-to-end)).
 
 ## 4.3 A new output sink (`IOutputSink`, `IParallelSink`)
 

@@ -286,7 +286,7 @@ void PionProduction::polarizedTargetAngles(MainEvent& main, Event& vertex) const
     // CALCULATE ANGLE PHI BETWEEN SCATTERING PLANE AND TARGET POLARIZATION ('replay' coordinates: x = -y_simc,
     // y = x_simc, z = z_simc)
     double qx = -vertex.uq.y, qy = vertex.uq.x, qz = vertex.uq.z;
-    // FORTRAN-QUIRK(D-067 T15, class b): target in-plane, towards beam left: targ_Bphi and the sign of targ_Bangle unused
+    // FORTRAN-QUIRK(D-067 T15, Category B): target in-plane, towards beam left: targ_Bphi and the sign of targ_Bangle unused
     double targx = -targ_pol_ * std::sin(std::fabs(targ_Bangle));
     double targy = 0.0;
     double targz = targ_pol_ * std::cos(std::fabs(targ_Bangle));

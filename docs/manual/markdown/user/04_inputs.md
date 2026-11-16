@@ -37,7 +37,7 @@ end parm debug
 * **Every real value is stored as a 32-bit float first.** For example `ctau = 780.4` becomes 780.4000244140625. This keeps
   the inputs identical to those of the legacy program. `inp2json` writes the rounded values.
 
-The example inputs of this manual are in [examples/](examples/) (installed in `$SIMCPP_PREFIX/share/simc/docs/manual/user/examples/`).
+The example inputs of this manual are in [examples/](examples/) (installed in `$SIMCPP_PREFIX/share/simc/docs/manual/markdown/user/examples/`).
 
 ### 4.1.2 `extra_dbase_file`
 

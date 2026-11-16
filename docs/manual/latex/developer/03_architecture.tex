@@ -1,0 +1,428 @@
+% docs/manual/latex/developer/03_architecture.tex - chapter of the LaTeX edition of the book "developer_manual" (SIMC++ documentation).
+%   Converted once from docs/manual/markdown/developer/03_architecture.md by tools/md2latex.py; from then on THIS FILE is the source of the
+%   LaTeX edition and may be edited by hand. Re-running tools/md2latex.py --write-sources for this
+%   chapter OVERWRITES the hand edits (see docs/README.md).
+%   Compile: cmake --build <build> --target pdf, or tools/build_docs_pdf.py (figures, xelatex passes,
+%   makeindex with docs/common/latex/simcpp.ist); by hand, see docs/README.md. XeLaTeX, class
+%   docs/common/latex/simcpp.cls (packages: fontspec, tikz, xcolor, hyperref, listings, longtable, booktabs,
+%   titlesec, titletoc, fancyhdr, makeidx, preview, ...); fonts TeX Gyre Pagella, TeX Gyre Heros, DejaVu Sans
+%   Mono. The figures are built first from docs/{manual,translation}/figures/*.tex (preview.sty) into PDFs.
+\chapter{\texorpdfstring{Architecture and data flow}{Architecture and data flow}}\label{developer_manual-03u5farchitecture}
+\simcabstract{The short reference is ARCHITECTURE.md\footnote{\code{docs/\allowbreak{}manual/\allowbreak{}markdown/\allowbreak{}reference/\allowbreak{}ARCHITECTURE.\allowbreak{}md}} (layers, stage table, wiring); the stage contracts with
+code are in EXTENDING.md\footnote{\code{docs/\allowbreak{}manual/\allowbreak{}markdown/\allowbreak{}reference/\allowbreak{}EXTENDING.\allowbreak{}md}}. This chapter explains how the pieces work together and ends with a
+reference of every public header.}
+\section{\texorpdfstring{Layers}{Layers}}\label{developer_manual-03u5farchitecture:31-layers}
+\begin{simcplain}[basicstyle=\ttfamily\tiny]
+ tools        simc++ (CommandLineMain), inp2json, hist2json, simc_root_identity     validation/ simc_compare
+ driver       SimcRun, MonteCarlo, PizeroCalorimeter, Central, RunReport, Pipeline, sink fortran_hist
+ io           input/  InpReader, EffectiveValues          output/  RootTreeSink, GenHistSink, RunSummarySink,
+                                                                   NtupleLayout, SummaryJson
+ plug-ins     material/HallCCryoTarget, SimcMaterial   radiation/SimcRadiator   reactions/*   physics/*
+              spectrometers/*/<Name>Spectrometer   examples/
+ kernels      radiation/kernel   spectrometers/*/kernel   optics (CosyEngine, TargetField, Lfit)
+              setup (BuildRunSetup)   reactions/EventChain   physics/* cross-section functions
+ stages       include/simc/stages: IStage, StageContext and the interfaces
+ core         SimcParameters, RunSetup, Event/MainEvent, RunSummary, Registry, Errors, Units, constants, random
+\end{simcplain}
+A layer uses only the layers below it. The driver includes no plug-in header and never casts a stage to a concrete
+class; the only exceptions are optional capability interfaces queried with \code{dynamic\_\allowbreak{}cast} (\code{IReportSink}\simcidx{Classes and interfaces!IReportSink@\code{IReportSink}},
+\code{IParallelSink}\simcidx{Classes and interfaces!IParallelSink@\code{IParallelSink}}) and \code{Mt64Random}\simcidx{Classes and interfaces!Mt64Random@\code{Mt64Random}} in the threads code (it needs the per-worker streams).
+
+\textbf{Kernels vs stages.} A \emph{kernel} implements a numerical algorithm exactly (fixed operation order, fixed random-number
+order); kernels with internal state (per-run tables, values kept between calls, argument structs, sometimes 1-based
+arrays) keep it in members. A \emph{stage} (plug-in) is a clean class implementing an interface from
+\code{include/\allowbreak{}simc/\allowbreak{}stages/}; it owns its kernel and adapts it. Kernel headers that expose such internal state live in a
+\code{kernel/} directory (\code{radiation/\allowbreak{}kernel/}, \code{spectrometers/\allowbreak{}*/\allowbreak{}kernel/}), are included only by their module, its plug-in and
+its tests, and are \textbf{not installed}. A plug-in header exposes its kernel at most through an opaque \code{kernel(\allowbreak{})} accessor
+(pimpl) for the tests. The optics engine, the target field, the set-up builder and the cross-section functions are
+kernel libraries shared by several plug-ins; their headers are public.
+
+\section{\texorpdfstring{The registry and the plug-in life cycle}{The registry and the plug-in life cycle}}\label{developer_manual-03u5farchitecture:32-the-registry-and-the-plug-in-life-cycle}
+\code{simc::\allowbreak{}Registry<Interface>} (core/\allowbreak{}Registry.\allowbreak{}h) is a name → factory map per interface (a function-local static, so the
+static-initialisation order is safe). \code{SIMC\_\allowbreak{}REGISTER(\allowbreak{}Iface,\ "name",\ Class)} adds a factory at static-initialisation time
+(duplicate names throw \code{std::\allowbreak{}logic\_\allowbreak{}error}); \code{Registry<I>::\allowbreak{}create(\allowbreak{}name)} builds an instance (unknown names throw
+\code{std::\allowbreak{}out\_\allowbreak{}of\_\allowbreak{}range} with the list of known names); \code{contains}, \code{names} list them. Registration requires the object
+file to be linked (OBJECT libraries, chapter 2 §2.3).
+
+Life cycle of every stage (\code{IStage}\simcidx{Classes and interfaces!IStage@\code{IStage}}): \code{create(\allowbreak{}name)} → \code{configure(\allowbreak{}json,\ params)} (once: the stage's JSON object from the
+pipeline merged over the defaults, without \code{"type"}, plus the raw input \code{SimcParameters}\simcidx{Classes and interfaces!SimcParameters@\code{SimcParameters}}) → \code{init(\allowbreak{}Stage\allowbreak{}Context)} (once:
+derived tables and the collaborators) → per-event calls.
+
+\textbf{StageContext} (stages/\allowbreak{}StageContext.\allowbreak{}h) is the dependency injection: \code{\{const\ Run\allowbreak{}Setup\&\ setup;\ ITarget*\ target;\ IRadiator*\ radiator;\ IPhysics\allowbreak{}Model*\ physics\}}. It is implicitly constructible from a \code{RunSetup}\simcidx{Classes and interfaces!RunSetup@\code{RunSetup}}, so \code{stage.\allowbreak{}init(\allowbreak{}setup)}
+works for stages without collaborators (tests). \code{require\allowbreak{}Target/\allowbreak{}require\allowbreak{}Radiator/\allowbreak{}require\allowbreak{}Physics(\allowbreak{}who)} throw
+\code{std::\allowbreak{}logic\_\allowbreak{}error} naming the stage when a needed collaborator is missing. A stage keeps the pointers it gets and never
+casts them.
+
+\textbf{Pipeline} (driver/\allowbreak{}Pipeline.\allowbreak{}h): \code{PipelineConfig}\simcidx{Classes and interfaces!PipelineConfig@\code{PipelineConfig}} has one \code{Stage\allowbreak{}Spec\ \{type,\ config\}} per stage (\code{rng}, \code{target}, \code{beam},
+\code{reaction}, \code{physics}, \code{radiator}, \code{hadron\_\allowbreak{}arm}\simcidx{Parameters!hadron_arm@\code{hadron\_arm}}, \code{electron\_\allowbreak{}arm}\simcidx{Parameters!electron_arm@\code{electron\_arm}}), the list \code{sinks}, and \code{threads}.
+\code{Pipeline\allowbreak{}Config::\allowbreak{}Defaults(\allowbreak{}setup)} derives the default choice from the input flags (reaction from the \code{doing\_\allowbreak{}*} flags,
+model from the reaction and target, arms from \code{electron\_\allowbreak{}arm}\simcidx{Parameters!electron_arm@\code{electron\_arm}}/\code{hadron\_\allowbreak{}arm}\simcidx{Parameters!hadron_arm@\code{hadron\_arm}} through \code{Monte\allowbreak{}Carlo::\allowbreak{}Default\allowbreak{}Arm}\simcidx{Classes and interfaces!MonteCarlo@\code{MonteCarlo}}, sinks
+\code{root\_\allowbreak{}tree} (only if \code{Nntu\ >\ 0}), \code{run\_\allowbreak{}summary}, \code{gen\_\allowbreak{}hist}, \code{fortran\_\allowbreak{}hist}, rng \code{mt64}). \code{apply(\allowbreak{}json)} merges the JSON
+\code{pipeline} section (unknown keys throw). \code{simc++\ -{}-{}print-{}pipeline} prints the resolved pipeline.
+
+\begin{figure}[htbp]
+\simcfigure{plugin_registry}
+\caption[Plug-ins]{Plug-ins: an implementation of a stage interface registers a name with SIMC\_\allowbreak{}REGISTER,\allowbreak{} the run creates it by name from the JSON pipeline; plug-ins are linked in, in tree or out of tree}\label{fig:pluginu5fregistry}
+\end{figure}
+\section{\texorpdfstring{The driver: SimcRun}{The driver: SimcRun}}\label{developer_manual-03u5farchitecture:33-the-driver-simcrun}
+\code{driver::\allowbreak{}SimcRun}\simcidx{Classes and interfaces!SimcRun@\code{SimcRun}} (SimcRun.\allowbreak{}h/\allowbreak{}.cpp) is one complete run:
+
+\begin{simccode}[basicstyle=\ttfamily\footnotesize,style=simccpp]
+SimcRun run(params, pipelineJson, options);   // nothing happens yet
+run.initialise();                              // set-up, stages, central event
+while (!run.done()) run.step();                // one try per step
+run.finish();                                  // normalisation and outputs
+// or run.run(): initialise, then the step() loop or runThreaded(N), then finish
+\end{simccode}
+\code{RunOptions}\simcidx{Classes and interfaces!RunOptions@\code{RunOptions}} (run name, output directory, data directory, ngen/seed overrides, log stream, \code{quiet\_\allowbreak{}stages},
+\code{fortran\_\allowbreak{}compat}, \code{threads}) come from the command line (\code{driver::\allowbreak{}Command\allowbreak{}Line\allowbreak{}Main}, CommandLine.\allowbreak{}cpp; options in
+DRIVER.md\footnote{\code{docs/\allowbreak{}manual/\allowbreak{}markdown/\allowbreak{}reference/\allowbreak{}DRIVER.\allowbreak{}md}}). \code{set\allowbreak{}Random(\allowbreak{}unique\_\allowbreak{}ptr<IRandom>\allowbreak{})} replaces the pipeline rng (tests use a
+\code{ScriptedRandom}\simcidx{Classes and interfaces!ScriptedRandom@\code{ScriptedRandom}}), \code{add\allowbreak{}Sink(\allowbreak{}unique\_\allowbreak{}ptr<IOutput\allowbreak{}Sink>\allowbreak{})} adds a sink created in code.
+
+\textbf{\code{initialise(\allowbreak{})}}, in this order:
+
+\begin{enumerate}
+\item builds the \code{RunSetup}\simcidx{Classes and interfaces!RunSetup@\code{RunSetup}}: \code{Build\allowbreak{}Run\allowbreak{}Setup(\allowbreak{}params,\ Setup\allowbreak{}Options,\ startup\allowbreak{}Target)} with a \emph{dedicated, unconfigured}
+instance of the pipeline's target as the \code{ITarget\allowbreak{}Loss\allowbreak{}Provider}\simcidx{Classes and interfaces!ITargetLossProvider@\code{ITargetLossProvider}} (the start-up energy losses and multiple-scattering
+limits come from the same target model as the event loop). \code{SetupOptions}\simcidx{Classes and interfaces!SetupOptions@\code{SetupOptions}} carries the data directory,
+\code{fortran\_\allowbreak{}compat} and the spectral-function file named in \code{pipeline.\allowbreak{}reaction.\allowbreak{}spectral\_\allowbreak{}function} (the set-up reads it
+because it fixes the generation limits). Set-up messages are logged; a fatal set-up condition becomes
+\code{simc::\allowbreak{}FortranStop}\simcidx{Classes and interfaces!FortranStop@\code{FortranStop}};
+\item resolves the pipeline (\code{Defaults} + \code{apply});
+\item creates and initialises the stages in a fixed order, each with \code{configure} then \code{init(\allowbreak{}ctx)}:
+rng → target → radiator → (ctx.\allowbreak{}target,\allowbreak{} ctx.\allowbreak{}radiator set) → beam → physics model → (ctx.\allowbreak{}physics set) → reaction →
+\code{MonteCarlo}\simcidx{Classes and interfaces!MonteCarlo@\code{MonteCarlo}} (creates the two arm spectrometers; arms with the same type and the same merged config share one
+object, i.e. one set of counters) → sinks (registry ones, then the \code{addSink} ones);
+\item \code{calculateCentral}: \code{vertex0} from the central spectrometer settings, \code{completeRecon}, \code{IReaction::\allowbreak{}prepare\allowbreak{}Central}\simcidx{Classes and interfaces!IReaction@\code{IReaction}},
+\code{IRadiator::\allowbreak{}init\allowbreak{}Event}\simcidx{Classes and interfaces!IRadiator@\code{IRadiator}} (the radiation "Central Values" of the report are the radiator's \code{currentValues(\allowbreak{})} right after
+it), \code{complete\allowbreak{}Main(\allowbreak{}force\_\allowbreak{}sigcc\ =\ true)};
+\item report bookkeeping,\allowbreak{} \code{beginRun(\allowbreak{}setup)} of every sink, the begin time.
+\end{enumerate}
+\textbf{\code{step(\allowbreak{})}} = one try:
+
+\begin{simcplain}[basicstyle=\ttfamily\tiny]
+resetForTry()                                   ntup radphot radarm decdist resfac sigcm krel mm mmA t = 0, Mh2_final = Mh2
+++ntried; progress line every 1000/20000 tries
+IPhysicsModel::beginEvent(nevent); IReaction::beginTry(ntried)      (messages only)
+reactions::generateEvent:
+   IBeam::generate(main, vertex, rng)           beam energy spread, raster, vertex x/y, z (ITarget::generateZ), incoming
+                                                energy loss (ITarget::tripThruTarget arm 1)
+   IReaction::generate(main, vertex, orig, rng) reaction variables; completeEv (tripThruTarget arms 2/3,
+                                                IRadiator::initEvent); IRadiator::radiate(..., completeEv) or orig = vertex
+if ok: MonteCarlo::run(orig, main, recon, rng)  both arms (below)
+if ok: IReaction::completeRecon(recon)          reconstructed kinematics
+if ok: IReaction::completeMain(false, main, vertex, vertex0, recon)  the weight
+pass_cuts = PassCuts(setup, recon)              acceptance window on the reconstructed event (every try)
+hard_cuts                                       optional: pass_cuts (and the Em cut) required for success
+sum_sigcc += main.sigcc (successes)
+IOutputSink::fill(main, vertex, orig, recon, success)   every sink, EVERY try (histograms of failed tries too)
+successes: ncontribute, ncontribute_no_rad_proton (IRadiator::hadronRadiates), and if pass_cuts: npasscuts,
+           wtcontribute += weight, the resolution sums; reactions::limitsUpdate (IRadiator::photonEnergies)
+nevent += 1 for a success (ngen > 0) or for every try (ngen < 0)
+\end{simcplain}
+\code{done(\allowbreak{})} is \code{nevent\ >\allowbreak{}=\ |\allowbreak{}ngen|}. Every random number is drawn inside the stages, in a fixed order, so a run is fully
+determined by its random stream: a \code{ScriptedRandom}\simcidx{Classes and interfaces!ScriptedRandom@\code{ScriptedRandom}} fed with a recorded stream reproduces a run bit for bit.
+
+\textbf{\code{MonteCarlo::\allowbreak{}run}\simcidx{Classes and interfaces!MonteCarlo@\code{MonteCarlo}}}: beam multiple scattering (\code{ITarget::\allowbreak{}multiple\allowbreak{}Scattering}\simcidx{Classes and interfaces!ITarget@\code{ITarget}}, teff[0]) when \code{mc\_\allowbreak{}smear}\simcidx{Parameters!mc_smear@\code{mc\_smear}}; then the
+\textbf{hadron arm first}: spectrometer-frame quantities (energy loss, multiple scattering with teff[2]), conversion to the
+TRANSPORT frame (offsets, drift back to z = 0; \code{SpecInput.\allowbreak{}fry}, \code{raster\_\allowbreak{}fry/\allowbreak{}frx}), optional target-field tracking
+(\code{optics::\allowbreak{}Target\allowbreak{}Field::\allowbreak{}track\allowbreak{}From\allowbreak{}Tgt}\simcidx{Classes and interfaces!TargetField@\code{TargetField}}), \code{ISpectrometer::\allowbreak{}transport}\simcidx{Classes and interfaces!ISpectrometer@\code{ISpectrometer}}, RECON/FP, optional \code{trackToTgt} with
+\code{ISpectrometer::\allowbreak{}reconstruct\allowbreak{}Last\allowbreak{}Track}\simcidx{Classes and interfaces!ISpectrometer@\code{ISpectrometer}}, the reconstructed arm kinematics (physics angles, optional most-probable
+energy-loss correction through \code{tripThruTarget}); then the \textbf{electron arm} the same way (Coulomb correction, teff[1],
+\code{decay\_\allowbreak{}flag} false). A failed arm returns at once. Calorimeter hadron arms with \code{doing\_\allowbreak{}pizero}\simcidx{Parameters!doing_pizero@\code{doing\_pizero}} go through
+\code{driver::\allowbreak{}Pizero\allowbreak{}Calorimeter}\simcidx{Classes and interfaces!PizeroCalorimeter@\code{PizeroCalorimeter}} (two photons, two \code{calo} calls).
+
+\textbf{\code{finish(\allowbreak{})}}: \code{Normalise(\allowbreak{}setup,\ totals,\ reaction.\allowbreak{}gen\allowbreak{}Volume(\allowbreak{}))}, the stop counters of both arms, the end-of-run target
+state (\code{IReaction::\allowbreak{}final\allowbreak{}Target\allowbreak{}State}\simcidx{Classes and interfaces!IReaction@\code{IReaction}}), \code{MakeRunSummary}, then for every sink \code{endRun(\allowbreak{}summary)} and, if it implements
+\code{IReportSink}\simcidx{Classes and interfaces!IReportSink@\code{IReportSink}}, \code{write\allowbreak{}Report(\allowbreak{}setup,\ report)}. With \code{ngen\ =\ 0} nothing is written.
+
+\begin{figure}[htbp]
+\simcfigure{event_try}
+\caption[One try of the event loop (SimcRun::\allowbreak{}step)]{One try of the event loop (SimcRun::\allowbreak{}step): the order of the stage calls, the failure path, and the bookkeeping}\label{fig:eventu5ftry}
+\end{figure}
+\section{\texorpdfstring{Event structures and the stale-value semantics}{Event structures and the stale-value semantics}}\label{developer_manual-03u5farchitecture:34-event-structures-and-the-stale-value-semantics}
+All in core/\allowbreak{}Event.\allowbreak{}h,\allowbreak{} in the internal units (MeV, MeV/c, cm, rad, delta in \%, slopes):
+
+\begin{itemize}
+\item \code{Event}\simcidx{Classes and interfaces!Event@\code{Event}} (\code{vertex}, \code{orig}, \code{recon}): Ein, Em, Pm, nu, q, Q2, W, epsilon, theta\_pq, phi\_pq, ..., the arms \code{e}, \code{p}
+(\code{ArmFull}\simcidx{Classes and interfaces!ArmFull@\code{ArmFull}}: delta, xptar, yptar, z, theta, phi, E, P) and the unit vectors \code{ue}, \code{up}, \code{uq}.
+\item \code{MainEvent}\simcidx{Classes and interfaces!MainEvent@\code{MainEvent}}: weight, SF\_weight, gen\_\allowbreak{}weight,\allowbreak{} jacobian, sigcc, sigcc\_\allowbreak{}recon,\allowbreak{} the CM quantities, the target part
+(\code{EventTarget}\simcidx{Classes and interfaces!EventTarget@\code{EventTarget}}: x, y, z, raster, teff[0..2], Eloss[0..2] for beam / electron / hadron, Coulomb), \code{SP}, \code{RECON} (arm
+quantities at the target), \code{FP} (focal plane), and three per-event blocks: \code{ntup} (\code{NtupVars}\simcidx{Classes and interfaces!NtupVars@\code{NtupVars}}: ntuple-only quantities
+such as radphot, resfac, sigcm, krel, mm, t, decdist, Mh2\_final, π0 photons, rho mass), \code{pfermi} (the struck
+nucleon's Fermi motion) and \code{gnrl} + \code{gnrl\_\allowbreak{}per\_\allowbreak{}event} (the hadron mass when it changes per try: rho).
+\item \code{driver::\allowbreak{}Event\allowbreak{}State}\simcidx{Classes and interfaces!EventState@\code{EventState}} = \code{\{main,\ vertex,\ orig,\ recon\}} plus \code{success}, \code{pass\_\allowbreak{}cuts}, \code{ntried}.
+\end{itemize}
+\textbf{One \code{EventState}\simcidx{Classes and interfaces!EventState@\code{EventState}} lives for the whole run and is handed to every stage on every try.} Several stages write only parts
+of these structures (\code{orig} is not written when the radiation fails; the arm transport returns early on a failed arm and
+leaves \code{main.\allowbreak{}SP/\allowbreak{}RECON/\allowbreak{}FP} from an earlier try; ...), and those values reach outputs (pass\_cuts and the histograms of
+failed tries). State that belongs to one stage (radiation state, spectrometer counters, values kept between calls)
+lives inside the stage objects.
+
+\begin{simcwarning}
+this is defined behaviour, not an accident: never "clean up" by re-creating the event per try;
+\code{Simc\allowbreak{}Run::\allowbreak{}reset\allowbreak{}For\allowbreak{}Try}\simcidx{Classes and interfaces!SimcRun@\code{SimcRun}} resets exactly the fields listed above.
+\end{simcwarning}
+\code{RunSetup}\simcidx{Classes and interfaces!RunSetup@\code{RunSetup}} (core/\allowbreak{}RunSetup.\allowbreak{}h) holds everything derived once before the loop: the raw \code{params} (input units), \code{flags}
+(\code{ReactionFlags}\simcidx{Classes and interfaces!ReactionFlags@\code{ReactionFlags}}: doing\_*), the target (\code{TargetInfo}\simcidx{Classes and interfaces!TargetInfo@\code{TargetInfo}}), spectrometer settings and offsets, cuts (\code{SPedge},
+\code{VERTEXedge}), generation limits, slops, radiation constants, histogram axes, luminosity, \code{fortran\_\allowbreak{}compat}, messages and
+\code{stops}. Units: internal.
+
+\section{\texorpdfstring{Stage interfaces: contracts and call order}{Stage interfaces: contracts and call order}}\label{developer_manual-03u5farchitecture:35-stage-interfaces-contracts-and-call-order}
+Per interface: header, call points, contract. Built-in plug-ins are listed in ARCHITECTURE.md §3.
+
+\begin{itemize}
+\item \textbf{\code{IStage}\simcidx{Classes and interfaces!IStage@\code{IStage}}} (stages/\allowbreak{}IStage.\allowbreak{}h): \code{name(\allowbreak{})}, \code{configure(\allowbreak{}Json,\ Simc\allowbreak{}Parameters)}, \code{init(\allowbreak{}Stage\allowbreak{}Context)}. Every built-in
+stage understands \code{"verbose":\ false} (added by the driver for \code{-{}-{}quiet}\simcidx{Command-line options!quiet@\code{-{}-{}quiet}}).
+\item \textbf{\code{IRandom}\simcidx{Classes and interfaces!IRandom@\code{IRandom}}} (stages/\allowbreak{}IRandom.\allowbreak{}h): \code{uniform(\allowbreak{})} in (0,1), \code{gauss1(\allowbreak{}nsig\_\allowbreak{}max)} (standard normal truncated at nsig\_max by
+rejection), \code{seed(\allowbreak{}uint64)}. Called only by the stages, in a fixed order. Implementations: core/\allowbreak{}random/\allowbreak{}Mt64Random.\allowbreak{}h
+(\code{mt64}, default, \code{seed\allowbreak{}Stream(\allowbreak{}seed,\ k)} for the threads), RanluxRandom.\allowbreak{}h (\code{ranlux}, RANLUX luxury 3),
+ScriptedRandom.\allowbreak{}h (FIFO queues for tests; counts every call; NaN and \code{error(\allowbreak{})} when exhausted), Gauss1.h (the
+truncated gaussian on any uniform source).
+\item \textbf{\code{ITarget}\simcidx{Classes and interfaces!ITarget@\code{ITarget}}} (stages/\allowbreak{}ITarget.\allowbreak{}h) + \textbf{\code{ITarget\allowbreak{}Loss\allowbreak{}Provider}\simcidx{Classes and interfaces!ITargetLossProvider@\code{ITargetLossProvider}}} (stages/\allowbreak{}ITargetLossProvider.\allowbreak{}h): per event
+\code{generateZ(\allowbreak{}rng)} (vertex z, cm, including zoffset; called by the beam), \code{trip\allowbreak{}Thru\allowbreak{}Target(\allowbreak{}arm\ 1/\allowbreak{}2/\allowbreak{}3,\ z,\ E,\ theta,\ mass,\ Loss\allowbreak{}Mode,\ rng)\ →\ \{eloss\ Me\allowbreak{}V,\ radlen\}} (beam: by the beam; arms 2/3: by \code{completeEv}; most-probable mode: by
+the arm energy-loss correction),\allowbreak{} \code{multiple\allowbreak{}Scattering(\allowbreak{}p,\ beta,\ teff,\ rng)\ →\ \{dyptar,\ dxptar\}} (arm transport).
+Start-up: \code{target\allowbreak{}Init(\allowbreak{}Target\allowbreak{}Init\allowbreak{}Args,\ Target\allowbreak{}Info\&,\ messages)} and \code{extreme\allowbreak{}Losses(\allowbreak{}Extreme\allowbreak{}Trip\allowbreak{}Args,\ Target\allowbreak{}Info\&)} are
+called by \code{BuildRunSetup}; they get everything through their arguments (the provider instance is never configured).
+Plug-in: \code{hallc\_\allowbreak{}cryo} (material/\allowbreak{}HallCCryoTarget.\allowbreak{}h),\allowbreak{} which uses an \code{IMaterialModel}\simcidx{Classes and interfaces!IMaterialModel@\code{IMaterialModel}}.
+\item \textbf{\code{IMaterialModel}\simcidx{Classes and interfaces!IMaterialModel@\code{IMaterialModel}}} (stages/\allowbreak{}IMaterialModel.\allowbreak{}h): \code{energy\allowbreak{}Loss(\allowbreak{}len,\ density,\ zeff,\ aeff,\ E,\ m,\ typeflag,\ rng)},
+\code{musc(\allowbreak{}.\allowbreak{}.\allowbreak{}.\allowbreak{})}, \code{muscExt(\allowbreak{}.\allowbreak{}.\allowbreak{}.\allowbreak{})}. Plug-in \code{simc\_\allowbreak{}material} (material/\allowbreak{}SimcMaterial.\allowbreak{}h),\allowbreak{} selected inside the target's JSON
+(\code{"material"}).
+\item \textbf{\code{IBeam}\simcidx{Classes and interfaces!IBeam@\code{IBeam}}} (stages/\allowbreak{}IBeam.\allowbreak{}h): \code{generate(\allowbreak{}main,\ vertex,\ rng)}: beam spread, raster, vertex x/y/z, incoming energy.
+Called first in every try by \code{reactions::\allowbreak{}generate\allowbreak{}Event}. Plug-in \code{standard} (reactions/\allowbreak{}StandardBeam.\allowbreak{}h).
+\item \textbf{\code{IReaction}\simcidx{Classes and interfaces!IReaction@\code{IReaction}}} (stages/\allowbreak{}IReaction.\allowbreak{}h): \code{generate(\allowbreak{}main,\ vertex,\ orig,\ rng)} (after the beam: generated variables,
+\code{completeEv}, then \code{radiator-{}>\allowbreak{}radiate(\allowbreak{}main,\ vertex,\ orig,\ rng,\ complete\allowbreak{}Ev\allowbreak{}Fn)} or \code{orig\ =\ vertex}; \code{orig} is written
+only on success of the radiation), \code{complete\allowbreak{}Ev(\allowbreak{}main,\ vertex,\ rng)} (vertex kinematics, \code{tripThruTarget} arms 2/3, must
+end with \code{radiator-{}>\allowbreak{}init\allowbreak{}Event(\allowbreak{}main,\ vertex)}; it is also the \code{CompleteEvFn} that the radiator calls after reducing
+Ein), \code{complete\allowbreak{}Recon(\allowbreak{}recon)}, \code{complete\allowbreak{}Main(\allowbreak{}force\_\allowbreak{}sigcc,\ main,\ vertex,\ vertex0,\ recon)} (sets \code{SF\_\allowbreak{}weight}, \code{sigcc},
+\code{sigcc\_\allowbreak{}recon}, \code{weight} with \code{ctx.\allowbreak{}physics}; returns false if the event cannot contribute unless \code{force\_\allowbreak{}sigcc}),
+\code{genVolume(\allowbreak{})} (normalisation). Optional hooks: \code{prepare\allowbreak{}Central(\allowbreak{}main0,\ vertex0)}, \code{final\allowbreak{}Target\allowbreak{}State(\allowbreak{}targ)},
+\code{beginTry(\allowbreak{}ntried)}. The (e,e'p) family shares \code{reactions::\allowbreak{}Eep\allowbreak{}Reaction\allowbreak{}Base}\simcidx{Classes and interfaces!EepReactionBase@\code{EepReactionBase}}; pion, kaon, Delta and SIDIS share the
+\code{PionProduction}\simcidx{Classes and interfaces!PionProduction@\code{PionProduction}} plumbing; rho has its own.
+\item \textbf{\code{IPhysicsModel}\simcidx{Classes and interfaces!IPhysicsModel@\code{IPhysicsModel}}} (stages/\allowbreak{}IPhysicsModel.\allowbreak{}h): \code{sigcc(\allowbreak{}vertex,\ main)}, \code{sigcc\allowbreak{}Recon(\allowbreak{}recon,\ main)}, \code{sigcc\allowbreak{}Main(\allowbreak{}vertex,\ main\&)} (for models that also write \code{main}, e.g. CM angles and jacobians; the reactions call this one; default =
+\code{sigcc}), \code{begin\allowbreak{}Event(\allowbreak{}nevent)}. Called by \code{completeMain} (directly or through \code{reactions::\allowbreak{}assemble\allowbreak{}Weight}), also for
+the central event.
+\item \textbf{\code{ISpectralFunction}\simcidx{Classes and interfaces!ISpectralFunction@\code{ISpectralFunction}}} (stages/\allowbreak{}ISpectralFunction.\allowbreak{}h): \code{weight(\allowbreak{}vertex)} = SF\_weight at (Em, Pm), \code{file(\allowbreak{})}. A component of
+the D/A(e,e'p) reactions, created in their \code{init(\allowbreak{})} from \code{reaction.\allowbreak{}spectral\_\allowbreak{}function}. Plug-ins \code{theory}, \code{benhar}
+(physics/\allowbreak{}nuclear/\allowbreak{}SpectralFunctions.\allowbreak{}h).
+\item \textbf{\code{IRadiator}\simcidx{Classes and interfaces!IRadiator@\code{IRadiator}}} (stages/\allowbreak{}IRadiator.\allowbreak{}h): \code{init\allowbreak{}Event(\allowbreak{}main,\ vertex)} (per-event radiation set-up; called by \code{completeEv}),
+\code{radiate(\allowbreak{}main,\ vertex,\ orig,\ rng,\ complete\allowbreak{}Ev)} (multiplies \code{main.\allowbreak{}gen\_\allowbreak{}weight}, may reduce \code{vertex.\allowbreak{}Ein} and re-call
+\code{completeEv}); read-back \code{currentValues(\allowbreak{})} (\code{RadiationValues}\simcidx{Classes and interfaces!RadiationValues@\code{RadiationValues}}, central values for the report), \code{photonEnergies(\allowbreak{})}
+(for \code{limitsUpdate}), \code{hadronRadiates(\allowbreak{})}. Plug-in \code{simc\_\allowbreak{}rad} (radiation/\allowbreak{}SimcRadiator.\allowbreak{}h).
+\item \textbf{\code{ISpectrometer}\simcidx{Classes and interfaces!ISpectrometer@\code{ISpectrometer}}} (stages/\allowbreak{}ISpectrometer.\allowbreak{}h): \code{transport(\allowbreak{}Spec\allowbreak{}Input,\ rng)\ →\ Spec\allowbreak{}Result} (the single-arm Monte Carlo:
+input track in the TRANSPORT frame at z = 0, central momentum and angle, mass², smearing and decay flags, recon
+arguments; output \code{ok}/\code{stop\_\allowbreak{}reason}, focal plane, reconstructed target quantities, path length, optional
+\code{resolution\_\allowbreak{}factor}, mass² after decay, decay distance), \code{stopCounters(\allowbreak{})} (name → count incl. \code{trials} and
+\code{successes}; they go to the \code{.\allowbreak{}geni} and the summary), \code{reconstruct\allowbreak{}Last\allowbreak{}Track(\allowbreak{}fry,\ .\allowbreak{}.\allowbreak{}.\allowbreak{})} (re-reconstruction of the last
+focal-plane track for the target field; default throws \code{NotPorted}\simcidx{Classes and interfaces!NotPorted@\code{NotPorted}}). Called by \code{MonteCarlo::\allowbreak{}run}\simcidx{Classes and interfaces!MonteCarlo@\code{MonteCarlo}}.
+\item \textbf{\code{IOutputSink}\simcidx{Classes and interfaces!IOutputSink@\code{IOutputSink}}} (stages/\allowbreak{}IOutputSink.\allowbreak{}h): \code{beginRun(\allowbreak{}setup)} (after \code{initialise}), \code{fill(\allowbreak{}main,\ vertex,\ orig,\ recon,\ success)} (every try), \code{endRun(\allowbreak{}summary)} (in \code{finish}). Optional capability interfaces:
+\textbf{\code{driver::\allowbreak{}IReport\allowbreak{}Sink}\simcidx{Classes and interfaces!IReportSink@\code{IReportSink}}} (driver/\allowbreak{}ReportSink.\allowbreak{}h: \code{write\allowbreak{}Report(\allowbreak{}setup,\ Run\allowbreak{}Report)}, called after \code{endRun}; used by
+\code{fortran\_\allowbreak{}hist} for \code{.\allowbreak{}hist/\allowbreak{}.\allowbreak{}geni/\allowbreak{}.\allowbreak{}gen}) and \textbf{\code{IParallelSink}\simcidx{Classes and interfaces!IParallelSink@\code{IParallelSink}}} (stages/\allowbreak{}IParallelSink.\allowbreak{}h: \code{make\allowbreak{}Worker\allowbreak{}Sink(\allowbreak{}k,\ n)},
+\code{merge\allowbreak{}Worker\allowbreak{}Sink(\allowbreak{}worker)}; required for \code{-{}-{}threads\ N\ >\ 1}\simcidx{Command-line options!threads@\code{-{}-{}threads}}, chapter 5).
+\end{itemize}
+\begin{figure}[htbp]
+\simcfigure{spectrometer_arm}
+\caption[One spectrometer arm]{One spectrometer arm: from the target through the slit or collimator, the magnetic elements and the detector hut to the reconstructed track; a track that leaves an aperture stops and is counted}\label{fig:spectrometeru5farm}
+\end{figure}
+\section{\texorpdfstring{The weight and the normalisation}{The weight and the normalisation}}\label{developer_manual-03u5farchitecture:36-the-weight-and-the-normalisation}
+\begin{enumerate}
+\item Per success, \code{IReaction::\allowbreak{}complete\allowbreak{}Main}\simcidx{Classes and interfaces!IReaction@\code{IReaction}} computes \code{main.\allowbreak{}weight}: for the (e,e'p) family \code{SF\_\allowbreak{}weight} from the reaction
+(\code{ISpectralFunction}\simcidx{Classes and interfaces!ISpectralFunction@\code{ISpectralFunction}} for D/A, 1 otherwise), then \code{reactions::\allowbreak{}assemble\allowbreak{}Weight}: \code{sigcc}/\code{sigcc\_\allowbreak{}recon} from the model
+(phase space: 1), the Coulomb focusing factor, and \code{weight\ =\ SF\_\allowbreak{}weight\ *\ jacobian\ *\ gen\_\allowbreak{}weight\ *\ sigcc\ *\ (\allowbreak{}nucleon\ count)}. The other reactions assemble their own weight (cross section, target weight, Coulomb factor, decay survival).
+\item The loop sums \code{wtcontribute\ +=\ weight} over successes that pass \code{pass\_\allowbreak{}cuts}, \code{sum\_\allowbreak{}sigcc\ +=\ sigcc} over successes, and
+the counters \code{ntried}, \code{nevent}, \code{ncontribute}, \code{npasscuts} (\code{RunTotals}\simcidx{Classes and interfaces!RunTotals@\code{RunTotals}}, driver/\allowbreak{}RunReport.\allowbreak{}h).
+\item \code{Normalise} (RunReport.\allowbreak{}cpp): \code{normfac\ =\ luminosity\ /\ ntried\ *\ nevent}, times \code{genvol\ =\ IReaction::\allowbreak{}gen\allowbreak{}Volume(\allowbreak{})}
+(phase-space mode: \code{normfac\ =\ 1}); \code{wtcontribute\ *=\ normfac}; the resolutions from the sums (\code{npasscuts\ >\ 1}).
+\item The reports: \code{.\allowbreak{}hist} prints \code{wtcontr\ =\ wtcontribute\ /\ nevent} and \code{AVERAGE.\allowbreak{}sigcc\ =\ sum\_\allowbreak{}sigcc\ /\ nevent}, the
+luminosity, genvol, normfac, the central values and limits (\code{FormatHist}); \code{.\allowbreak{}geni} the stop counters (\code{FormatGeni});
+the summary JSON the same numbers at full precision (\code{MakeRunSummary}, output/\allowbreak{}SummaryJson.\allowbreak{}h); the tree stores
+\code{Weight} per event (output/\allowbreak{}NtupleLayout.\allowbreak{}h). With \code{ngen\ <\ 0} \code{nevent} counts tries.
+\end{enumerate}
+\section{\texorpdfstring{The \code{fortran\_\allowbreak{}compat} mode, errors}{The fortran\_\allowbreak{}compat mode, errors}}\label{developer_manual-03u5farchitecture:37-the-fortranu5fcompat-mode-errors}
+\textbf{\code{fortran\_\allowbreak{}compat}.} SIMC++ corrects a number of known defects of the original Fortran program by default. The run
+option \code{fortran\_\allowbreak{}compat} (\code{simc++\ -{}-{}fortran-{}compat}, JSON \code{"run":\ \{"fortran\_\allowbreak{}compat":\ true\}}) restores the original
+behaviour exactly; it is used by the reference tests. It is set once (\code{RunOptions}\simcidx{Classes and interfaces!RunOptions@\code{RunOptions}} → \code{SetupOptions}\simcidx{Classes and interfaces!SetupOptions@\code{SetupOptions}} →
+\code{Run\allowbreak{}Setup::\allowbreak{}fortran\_\allowbreak{}compat}\simcidx{Classes and interfaces!RunSetup@\code{RunSetup}}), every stage reads it from \code{Stage\allowbreak{}Context::\allowbreak{}setup}\simcidx{Classes and interfaces!StageContext@\code{StageContext}}, kernels receive it explicitly (argument,
+config struct or setter); there is no global. It forbids \code{-{}-{}threads\ N\ >\ 1}\simcidx{Command-line options!threads@\code{-{}-{}threads}}. The list of what it changes, and how to add
+a correction, is in the translation report (chapter 5\footnote{From SIMC to SIMC++, ``5. Fortran compatibility layer'' (\code{docs/\allowbreak{}translation/\allowbreak{}markdown/\allowbreak{}05\_\allowbreak{}compat.\allowbreak{}md})} and the
+catalogue\footnote{From SIMC to SIMC++, ``6. Catalogue of Fortran bugs, quirks and deviations (generated)'' (\code{docs/\allowbreak{}translation/\allowbreak{}markdown/\allowbreak{}06\_\allowbreak{}catalogue.\allowbreak{}md})}).
+
+\textbf{Errors} (core/\allowbreak{}Errors.\allowbreak{}h): \code{simc::\allowbreak{}Error}\simcidx{Classes and interfaces!Error@\code{Error}} (base, \code{std::\allowbreak{}runtime\_\allowbreak{}error}), \code{simc::\allowbreak{}FortranStop}\simcidx{Classes and interfaces!FortranStop@\code{FortranStop}} (a fatal condition of the
+original program, reported with its message), \code{simc::\allowbreak{}NotPorted}\simcidx{Classes and interfaces!NotPorted@\code{NotPorted}} (an unsupported feature). Misuse is \code{std::\allowbreak{}logic\_\allowbreak{}error}, a
+bad configuration \code{std::\allowbreak{}invalid\_\allowbreak{}argument}. \code{simc++} reports them and exits with status 3 (rejected inputs and refusals:
+2; DRIVER.md).
+
+\section{\texorpdfstring{Data files}{Data files}}\label{developer_manual-03u5farchitecture:38-data-files}
+core/\allowbreak{}DataPath.\allowbreak{}h: \code{DataRoot(\allowbreak{})} / \code{DataDir(\allowbreak{}sub)} (optics maps \code{matrices/\allowbreak{}simc\_\allowbreak{}fortran}, \code{pion}, \code{kaon}, \code{sidis},
+\code{spectral}, \code{field}): env \code{SIMC\_\allowbreak{}DATA\_\allowbreak{}DIR} → the installed package's \code{share/\allowbreak{}simc/\allowbreak{}data} (registered by
+\code{Simc\allowbreak{}Installed\allowbreak{}Data\allowbreak{}Root.\allowbreak{}cpp}) → \code{<exe>\allowbreak{}/\allowbreak{}.\allowbreak{}.\allowbreak{}/\allowbreak{}share/\allowbreak{}simc/\allowbreak{}data} → \code{<source>\allowbreak{}/\allowbreak{}data}. \code{-{}-{}data-{}dir}\simcidx{Command-line options!data-dir@\code{-{}-{}data-{}dir}} and the stages'
+\code{data\_\allowbreak{}dir}/\code{matrix\_\allowbreak{}dir} JSON keys override it. The files are checked by md5 tests (\code{l1\_\allowbreak{}*\_\allowbreak{}data\_\allowbreak{}files}).
+
+\section{\texorpdfstring{Public header reference}{Public header reference}}\label{developer_manual-03u5farchitecture:39-public-header-reference}
+Every header under \code{include/\allowbreak{}simc/} (the CTest \code{docs\_\allowbreak{}dev\_\allowbreak{}manual} fails when a header is missing here). "kernel" =
+private header of a module, not installed.
+
+\subsection*{\texorpdfstring{core}{core}}\label{developer_manual-03u5farchitecture:core}
+\begin{simctable}{small}{2}{>{\raggedright\arraybackslash}p{\dimexpr 0.342\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.611\linewidth-2\tabcolsep\relax}}
+\caption{core}\\%
+\toprule\rowcolor{simchead}\simcth{header} & \simcth{content} \\\midrule\endfirsthead
+\multicolumn{2}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{header} & \simcth{content} \\\midrule\endhead
+\midrule\multicolumn{2}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+\code{simc/\allowbreak{}core/\allowbreak{}Data\allowbreak{}Path.\allowbreak{}h} & default data directory (\code{DataRoot}, \code{DataDir}) \\
+\code{simc/\allowbreak{}core/\allowbreak{}Errors.\allowbreak{}h} & \code{Error}\simcidx{Classes and interfaces!Error@\code{Error}}, \code{FortranStop}\simcidx{Classes and interfaces!FortranStop@\code{FortranStop}}, \code{NotPorted}\simcidx{Classes and interfaces!NotPorted@\code{NotPorted}} \\
+\code{simc/\allowbreak{}core/\allowbreak{}Event.\allowbreak{}h} & \code{Event}\simcidx{Classes and interfaces!Event@\code{Event}}, \code{MainEvent}\simcidx{Classes and interfaces!MainEvent@\code{MainEvent}}, \code{NtupVars}\simcidx{Classes and interfaces!NtupVars@\code{NtupVars}}, \code{FermiMomentum}\simcidx{Classes and interfaces!FermiMomentum@\code{FermiMomentum}}, \code{HadronMass}\simcidx{Classes and interfaces!HadronMass@\code{HadronMass}}, \code{Generated\allowbreak{}Hadron\allowbreak{}Arm} \\
+\code{simc/\allowbreak{}core/\allowbreak{}Fwd.\allowbreak{}h} & forward declarations of the data model \\
+\code{simc/\allowbreak{}core/\allowbreak{}Json.\allowbreak{}h} & the JSON library choice (\code{simc::\allowbreak{}Json} = nlohmann::\allowbreak{}json) \\
+\code{simc/\allowbreak{}core/\allowbreak{}Registry.\allowbreak{}h} & \code{Registry<I>}, \code{SIMC\_\allowbreak{}REGISTER}\simcidx{SIMC_REGISTER@\code{SIMC\_REGISTER}} \\
+\code{simc/\allowbreak{}core/\allowbreak{}Run\allowbreak{}Setup.\allowbreak{}h} & \code{RunSetup}\simcidx{Classes and interfaces!RunSetup@\code{RunSetup}} and its parts (flags, target, cuts, limits, slops, axes) \\
+\code{simc/\allowbreak{}core/\allowbreak{}Run\allowbreak{}Summary.\allowbreak{}h} & end-of-run numbers handed to the sinks (\code{RunSummary}\simcidx{Classes and interfaces!RunSummary@\code{RunSummary}}, \code{StopCounters}\simcidx{Classes and interfaces!StopCounters@\code{StopCounters}}) \\
+\code{simc/\allowbreak{}core/\allowbreak{}Simc\allowbreak{}Constants.\allowbreak{}h} & physical constants (masses, alpha, hbarc, ...) \\
+\code{simc/\allowbreak{}core/\allowbreak{}Simc\allowbreak{}Parameters.\allowbreak{}h} & every input variable of the \code{.\allowbreak{}inp} (CTP names, input units, defaults) \\
+\code{simc/\allowbreak{}core/\allowbreak{}Spectrometer\allowbreak{}Id.\allowbreak{}h} & one number per spectrometer (1 HMS, 2 SOS, 3 HRS-R, 4 HRS-L, 5 SHMS, 7/8 calorimeter) and its name table \\
+\code{simc/\allowbreak{}core/\allowbreak{}Units.\allowbreak{}h} & the unit convention and the named conversion factors \\
+\code{simc/\allowbreak{}core/\allowbreak{}random/\allowbreak{}Gauss1.\allowbreak{}h} & truncated gaussian (polar method with rejection) on any uniform source \\
+\code{simc/\allowbreak{}core/\allowbreak{}random/\allowbreak{}Mt64Random.\allowbreak{}h} & IRandom \code{mt64} (default; \code{seedStream} for worker threads) \\
+\code{simc/\allowbreak{}core/\allowbreak{}random/\allowbreak{}Ranlux\allowbreak{}Random.\allowbreak{}h} & IRandom \code{ranlux}: RANLUX luxury 3 (reproduces the original program's stream) \\
+\code{simc/\allowbreak{}core/\allowbreak{}random/\allowbreak{}Scripted\allowbreak{}Random.\allowbreak{}h} & IRandom replaying scripted numbers (reference tests) \\
+\end{simctable}
+\subsection*{\texorpdfstring{stages}{stages}}\label{developer_manual-03u5farchitecture:stages}
+\begin{simctable}{small}{2}{>{\raggedright\arraybackslash}p{\dimexpr 0.419\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.534\linewidth-2\tabcolsep\relax}}
+\caption{stages}\\%
+\toprule\rowcolor{simchead}\simcth{header} & \simcth{content} \\\midrule\endfirsthead
+\multicolumn{2}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{header} & \simcth{content} \\\midrule\endhead
+\midrule\multicolumn{2}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+\code{simc/\allowbreak{}stages/\allowbreak{}IStage.\allowbreak{}h} & common base: \code{name}, \code{configure}, \code{init} \\
+\code{simc/\allowbreak{}stages/\allowbreak{}Stage\allowbreak{}Context.\allowbreak{}h} & the dependency injection at \code{init} \\
+\code{simc/\allowbreak{}stages/\allowbreak{}IRandom.\allowbreak{}h} & random-number source \\
+\code{simc/\allowbreak{}stages/\allowbreak{}ITarget.\allowbreak{}h} & target model (per event) \\
+\code{simc/\allowbreak{}stages/\allowbreak{}ITarget\allowbreak{}Loss\allowbreak{}Provider.\allowbreak{}h} & target model (start-up losses for the set-up) \\
+\code{simc/\allowbreak{}stages/\allowbreak{}IMaterial\allowbreak{}Model.\allowbreak{}h} & energy loss and multiple scattering \\
+\code{simc/\allowbreak{}stages/\allowbreak{}IBeam.\allowbreak{}h} & beam and vertex \\
+\code{simc/\allowbreak{}stages/\allowbreak{}IReaction.\allowbreak{}h} & reaction: generation, completion, weight, genvol \\
+\code{simc/\allowbreak{}stages/\allowbreak{}IPhysics\allowbreak{}Model.\allowbreak{}h} & cross-section model \\
+\code{simc/\allowbreak{}stages/\allowbreak{}ISpectral\allowbreak{}Function.\allowbreak{}h} & spectral function of D/A(e,e'p) \\
+\code{simc/\allowbreak{}stages/\allowbreak{}IRadiator.\allowbreak{}h} & radiative corrections (\code{CompleteEvFn}, \code{RadiationValues}\simcidx{Classes and interfaces!RadiationValues@\code{RadiationValues}}) \\
+\code{simc/\allowbreak{}stages/\allowbreak{}ISpectrometer.\allowbreak{}h} & single-arm Monte Carlo (\code{SpecInput}\simcidx{Classes and interfaces!SpecInput@\code{SpecInput}}, \code{SpecResult}\simcidx{Classes and interfaces!SpecResult@\code{SpecResult}}) \\
+\code{simc/\allowbreak{}stages/\allowbreak{}IOutput\allowbreak{}Sink.\allowbreak{}h} & output sink \\
+\code{simc/\allowbreak{}stages/\allowbreak{}IParallel\allowbreak{}Sink.\allowbreak{}h} & worker sinks and merge for \code{-{}-{}threads\ N}\simcidx{Command-line options!threads@\code{-{}-{}threads}} \\
+\end{simctable}
+\subsection*{\texorpdfstring{driver}{driver}}\label{developer_manual-03u5farchitecture:driver}
+\begin{simctable}{small}{2}{>{\raggedright\arraybackslash}p{\dimexpr 0.346\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.607\linewidth-2\tabcolsep\relax}}
+\caption{driver}\\%
+\toprule\rowcolor{simchead}\simcth{header} & \simcth{content} \\\midrule\endfirsthead
+\multicolumn{2}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{header} & \simcth{content} \\\midrule\endhead
+\midrule\multicolumn{2}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+\code{simc/\allowbreak{}driver/\allowbreak{}Simc\allowbreak{}Run.\allowbreak{}h} & one complete run (\code{RunOptions}\simcidx{Classes and interfaces!RunOptions@\code{RunOptions}}, \code{PassCuts}, \code{SimcRun}\simcidx{Classes and interfaces!SimcRun@\code{SimcRun}}) \\
+\code{simc/\allowbreak{}driver/\allowbreak{}Monte\allowbreak{}Carlo.\allowbreak{}h} & transport of both arms per try (\code{ArmChoice}\simcidx{Classes and interfaces!ArmChoice@\code{ArmChoice}}, \code{DefaultArm}) \\
+\code{simc/\allowbreak{}driver/\allowbreak{}Event\allowbreak{}State.\allowbreak{}h} & the main-loop event state (stale-value semantics) \\
+\code{simc/\allowbreak{}driver/\allowbreak{}Central.\allowbreak{}h} & the central event (\code{calculateCentral}) \\
+\code{simc/\allowbreak{}driver/\allowbreak{}Pipeline.\allowbreak{}h} & the plug-in choice (\code{StageSpec}\simcidx{Classes and interfaces!StageSpec@\code{StageSpec}}, \code{PipelineConfig}\simcidx{Classes and interfaces!PipelineConfig@\code{PipelineConfig}}) \\
+\code{simc/\allowbreak{}driver/\allowbreak{}Run\allowbreak{}Report.\allowbreak{}h} & \code{RunTotals}\simcidx{Classes and interfaces!RunTotals@\code{RunTotals}}, \code{Normalisation}\simcidx{Classes and interfaces!Normalisation@\code{Normalisation}}, \code{Normalise}, \code{FormatHist}, \code{FormatGeni}, \code{MakeRunSummary} \\
+\code{simc/\allowbreak{}driver/\allowbreak{}Report\allowbreak{}Sink.\allowbreak{}h} & \code{IReportSink}\simcidx{Classes and interfaces!IReportSink@\code{IReportSink}}, the sink \code{fortran\_\allowbreak{}hist} (\code{.\allowbreak{}hist/\allowbreak{}.\allowbreak{}geni/\allowbreak{}.\allowbreak{}gen}) \\
+\code{simc/\allowbreak{}driver/\allowbreak{}Fortran\allowbreak{}Writer.\allowbreak{}h} & formatted text output in the layout of the \code{.\allowbreak{}hist/\allowbreak{}.\allowbreak{}geni} reports \\
+\code{simc/\allowbreak{}driver/\allowbreak{}Pizero\allowbreak{}Calorimeter.\allowbreak{}h} & π0 → 2γ in a calorimeter arm \\
+\code{simc/\allowbreak{}driver/\allowbreak{}Target\allowbreak{}Field\allowbreak{}Angles.\allowbreak{}h} & arm angles relative to the polarized-target field \\
+\code{simc/\allowbreak{}driver/\allowbreak{}Command\allowbreak{}Line.\allowbreak{}h} & \code{CommandLineMain} (the \code{simc++} command line as a library function) \\
+\end{simctable}
+\subsection*{\texorpdfstring{input, output, setup}{input, output, setup}}\label{developer_manual-03u5farchitecture:input-output-setup}
+\begin{simctable}{small}{2}{>{\raggedright\arraybackslash}p{\dimexpr 0.365\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.588\linewidth-2\tabcolsep\relax}}
+\caption{input, output, setup}\\%
+\toprule\rowcolor{simchead}\simcth{header} & \simcth{content} \\\midrule\endfirsthead
+\multicolumn{2}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{header} & \simcth{content} \\\midrule\endhead
+\midrule\multicolumn{2}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+\code{simc/\allowbreak{}input/\allowbreak{}Inp\allowbreak{}Reader.\allowbreak{}h} & CTP \code{.\allowbreak{}inp} reader → \code{SimcParameters}\simcidx{Classes and interfaces!SimcParameters@\code{SimcParameters}} \\
+\code{simc/\allowbreak{}input/\allowbreak{}Effective\allowbreak{}Values.\allowbreak{}h} & the effective (converted) value of every input (inp2json, tests) \\
+\code{simc/\allowbreak{}output/\allowbreak{}Root\allowbreak{}Tree\allowbreak{}Sink.\allowbreak{}h} & sink \code{root\_\allowbreak{}tree}: TTree \code{h10}, Float\_t branches \\
+\code{simc/\allowbreak{}output/\allowbreak{}Ntuple\allowbreak{}Layout.\allowbreak{}h} & the ntuple column layout per reaction \\
+\code{simc/\allowbreak{}output/\allowbreak{}Gen\allowbreak{}Hist\allowbreak{}Sink.\allowbreak{}h} & sink \code{gen\_\allowbreak{}hist}: H\%\allowbreak{}geni/\allowbreak{}H\%\allowbreak{}gen/\allowbreak{}H\%\allowbreak{}RECON as \code{.\allowbreak{}gen.\allowbreak{}root} \\
+\code{simc/\allowbreak{}output/\allowbreak{}Run\allowbreak{}Summary\allowbreak{}Sink.\allowbreak{}h} & sink \code{run\_\allowbreak{}summary}: \code{.\allowbreak{}summary.\allowbreak{}json/\allowbreak{}.\allowbreak{}txt} \\
+\code{simc/\allowbreak{}output/\allowbreak{}Summary\allowbreak{}Json.\allowbreak{}h} & the summary JSON builder/\allowbreak{}reader (\code{docs/\allowbreak{}manual/\allowbreak{}markdown/\allowbreak{}reference/\allowbreak{}summary.\allowbreak{}schema.\allowbreak{}json}) \\
+\code{simc/\allowbreak{}setup/\allowbreak{}Setup\allowbreak{}Builder.\allowbreak{}h} & \code{BuildRunSetup}, \code{SetupOptions}\simcidx{Classes and interfaces!SetupOptions@\code{SetupOptions}} (the run set-up) \\
+\code{simc/\allowbreak{}setup/\allowbreak{}Kinematics\allowbreak{}Utils.\allowbreak{}h} & Lorentz boost (\code{loren}), \code{PhysicsAngles}, \code{Spectrometer\allowbreak{}Angles} \\
+\end{simctable}
+\subsection*{\texorpdfstring{material, radiation, optics}{material, radiation, optics}}\label{developer_manual-03u5farchitecture:material-radiation-optics}
+\begin{simctable}{small}{2}{>{\raggedright\arraybackslash}p{\dimexpr 0.340\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.613\linewidth-2\tabcolsep\relax}}
+\caption{material, radiation, optics}\\%
+\toprule\rowcolor{simchead}\simcth{header} & \simcth{content} \\\midrule\endfirsthead
+\multicolumn{2}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{header} & \simcth{content} \\\midrule\endhead
+\midrule\multicolumn{2}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+\code{simc/\allowbreak{}material/\allowbreak{}Hall\allowbreak{}CCryo\allowbreak{}Target.\allowbreak{}h} & ITarget \code{hallc\_\allowbreak{}cryo} (cryogenic cells and solid targets) \\
+\code{simc/\allowbreak{}material/\allowbreak{}Simc\allowbreak{}Material.\allowbreak{}h} & IMaterialModel \code{simc\_\allowbreak{}material} (energy loss, multiple scattering) \\
+\code{simc/\allowbreak{}material/\allowbreak{}Material\allowbreak{}Constants.\allowbreak{}h} & window and wall materials and geometry constants \\
+\code{simc/\allowbreak{}material/\allowbreak{}Target\allowbreak{}Info.\allowbreak{}h} & \code{TargetInfo}\simcidx{Classes and interfaces!TargetInfo@\code{TargetInfo}} (target description and start-up losses) \\
+\code{simc/\allowbreak{}material/\allowbreak{}Fortran\allowbreak{}Format.\allowbreak{}h} & number formatting of warning messages \\
+\code{simc/\allowbreak{}radiation/\allowbreak{}Simc\allowbreak{}Radiator.\allowbreak{}h} & IRadiator \code{simc\_\allowbreak{}rad} \\
+\code{simc/\allowbreak{}radiation/\allowbreak{}kernel/\allowbreak{}Radc.\allowbreak{}h} & kernel: radiative-correction routines (\code{generateRad}, \code{peakedRadWeight}, ...) \\
+\code{simc/\allowbreak{}radiation/\allowbreak{}kernel/\allowbreak{}Brem.\allowbreak{}h} & kernel: bremsstrahlung routines \\
+\code{simc/\allowbreak{}radiation/\allowbreak{}kernel/\allowbreak{}Radc\allowbreak{}State.\allowbreak{}h} & kernel: radiation state per event and per run, tgamma memo \\
+\code{simc/\allowbreak{}optics/\allowbreak{}Cosy\allowbreak{}Engine.\allowbreak{}h} & COSY transport engine (transp, project, recon, rotate\_\allowbreak{}*axis,\allowbreak{} \code{powi}) \\
+\code{simc/\allowbreak{}optics/\allowbreak{}Forward\allowbreak{}Chains.\allowbreak{}h} & aperture-free forward chains (L1 tests) \\
+\code{simc/\allowbreak{}optics/\allowbreak{}Lfit.\allowbreak{}h} & CERNLIB LFIT in real*4 \\
+\code{simc/\allowbreak{}optics/\allowbreak{}Target\allowbreak{}Field.\allowbreak{}h} & polarized-target field tracking \\
+\code{simc/\allowbreak{}optics/\allowbreak{}Transport\allowbreak{}Trace.\allowbreak{}h} & optional per-step diagnostics of the transport kernels (L1 tests) \\
+\end{simctable}
+\subsection*{\texorpdfstring{reactions}{reactions}}\label{developer_manual-03u5farchitecture:reactions}
+\begin{simctable}{small}{2}{>{\raggedright\arraybackslash}p{\dimexpr 0.408\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.545\linewidth-2\tabcolsep\relax}}
+\caption{reactions}\\%
+\toprule\rowcolor{simchead}\simcth{header} & \simcth{content} \\\midrule\endfirsthead
+\multicolumn{2}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{header} & \simcth{content} \\\midrule\endhead
+\midrule\multicolumn{2}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+\code{simc/\allowbreak{}reactions/\allowbreak{}Event\allowbreak{}Chain.\allowbreak{}h} & \code{generateEvent}, \code{assembleWeight}, \code{limitsUpdate}, \code{transformToCm}, merge helpers \\
+\code{simc/\allowbreak{}reactions/\allowbreak{}Standard\allowbreak{}Beam.\allowbreak{}h} & IBeam \code{standard} \\
+\code{simc/\allowbreak{}reactions/\allowbreak{}Eep\allowbreak{}Reaction\allowbreak{}Base.\allowbreak{}h} & shared (e,e'p) complete\_\allowbreak{}ev / complete\_\allowbreak{}recon\_\allowbreak{}ev / complete\_\allowbreak{}main / genvol \\
+\code{simc/\allowbreak{}reactions/\allowbreak{}Hydrogen\allowbreak{}Elastic.\allowbreak{}h} & IReaction \code{hydrogen\_\allowbreak{}elastic}, \code{phase\_\allowbreak{}space} \\
+\code{simc/\allowbreak{}reactions/\allowbreak{}Nuclear\allowbreak{}Eep.\allowbreak{}h} & IReaction \code{deuterium\_\allowbreak{}eep}, \code{nucleus\_\allowbreak{}eep} \\
+\code{simc/\allowbreak{}reactions/\allowbreak{}Pion\allowbreak{}Production.\allowbreak{}h} & IReaction \code{pion\_\allowbreak{}production} \\
+\code{simc/\allowbreak{}reactions/\allowbreak{}Kaon\allowbreak{}Production.\allowbreak{}h} & IReaction \code{kaon\_\allowbreak{}production} \\
+\code{simc/\allowbreak{}reactions/\allowbreak{}Delta\allowbreak{}Production.\allowbreak{}h} & IReaction \code{delta\_\allowbreak{}production} \\
+\code{simc/\allowbreak{}reactions/\allowbreak{}Sidis\allowbreak{}Production.\allowbreak{}h} & IReaction \code{sidis\_\allowbreak{}production} \\
+\code{simc/\allowbreak{}reactions/\allowbreak{}Rho\allowbreak{}Production.\allowbreak{}h} & IReaction \code{rho\_\allowbreak{}production} \\
+\end{simctable}
+\subsection*{\texorpdfstring{physics}{physics}}\label{developer_manual-03u5farchitecture:physics}
+\begin{simctable}{small}{2}{>{\raggedright\arraybackslash}p{\dimexpr 0.434\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.519\linewidth-2\tabcolsep\relax}}
+\caption{physics}\\%
+\toprule\rowcolor{simchead}\simcth{header} & \simcth{content} \\\midrule\endfirsthead
+\multicolumn{2}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{header} & \simcth{content} \\\midrule\endhead
+\midrule\multicolumn{2}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+\code{simc/\allowbreak{}physics/\allowbreak{}proton/\allowbreak{}Proton\allowbreak{}Cross\allowbreak{}Sections.\allowbreak{}h} & sigMott, fofa, sigep, deForest \\
+\code{simc/\allowbreak{}physics/\allowbreak{}nuclear/\allowbreak{}Spectral\allowbreak{}Functions.\allowbreak{}h} & ISpectralFunction \code{theory}, \code{benhar} \\
+\code{simc/\allowbreak{}physics/\allowbreak{}nuclear/\allowbreak{}Spectral\allowbreak{}Function\allowbreak{}Tables.\allowbreak{}h} & spectral-function tables (\code{SfTable}\simcidx{Classes and interfaces!SfTable@\code{SfTable}}), theory-file weight \\
+\code{simc/\allowbreak{}physics/\allowbreak{}pion/\allowbreak{}Pion\allowbreak{}Cross\allowbreak{}Sections.\allowbreak{}h} & exclusive pion cross sections (peepi and the models) \\
+\code{simc/\allowbreak{}physics/\allowbreak{}pion/\allowbreak{}Pion\allowbreak{}Model.\allowbreak{}h} & IPhysicsModel \code{pion} \\
+\code{simc/\allowbreak{}physics/\allowbreak{}pion/\allowbreak{}Pizero\allowbreak{}Decay.\allowbreak{}h} & π0 → 2γ decay \\
+\code{simc/\allowbreak{}physics/\allowbreak{}kaon/\allowbreak{}Kaon\allowbreak{}Cross\allowbreak{}Sections.\allowbreak{}h} & kaon cross sections (peeK, Saghai tables, fint interpolation) \\
+\code{simc/\allowbreak{}physics/\allowbreak{}kaon/\allowbreak{}Kaon\allowbreak{}Model.\allowbreak{}h} & IPhysicsModel \code{kaon} \\
+\code{simc/\allowbreak{}physics/\allowbreak{}delta/\allowbreak{}Delta\allowbreak{}Model.\allowbreak{}h} & IPhysicsModel \code{delta} (peedelta: phase space × flux, no cross section) \\
+\code{simc/\allowbreak{}physics/\allowbreak{}sidis/\allowbreak{}Sidis\allowbreak{}Cross\allowbreak{}Section.\allowbreak{}h} & semi-inclusive cross section (peepiX, dilution) \\
+\code{simc/\allowbreak{}physics/\allowbreak{}sidis/\allowbreak{}Sidis\allowbreak{}Model.\allowbreak{}h} & IPhysicsModel \code{sidis} \\
+\code{simc/\allowbreak{}physics/\allowbreak{}sidis/\allowbreak{}Cteq5Pdf.\allowbreak{}h} & CTEQ5 PDFs \\
+\code{simc/\allowbreak{}physics/\allowbreak{}sidis/\allowbreak{}Fdss.\allowbreak{}h} & fDSS fragmentation functions \\
+\code{simc/\allowbreak{}physics/\allowbreak{}sidis/\allowbreak{}F1F2In21.\allowbreak{}h} & Christy 2021 inclusive fit (free nucleon) \\
+\code{simc/\allowbreak{}physics/\allowbreak{}rho/\allowbreak{}Rho\allowbreak{}Physics.\allowbreak{}h} & peerho, generate\_\allowbreak{}rho,\allowbreak{} rho\_decay kernels \\
+\code{simc/\allowbreak{}physics/\allowbreak{}rho/\allowbreak{}Rho\allowbreak{}Model.\allowbreak{}h} & IPhysicsModel \code{rho} \\
+\end{simctable}
+\subsection*{\texorpdfstring{spectrometers}{spectrometers}}\label{developer_manual-03u5farchitecture:spectrometers}
+\begin{simctable}{small}{2}{>{\raggedright\arraybackslash}p{\dimexpr 0.497\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.456\linewidth-2\tabcolsep\relax}}
+\caption{spectrometers}\\%
+\toprule\rowcolor{simchead}\simcth{header} & \simcth{content} \\\midrule\endfirsthead
+\multicolumn{2}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{header} & \simcth{content} \\\midrule\endhead
+\midrule\multicolumn{2}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+\code{simc/\allowbreak{}spectrometers/\allowbreak{}hms/\allowbreak{}Hms\allowbreak{}Spectrometer.\allowbreak{}h} & ISpectrometer \code{hms} \\
+\code{simc/\allowbreak{}spectrometers/\allowbreak{}hms/\allowbreak{}kernel/\allowbreak{}Mc\allowbreak{}Hms.\allowbreak{}h} & kernel: \code{McHms}\simcidx{Classes and interfaces!McHms@\code{McHms}} (transport, hut, collimator, pion absorption; track state and counters) \\
+\code{simc/\allowbreak{}spectrometers/\allowbreak{}shms/\allowbreak{}Shms\allowbreak{}Spectrometer.\allowbreak{}h} & ISpectrometer \code{shms} \\
+\code{simc/\allowbreak{}spectrometers/\allowbreak{}shms/\allowbreak{}kernel/\allowbreak{}Mc\allowbreak{}Shms.\allowbreak{}h} & kernel: \code{McShms}\simcidx{Classes and interfaces!McShms@\code{McShms}} (transport, hut, collimator) \\
+\code{simc/\allowbreak{}spectrometers/\allowbreak{}sos/\allowbreak{}Sos\allowbreak{}Spectrometer.\allowbreak{}h} & ISpectrometer \code{sos} \\
+\code{simc/\allowbreak{}spectrometers/\allowbreak{}sos/\allowbreak{}kernel/\allowbreak{}Mc\allowbreak{}Sos.\allowbreak{}h} & kernel: \code{McSos}\simcidx{Classes and interfaces!McSos@\code{McSos}} (transport, hut) \\
+\code{simc/\allowbreak{}spectrometers/\allowbreak{}hrs/\allowbreak{}Hrs\allowbreak{}Spectrometer.\allowbreak{}h} & ISpectrometer \code{hrsr}, \code{hrsl} \\
+\code{simc/\allowbreak{}spectrometers/\allowbreak{}hrs/\allowbreak{}kernel/\allowbreak{}Mc\allowbreak{}Hrs.\allowbreak{}h} & kernel: \code{McHrs}\simcidx{Classes and interfaces!McHrs@\code{McHrs}} (both sides; transport, hut) \\
+\code{simc/\allowbreak{}spectrometers/\allowbreak{}calo/\allowbreak{}Calo\allowbreak{}Spectrometer.\allowbreak{}h} & ISpectrometer \code{calo} (arms 7/8) \\
+\code{simc/\allowbreak{}spectrometers/\allowbreak{}calo/\allowbreak{}kernel/\allowbreak{}Mc\allowbreak{}Calo.\allowbreak{}h} & kernel: \code{McCalo}\simcidx{Classes and interfaces!McCalo@\code{McCalo}} \\
+\end{simctable}

@@ -1,5 +1,5 @@
 {
-  "_comment": "SIMC++ run configuration (docs/DRIVER.md). parameters = inp2json of reference/runs/acc_phsp_hms_shms_A/acc_phsp_hms_shms_A.inp (Fortran .inp units); pipeline = the default plug-ins written out explicitly; run = output naming.",
+  "_comment": "SIMC++ run configuration (docs/manual/markdown/reference/DRIVER.md). parameters = inp2json of reference/runs/acc_phsp_hms_shms_A/acc_phsp_hms_shms_A.inp (Fortran .inp units); pipeline = the default plug-ins written out explicitly; run = output naming.",
   "parameters": {
     "EXPER": {
       "charge": 1.0

@@ -1,0 +1,106 @@
+% docs/translation/latex/chapters/05_compat.tex - chapter of the LaTeX edition of the book "translation_report" (SIMC++ documentation).
+%   Converted once from docs/translation/markdown/05_compat.md by tools/md2latex.py; from then on THIS FILE is the source of the
+%   LaTeX edition and may be edited by hand. Re-running tools/md2latex.py --write-sources for this
+%   chapter OVERWRITES the hand edits (see docs/README.md).
+%   Compile: cmake --build <build> --target pdf, or tools/build_docs_pdf.py (figures, xelatex passes,
+%   makeindex with docs/common/latex/simcpp.ist); by hand, see docs/README.md. XeLaTeX, class
+%   docs/common/latex/simcpp.cls (packages: fontspec, tikz, xcolor, hyperref, listings, longtable, booktabs,
+%   titlesec, titletoc, fancyhdr, makeidx, preview, ...); fonts TeX Gyre Pagella, TeX Gyre Heros, DejaVu Sans
+%   Mono. The figures are built first from docs/{manual,translation}/figures/*.tex (preview.sty) into PDFs.
+\chapter{\texorpdfstring{Fortran compatibility layer}{Fortran compatibility layer}}\label{translation_report-05u5fcompat}
+\simcabstract{Policy (D-031): \textbf{clear Fortran bugs are corrected by default}; the run option \code{fortran\_\allowbreak{}compat} restores the exact
+Fortran behaviour so that the bitwise tests (L1 tables, captures, RANLUX full runs, the compat regression baselines) can
+still prove the translation. The complete list of differences is FORTRAN\_\allowbreak{}DIFFERENCES.md\footnote{From SIMC to SIMC++, ``Differences between SIMC++ and the Fortran SIMC'' (\code{docs/\allowbreak{}translation/\allowbreak{}markdown/\allowbreak{}FORTRAN\_\allowbreak{}DIFFERENCES.\allowbreak{}md})}.}
+\section{\texorpdfstring{Categories and markers}{Categories and markers}}\label{translation_report-05u5fcompat:51-categories-and-markers}
+\begin{simctable}{footnotesize}{5}{>{\raggedright\arraybackslash}p{\dimexpr 0.094\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.195\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.116\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.178\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.318\linewidth-2\tabcolsep\relax}}
+%
+\toprule\rowcolor{simchead}\simcth{Category} & \simcth{meaning} & \simcth{default mode} & \simcth{\code{-{}-{}fortran-{}compat}} & \simcth{marker in the code} \\\midrule\endfirsthead
+\multicolumn{5}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{Category} & \simcth{meaning} & \simcth{default mode} & \simcth{\code{-{}-{}fortran-{}compat}} & \simcth{marker in the code} \\\midrule\endhead
+\midrule\multicolumn{5}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+A & clear Fortran bug & corrected & Fortran & \code{/\allowbreak{}/\ FORTRAN-{}BUG(\allowbreak{}D-{}xxx):\ original\ Fortran\ <file:\allowbreak{}line>:\ <code>\allowbreak{};\ corrected\ because\ <reason>} \\
+A-NP & clear bug in a path that is not ported & note only & — & (none left at P15.D1) \\
+B & ambiguous, maybe intended (the "expert list") & Fortran & Fortran & \code{/\allowbreak{}/\ FORTRAN-{}DIFF-{}CANDIDATE(\allowbreak{}D-{}xxx):\ .\allowbreak{}.\allowbreak{}.\ Question:\ .\allowbreak{}.\allowbreak{}.} \\
+C & open question with the user (acceptance mode, D-009/\allowbreak{}D-028) & Fortran & Fortran & \code{/\allowbreak{}/\ FORTRAN-{}OPEN(\allowbreak{}D-{}031\ flag\ 1)} \\
+D & faithful odd behaviour, not a bug (precision, formats, dead code, guards) & Fortran & Fortran & \code{/\allowbreak{}/\ FORTRAN-{}QUIRK(\allowbreak{}.\allowbreak{}.\allowbreak{}.\allowbreak{})} \\
+DEV & deliberate design deviation of SIMC++ (JSON input, exit codes, no \code{.\allowbreak{}bin}, arm code 6 refused, ...) & SIMC++ & SIMC++ & FORTRAN\_\allowbreak{}DIFFERENCES.md §6 \\
+\end{simctable}
+Who decides: findings come from the Fortran reports (\code{reference/\allowbreak{}P*.\allowbreak{}F*\_\allowbreak{}report.\allowbreak{}md}) or from the C++ reading; the director
+classifies them in a decision (\code{D-{}0xx}: e.g. D-057 for rho, D-061 SOS/HRS, D-067 target field).
+
+\begin{simcnote}
+an agent that suspects a bug keeps the Fortran behaviour and reports it; it does not correct on its own.
+\end{simcnote}
+\section{\texorpdfstring{How the switch reaches the code}{How the switch reaches the code}}\label{translation_report-05u5fcompat:52-how-the-switch-reaches-the-code}
+There is no global. The flag is set once and passed down explicitly:
+
+\begin{simcplain}[basicstyle=\ttfamily\tiny]
+simc++ --fortran-compat  |  JSON "run": {"fortran_compat": true}
+  → driver::RunOptions::fortran_compat                         (CommandLine.cpp)
+  → SetupOptions::fortran_compat → RunSetup::fortran_compat    (BuildRunSetup; set-up corrections use it directly)
+  → every stage reads StageContext::setup.fortran_compat in init()
+  → kernels get it explicitly from their stage:
+        function arguments            SpectrometerAngles(..., fortran_compat), rotateHaxis/rotateVaxis(..., fortran_compat)
+        argument structs              ExtremeTripArgs::fortran_compat, proton::DeForestState::fortran_compat,
+                                      pion::PeepiConfig::fortran_compat, the Saghai/peeK/peepiX/peerho/peedelta configs
+        kernel setters                optics::CosyEngine::setFortranCompat (via McHms/McShms/McSos/McHrs::setFortranCompat),
+                                      calo::McCalo::setFortranCompat
+        driver                        PassCuts(setup, recon), MonteCarlo, PizeroCalorimeter, RunReport, the sinks
+                                      (NtupleLayout, FortranHistSink, GenHistSink: report-level corrections)
+\end{simcplain}
+The run log prints the mode (\code{\ SIMC++:\ fortran\_\allowbreak{}compat\ =\ true/\allowbreak{}false\ .\allowbreak{}.\allowbreak{}.}), and the summary JSON records it
+(\code{run.\allowbreak{}fortran\_\allowbreak{}compat}, D-054), which \code{simc\_\allowbreak{}compare} uses to choose the pass\_cuts window (chapter 2).
+\code{-{}-{}fortran-{}compat}\simcidx{Command-line options!fortran-compat@\code{-{}-{}fortran-{}compat}} also refuses \code{-{}-{}threads\ N\ >\ 1}\simcidx{Command-line options!threads@\code{-{}-{}threads}} (the exact reproduction needs one stream in the Fortran order).
+
+Where the switches live (files that read the flag): src/setup (5 files), src/driver (10), src/output (3),
+src/\allowbreak{}material,\allowbreak{} src/optics (2), src/\allowbreak{}radiation (2), src/\allowbreak{}reactions (+ pion, rho, sidis), src/\allowbreak{}physics/\allowbreak{}\{proton,\allowbreak{} nuclear,
+pion, kaon, delta, sidis, rho\}, src/\allowbreak{}spectrometers/\allowbreak{}\{hms,\allowbreak{} shms, sos, hrs, calo\}. \code{grep\ -{}rn\ fortran\_\allowbreak{}compat\ src\ include}
+lists them.
+
+\begin{figure}[htbp]
+\simcfigure{compat_switch}
+\caption[The two behaviour modes]{The two behaviour modes: what each Category of finding does by default and with -{}-fortran-compat,\allowbreak{} and how the switch reaches the code}\label{fig:compatu5fswitch}
+\end{figure}
+\section{\texorpdfstring{Adding a correction (Category A)}{Adding a correction (Category A)}}\label{translation_report-05u5fcompat:53-adding-a-correction-category-a}
+\begin{enumerate}
+\item \textbf{Decision.} The finding must have a D-number and Category A (DECISIONS.md). Note the Fortran file:line, what the
+Fortran does, what the correction does, and whether the correction changes the number of random draws (D-058).
+\item \textbf{Code.} Keep the Fortran path and add the corrected one behind the flag the kernel already receives (or pass the
+flag through its config struct / setter; never read a global):
+
+\simcsource{src/\allowbreak{}driver/\allowbreak{}Simc\allowbreak{}Run.\allowbreak{}cpp}
+\begin{simccode}[basicstyle=\ttfamily\tiny,style=simccpp]
+// FORTRAN-BUG(D-006): original Fortran simc.f:237: `recon%p%delta .ge. (SPedge%e%delta%max-slop%MC%p%delta%used)`;
+// corrected because the hadron-arm delta must be tested against the hadron-arm limit SPedge%p%delta%max, like the
+// other five hadron-arm tests (copy-paste of l.231). fortran_compat keeps the electron-arm limit.
+bool PassCuts(const RunSetup& S, const Event& r) {
+    const auto& E = S.SPedge;
+    const auto& M = S.slop.MC;
+    const double p_delta_max = S.fortran_compat ? E.e.delta.max : E.p.delta.max;
+\end{simccode}
+(\code{driver::\allowbreak{}PassCuts}, the first correction of the project.) The compat path must stay bitwise the
+Fortran, including its random draws.
+\item \textbf{Both-mode test.} Add an item to \code{tests/\allowbreak{}fortran\_\allowbreak{}diff/\allowbreak{}test\_\allowbreak{}fortran\_\allowbreak{}differences.\allowbreak{}cpp} (a function registered in
+\code{items(\allowbreak{})} under the id, e.g. \code{"D061\_\allowbreak{}F1e\_\allowbreak{}hrs\_\allowbreak{}vdc\_\allowbreak{}rotation"}) that shows \textbf{both} behaviours: \code{fortran\_\allowbreak{}compat\ =\ true}
+gives the Fortran result (ideally against a reference table or run), the default gives the corrected one. Add the id
+to \code{SIMC\_\allowbreak{}FORTRAN\_\allowbreak{}DIFF\_\allowbreak{}ITEMS} in tests/\allowbreak{}fortran\_\allowbreak{}diff/\allowbreak{}CMakeLists.\allowbreak{}txt (CTest \code{fortran\_\allowbreak{}diff\_\allowbreak{}<id>}, labels
+\code{fortran\_\allowbreak{}diff;unit}). Corrections visible only in a full run can instead be tested by a RANLUX full run in both modes
+(tests/l1, \code{ranlux\_\allowbreak{}fullrun.\allowbreak{}sh}).
+\item \textbf{The L1 / replay tests keep running in compat} (they pass \code{fortran\_\allowbreak{}compat\ =\ true} or \code{-{}-{}fortran-{}compat}\simcidx{Command-line options!fortran-compat@\code{-{}-{}fortran-{}compat}}); check
+that they still pass bitwise.
+\item \textbf{FORTRAN\_\allowbreak{}DIFFERENCES.md row} in §2 (Category A): \code{|\ id\ |\ Fortran\ file:\allowbreak{}line\ |\ original\ behaviour\ |\ C++\ default\ |\ effect\ (\allowbreak{}outputs,\ size,\ configurations)\ |\ test\ |}, plus the measured effect in the per-reaction L2 section when the
+correction changes distributions (an L2 run in both modes, \code{simc\_\allowbreak{}compare} corrected vs Fortran).
+\item \textbf{Baselines.} A correction changes the corrected-mode regression baselines (\code{regression\_\allowbreak{}corrected\_\allowbreak{}*} and the
+\code{*\_\allowbreak{}corrected\_\allowbreak{}*} families): regenerate them (chapter 2 §2.6) and state in the commit which families changed and why.
+The compat baselines must not change.
+\item \textbf{User manual}: one line in the user-facing summary of corrections.
+\end{enumerate}
+\section{\texorpdfstring{Ambiguous cases, quirks and the acceptance mode}{Ambiguous cases, quirks and the acceptance mode}}\label{translation_report-05u5fcompat:54-ambiguous-cases-quirks-and-the-acceptance-mode}
+\begin{itemize}
+\item Category B: keep the Fortran in both modes, write \code{FORTRAN-{}DIFF-{}CANDIDATE(\allowbreak{}D-{}xxx)} with the question, add a §4 row in
+FORTRAN\_\allowbreak{}DIFFERENCES.md. These items form the expert list (P15.X) for the user and a physicist.
+\item Category D: keep, write \code{FORTRAN-{}QUIRK(\allowbreak{}.\allowbreak{}.\allowbreak{}.\allowbreak{})} with the reason (e.g. \code{FORTRAN-{}QUIRK(\allowbreak{}D-{}012\ F2)}), add a §5 row when it
+can surprise a user.
+\item Category C: the acceptance mode (\code{doing\_\allowbreak{}phsp}\simcidx{Parameters!doing_phsp@\code{doing\_phsp}}, D-009/\allowbreak{}D-028) stays Fortran with \code{FORTRAN-{}OPEN(\allowbreak{}D-{}031\ flag\ 1)} until the
+user answers.
+\end{itemize}

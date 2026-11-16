@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
-"""build_docs_pdf.py - build the PDF editions of the SIMC++ books (task P15.D5).
+"""build_docs_pdf.py - build the PDF editions of the SIMC++ books from their committed LaTeX sources.
 
 usage: build_docs_pdf.py --source-root DIR --build-dir DIR [--pdf-dir DIR] [--book NAME ...] [--png] [--figures-only]
 
-Steps (all products under --build-dir, normally <cmake build>/docs):
-  1. every TikZ figure docs/latex/figures/<name>.tex is compiled alone (xelatex) into figures/<name>.pdf;
-     with --png the figures are also exported to docs/figures/<name>.png (pdftoppm, 150 dpi) for the Markdown view
-     (this writes into the source tree: run it by hand after changing a figure and commit the PNGs);
-  2. tools/md2latex.py converts the Markdown chapters into <book>_body.tex / <book>_meta.tex (books.json);
-  3. xelatex, makeindex (docs/latex/simcpp.ist), xelatex, xelatex (until no "Rerun" request, at most 5 passes) for
-     docs/latex/<book>.tex; the PDF is copied to <pdf-dir>/<output>.pdf (books.json "output"; default --build-dir).
-Fails (exit 1) on a converter error, a LaTeX error, an undefined reference or citation, or a missing figure;
+Steps (all products under --build-dir, normally <cmake build>/docs/latex; the source tree is not written, except with
+--png):
+  1. every TikZ figure docs/{manual,translation,common}/figures/<name>.tex is compiled alone (xelatex, preview.sty)
+     into <build-dir>/figures/<name>.pdf; with --png the figure is also exported next to its source as <name>.png
+     (pdftoppm, 150 dpi) for the Markdown edition: run it by hand after changing a figure and commit the PNG;
+  2. tools/md2latex.py --generated writes the build-time inputs: simcpp_version.tex (git describe, commit date) and the
+     dashboard page of the translation report (from the catalogue); the chapters are NOT converted here: the committed
+     .tex files of docs/manual/latex and docs/translation/latex are the source of the LaTeX edition;
+  3. xelatex, makeindex (docs/common/latex/simcpp.ist), xelatex, xelatex (until no "Rerun" request, at most 5 passes)
+     for <latex_dir>/<book>.tex (docs/common/latex/books.json); the PDF is copied to <pdf-dir>/<output>.pdf.
+Fails (exit 1) on a LaTeX error, an undefined reference or citation, a missing file or glyph, or a figure error;
 exit 77 if xelatex is not installed (CTest SKIP). Overfull boxes are counted and reported, not fatal.
 """
 import argparse
@@ -59,7 +62,7 @@ def main(argv):
     ap.add_argument('--build-dir', required=True)
     ap.add_argument('--pdf-dir', help='where the final PDFs are copied (default: --build-dir)')
     ap.add_argument('--book', action='append')
-    ap.add_argument('--png', action='store_true', help='also export the figures to docs/figures/*.png')
+    ap.add_argument('--png', action='store_true', help='also export each figure as a PNG next to its .tex source')
     ap.add_argument('--figures-only', action='store_true')
     a = ap.parse_args(argv[1:])
     xelatex = shutil.which('xelatex')
@@ -69,17 +72,22 @@ def main(argv):
     makeindex = shutil.which('makeindex')
     root = os.path.abspath(a.source_root)
     bdir = os.path.abspath(a.build_dir)
-    latexdir = os.path.join(root, 'docs', 'latex')
-    figsrc = os.path.join(latexdir, 'figures')
+    common = os.path.join(root, 'docs', 'common', 'latex')
+    with open(os.path.join(common, 'books.json'), encoding='utf-8') as f:
+        books = json.load(f)
     figout = os.path.join(bdir, 'figures')
     os.makedirs(figout, exist_ok=True)
     env = dict(os.environ)
-    env['TEXINPUTS'] = os.pathsep.join([latexdir + '//', os.path.join(root, 'docs', 'figures'), bdir, ''])
+    base_inputs = [common + '//', os.path.join(root, 'docs', 'common', 'figures'), figout, bdir]
+    env['TEXINPUTS'] = os.pathsep.join(base_inputs + [''])
     env['max_print_line'] = '1000'
     failures = []
 
     # 1. figures
-    for tex in sorted(glob.glob(os.path.join(figsrc, '*.tex'))):
+    figtex = []
+    for ed in ('manual', 'translation', 'common'):
+        figtex += glob.glob(os.path.join(root, 'docs', ed, 'figures', '*.tex'))
+    for tex in sorted(figtex, key=os.path.basename):
         name = os.path.splitext(os.path.basename(tex))[0]
         r = run([xelatex, '-interaction=nonstopmode', '-halt-on-error', '-output-directory', figout, tex], figout, env)
         log = os.path.join(figout, name + '.log')
@@ -92,32 +100,32 @@ def main(argv):
             if not pdftoppm:
                 failures.append('pdftoppm not found: cannot export the PNG figures')
             else:
-                dst = os.path.join(root, 'docs', 'figures', name)
+                dst = os.path.splitext(tex)[0]
                 run([pdftoppm, '-png', '-r', '150', '-singlefile', os.path.join(figout, name + '.pdf'), dst], figout, env)
-                print(f'build_docs_pdf: exported docs/figures/{name}.png')
+                print(f'build_docs_pdf: exported {os.path.relpath(dst, root)}.png')
     if a.figures_only:
         for f in failures:
             print(f)
         return 1 if failures else 0
 
-    # 2. conversion
-    with open(os.path.join(latexdir, 'books.json'), encoding='utf-8') as f:
-        books = json.load(f)
+    # 2. build-time inputs (version, dashboard)
     names = a.book or list(books)
-    conv = [sys.executable, '-I', os.path.join(root, 'tools', 'md2latex.py'), '--source-root', root,
-            '--outdir', bdir, '--figdir', figout]
+    gen = [sys.executable, '-I', os.path.join(root, 'tools', 'md2latex.py'), '--source-root', root, '--generated', bdir]
     for n in names:
-        conv += ['--book', n]
-    r = run(conv, bdir, env)
-    print(r.stdout.rstrip())
+        gen += ['--book', n]
+    r = run(gen, bdir, env)
+    if r.stdout.strip():
+        print(r.stdout.rstrip())
     if r.returncode != 0:
-        print('build_docs_pdf: converter errors (above)')
+        print('build_docs_pdf: md2latex --generated failed (above)')
         return 1
 
     # 3. LaTeX
     for n in names:
         job = n
-        src = os.path.join(latexdir, n + '.tex')
+        bookdir = os.path.join(root, books[n]['latex_dir'])
+        src = os.path.join(bookdir, n + '.tex')
+        env['TEXINPUTS'] = os.pathsep.join([bookdir] + base_inputs + [''])
         ok, overfull, big = True, 0, 0
         for p in range(1, 6):
             r = run([xelatex, '-interaction=nonstopmode', '-halt-on-error', '-jobname', job, src], bdir, env)
@@ -131,7 +139,7 @@ def main(argv):
                 ok = False
                 break
             if p == 1 and makeindex:
-                ri = run([makeindex, '-q', '-s', os.path.join(latexdir, 'simcpp.ist'), job + '.idx'], bdir, env)
+                ri = run([makeindex, '-q', '-s', os.path.join(common, 'simcpp.ist'), job + '.idx'], bdir, env)
                 if ri.returncode != 0:
                     failures.append(f'{n}: makeindex failed: {ri.stdout[-500:]}')
             if p >= 3 and not rerun:

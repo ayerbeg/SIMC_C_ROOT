@@ -1,0 +1,109 @@
+% docs/translation/latex/chapters/user_comparing_with_fortran.tex - chapter of the LaTeX edition of the book "translation_report" (SIMC++ documentation).
+%   Converted once from docs/translation/markdown/user_comparing_with_fortran.md by tools/md2latex.py; from then on THIS FILE is the source of the
+%   LaTeX edition and may be edited by hand. Re-running tools/md2latex.py --write-sources for this
+%   chapter OVERWRITES the hand edits (see docs/README.md).
+%   Compile: cmake --build <build> --target pdf, or tools/build_docs_pdf.py (figures, xelatex passes,
+%   makeindex with docs/common/latex/simcpp.ist); by hand, see docs/README.md. XeLaTeX, class
+%   docs/common/latex/simcpp.cls (packages: fontspec, tikz, xcolor, hyperref, listings, longtable, booktabs,
+%   titlesec, titletoc, fancyhdr, makeidx, preview, ...); fonts TeX Gyre Pagella, TeX Gyre Heros, DejaVu Sans
+%   Mono. The figures are built first from docs/{manual,translation}/figures/*.tex (preview.sty) into PDFs.
+\chapter{\texorpdfstring{Comparing SIMC++ with the Fortran SIMC (user guide)}{Comparing SIMC++ with the Fortran SIMC (user guide)}}\label{translation_report-useru5fcomparingu5fwithu5ffortran}
+\simcabstract{Two kinds of comparison are possible:}
+\begin{itemize}
+\item \textbf{exact}: RANLUX + \code{-{}-{}fortran-{}compat}\simcidx{Command-line options!fortran-compat@\code{-{}-{}fortran-{}compat}} against a Fortran run of the same input. The files must be identical
+(8.4\footnote{SIMC++ User Manual, ``8.4 Reproducing legacy SIMC results exactly'' (\code{docs/\allowbreak{}manual/\allowbreak{}markdown/\allowbreak{}user/\allowbreak{}08\_\allowbreak{}running\_\allowbreak{}and\_\allowbreak{}reproducibility.\allowbreak{}md})});
+\item \textbf{statistical}: any SIMC++ run (default mode, mt64, any seed, any number of threads) against a Fortran run, with
+\code{simc\_\allowbreak{}compare}. This guide covers it. The full description of the statistics is in \code{validation/\allowbreak{}README.\allowbreak{}md}.
+\end{itemize}
+\section*{\texorpdfstring{1. Building \code{simc\_\allowbreak{}compare}}{1. Building simc\_\allowbreak{}compare}}\addcontentsline{toc}{section}{\texorpdfstring{1. Building \code{simc\_\allowbreak{}compare}}{1. Building simc\_\allowbreak{}compare}}\label{translation_report-useru5fcomparingu5fwithu5ffortran:1-building-simcu5fcompare}
+\code{simc\_\allowbreak{}compare} is a separate CMake project in \code{validation/} (user manual 2.3\footnote{SIMC++ User Manual, ``2.3 Building'' (\code{docs/\allowbreak{}manual/\allowbreak{}markdown/\allowbreak{}user/\allowbreak{}02\_\allowbreak{}installation.\allowbreak{}md})}):
+
+\begin{simcshell}[basicstyle=\ttfamily\tiny]
+cmake -S $SIMCPP_SRC/validation -B $SIMCPP_BUILD-validation -DCMAKE_PREFIX_PATH=$ROOTSYS -DCMAKE_BUILD_TYPE=Release
+cmake --build $SIMCPP_BUILD-validation -j8
+\end{simcshell}
+\section*{\texorpdfstring{2. Running it}{2. Running it}}\addcontentsline{toc}{section}{\texorpdfstring{2. Running it}{2. Running it}}\label{translation_report-useru5fcomparingu5fwithu5ffortran:2-running-it}
+\begin{simcplain}[basicstyle=\ttfamily\scriptsize]
+simc_compare --a SPEC --b SPEC --out DIR [--config CFG.json] [--label-a NAME] [--label-b NAME]
+             [--skip v1,v2] [--nbins N] [--prefer-hist] [--no-pdf] [--expect PASS|FAIL|IDENTICAL]
+             [--mode-a compat|corrected] [--mode-b compat|corrected]
+\end{simcplain}
+A \code{SPEC} is a SIMC++ \code{<run>\allowbreak{}.\allowbreak{}summary.\allowbreak{}json}, a Fortran \code{<run>\allowbreak{}.\allowbreak{}hist} (the tool reads \code{.\allowbreak{}hist}, \code{.\allowbreak{}geni} and \code{.\allowbreak{}root} next to
+it), a \code{<run>\allowbreak{}.\allowbreak{}root}, or a directory with one run. Example: a full SIMC++ run of \code{eep\_\allowbreak{}h\_\allowbreak{}elastic\_\allowbreak{}rad\_\allowbreak{}A} (default mode,
+seed 4242, 4 threads) against the Fortran reference run (seed 12345):
+
+\begin{simcshell}[basicstyle=\ttfamily\tiny]
+simc++ $SIMC_FORTRAN/infiles/eep_h_elastic_rad_A.inp -o l2 --seed 4242 --threads 4 > l2.log
+$SIMCPP_BUILD-validation/simc_compare --a $SIMC_REFERENCE/runs/eep_h_elastic_rad_A --b l2/eep_h_elastic_rad_A.summary.json --out cmp \
+                       --config $SIMCPP_SRC/validation/config/compare_default.json
+\end{simcshell}
+It writes \code{cmp/\allowbreak{}summary.\allowbreak{}txt}, \code{cmp/\allowbreak{}summary.\allowbreak{}json}, \code{cmp/\allowbreak{}compare.\allowbreak{}pdf} (one page per variable: weighted and unweighted
+overlays with B/A ratios) and the two parsed run summaries. The exit status is 0 for PASS (or when \code{-{}-{}expect} is met),
+1 for FAIL, 2 for a usage or I/O error.
+
+\section*{\texorpdfstring{3. Reading the verdict}{3. Reading the verdict}}\addcontentsline{toc}{section}{\texorpdfstring{3. Reading the verdict}{3. Reading the verdict}}\label{translation_report-useru5fcomparingu5fwithu5ffortran:3-reading-the-verdict}
+The top of \code{summary.\allowbreak{}txt} from the example:
+
+\begin{simcplain}[basicstyle=\ttfamily\tiny]
+VERDICT: PASS   tests counted N=214  failed (p<0.01) F=0  expected 2.14  fraction 0.0000  P(X>=F|N,alpha)=1.000e+00 (need >= 1.000e-03)  gross failures=0 (det mismatch or p<1.000e-05)
+worst p = 1.485e-02  (ssdeltai [chi2_ww])   largest |pull| = 1.859  (hms.scin/Ntried)
+
+RUN-LEVEL TESTS
+quantity                       method          A       errA             B       errB     pull          p  status
+acceptance Ncontribute/Ntried  binomial  0.0481844   0.000105     0.0481577   0.000105    0.179      0.858  ok
+yield sum(Weight) [Weight/Ntried] pull  2.48294e-05   5.64e-08   2.48231e-05   5.64e-08   0.0798      0.936  ok
+wtcontr                        pull        207.354      0.472       207.306      0.472   0.0726      0.942  ok
+...
+TREE VARIABLES (p-values; chi2_abs: yield/tried incl. normalisation, chi2_ww/uu: TH1::Chi2Test shape, ks_w: unbinned weighted KS)
+variable   status              lo          hi    chi2_abs     chi2_ww     chi2_uu        ks_w  result
+hsdelta    compared        -7.005        7.05        0.17       0.147        0.15       0.266  ok
+...
+\end{simcplain}
+\begin{itemize}
+\item \textbf{Run-level tests}: the acceptance Ncontribute/\allowbreak{}Ntried (binomial), the weighted yield per try, \code{wtcontr},
+\code{AVERAGE.\allowbreak{}sigcc} (pulls), the deterministic quantities (\code{sigcc\_\allowbreak{}central}, charge, \code{targetfac}, luminosity, \code{genvol},
+\code{Ngen}, which must agree to the print precision; a mismatch is a \textbf{gross failure}), and every stop counter
+(binomial per counter, plus a χ² of each spectrometer's partition of its trials).
+\item \textbf{Tree variables}: for each branch, four tests on weighted histograms and the unbinned weighted KS test. Events with
+NaN/Inf values are counted and excluded.
+\item \textbf{Verdict}: with N tests at α = 0.01 about N·α failures are expected by chance. \textbf{PASS} if the number of failures F is
+compatible with that (binomial tail probability ≥ 0.001) \textbf{and} there is no gross failure (no deterministic
+mismatch, no p < 1e-5). Otherwise FAIL. A handful of failures with p around 0.001-0.01 is normal; a single gross
+failure is not.
+\end{itemize}
+Configuration (\code{validation/\allowbreak{}config/\allowbreak{}compare\_\allowbreak{}default.\allowbreak{}json}, all keys optional): \code{alpha}, \code{global\_\allowbreak{}alpha}, \code{gross\_\allowbreak{}p},
+\code{nbins}, per-variable binning, \code{variables}, \code{skip}, the normalisation of each side (\code{norm\_\allowbreak{}a}/\code{norm\_\allowbreak{}b}: per try,
+normfac or a number), \code{det\_\allowbreak{}rel\_\allowbreak{}tol}.
+
+Comparing two runs of the \textbf{same} code with the same seed must give \code{IDENTICAL} (\code{-{}-{}expect\ IDENTICAL}).
+
+\section*{\texorpdfstring{4. Mode of each side: \code{wtcontr}}{4. Mode of each side: wtcontr}}\addcontentsline{toc}{section}{\texorpdfstring{4. Mode of each side: \code{wtcontr}}{4. Mode of each side: wtcontr}}\label{translation_report-useru5fcomparingu5fwithu5ffortran:4-mode-of-each-side-wtcontr}
+The σ of \code{wtcontr} uses the events of the pass\_cuts window of each run. That window differs between the Fortran and the
+corrected mode (D-006). The tool takes the mode of a SIMC++ JSON from its \code{run.\allowbreak{}fortran\_\allowbreak{}compat}; a Fortran \code{.\allowbreak{}hist} counts as
+compat. For a summary without that key, pass \code{-{}-{}mode-{}a/\allowbreak{}-{}-{}mode-{}b\ compat|\allowbreak{}corrected}. A warning appears when the window does
+not reproduce the run's own wtcontr within 0.2 \% (usually a wrong mode).
+
+\section*{\texorpdfstring{5. Expected differences in the default mode}{5. Expected differences in the default mode}}\addcontentsline{toc}{section}{\texorpdfstring{5. Expected differences in the default mode}{5. Expected differences in the default mode}}\label{translation_report-useru5fcomparingu5fwithu5ffortran:5-expected-differences-in-the-default-mode}
+The default mode corrects clear Fortran bugs, so some comparisons against Fortran runs \textbf{fail on purpose}. The project's
+L2 runs (\code{docs/\allowbreak{}translation/\allowbreak{}markdown/\allowbreak{}FORTRAN\_\allowbreak{}DIFFERENCES.\allowbreak{}md} §7-§17) found these typical cases:
+
+\begin{simctable}{small}{3}{>{\raggedright\arraybackslash}p{\dimexpr 0.241\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.376\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.315\linewidth-2\tabcolsep\relax}}
+\caption{Expected differences in the default mode}\\%
+\toprule\rowcolor{simchead}\simcth{run type} & \simcth{what fails} & \simcth{why} \\\midrule\endfirsthead
+\multicolumn{3}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{run type} & \simcth{what fails} & \simcth{why} \\\midrule\endhead
+\midrule\multicolumn{3}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+any run where recon hadron delta reaches the electron delta limit (e.g. HMS hadron with a different delta window; spect\_mode runs) & \code{wtcontr} (pull up to +27 σ in spect\_mode runs), resolutions & D-006 pass\_cuts: the Fortran uses the electron delta max for the hadron \\
+pion, kaon, Delta & \code{sigcc\_\allowbreak{}central} (gross: deterministic mismatch) & D-038 F5 / D-043 F13 / D-048 F9: the central cross section is computed at the real central kinematics \\
+kaon with decay OFF & weights, \code{decdist} & D-043 F5: survival probability with the kaon momentum \\
+kaon & \code{saghai} column & D-043 F1-F3 (0 in the Fortran) \\
+SIDIS, rho & \code{pfermi} (Fortran NaN), \code{wtcontr} (D-006), \code{decdist} (survival momentum) & D-051 F3, F6 \\
+Delta & \code{sigcm}, Ntried and wtcontr with radiation & D-048 F2, F3 \\
+HRS & acceptance, FP path, decay & D-061 F1, F1e \\
+rho & random stream (no event-by-event comparison),\allowbreak{} energy loss of the ρ & D-057 F1, F2 \\
+\end{simctable}
+For each failure, check the variable against \hyperref[translation_report-useru5fdifferences]{the list of differences}. If it is not listed there,
+look further: run the corrected and the compat SIMC++ runs with the same seed, which differ only by the corrections,\allowbreak{} or
+repeat the Fortran-mode comparison with RANLUX. Since D-058, the project's first check of a doubtful Fortran-mode flag
+is a RANLUX run: if it is identical to the Fortran, the flag was a fluctuation.
+

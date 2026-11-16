@@ -169,7 +169,7 @@ Calo keys: `trials slit_hor slit_vert successes`.
 
 ## Run summary JSON (what the C++ writer should emit)
 
-The authoritative schema is `docs/summary.schema.json` (owned by P1.4). This reader is tolerant:
+The authoritative schema is `docs/manual/markdown/reference/summary.schema.json` (owned by P1.4). This reader is tolerant:
 it looks up each key by name, with a few aliases, up to three levels deep. The minimal content it
 needs is shown below. Examples converted from the Fortran references are in
 `validation/examples/*.summary.json`, generated with `simc_compare --dump-summary <run>.hist out.json`.

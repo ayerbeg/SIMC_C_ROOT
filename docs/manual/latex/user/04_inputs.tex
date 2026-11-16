@@ -1,0 +1,380 @@
+% docs/manual/latex/user/04_inputs.tex - chapter of the LaTeX edition of the book "user_manual" (SIMC++ documentation).
+%   Converted once from docs/manual/markdown/user/04_inputs.md by tools/md2latex.py; from then on THIS FILE is the source of the
+%   LaTeX edition and may be edited by hand. Re-running tools/md2latex.py --write-sources for this
+%   chapter OVERWRITES the hand edits (see docs/README.md).
+%   Compile: cmake --build <build> --target pdf, or tools/build_docs_pdf.py (figures, xelatex passes,
+%   makeindex with docs/common/latex/simcpp.ist); by hand, see docs/README.md. XeLaTeX, class
+%   docs/common/latex/simcpp.cls (packages: fontspec, tikz, xcolor, hyperref, listings, longtable, booktabs,
+%   titlesec, titletoc, fancyhdr, makeidx, preview, ...); fonts TeX Gyre Pagella, TeX Gyre Heros, DejaVu Sans
+%   Mono. The figures are built first from docs/{manual,translation}/figures/*.tex (preview.sty) into PDFs.
+\chapter{\texorpdfstring{Inputs}{Inputs}}\label{user_manual-04u5finputs}
+\simcabstract{\code{simc++} takes one input file, a \code{.\allowbreak{}inp} or a \code{.\allowbreak{}json} (chosen by the file extension):}
+\begin{simcplain}[basicstyle=\ttfamily\footnotesize]
+simc++ <file.inp | file.json> [options]
+\end{simcplain}
+Both formats set the same 106 input variables, with the same names, units and defaults (\hyperref[user_manual-04u5finputs:46-parameter-reference]{4.6}).
+The JSON format can also choose the plug-ins and the random-number generator, and set the run options.
+
+\section{\texorpdfstring{The \code{.\allowbreak{}inp} format}{The .inp format}}\label{user_manual-04u5finputs:41-the-inp-format}
+\subsection{\texorpdfstring{Syntax}{Syntax}}\label{user_manual-04u5finputs:411-syntax}
+\code{.\allowbreak{}inp} files are made of named blocks of \code{name\ =\ value} lines (the "CTP parm" syntax of SIMC input files):
+
+\begin{simcplain}[basicstyle=\ttfamily\footnotesize]
+; comment
+begin parm experiment
+  ngen = 50000			;  POS: # of successes; NEG: # of tries
+  EXPER%charge = 1.0		;  total charge (mC)
+  doing_pion = 1
+  extra_dbase_file = 'extra_nucpi'   ; more variables in extra_nucpi.inp
+end parm experiment
+begin parm debug
+  debug(1) = 0
+end parm debug
+\end{simcplain}
+\begin{itemize}
+\item Only the lines between \code{begin\ parm\ <name>} and \code{end\ parm} are read. The block name does not matter.
+\item \code{;} starts a comment, except inside quotes. Tabs count as spaces.
+\item Variable names are \textbf{case-insensitive} (\code{ebeam} = \hyperref[param:Ebeam]{\code{Ebeam}}\simcidx{Parameters!Ebeam@\code{Ebeam}}). Structure members are separated by \code{\%} (\hyperref[param:targu25thick]{\code{targ\%\allowbreak{}thick}}\simcidx{Parameters!targ.thick@\code{targ\%thick}}).
+\item \code{name(\allowbreak{}i)} is 1-based, \code{name[i]} 0-based. \code{name\ =\ a,\ b,\ c} fills consecutive array elements.
+\item Values may be expressions (\code{+\ -{}\ *\ /\ (\ )}). A real value given to an integer variable is rounded.
+\item Flags such as \hyperref[param:doingu5fpion]{\code{doing\_\allowbreak{}pion}}\simcidx{Parameters!doing_pion@\code{doing\_pion}} are integers in the file; a value > 0 means true.
+\item \textbf{Every real value is stored as a 32-bit float first.} For example \code{ctau\ =\ 780.\allowbreak{}4} becomes 780.4000244140625. This keeps
+the inputs identical to those of the legacy program. \code{inp2json} writes the rounded values.
+\end{itemize}
+The example inputs of this manual are in examples/\footnote{\code{docs/\allowbreak{}manual/\allowbreak{}markdown/\allowbreak{}user/\allowbreak{}examples/}} (installed in \code{\$SIMCPP\_\allowbreak{}PREFIX/\allowbreak{}share/\allowbreak{}simc/\allowbreak{}docs/\allowbreak{}manual/\allowbreak{}markdown/\allowbreak{}user/\allowbreak{}examples/}).
+
+\subsection{\texorpdfstring{\code{extra\_\allowbreak{}dbase\_\allowbreak{}file}}{extra\_\allowbreak{}dbase\_\allowbreak{}file}}\label{user_manual-04u5finputs:412-extrau5fdbaseu5ffile}
+\code{extra\_\allowbreak{}dbase\_\allowbreak{}file\ =\ 'name'} loads a second file after the main one; its values override the main file's. \code{.\allowbreak{}inp} is
+added when the name has no \code{.}. The file is looked for in the \textbf{directory of the main input file}, or in the directory
+given with \code{-{}-{}infiles-{}dir\ DIR}\simcidx{Command-line options!infiles-dir@\code{-{}-{}infiles-{}dir}}.
+
+\subsection{\texorpdfstring{Old \code{.} names}{Old . names}}\label{user_manual-04u5finputs:413-old--names}
+Old input files write structure names with \code{.} instead of \code{\%} (\code{targ.\allowbreak{}A}, \code{spec.\allowbreak{}e.\allowbreak{}P}, \code{SPedge.\allowbreak{}e.\allowbreak{}delta.\allowbreak{}min}, ...). These
+names are \textbf{not} input variables any more: each one is reported, its value is ignored, and the run uses the defaults,
+which usually makes it stop. SIMC++ lists the ignored names. With the example examples/\allowbreak{}legacy\_\allowbreak{}names.\allowbreak{}inp\footnote{\code{docs/\allowbreak{}manual/\allowbreak{}markdown/\allowbreak{}user/\allowbreak{}examples/\allowbreak{}legacy\_\allowbreak{}names.\allowbreak{}inp}}:
+
+\begin{simcshell}[basicstyle=\ttfamily\tiny]
+$ simc++ $EX/legacy_names.inp -o legacy > legacy.log 2> legacy.err; echo "exit status $?"; cat legacy.err
+exit status 3
+simc++: WARNING: 46 input variable(s) are not SIMC variables and are IGNORED (legacy SIMC behaviour; their defaults are used):
+  EXPER.charge, spec.e.P, spec.e.theta, spec.p.P, spec.p.theta, targ.A
+  ...
+  Legacy '.' names (targ.A, spec.e.P, ...) must be converted to '%' names with simc_gfortran/infiles/convert_inputfile.sh.
+simc++: STOP during setup (legacy SIMC behaviour): STOP bad targ.can value
+simc++: note: the input has 46 ignored variable(s) (listed above), so their defaults were used — the likely cause of this STOP. ...
+\end{simcshell}
+Convert such a file by replacing the \code{.} of these names with \code{\%} (keep a copy of the original). This \code{sed} command does
+it for every structure name of the inputs (\code{targ}, \code{spec}, \code{SPedge}, \code{gen}, \code{cuts}, \code{EXPER}):
+
+\begin{simcshell}[basicstyle=\ttfamily\tiny]
+sed -E ':a; s/^(\s*(targ|spec|SPedge|gen|cuts|EXPER)[A-Za-z_%]*)\./\1%/; ta' legacy_names.inp > converted.inp
+\end{simcshell}
+Convert the \hyperref[param:extrau5fdbaseu5ffile]{\code{extra\_\allowbreak{}dbase\_\allowbreak{}file}}\simcidx{Parameters!extra_dbase_file@\code{extra\_dbase\_file}} too. (The SIMC distribution has an equivalent script, \code{infiles/\allowbreak{}convert\_\allowbreak{}inputfile.\allowbreak{}sh}.)
+The converted file runs normally (\code{simc++\ converted.\allowbreak{}inp}).
+
+\subsection{\texorpdfstring{Unknown names}{Unknown names}}\label{user_manual-04u5finputs:414-unknown-names}
+Any name that is not one of the 106 variables, such as a typo or an old name, is reported once per name
+(\code{<name>\ not\ registered,\ registering\ as\ int}) and ignored. \code{inp2json\ -{}-{}strict} turns these names into an error (exit
+status 3).
+
+\section{\texorpdfstring{The JSON format}{The JSON format}}\label{user_manual-04u5finputs:42-the-json-format}
+A SIMC++ JSON input has up to three sections:
+
+\begin{simccode}[basicstyle=\ttfamily\footnotesize,style=simcjson]
+{
+  "parameters": { ... the input variables ... },
+  "pipeline":   { ... optional: plug-ins, random-number generator, threads ... },
+  "run":        { "name": "myrun", "output_dir": "out", "fortran_compat": false }
+}
+\end{simccode}
+\subsection{\texorpdfstring{\code{parameters}}{parameters}}\label{user_manual-04u5finputs:421-parameters}
+\begin{itemize}
+\item The key path is the variable name split on \code{\%}: \hyperref[param:targu25thick]{\code{targ\%\allowbreak{}thick}}\simcidx{Parameters!targ.thick@\code{targ\%thick}} becomes \code{\{"targ":\ \{"thick":\ 723.\allowbreak{}0\}\}}, and
+\hyperref[param:SPedgeu25eu25deltau25min]{\code{SPedge\%\allowbreak{}e\%\allowbreak{}delta\%\allowbreak{}min}}\simcidx{Parameters!SPedge.e.delta.min@\code{SPedge\%e\%delta\%min}} becomes \code{\{"SPedge":\ \{"e":\ \{"delta":\ \{"min":\ -{}10.\allowbreak{}0\}\}\}\}}. Arrays are JSON arrays
+(\code{"lambda":\ [0,\ 0,\ 0]}, \code{"debug":\ [false,\ false,\ false,\ false,\ false,\ false]}).
+\item Values are in the \textbf{\code{.\allowbreak{}inp} units} (MeV, MeV/c, degrees, mrad, mg/cm², \%). \code{inp2json\ -{}-{}table} prints the values after
+the internal unit conversions.
+\item Flags accept \code{true}/\code{false} or numbers (> 0 is true).
+\item Keys are matched case-insensitively. Keys that start with \code{\_} (for example \code{"\_\allowbreak{}comment"}) are ignored. Unknown keys
+produce \code{simc++:\ warning:\ unknown\ parameter\ '<key>\allowbreak{}'\ .\allowbreak{}.\allowbreak{}.\allowbreak{},\ ignored}.
+\item A missing key keeps the default (\hyperref[user_manual-04u5finputs:46-parameter-reference]{4.6}).
+\end{itemize}
+The easiest way to write a JSON input is to convert a \code{.\allowbreak{}inp}:
+
+\begin{simcshell}[basicstyle=\ttfamily\footnotesize]
+inp2json -o run.json $EX/h_elastic_rad.inp
+simc++ run.json -o out_json
+\end{simcshell}
+The converted file holds all 106 variables (with \hyperref[param:extrau5fdbaseu5ffile]{\code{extra\_\allowbreak{}dbase\_\allowbreak{}file}}\simcidx{Parameters!extra_dbase_file@\code{extra\_dbase\_file}} already merged) and a \code{\_\allowbreak{}source} block that records
+the converted files and any names that were not recognised. A \code{.\allowbreak{}inp} and its conversion give identical outputs
+(\hyperref[user_manual-03u5fquicku5fstart:34-the-same-run-from-json]{3.4}; CTest \code{cli\_\allowbreak{}json\_\allowbreak{}vs\_\allowbreak{}inp\_\allowbreak{}*}).
+
+Other \code{inp2json} options: \code{-{}-{}infiles-{}dir\ DIR}\simcidx{Command-line options!infiles-dir@\code{-{}-{}infiles-{}dir}} (where to find \hyperref[param:extrau5fdbaseu5ffile]{\code{extra\_\allowbreak{}dbase\_\allowbreak{}file}}\simcidx{Parameters!extra_dbase_file@\code{extra\_dbase\_file}}), \code{-{}-{}no-{}extra} (do not load it),
+\code{-{}-{}table[=\allowbreak{}FILE]} (also print the converted values), \code{-{}-{}mapping} (print the \code{.\allowbreak{}inp} → JSON table of all variables), \code{-{}-{}strict},
+\code{-{}q}.
+
+Example configurations come with SIMC++ in \code{data/\allowbreak{}config/} (installed in \code{\$SIMCPP\_\allowbreak{}PREFIX/\allowbreak{}share/\allowbreak{}simc/\allowbreak{}data/\allowbreak{}config/}):
+\code{h\_\allowbreak{}elastic\_\allowbreak{}norad.\allowbreak{}json}, \code{h\_\allowbreak{}elastic\_\allowbreak{}rad.\allowbreak{}json} and \code{acceptance\_\allowbreak{}phsp\_\allowbreak{}hms\_\allowbreak{}shms.\allowbreak{}json}, with the three sections written out.
+
+\subsection{\texorpdfstring{\code{run}}{run}}\label{user_manual-04u5finputs:422-run}
+\begin{simctable}{small}{4}{>{\raggedright\arraybackslash}p{\dimexpr 0.153\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.268\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.163\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.328\linewidth-2\tabcolsep\relax}}
+%
+\toprule\rowcolor{simchead}\simcth{key} & \simcth{command-line equivalent} & \simcth{default} & \simcth{meaning} \\\midrule\endfirsthead
+\multicolumn{4}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{key} & \simcth{command-line equivalent} & \simcth{default} & \simcth{meaning} \\\midrule\endhead
+\midrule\multicolumn{4}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+\code{name} & \code{-{}-{}run-{}name\ NAME}\simcidx{Command-line options!run-name@\code{-{}-{}run-{}name}} & the input file name without its extension & stem of the output files \code{<name>\allowbreak{}.\allowbreak{}root}, \code{<name>\allowbreak{}.\allowbreak{}hist}, ... \\
+\code{output\_\allowbreak{}dir} & \code{-{}o\ DIR}, \code{-{}-{}output-{}dir\ DIR} & \code{.} & output directory (created if needed) \\
+\code{fortran\_\allowbreak{}compat} & \code{-{}-{}fortran-{}compat}\simcidx{Command-line options!fortran-compat@\code{-{}-{}fortran-{}compat}} & \code{false} & \code{true}: the legacy-compatible mode (\hyperref[user_manual-08u5frunningu5fandu5freproducibility:83-default-and-legacy-compatible-mode]{8.3}) \\
+\end{simctable}
+A command-line option wins over the JSON value. A \code{.\allowbreak{}inp} input runs in the default mode unless you give \code{-{}-{}fortran-{}compat}\simcidx{Command-line options!fortran-compat@\code{-{}-{}fortran-{}compat}}.
+
+\section{\texorpdfstring{The \code{pipeline} section: choosing plug-ins}{The pipeline section: choosing plug-ins}}\label{user_manual-04u5finputs:43-the-pipeline-section-choosing-plug-ins}
+Without a \code{pipeline} section, SIMC++ chooses the components from the input flags. \code{-{}-{}print-{}pipeline}\simcidx{Command-line options!print-pipeline@\code{-{}-{}print-{}pipeline}} prints the resolved
+choice when the run starts (the run then continues). Each entry is a plug-in name, or an object
+\code{\{"type":\ "<name>\allowbreak{}",\ <options>\allowbreak{}\}}:
+
+\begin{simctable}{small}{3}{>{\raggedright\arraybackslash}p{\dimexpr 0.188\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.256\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.488\linewidth-2\tabcolsep\relax}}
+\caption{The \code{pipeline} section: choosing plug-ins}\\%
+\toprule\rowcolor{simchead}\simcth{key} & \simcth{default (from the flags)} & \simcth{registered plug-ins} \\\midrule\endfirsthead
+\multicolumn{3}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{key} & \simcth{default (from the flags)} & \simcth{registered plug-ins} \\\midrule\endhead
+\midrule\multicolumn{3}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+\code{rng} & \code{mt64}, seeded with \hyperref[param:randomu5fseed]{\code{random\_\allowbreak{}seed}}\simcidx{Parameters!random_seed@\code{random\_seed}} & \code{mt64} (std::\allowbreak{}mt19937\_\allowbreak{}64),\allowbreak{} \code{ranlux} (the legacy SIMC generator); options \code{"seed"}, and for \code{ranlux} \code{"state"} (25 integers) (\hyperref[user_manual-08u5frunningu5fandu5freproducibility]{chapter 8}) \\
+\code{target} & \code{hallc\_\allowbreak{}cryo} & \code{hallc\_\allowbreak{}cryo} (cryotarget and solid targets: windows, energy loss, multiple scattering) \\
+\code{beam} & \code{standard} & \code{standard} \\
+\code{reaction} & from the flags (\hyperref[user_manual-05u5freactions]{chapter 5}) & \code{hydrogen\_\allowbreak{}elastic}, \code{deuterium\_\allowbreak{}eep}, \code{nucleus\_\allowbreak{}eep}, \code{pion\_\allowbreak{}production}, \code{kaon\_\allowbreak{}production}, \code{delta\_\allowbreak{}production}, \code{sidis\_\allowbreak{}production}, \code{rho\_\allowbreak{}production}, \code{phase\_\allowbreak{}space} \\
+\code{physics} & from the flags & \code{sigep}, \code{deforest} (and \code{deforest\_\allowbreak{}cc1}, \code{deforest\_\allowbreak{}cc1\_\allowbreak{}onshell}, \code{deforest\_\allowbreak{}cc2}), \code{pion}, \code{kaon}, \code{delta}, \code{sidis}, \code{rho} \\
+\code{radiator} & \code{simc\_\allowbreak{}rad} & \code{simc\_\allowbreak{}rad} \\
+\code{spectrometers} & \code{\{"electron":\ .\allowbreak{}.\allowbreak{}.\allowbreak{},\ "hadron":\ .\allowbreak{}.\allowbreak{}.\allowbreak{}\}} from \hyperref[param:electronu5farm]{\code{electron\_\allowbreak{}arm}}\simcidx{Parameters!electron_arm@\code{electron\_arm}}/\hyperref[param:hadronu5farm]{\code{hadron\_\allowbreak{}arm}}\simcidx{Parameters!hadron_arm@\code{hadron\_arm}} & \code{hms}, \code{shms}, \code{sos}, \code{hrsr}, \code{hrsl}, \code{calo}; the example \code{ideal\_\allowbreak{}box} (\hyperref[user_manual-06u5fspectrometers]{chapter 6}) \\
+\code{sinks} & \code{root\_\allowbreak{}tree} (only if \code{Nntu\ >\ 0}), \code{run\_\allowbreak{}summary}, \code{gen\_\allowbreak{}hist}, \code{fortran\_\allowbreak{}hist} & the list \textbf{replaces} the default list (\hyperref[user_manual-07u5foutputs]{chapter 7}) \\
+\code{threads} & 1 & number of event-loop threads; \code{-{}-{}threads\ N}\simcidx{Command-line options!threads@\code{-{}-{}threads}} wins (\hyperref[user_manual-08u5frunningu5fandu5freproducibility]{chapter 8}) \\
+\end{simctable}
+Options of the built-in plug-ins (all optional):
+
+\begin{simctable}{small}{2}{>{\raggedright\arraybackslash}p{\dimexpr 0.212\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.741\linewidth-2\tabcolsep\relax}}
+%
+\toprule\rowcolor{simchead}\simcth{plug-in} & \simcth{options} \\\midrule\endfirsthead
+\multicolumn{2}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{plug-in} & \simcth{options} \\\midrule\endhead
+\midrule\multicolumn{2}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+all stages & \code{"verbose":\ false} silences the stage messages (\code{-{}-{}quiet}\simcidx{Command-line options!quiet@\code{-{}-{}quiet}} sets it for every stage) \\
+\code{reaction} of D/A(e,e'p) & \code{"spectral\_\allowbreak{}function":\ \{"type":\ "theory"\ |\ "benhar",\ "file":\ "<file\ in\ -{}-{}data-{}dir>\allowbreak{}",\ "transparency":\ x\}} (\hyperref[user_manual-05u5freactions:52-heep-elastic-deep-and-aeep]{5.2}) \\
+\code{pion}, \code{kaon}, \code{sidis} models & \code{"data\_\allowbreak{}dir"}: directory of the model tables (default: the data directory's \code{pion/}, \code{kaon/}, \code{sidis/}) \\
+\code{hms}, \code{shms}, \code{sos}, \code{hrsr}, \code{hrsl} & \code{"matrix\_\allowbreak{}dir"} (optics maps), and expert overrides of the per-arm switches: \code{"ms\_\allowbreak{}flag"}, \code{"wcs\_\allowbreak{}flag"} (multiple scattering and wire-chamber smearing, default \hyperref[param:mcu5fsmear]{\code{mc\_\allowbreak{}smear}}\simcidx{Parameters!mc_smear@\code{mc\_smear}}), \code{"decay"} (default \hyperref[param:doingu5fdecay]{\code{doing\_\allowbreak{}decay}}\simcidx{Parameters!doing_decay@\code{doing\_decay}} for the hadron arm), \code{"ctau"}, \code{"use\_\allowbreak{}sieve"}; \code{hms}: \code{"using\_\allowbreak{}HMScoll"}; \code{shms}: \code{"using\_\allowbreak{}SHMScoll"}, \code{"use\_\allowbreak{}coll"}, \code{"skip\_\allowbreak{}hb"}, \code{"use\_\allowbreak{}2sieve"} \\
+\code{calo} & \code{"drift\_\allowbreak{}to\_\allowbreak{}cal"}, \code{"ctau"} \\
+sinks & \code{root\_\allowbreak{}tree}: \code{"file"}, \code{"tree"}; \code{run\_\allowbreak{}summary}, \code{gen\_\allowbreak{}hist}: \code{"file"}; \code{fortran\_\allowbreak{}hist}: \code{"hist"}, \code{"geni"}, \code{"gen"} (file names) \\
+\end{simctable}
+An example: transport the hadron through the ideal box acceptance of the example plug-in instead of the real
+spectrometer. \code{-{}-{}pipeline\ FILE}\simcidx{Command-line options!pipeline@\code{-{}-{}pipeline}} merges a pipeline file over the input's own pipeline:
+
+\begin{simcshell}[basicstyle=\ttfamily\tiny]
+$ simc++ run.json -o out_ideal --ngen 200 --pipeline $SIMCPP_PREFIX/share/simc/examples/ideal_box/hadron_arm.json --print-pipeline --quiet
+  ...
+  "spectrometers": {
+    "electron": { "type": "" },
+    "hadron": { "delta_max": 8.0, "delta_min": -8.0, "type": "ideal_box", "xptar_max": 0.05, ... }
+  },
+\end{simcshell}
+(\code{"type":\ ""} means "the default for this arm code".) Two arms with the same plug-in and the same options share one
+spectrometer object, so they share one set of stop counters.
+
+\section{\texorpdfstring{Run-time messages about the inputs}{Run-time messages about the inputs}}\label{user_manual-04u5finputs:44-run-time-messages-about-the-inputs}
+\begin{simctable}{small}{2}{>{\raggedright\arraybackslash}p{\dimexpr 0.492\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.462\linewidth-2\tabcolsep\relax}}
+\caption{Run-time messages about the inputs}\\%
+\toprule\rowcolor{simchead}\simcth{message} & \simcth{meaning} \\\midrule\endfirsthead
+\multicolumn{2}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{message} & \simcth{meaning} \\\midrule\endhead
+\midrule\multicolumn{2}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+\code{<name>\ not\ registered,\ registering\ as\ int} & \code{.\allowbreak{}inp} name unknown: ignored \\
+\code{simc++:\ WARNING:\ N\ input\ variable(\allowbreak{}s)\ are\ not\ SIMC\ variables\ and\ are\ IGNORED\ .\allowbreak{}.\allowbreak{}.} & summary of the above, with the hint to convert old names \\
+\code{simc++:\ warning:\ unknown\ parameter\ '<key>\allowbreak{}'\ .\allowbreak{}.\allowbreak{}.} & JSON key unknown: ignored \\
+\code{WARNING:\ forcing\ target\ mass\ to\ Mp!!!} and similar & the set-up adjusted an input (for example the H/D masses) \\
+\code{NOTE:\ random\_\allowbreak{}state\_\allowbreak{}file\ '.\allowbreak{}.\allowbreak{}.\allowbreak{}'\ is\ not\ used\ by\ SIMC++} & see \hyperref[param:randomu5fstateu5ffile]{\code{random\_\allowbreak{}state\_\allowbreak{}file}}\simcidx{Parameters!random_state_file@\code{random\_state\_file}} below \\
+a WARNING when \hyperref[param:ptu5fbu5fparam]{\code{pt\_\allowbreak{}b\_\allowbreak{}param}}\simcidx{Parameters!pt_b_param@\code{pt\_b\_param}} or \code{sigc\_\allowbreak{}*} are set & these SIDIS inputs are read and ignored \\
+a WARNING for \hyperref[param:spectu5fmode]{\code{spect\_\allowbreak{}mode}}\simcidx{Parameters!spect_mode@\code{spect\_mode}} outside \{0, 1, −1, −2\} & any other value means "both arms on" (\hyperref[user_manual-06u5fspectrometers:64-spectu5fmode-switching-the-spectrometer-monte-carlo-off]{6.4}) \\
+\code{simc++:\ input\ error:\ .\allowbreak{}.\allowbreak{}.} (exit 2) & a rejected input, for example arm code 6 \\
+\code{simc++:\ STOP\ during\ setup\ .\allowbreak{}.\allowbreak{}.} (exit 3) & an input check of the set-up failed (the message comes from the original code; \hyperref[user_manual-10u5ffaq:simc-stop-during-setup-legacy-simc-behaviour-stop--exit-3]{10} lists the common ones) \\
+\end{simctable}
+\section{\texorpdfstring{Units and conventions}{Units and conventions}}\label{user_manual-04u5finputs:45-units-and-conventions}
+\begin{itemize}
+\item Energies and momenta in MeV and MeV/c; angles in degrees (spectrometer angles, target angle, field angles);
+spectrometer slopes (\code{xptar}, \code{yptar}) in mrad; delta in \%; lengths in cm; target thickness in mg/cm²; density in
+g/cm³; charge in mC.
+\item Spectrometer angles are taken as their absolute value. The side of the beam is fixed by the spectrometer number
+(\hyperref[user_manual-06u5fspectrometers:61-spectrometer-numbers]{6.1}).
+\item Target coordinates: +x = beam right, +y = up, +z = downstream.
+\item Defaults: 0 / false / blank, except the \code{SPedge\%\allowbreak{}*} limits and \code{cuts\%\allowbreak{}Em} (±1e10).
+\end{itemize}
+\section{\texorpdfstring{Parameter reference}{Parameter reference}}\label{user_manual-04u5finputs:46-parameter-reference}
+All 106 input variables, grouped by topic. \textbf{Name} is the \code{.\allowbreak{}inp} name. The JSON path is the same name with \code{\%} replaced
+by nested objects (\hyperref[user_manual-04u5finputs:421-parameters]{4.2.1}). \textbf{Default} is the value used when the variable is absent. \textbf{Used by}
+says which runs read it: \emph{all}, \emph{eep} (H/\allowbreak{}D/\allowbreak{}A(e,\allowbreak{}e'p)),\allowbreak{} \emph{D/A eep}, \emph{pion}, \emph{kaon}, \emph{delta}, \emph{semi} (SIDIS), \emph{rho},
+\emph{phsp}, \emph{rad} (with \hyperref[param:usingu5frad]{\code{using\_\allowbreak{}rad}}\simcidx{Parameters!using_rad@\code{using\_rad}}), \emph{calo} (arms 7/8), \emph{field} (\hyperref[param:usingu5ftgtu5ffield]{\code{using\_\allowbreak{}tgt\_\allowbreak{}field}}\simcidx{Parameters!using_tgt_field@\code{using\_tgt\_field}}). The test
+\code{docs\_\allowbreak{}user\_\allowbreak{}manual\_\allowbreak{}parameters} fails if an input variable of SIMC++ is missing here.
+
+\subsection*{\texorpdfstring{Run control}{Run control}}\label{user_manual-04u5finputs:run-control}
+\begin{simcparams}
+\simcparam{ngen}{param:ngen}{events}{0}{all}{> 0: number of \textbf{accepted} events to generate; < 0: number of \textbf{tries} (|ngen|). 0 writes nothing. \code{-{}-{}ngen\ N}\simcidx{Command-line options!ngen@\code{-{}-{}ngen}} overrides it. With ngen < 0 the \code{.\allowbreak{}hist} wtcontr and AVERAGE.sigcc are divided by the tries}{ngen@\code{ngen}}
+\simcparam{random\_\allowbreak{}seed}{param:randomu5fseed}{integer}{0}{all}{seed of the random-number generator. −1: the current time. For \code{mt64} a value ≤ 0 means the fixed seed 5489; for \code{ranlux} it seeds RANLUX at luxury level 3 (0 = RANLUX's default seed). \code{-{}-{}seed\ N}\simcidx{Command-line options!seed@\code{-{}-{}seed}} overrides it}{random_seed@\code{random\_seed}}
+\simcparam{random\_\allowbreak{}state\_\allowbreak{}file}{param:randomu5fstateu5ffile}{path}{blank}{—}{\textbf{Not used} (a note is printed); to start RANLUX from a saved state use \code{"rng":\ \{"type":\ "ranlux",\ "state":\ [25\ integers]\}}}{random_state_file@\code{random\_state\_file}}
+\simcparam{extra\_\allowbreak{}dbase\_\allowbreak{}file}{param:extrau5fdbaseu5ffile}{file stem}{blank}{all}{second input file, loaded after the main one (\hyperref[user_manual-04u5finputs:412-extrau5fdbaseu5ffile]{4.1.2})}{extra_dbase_file@\code{extra\_dbase\_file}}
+\simcparam{Nntu}{param:Nntu}{flag}{0}{all}{> 0: write the event tree \code{<run>\allowbreak{}.\allowbreak{}root}. Without it no \code{.\allowbreak{}root} file is written}{Nntu@\code{Nntu}}
+\simcparam{EXPER\%\allowbreak{}charge}{param:EXPERu25charge}{mC}{0}{all}{beam charge of the simulated run; the luminosity and every normalised yield are proportional to it}{EXPER.charge@\code{EXPER\%charge}}
+\simcparam{debug}{param:debug}{6 flags}{all F}{—}{diagnostic print-outs: \code{debug(\allowbreak{}1)} prints the bremsstrahlung calculation; \code{debug(\allowbreak{}2.\allowbreak{}.\allowbreak{}6)} are accepted but print nothing}{debug@\code{debug}}
+\simcparam{hard\_\allowbreak{}cuts}{param:hardu5fcuts}{flag}{F}{all}{apply the \code{SPedge} limits (and, for (e,e'p), \hyperref[param:cutsu25Emu25max]{\code{cuts\%\allowbreak{}Em\%\allowbreak{}max}}\simcidx{Parameters!cuts.Em.max@\code{cuts\%Em\%max}}) as cuts on the reconstructed events: events outside are not accepted and are not written. Without it the limits only decide which events count in the \code{.\allowbreak{}hist} wtcontr (pass\_\allowbreak{}cuts)}{hard_cuts@\code{hard\_cuts}}
+\end{simcparams}
+\subsection*{\texorpdfstring{Reaction selection and physics models}{Reaction selection and physics models}}\label{user_manual-04u5finputs:reaction-selection-and-physics-models}
+\begin{simcparams}
+\simcparam{doing\_\allowbreak{}phsp}{param:doingu5fphsp}{flag}{F}{phsp}{phase-space (acceptance) run: the cross section is 1 and normfac = 1. On hydrogen the elastic kinematics are kept (\hyperref[user_manual-05u5freactions:58-phase-space-and-acceptance-runs-doingu5fphsp]{5.8})}{doing_phsp@\code{doing\_phsp}}
+\simcparam{doing\_\allowbreak{}pion}{param:doingu5fpion}{flag}{F}{pion, semi}{exclusive pion production; with \hyperref[param:doingu5fsemi]{\code{doing\_\allowbreak{}semi}}\simcidx{Parameters!doing_semi@\code{doing\_semi}}: SIDIS pions}{doing_pion@\code{doing\_pion}}
+\simcparam{which\_\allowbreak{}pion}{param:whichu5fpion}{code}{0}{pion}{0: π+ (π0 with \hyperref[param:doingu5fpizero]{\code{doing\_\allowbreak{}pizero}}\simcidx{Parameters!doing_pizero@\code{doing\_pizero}}) on a proton, quasifree; 1: π− (π0 from the neutron), on a neutron; 2: π+Δ0 (π0Δ+); 3: π−Δ++ (π0Δ0 from the neutron); 10: coherent π+ A→A'; 11: coherent π−}{which_pion@\code{which\_pion}}
+\simcparam{doing\_\allowbreak{}pizero}{param:doingu5fpizero}{flag}{F}{pion, semi}{the pion is a π0 (decays to γγ, detected in the calorimeter arm 7/8 or transported as a π0 through the HMS/SHMS, \hyperref[user_manual-06u5fspectrometers:66-u3c00-in-the-hms-or-shms]{6.6})}{doing_pizero@\code{doing\_pizero}}
+\simcparam{pizero\_\allowbreak{}ngamma}{param:pizerou5fngamma}{count}{0}{pion, semi (π0)}{for π0 runs: 1 = at least one photon, 2 = both photons must hit the calorimeter. Must be 1 or 2 with \hyperref[param:doingu5fpizero]{\code{doing\_\allowbreak{}pizero}}\simcidx{Parameters!doing_pizero@\code{doing\_pizero}} (else the run stops)}{pizero_ngamma@\code{pizero\_ngamma}}
+\simcparam{doing\_\allowbreak{}kaon}{param:doingu5fkaon}{flag}{F}{kaon, semi}{kaon electroproduction; with \hyperref[param:doingu5fsemi]{\code{doing\_\allowbreak{}semi}}\simcidx{Parameters!doing_semi@\code{doing\_semi}}: SIDIS kaons}{doing_kaon@\code{doing\_kaon}}
+\simcparam{which\_\allowbreak{}kaon}{param:whichu5fkaon}{code}{0}{kaon}{0: K+Λ; 1: K+Σ0; 2: K+Σ− (on a neutron); 10/11/12: coherent production of the Λ/Σ0/Σ− hypernucleus}{which_kaon@\code{which\_kaon}}
+\simcparam{doing\_\allowbreak{}delta}{param:doingu5fdelta}{flag}{F}{delta}{(e,e'p)π in the Delta region; the proton is detected. \textbf{The weight has no cross section} (\hyperref[user_manual-05u5freactions:55-eepu3c0-in-the-delta-region-doingu5fdelta]{5.5})}{doing_delta@\code{doing\_delta}}
+\simcparam{doing\_\allowbreak{}semi}{param:doingu5fsemi}{flag}{F}{semi}{semi-inclusive (e,e'h)X; needs \hyperref[param:doingu5fpion]{\code{doing\_\allowbreak{}pion}}\simcidx{Parameters!doing_pion@\code{doing\_pion}} or \hyperref[param:doingu5fkaon]{\code{doing\_\allowbreak{}kaon}}\simcidx{Parameters!doing_kaon@\code{doing\_kaon}} (and \hyperref[param:doingu5fhplus]{\code{doing\_\allowbreak{}hplus}}\simcidx{Parameters!doing_hplus@\code{doing\_hplus}})}{doing_semi@\code{doing\_semi}}
+\simcparam{doing\_\allowbreak{}hplus}{param:doingu5fhplus}{flag}{F}{semi, rho}{SIDIS and rho: the detected hadron is positive (1) or negative (0)}{doing_hplus@\code{doing\_hplus}}
+\simcparam{doing\_\allowbreak{}rho}{param:doingu5frho}{flag}{F}{rho}{exclusive ρ0 → π+π−, one pion detected (H, D, ³He)}{doing_rho@\code{doing\_rho}}
+\simcparam{doing\_\allowbreak{}decay}{param:doingu5fdecay}{flag}{F}{pion, kaon, semi, rho}{decay in flight of the hadron (π, K) in the spectrometer. Off: kaon runs multiply the weight by the survival probability}{doing_decay@\code{doing\_decay}}
+\simcparam{ctau}{param:ctau}{cm}{0}{pion, kaon, semi, rho}{cτ of the hadron for the decay / survival probability (780.4 for pions, 371.3 for kaons)}{ctau@\code{ctau}}
+\simcparam{do\_\allowbreak{}fermi}{param:dou5ffermi}{flag}{F}{semi}{SIDIS Fermi motion (D and A only; switched off for hydrogen with a WARNING)}{do_fermi@\code{do\_fermi}}
+\simcparam{use\_\allowbreak{}benhar\_\allowbreak{}sf}{param:useu5fbenharu5fsf}{flag}{F}{D/A eep}{A(e,e'p): use the Benhar spectral function tables instead of the theory files}{use_benhar_sf@\code{use\_benhar\_sf}}
+\simcparam{transparency}{param:transparency}{factor}{0}{D/A eep}{A(e,e'p) with \hyperref[param:useu5fbenharu5fsf]{\code{use\_\allowbreak{}benhar\_\allowbreak{}sf}}\simcidx{Parameters!use_benhar_sf@\code{use\_benhar\_sf}}: the nuclear transparency in the weight (SF\_weight = Z × transparency × SF). With the Benhar tables it must be set (0 gives weight 0)}{transparency@\code{transparency}}
+\simcparam{deForest\_\allowbreak{}flag}{param:deForestu5fflag}{code}{0}{D/A eep}{off-shell e-p cross section of D/A(e,e'p): 0 = σcc1, 1 = σcc2, −1 = σcc1 with on-shell kinematics; |value| > 1 STOPs}{deForest_flag@\code{deForest\_flag}}
+\simcparam{pt\_\allowbreak{}b\_\allowbreak{}param}{param:ptu5fbu5fparam}{GeV\textsuperscript{−}²}{0}{—}{SIDIS pT slope: \textbf{read and ignored} (the slope is b = 1/(0.120 z² + 0.200)); a WARNING is printed when it is set}{pt_b_param@\code{pt\_b\_param}}
+\simcparam{sigc\_\allowbreak{}flag}{param:sigcu5fflag}{code}{0}{—}{SIDIS "central cross section" binning (0 = z, 1 = pT²): \textbf{unused} (the central cross-section calculation is disabled)}{sigc_flag@\code{sigc\_flag}}
+\simcparam{sigc\_\allowbreak{}nbin}{param:sigcu5fnbin}{count}{0}{—}{unused (as \hyperref[param:sigcu5fflag]{\code{sigc\_\allowbreak{}flag}}\simcidx{Parameters!sigc_flag@\code{sigc\_flag}})}{sigc_nbin@\code{sigc\_nbin}}
+\simcparam{sigc\_\allowbreak{}kin\_\allowbreak{}min}{param:sigcu5fkinu5fmin}{z or GeV²}{0}{—}{unused (as \hyperref[param:sigcu5fflag]{\code{sigc\_\allowbreak{}flag}}\simcidx{Parameters!sigc_flag@\code{sigc\_flag}})}{sigc_kin_min@\code{sigc\_kin\_min}}
+\simcparam{sigc\_\allowbreak{}kin\_\allowbreak{}max}{param:sigcu5fkinu5fmax}{z or GeV²}{0}{—}{unused (as \hyperref[param:sigcu5fflag]{\code{sigc\_\allowbreak{}flag}}\simcidx{Parameters!sigc_flag@\code{sigc\_flag}})}{sigc_kin_max@\code{sigc\_kin\_max}}
+\simcparam{sigc\_\allowbreak{}kin\_\allowbreak{}ind}{param:sigcu5fkinu5find}{GeV² or z}{0}{—}{unused (as \hyperref[param:sigcu5fflag]{\code{sigc\_\allowbreak{}flag}}\simcidx{Parameters!sigc_flag@\code{sigc\_flag}})}{sigc_kin_ind@\code{sigc\_kin\_ind}}
+\end{simcparams}
+\subsection*{\texorpdfstring{Beam and spectrometer settings}{Beam and spectrometer settings}}\label{user_manual-04u5finputs:beam-and-spectrometer-settings}
+\begin{simcparams}
+\simcparam{Ebeam}{param:Ebeam}{MeV}{0}{all}{beam energy}{Ebeam@\code{Ebeam}}
+\simcparam{dEbeam}{param:dEbeam}{\% of Ebeam}{0}{all}{full width of the flat beam-energy spread}{dEbeam@\code{dEbeam}}
+\simcparam{electron\_\allowbreak{}arm}{param:electronu5farm}{code}{0}{all}{spectrometer of the electron: 1 HMS, 2 SOS, 3 HRS-R, 4 HRS-L, 5 SHMS, 7/8 calorimeter. \textbf{6 is rejected} (the retired SHMS LSA tune); other values stop the run (\code{I\ dont\ know\ what\ phi\ should\ be\ for\ the\ electron\ arm}) (\hyperref[user_manual-06u5fspectrometers:61-spectrometer-numbers]{6.1})}{electron_arm@\code{electron\_arm}}
+\simcparam{hadron\_\allowbreak{}arm}{param:hadronu5farm}{code}{0}{all}{spectrometer of the hadron, same codes}{hadron_arm@\code{hadron\_arm}}
+\simcparam{spec\%\allowbreak{}e\%\allowbreak{}P}{param:specu25eu25P}{MeV/c}{0}{all}{central momentum of the electron arm}{spec.e.P@\code{spec\%e\%P}}
+\simcparam{spec\%\allowbreak{}e\%\allowbreak{}theta}{param:specu25eu25theta}{deg}{0}{all}{central angle of the electron arm (absolute value)}{spec.e.theta@\code{spec\%e\%theta}}
+\simcparam{spec\%\allowbreak{}p\%\allowbreak{}P}{param:specu25pu25P}{MeV/c}{0}{all}{central momentum of the hadron arm}{spec.p.P@\code{spec\%p\%P}}
+\simcparam{spec\%\allowbreak{}p\%\allowbreak{}theta}{param:specu25pu25theta}{deg}{0}{all}{central angle of the hadron arm (absolute value)}{spec.p.theta@\code{spec\%p\%theta}}
+\simcparam{spect\_\allowbreak{}mode}{param:spectu5fmode}{code}{0}{all}{0: both spectrometer Monte Carlos on; −1: electron arm off (hadron only); −2: hadron arm off (electron only); 1: both off (\hyperref[user_manual-06u5fspectrometers:64-spectu5fmode-switching-the-spectrometer-monte-carlo-off]{6.4})}{spect_mode@\code{spect\_mode}}
+\simcparam{use\_\allowbreak{}first\_\allowbreak{}cer}{param:useu5ffirstu5fcer}{flag}{0}{—}{"use first Cherenkov in SHMS": printed in the \code{.\allowbreak{}hist}, not used by the simulation}{use_first_cer@\code{use\_first\_cer}}
+\end{simcparams}
+\subsection*{\texorpdfstring{Beam spot, raster and target position}{Beam spot, raster and target position}}\label{user_manual-04u5finputs:beam-spot-raster-and-target-position}
+\begin{simcparams}
+\simcparam{gen\%\allowbreak{}xwid}{param:genu25xwid}{cm}{0}{all}{horizontal beam size, one σ (gaussian)}{gen.xwid@\code{gen\%xwid}}
+\simcparam{gen\%\allowbreak{}ywid}{param:genu25ywid}{cm}{0}{all}{vertical beam size, one σ}{gen.ywid@\code{gen\%ywid}}
+\simcparam{targ\%\allowbreak{}fr\_\allowbreak{}pattern}{param:targu25fru5fpattern}{code}{0}{all}{fast raster: 1 = old "bedpost" rectangle, 2 = circle, 3 = flat rectangle; other values: no raster}{targ.fr_pattern@\code{targ\%fr\_pattern}}
+\simcparam{targ\%\allowbreak{}fr1}{param:targu25fr1}{cm}{0}{all}{raster x half-width (patterns 1, 3) or inner radius (2)}{targ.fr1@\code{targ\%fr1}}
+\simcparam{targ\%\allowbreak{}fr2}{param:targu25fr2}{cm}{0}{all}{raster y half-width (patterns 1, 3) or outer radius (2)}{targ.fr2@\code{targ\%fr2}}
+\simcparam{targ\%\allowbreak{}xoffset}{param:targu25xoffset}{cm}{0}{all}{target x offset (+x = beam right)}{targ.xoffset@\code{targ\%xoffset}}
+\simcparam{targ\%\allowbreak{}yoffset}{param:targu25yoffset}{cm}{0}{all}{target y offset (+y = up)}{targ.yoffset@\code{targ\%yoffset}}
+\simcparam{targ\%\allowbreak{}zoffset}{param:targu25zoffset}{cm}{0}{all}{target z offset (+z = downstream)}{targ.zoffset@\code{targ\%zoffset}}
+\end{simcparams}
+\subsection*{\texorpdfstring{Target}{Target}}\label{user_manual-04u5finputs:target}
+\begin{simcparams}
+\simcparam{targ\%\allowbreak{}A}{param:targu25A}{nucleons}{0}{all}{target mass number. Chooses H (1), D (2) or a nucleus (≥ 3) for every reaction}{targ.A@\code{targ\%A}}
+\simcparam{targ\%\allowbreak{}Z}{param:targu25Z}{charge}{0}{all}{target charge. Z < 2.4 means a liquid (cryogenic) target}{targ.Z@\code{targ\%Z}}
+\simcparam{targ\%\allowbreak{}mass\_\allowbreak{}amu}{param:targu25massu5famu}{amu}{0}{all}{target mass (forced to Mp / Md for H / D with a WARNING)}{targ.mass_amu@\code{targ\%mass\_amu}}
+\simcparam{targ\%\allowbreak{}mrec\_\allowbreak{}amu}{param:targu25mrecu5famu}{amu}{0}{all}{recoil (A−1 system) mass for (e,e'p); final-nucleus mass for coherent production. Replaced by the program's estimate when it is more than 100 MeV off}{targ.mrec_amu@\code{targ\%mrec\_amu}}
+\simcparam{targ\%\allowbreak{}rho}{param:targu25rho}{g/cm³}{0}{all}{target density (with \hyperref[param:targu25thick]{\code{targ\%\allowbreak{}thick}}\simcidx{Parameters!targ.thick@\code{targ\%thick}} it gives the target length)}{targ.rho@\code{targ\%rho}}
+\simcparam{targ\%\allowbreak{}thick}{param:targu25thick}{mg/cm²}{0}{all}{target thickness}{targ.thick@\code{targ\%thick}}
+\simcparam{targ\%\allowbreak{}angle}{param:targu25angle}{deg}{0}{all}{angle of a solid target (0 = perpendicular to the beam); forced to 0 for cryotargets; sin(angle) > 0.85 STOPs}{targ.angle@\code{targ\%angle}}
+\simcparam{targ\%\allowbreak{}abundancy}{param:targu25abundancy}{\%}{0}{all}{isotopic purity of the target. \textbf{Must be set} (100 for a pure target): the luminosity is divided by abundancy/\allowbreak{}100,\allowbreak{} so 0 gives zero luminosity and zero weights}{targ.abundancy@\code{targ\%abundancy}}
+\simcparam{targ\%\allowbreak{}can}{param:targu25can}{code}{0}{all}{cryotarget cell: 1 = beer can, 2 = pudding can, 3 = cryo17. Required for Z < 2.4 (\code{bad\ targ.\allowbreak{}can\ value} STOP otherwise)}{targ.can@\code{targ\%can}}
+\end{simcparams}
+\subsection*{\texorpdfstring{Polarized target and target field}{Polarized target and target field}}\label{user_manual-04u5finputs:polarized-target-and-target-field}
+\begin{simcparams}
+\simcparam{using\_\allowbreak{}tgt\_\allowbreak{}field}{param:usingu5ftgtu5ffield}{flag}{F}{field}{track the particles through the polarized-target magnetic field (\hyperref[user_manual-06u5fspectrometers:65-polarized-target-field-usingu5ftgtu5ffield]{6.5})}{using_tgt_field@\code{using\_tgt\_field}}
+\simcparam{tgt\_\allowbreak{}field\_\allowbreak{}file}{param:tgtu5ffieldu5ffile}{path}{blank}{field}{field map. \code{'0'} = no field; \code{'\ '} = a uniform 5 T test field; otherwise a map file looked for in \code{-{}-{}data-{}dir}\simcidx{Command-line options!data-dir@\code{-{}-{}data-{}dir}}, the current directory, then the data directory's \code{field/} (\code{trg\_\allowbreak{}field\_\allowbreak{}map.\allowbreak{}dat} is included). Unset with \code{using\_\allowbreak{}tgt\_\allowbreak{}field\ =\ 1}: refused at start-up}{tgt_field_file@\code{tgt\_field\_file}}
+\simcparam{targ\_\allowbreak{}Bangle}{param:targu5fBangle}{deg}{0}{field}{angle of the target field (+ = beam left); also the polarization direction used for the polarized-target angle columns of the tree (\hyperref[user_manual-07u5foutputs:717-polarized-target-columns-usingu5ftgtu5ffield]{7.1.7})}{targ_Bangle@\code{targ\_Bangle}}
+\simcparam{targ\_\allowbreak{}Bphi}{param:targu5fBphi}{deg}{0}{field}{side of the beam the field points to (90 = beam left, 270 = beam right)}{targ_Bphi@\code{targ\_Bphi}}
+\simcparam{targ\_\allowbreak{}pol}{param:targu5fpol}{factor}{0}{field}{target polarization (+ = along B); 0 makes the \code{th\_\allowbreak{}tarq} column NaN}{targ_pol@\code{targ\_pol}}
+\end{simcparams}
+\subsection*{\texorpdfstring{Spectrometer offsets}{Spectrometer offsets}}\label{user_manual-04u5finputs:spectrometer-offsets}
+Offsets applied to the event before the spectrometer Monte Carlo of each arm (misalignments).
+
+\begin{simcparams}
+\simcparam{spec\%\allowbreak{}e\%\allowbreak{}offset\%\allowbreak{}x}{param:specu25eu25offsetu25x}{cm}{0}{all}{electron arm x offset}{spec.e.offset.x@\code{spec\%e\%offset\%x}}
+\simcparam{spec\%\allowbreak{}e\%\allowbreak{}offset\%\allowbreak{}y}{param:specu25eu25offsetu25y}{cm}{0}{all}{electron arm y offset}{spec.e.offset.y@\code{spec\%e\%offset\%y}}
+\simcparam{spec\%\allowbreak{}e\%\allowbreak{}offset\%\allowbreak{}z}{param:specu25eu25offsetu25z}{cm}{0}{all}{electron arm z offset}{spec.e.offset.z@\code{spec\%e\%offset\%z}}
+\simcparam{spec\%\allowbreak{}e\%\allowbreak{}offset\%\allowbreak{}xptar}{param:specu25eu25offsetu25xptar}{mrad}{0}{all}{electron arm xptar (vertical slope) offset}{spec.e.offset.xptar@\code{spec\%e\%offset\%xptar}}
+\simcparam{spec\%\allowbreak{}e\%\allowbreak{}offset\%\allowbreak{}yptar}{param:specu25eu25offsetu25yptar}{mrad}{0}{all}{electron arm yptar (horizontal slope) offset}{spec.e.offset.yptar@\code{spec\%e\%offset\%yptar}}
+\simcparam{spec\%\allowbreak{}p\%\allowbreak{}offset\%\allowbreak{}x}{param:specu25pu25offsetu25x}{cm}{0}{all}{hadron arm x offset}{spec.p.offset.x@\code{spec\%p\%offset\%x}}
+\simcparam{spec\%\allowbreak{}p\%\allowbreak{}offset\%\allowbreak{}y}{param:specu25pu25offsetu25y}{cm}{0}{all}{hadron arm y offset}{spec.p.offset.y@\code{spec\%p\%offset\%y}}
+\simcparam{spec\%\allowbreak{}p\%\allowbreak{}offset\%\allowbreak{}z}{param:specu25pu25offsetu25z}{cm}{0}{all}{hadron arm z offset}{spec.p.offset.z@\code{spec\%p\%offset\%z}}
+\simcparam{spec\%\allowbreak{}p\%\allowbreak{}offset\%\allowbreak{}xptar}{param:specu25pu25offsetu25xptar}{mrad}{0}{all}{hadron arm xptar offset}{spec.p.offset.xptar@\code{spec\%p\%offset\%xptar}}
+\simcparam{spec\%\allowbreak{}p\%\allowbreak{}offset\%\allowbreak{}yptar}{param:specu25pu25offsetu25yptar}{mrad}{0}{all}{hadron arm yptar offset}{spec.p.offset.yptar@\code{spec\%p\%offset\%yptar}}
+\end{simcparams}
+\subsection*{\texorpdfstring{Spectrometer limits and missing-energy cuts}{Spectrometer limits and missing-energy cuts}}\label{user_manual-04u5finputs:spectrometer-limits-and-missing-energy-cuts}
+The \code{SPedge} limits describe the spectrometer acceptance that you want to simulate. SIMC++ widens them by the
+spectrometer "slop" (resolution,\allowbreak{} multiple scattering, energy loss) to build the \textbf{generation limits}.
+Reconstructed events inside the unwidened limits count in the \code{.\allowbreak{}hist} wtcontr (pass\_\allowbreak{}cuts); with \hyperref[param:hardu5fcuts]{\code{hard\_\allowbreak{}cuts}}\simcidx{Parameters!hard_cuts@\code{hard\_cuts}} they are
+also the only accepted events. The defaults (±1e10) are wide open: \textbf{set them} in every input. A delta minimum
+≤ −100 \% is changed to −99.99 \%.
+
+\begin{simcparams}
+\simcparam{SPedge\%\allowbreak{}e\%\allowbreak{}delta\%\allowbreak{}min}{param:SPedgeu25eu25deltau25min}{\%}{−1e10}{all}{electron arm delta lower limit}{SPedge.e.delta.min@\code{SPedge\%e\%delta\%min}}
+\simcparam{SPedge\%\allowbreak{}e\%\allowbreak{}delta\%\allowbreak{}max}{param:SPedgeu25eu25deltau25max}{\%}{1e10}{all}{electron arm delta upper limit}{SPedge.e.delta.max@\code{SPedge\%e\%delta\%max}}
+\simcparam{SPedge\%\allowbreak{}e\%\allowbreak{}yptar\%\allowbreak{}min}{param:SPedgeu25eu25yptaru25min}{mrad}{−1e10}{all}{electron arm yptar lower limit}{SPedge.e.yptar.min@\code{SPedge\%e\%yptar\%min}}
+\simcparam{SPedge\%\allowbreak{}e\%\allowbreak{}yptar\%\allowbreak{}max}{param:SPedgeu25eu25yptaru25max}{mrad}{1e10}{all}{electron arm yptar upper limit}{SPedge.e.yptar.max@\code{SPedge\%e\%yptar\%max}}
+\simcparam{SPedge\%\allowbreak{}e\%\allowbreak{}xptar\%\allowbreak{}min}{param:SPedgeu25eu25xptaru25min}{mrad}{−1e10}{all}{electron arm xptar lower limit}{SPedge.e.xptar.min@\code{SPedge\%e\%xptar\%min}}
+\simcparam{SPedge\%\allowbreak{}e\%\allowbreak{}xptar\%\allowbreak{}max}{param:SPedgeu25eu25xptaru25max}{mrad}{1e10}{all}{electron arm xptar upper limit}{SPedge.e.xptar.max@\code{SPedge\%e\%xptar\%max}}
+\simcparam{SPedge\%\allowbreak{}p\%\allowbreak{}delta\%\allowbreak{}min}{param:SPedgeu25pu25deltau25min}{\%}{−1e10}{all}{hadron arm delta lower limit}{SPedge.p.delta.min@\code{SPedge\%p\%delta\%min}}
+\simcparam{SPedge\%\allowbreak{}p\%\allowbreak{}delta\%\allowbreak{}max}{param:SPedgeu25pu25deltau25max}{\%}{1e10}{all}{hadron arm delta upper limit (the legacy-compatible mode uses \hyperref[param:SPedgeu25eu25deltau25max]{\code{SPedge\%\allowbreak{}e\%\allowbreak{}delta\%\allowbreak{}max}}\simcidx{Parameters!SPedge.e.delta.max@\code{SPedge\%e\%delta\%max}} here, see \hyperref[user_manual-08u5frunningu5fandu5freproducibility:83-default-and-legacy-compatible-mode]{8.3})}{SPedge.p.delta.max@\code{SPedge\%p\%delta\%max}}
+\simcparam{SPedge\%\allowbreak{}p\%\allowbreak{}yptar\%\allowbreak{}min}{param:SPedgeu25pu25yptaru25min}{mrad}{−1e10}{all}{hadron arm yptar lower limit}{SPedge.p.yptar.min@\code{SPedge\%p\%yptar\%min}}
+\simcparam{SPedge\%\allowbreak{}p\%\allowbreak{}yptar\%\allowbreak{}max}{param:SPedgeu25pu25yptaru25max}{mrad}{1e10}{all}{hadron arm yptar upper limit}{SPedge.p.yptar.max@\code{SPedge\%p\%yptar\%max}}
+\simcparam{SPedge\%\allowbreak{}p\%\allowbreak{}xptar\%\allowbreak{}min}{param:SPedgeu25pu25xptaru25min}{mrad}{−1e10}{all}{hadron arm xptar lower limit}{SPedge.p.xptar.min@\code{SPedge\%p\%xptar\%min}}
+\simcparam{SPedge\%\allowbreak{}p\%\allowbreak{}xptar\%\allowbreak{}max}{param:SPedgeu25pu25xptaru25max}{mrad}{1e10}{all}{hadron arm xptar upper limit}{SPedge.p.xptar.max@\code{SPedge\%p\%xptar\%max}}
+\simcparam{cuts\%\allowbreak{}Em\%\allowbreak{}min}{param:cutsu25Emu25min}{MeV}{−1e10}{eep}{A(e,e'p): lower end of the generated missing-energy range (widened by the slop, at least 0). Ignored (wide open) for pion, kaon and Delta runs and when min = max}{cuts.Em.min@\code{cuts\%Em\%min}}
+\simcparam{cuts\%\allowbreak{}Em\%\allowbreak{}max}{param:cutsu25Emu25max}{MeV}{1e10}{eep}{A(e,e'p): upper end of the generated Em range; with \hyperref[param:hardu5fcuts]{\code{hard\_\allowbreak{}cuts}}\simcidx{Parameters!hard_cuts@\code{hard\_cuts}}, (e,e'p) events with recon Em above it are rejected}{cuts.Em.max@\code{cuts\%Em\%max}}
+\end{simcparams}
+\subsection*{\texorpdfstring{Simulation switches}{Simulation switches}}\label{user_manual-04u5finputs:simulation-switches}
+\begin{simcparams}
+\simcparam{mc\_\allowbreak{}smear}{param:mcu5fsmear}{flag}{F}{all}{multiple scattering in the target and spectrometer materials, and wire-chamber smearing (the focal-plane resolution)}{mc_smear@\code{mc\_smear}}
+\simcparam{using\_\allowbreak{}Eloss}{param:usingu5fEloss}{flag}{F}{all}{energy loss in the target and windows}{using_Eloss@\code{using\_Eloss}}
+\simcparam{correct\_\allowbreak{}Eloss}{param:correctu5fEloss}{flag}{F}{all}{correct the reconstructed momenta for the most probable energy loss (forced off when \hyperref[param:usingu5fEloss]{\code{using\_\allowbreak{}Eloss}}\simcidx{Parameters!using_Eloss@\code{using\_Eloss}} is off)}{correct_Eloss@\code{correct\_Eloss}}
+\simcparam{correct\_\allowbreak{}raster}{param:correctu5fraster}{flag}{F}{all}{reconstruct with the raster position (the vertical beam position enters the reconstruction)}{correct_raster@\code{correct\_raster}}
+\simcparam{using\_\allowbreak{}Coulomb}{param:usingu5fCoulomb}{flag}{F}{all}{Coulomb correction of the electron energy (forced off for Z = 1)}{using_Coulomb@\code{using\_Coulomb}}
+\simcparam{using\_\allowbreak{}HMScoll}{param:usingu5fHMScoll}{flag}{F}{HMS arm}{step pions/muons through the HMS collimator (absorption,\allowbreak{} scattering, the \code{.\allowbreak{}geni} collimator line)}{using_HMScoll@\code{using\_HMScoll}}
+\simcparam{using\_\allowbreak{}SHMScoll}{param:usingu5fSHMScoll}{flag}{F}{SHMS arm}{the same for the SHMS collimator}{using_SHMScoll@\code{using\_SHMScoll}}
+\simcparam{drift\_\allowbreak{}to\_\allowbreak{}cal}{param:driftu5ftou5fcal}{cm}{0}{calo}{distance from the target to the calorimeter face (arms 7/8). 0 puts the face at the target (not checked)}{drift_to_cal@\code{drift\_to\_cal}}
+\simcparam{using\_\allowbreak{}cit\_\allowbreak{}generation}{param:usingu5fcitu5fgeneration}{flag}{F}{—}{accepted for compatibility,\allowbreak{} not used}{using_cit_generation@\code{using\_cit\_generation}}
+\end{simcparams}
+\subsection*{\texorpdfstring{Radiative corrections}{Radiative corrections}}\label{user_manual-04u5finputs:radiative-corrections}
+\begin{simcparams}
+\simcparam{using\_\allowbreak{}rad}{param:usingu5frad}{flag}{F}{rad}{radiative corrections: generate the radiative tails}{using_rad@\code{using\_rad}}
+\simcparam{rad\_\allowbreak{}flag}{param:radu5fflag}{code}{0}{rad}{radiative option: 0 = best formulas, (ntail, Eγ) basis; 1 = BASICRAD only, (ntail, Eγ) basis; 2, 3 = BASICRAD in the (Eγ1, Eγ2, Eγ3) basis. Set to 0 by \hyperref[param:doingu5fphsp]{\code{doing\_\allowbreak{}phsp}}\simcidx{Parameters!doing_phsp@\code{doing\_phsp}}; other values STOP}{rad_flag@\code{rad\_flag}}
+\simcparam{extrad\_\allowbreak{}flag}{param:extradu5fflag}{code}{0}{rad}{external radiation: 1 = basic formulas; 2 = basic × φ; 3 = Friedrich approximation; 0 = default (3 for rad\_flag 0, 1 otherwise); < 0 STOPs}{extrad_flag@\code{extrad\_flag}}
+\simcparam{one\_\allowbreak{}tail}{param:oneu5ftail}{code}{0}{rad}{which tails radiate: 0 all; 1 incoming e; 2 scattered e'; 3 hadron; −1 all but the incoming e; −2 all but e'; −3 all but the hadron. |one\_tail| > 3 with \hyperref[param:usingu5frad]{\code{using\_\allowbreak{}rad}}\simcidx{Parameters!using_rad@\code{using\_rad}} STOPs}{one_tail@\code{one\_tail}}
+\simcparam{intcor\_\allowbreak{}mode}{param:intcoru5fmode}{code}{0}{rad}{internal-correction formula: 0 = Schwinger; otherwise brem (or bremos with \hyperref[param:useu5foffshellu5frad]{\code{use\_\allowbreak{}offshell\_\allowbreak{}rad}}\simcidx{Parameters!use_offshell_rad@\code{use\_offshell\_rad}}). Normally 1}{intcor_mode@\code{intcor\_mode}}
+\simcparam{use\_\allowbreak{}expon}{param:useu5fexpon}{flag}{0}{rad}{1 = exponentiate the corrections (brem); normally 0}{use_expon@\code{use\_expon}}
+\simcparam{use\_\allowbreak{}offshell\_\allowbreak{}rad}{param:useu5foffshellu5frad}{flag}{F}{rad}{use the off-shell bremos formula for the hard correction}{use_offshell_rad@\code{use\_offshell\_rad}}
+\simcparam{lambda}{param:lambda}{3 numbers}{0, 0, 0}{—}{radiative λ(1:3) for rad\_flag 4: \textbf{overwritten} for every event by the computed values, so the input has no effect}{lambda@\code{lambda}}
+\simcparam{Egamma\_\allowbreak{}gen\_\allowbreak{}max}{param:Egammau5fgenu5fmax}{MeV}{0}{rad}{> 0.01: use this fixed maximum photon energy instead of the computed limits}{Egamma_gen_max@\code{Egamma\_gen\_max}}
+\simcparam{dE\_\allowbreak{}edge\_\allowbreak{}test}{param:dEu5fedgeu5ftest}{MeV}{0}{all}{widens the energy edges of the generation and radiation limits by this amount (a test of the edges)}{dE_edge_test@\code{dE\_edge\_test}}
+\end{simcparams}
+\section{\texorpdfstring{Settings that have no \code{.\allowbreak{}inp} variable}{Settings that have no .inp variable}}\label{user_manual-04u5finputs:47-settings-that-have-no-inp-variable}
+These have no \code{.\allowbreak{}inp} counterpart:
+
+\begin{simctable}{small}{4}{>{\raggedright\arraybackslash}p{\dimexpr 0.297\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.175\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.289\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.150\linewidth-2\tabcolsep\relax}}
+\caption{Settings that have no \code{.\allowbreak{}inp} variable}\\%
+\toprule\rowcolor{simchead}\simcth{setting} & \simcth{JSON} & \simcth{command line} & \simcth{default} \\\midrule\endfirsthead
+\multicolumn{4}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{setting} & \simcth{JSON} & \simcth{command line} & \simcth{default} \\\midrule\endhead
+\midrule\multicolumn{4}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+legacy-compatible mode & \code{run.\allowbreak{}fortran\_\allowbreak{}compat} & \code{-{}-{}fortran-{}compat}\simcidx{Command-line options!fortran-compat@\code{-{}-{}fortran-{}compat}} & off \\
+output name and directory & \code{run.\allowbreak{}name}, \code{run.\allowbreak{}output\_\allowbreak{}dir} & \code{-{}-{}run-{}name\ NAME}\simcidx{Command-line options!run-name@\code{-{}-{}run-{}name}}, \code{-{}o\ DIR} & input stem, \code{.} \\
+plug-ins, random-number generator & \code{pipeline} & \code{-{}-{}pipeline\ FILE}\simcidx{Command-line options!pipeline@\code{-{}-{}pipeline}} & from the flags (\hyperref[user_manual-04u5finputs:43-the-pipeline-section-choosing-plug-ins]{4.3}) \\
+event-loop threads & \code{pipeline.\allowbreak{}threads} & \code{-{}-{}threads\ N}\simcidx{Command-line options!threads@\code{-{}-{}threads}} & 1 \\
+data directory & — & \code{-{}-{}data-{}dir\ DIR}\simcidx{Command-line options!data-dir@\code{-{}-{}data-{}dir}}, env \code{SIMC\_\allowbreak{}DATA\_\allowbreak{}DIR} & \hyperref[user_manual-02u5finstallation:25-where-the-data-files-are-found]{2.5} \\
+directory of \hyperref[param:extrau5fdbaseu5ffile]{\code{extra\_\allowbreak{}dbase\_\allowbreak{}file}}\simcidx{Parameters!extra_dbase_file@\code{extra\_dbase\_file}} & — & \code{-{}-{}infiles-{}dir\ DIR}\simcidx{Command-line options!infiles-dir@\code{-{}-{}infiles-{}dir}} & the main file's directory \\
+number of events, seed & \code{parameters.\allowbreak{}ngen}, \code{parameters.\allowbreak{}random\_\allowbreak{}seed} & \code{-{}-{}ngen\ N}\simcidx{Command-line options!ngen@\code{-{}-{}ngen}}, \code{-{}-{}seed\ N}\simcidx{Command-line options!seed@\code{-{}-{}seed}} (override the input; the \code{.\allowbreak{}hist} prints the overridden values) & from the input \\
+quiet stages & \code{"verbose":\ false} per stage & \code{-{}-{}quiet}\simcidx{Command-line options!quiet@\code{-{}-{}quiet}} & verbose \\
+print the resolved pipeline & — & \code{-{}-{}print-{}pipeline}\simcidx{Command-line options!print-pipeline@\code{-{}-{}print-{}pipeline}} & off \\
+print the data directory and exit & — & \code{-{}-{}print-{}data-{}dir}\simcidx{Command-line options!print-data-dir@\code{-{}-{}print-{}data-{}dir}} & — \\
+usage & — & \code{-{}h}, \code{-{}-{}help}\simcidx{Command-line options!help@\code{-{}-{}help}} & — \\
+\end{simctable}

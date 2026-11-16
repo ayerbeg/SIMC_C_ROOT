@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "simc_run_summary/1",
   "title": "SIMC run summary (C++ RunSummarySink and Fortran .hist/.geni via hist2json)",
-  "description": "See docs/OUTPUT_FORMAT.md. Units follow the Fortran .hist print-out.",
+  "description": "See docs/manual/markdown/reference/OUTPUT_FORMAT.md. Units follow the Fortran .hist print-out.",
   "type": "object",
   "required": [
     "schema",
@@ -1172,7 +1172,7 @@
     },
     "stops": {
       "type": "object",
-      "description": "stops.<spectrometer>.<counter>; keys in docs/OUTPUT_FORMAT.md",
+      "description": "stops.<spectrometer>.<counter>; keys in docs/manual/markdown/reference/OUTPUT_FORMAT.md",
       "additionalProperties": {
         "type": "object",
         "required": [

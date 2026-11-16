@@ -1,5 +1,5 @@
 // tests/unit/test_output_sinks.cpp
-//   test_output_sinks <reference h10 .root> <docs/summary.schema.json>
+//   test_output_sinks <reference h10 .root> <docs/manual/markdown/reference/summary.schema.json>
 // 1. The h10 branch list/order/types equal the Fortran make_root_tree tree.
 // 2. Synthetic events through RootTreeSink / RunSummarySink / GenHistSink (created by name
 //    from the Registry): column mapping (both arm sides), Float_t storage, summary JSON valid
@@ -204,7 +204,7 @@ int main(int argc, char** argv) {
             schema = Json::parse(sc);
             auto errs = ValidateAgainstSchema(j, schema);
             for (const auto& e : errs) std::printf("  schema: %s\n", e.c_str());
-            check(errs.empty(), "summary.json validates against docs/summary.schema.json");
+            check(errs.empty(), "summary.json validates against docs/manual/markdown/reference/summary.schema.json");
             Json bad = j;
             bad.erase("normalization");
             bad["counters"]["ntried"] = "x";

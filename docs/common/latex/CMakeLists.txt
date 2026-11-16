@@ -1,16 +1,19 @@
-# docs/latex — the PDF editions of the user manual, the developer manual and the translation report (task P15.D5).
+# docs/common/latex - the PDF editions of the user manual, the developer manual and the translation report
+# (tasks P15.D5, P15.D6). See docs/README.md.
 #
-# The Markdown files (docs/manual/user, docs/manual/developer, docs/translation) are the source of the text;
-# tools/md2latex.py converts them, docs/latex/simcpp.cls gives the design, docs/latex/figures/*.tex are the TikZ
-# figures (their PNG exports in docs/figures/ are used by the Markdown view). Everything is driven by
-# tools/build_docs_pdf.py (figures, conversion, xelatex + makeindex passes, log checks).
+# The LaTeX editions are committed sources: docs/manual/latex/{user_manual,developer_manual}.tex with their chapters in
+# user/ and developer/, docs/translation/latex/translation_report.tex with chapters/; the shared style is here
+# (simcpp.cls, simcfig.sty, simcfonts.sty, simcpp.ist, conventions.tex), the logo in docs/common/figures/, the TikZ
+# figures in docs/{manual,translation}/figures/*.tex. tools/build_docs_pdf.py compiles the figures, writes the
+# build-time inputs (version, dashboard; tools/md2latex.py --generated), runs xelatex + makeindex and checks the logs.
+# tools/md2latex.py --write-sources is an optional helper that re-converts chapters from the Markdown edition.
 #
 #   target `pdf`:            <build>/docs/SIMCpp_User_Manual.pdf, SIMCpp_Developer_Manual.pdf,
 #                            SIMC_Fortran_to_SIMCpp_Translation_Report.pdf (intermediate files in <build>/docs/latex).
 #                            Without xelatex the target only prints a message.
-#   CTest docs_pdf_build     (label docs): the same build in its own directory; fails on a converter error, a LaTeX
-#                            error, an undefined reference or a missing glyph; SKIP (77) without xelatex.
-#   Re-export the figure PNGs after changing a figure (writes into the source tree):
+#   CTest docs_pdf_build     (label docs): the same build in its own directory; fails on a LaTeX error, an undefined
+#                            reference, a missing file or glyph; SKIP (77) without xelatex.
+#   Re-export the figure PNGs after changing a figure (writes next to the .tex sources):
 #       python3 -I tools/build_docs_pdf.py --source-root . --build-dir build/docs/latex --figures-only --png
 find_program(SIMC_XELATEX xelatex)
 find_package(Python3 COMPONENTS Interpreter)

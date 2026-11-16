@@ -1,5 +1,10 @@
-% docs/latex/figures/compat_switch.tex — the two behaviour modes and how --fortran-compat reaches the code
-% (docs/translation/05_compat.md §5.1-5.2; RunOptions, SetupOptions, RunSetup::fortran_compat, StageContext). P15.D5.
+% docs/translation/figures/compat_switch.tex - TikZ figure of the SIMC++ documentation: the two behaviour modes and how --fortran-compat reaches the code
+% (docs/translation/markdown/05_compat.md §5.1-5.2; RunOptions, SetupOptions, RunSetup::fortran_compat, StageContext). P15.D5.
+%   Compile alone (tools/build_docs_pdf.py does it for every figure): with TEXINPUTS=docs/common/latex//: run
+%   xelatex <name>.tex -> <name>.pdf (preview.sty crops the page to the picture); the books include that PDF.
+%   Packages: tikz, xcolor, fontspec, preview (simcfig.sty, simcfonts.sty); fonts TeX Gyre Pagella, TeX Gyre Heros,
+%   DejaVu Sans Mono. After a change, re-export the PNG of the Markdown edition (build_docs_pdf.py --png) and
+%   commit both.
 \documentclass{article}
 \usepackage{simcfonts,simcfig}
 \usepackage[active,tightpage]{preview}
@@ -24,15 +29,15 @@
     refuses \texttt{-{}-threads N > 1}};
   % ---------------- the two modes
   \begin{scope}[xshift=6.3cm]
-  \node[simc/title, anchor=west] at (-0.1,0.55) {what each class of finding does in the two modes};
+  \node[simc/title, anchor=west] at (-0.1,0.55) {what each Category of finding does in the two modes};
   \node[md, simc/key, text width=33mm] (hdef) at (5.3,-0.2) {default mode};
   \node[md, simc/key, fill=simcblue, draw=simcblue, text width=33mm] (hcomp) at (9.1,-0.2) {\texttt{-{}-fortran-compat}};
   \foreach \y/\c/\t/\d/\f [count=\k] in {
-      -1.15/a/{clear Fortran bug}/{corrected}/{Fortran},
-      -2.05/b/{ambiguous (expert list)}/{Fortran}/{Fortran},
-      -2.95/c/{open question}/{Fortran}/{Fortran},
-      -3.85/d/{faithful quirk}/{Fortran}/{Fortran},
-      -4.75/dev/{design deviation}/{SIMC++}/{SIMC++}} {
+      -1.15/A/{clear Fortran bug}/{corrected}/{Fortran},
+      -2.05/B/{ambiguous (expert list)}/{Fortran}/{Fortran},
+      -2.95/C/{open question}/{Fortran}/{Fortran},
+      -3.85/D/{faithful quirk}/{Fortran}/{Fortran},
+      -4.75/DEV/{design deviation}/{SIMC++}/{SIMC++}} {
     \node[cl] at (0,\y) {\c};
     \node[simc/note, anchor=west, text=simcnavy, font=\sffamily\scriptsize] at (0.75,\y) {\t};
   }

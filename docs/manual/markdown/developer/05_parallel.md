@@ -1,6 +1,6 @@
 # 5. Parallelism and performance internals
 
-User-level description, numbers and the L2 validation of the threaded runs: [PERFORMANCE.md](../../PERFORMANCE.md).
+User-level description, numbers and the L2 validation of the threaded runs: [PERFORMANCE.md](../reference/PERFORMANCE.md).
 This chapter is the implementation view.
 
 ## 5.1 The parallel event loop (`SimcRun::runThreaded`, src/driver/SimcRunParallel.cpp)

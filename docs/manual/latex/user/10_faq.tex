@@ -1,0 +1,97 @@
+% docs/manual/latex/user/10_faq.tex - chapter of the LaTeX edition of the book "user_manual" (SIMC++ documentation).
+%   Converted once from docs/manual/markdown/user/10_faq.md by tools/md2latex.py; from then on THIS FILE is the source of the
+%   LaTeX edition and may be edited by hand. Re-running tools/md2latex.py --write-sources for this
+%   chapter OVERWRITES the hand edits (see docs/README.md).
+%   Compile: cmake --build <build> --target pdf, or tools/build_docs_pdf.py (figures, xelatex passes,
+%   makeindex with docs/common/latex/simcpp.ist); by hand, see docs/README.md. XeLaTeX, class
+%   docs/common/latex/simcpp.cls (packages: fontspec, tikz, xcolor, hyperref, listings, longtable, booktabs,
+%   titlesec, titletoc, fancyhdr, makeidx, preview, ...); fonts TeX Gyre Pagella, TeX Gyre Heros, DejaVu Sans
+%   Mono. The figures are built first from docs/{manual,translation}/figures/*.tex (preview.sty) into PDFs.
+\chapter{\texorpdfstring{FAQ and troubleshooting}{FAQ and troubleshooting}}\label{user_manual-10u5ffaq}
+\section*{\texorpdfstring{The run stops with \code{bad\ targ.\allowbreak{}can\ value}}{The run stops with bad targ.can value}}\addcontentsline{toc}{section}{\texorpdfstring{The run stops with \code{bad\ targ.\allowbreak{}can\ value}}{The run stops with bad targ.can value}}\label{user_manual-10u5ffaq:the-run-stops-with-bad-targcan-value}
+The input uses old \code{.} names (\code{targ.\allowbreak{}A}, \code{spec.\allowbreak{}e.\allowbreak{}P}, ...). They are ignored, so the target is left at its defaults.
+Convert the file and its \hyperref[param:extrau5fdbaseu5ffile]{\code{extra\_\allowbreak{}dbase\_\allowbreak{}file}}\simcidx{Parameters!extra_dbase_file@\code{extra\_dbase\_file}} (\hyperref[user_manual-04u5finputs:413-old--names]{4.1.3}). The warning above the STOP lists the ignored names.
+For a liquid target (Z < 2.4), \hyperref[param:targu25can]{\code{targ\%\allowbreak{}can}}\simcidx{Parameters!targ.can@\code{targ\%can}} must be 1, 2 or 3.
+
+\section*{\texorpdfstring{\code{simc++:\ STOP\ during\ setup\ (\allowbreak{}legacy\ SIMC\ behaviour):\ STOP\ .\allowbreak{}.\allowbreak{}.} (exit 3)}{simc++: STOP during setup (legacy SIMC behaviour): STOP ... (exit 3)}}\addcontentsline{toc}{section}{\texorpdfstring{\code{simc++:\ STOP\ during\ setup\ (\allowbreak{}legacy\ SIMC\ behaviour):\ STOP\ .\allowbreak{}.\allowbreak{}.} (exit 3)}{simc++: STOP during setup (legacy SIMC behaviour): STOP ... (exit 3)}}\label{user_manual-10u5ffaq:simc-stop-during-setup-legacy-simc-behaviour-stop--exit-3}
+The set-up checks the inputs (the messages are those of the classic SIMC). Common ones:
+
+\begin{simctable}{small}{2}{>{\raggedright\arraybackslash}p{\dimexpr 0.555\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.398\linewidth-2\tabcolsep\relax}}
+%
+\toprule\rowcolor{simchead}\simcth{message} & \simcth{cause} \\\midrule\endfirsthead
+\multicolumn{2}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{message} & \simcth{cause} \\\midrule\endhead
+\midrule\multicolumn{2}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+\code{I\ dont\ know\ what\ phi\ should\ be\ for\ the\ electron\ arm} (or hadron) & \hyperref[param:electronu5farm]{\code{electron\_\allowbreak{}arm}}\simcidx{Parameters!electron_arm@\code{electron\_arm}}/\hyperref[param:hadronu5farm]{\code{hadron\_\allowbreak{}arm}}\simcidx{Parameters!hadron_arm@\code{hadron\_arm}} missing or not one of 1-5, 7, 8 \\
+\code{Pi-{}\ production\ from\ Hydrogen\ not\ allowed!}, \code{Coherent\ production\ from\ Hydrogen/\allowbreak{}Deuterium\ not\ allowed!}, \code{Sigma-{}\ production\ from\ Hydrogen\ not\ allowed!} & reaction and target do not fit (\hyperref[param:whichu5fpion]{\code{which\_\allowbreak{}pion}}\simcidx{Parameters!which_pion@\code{which\_pion}}, \hyperref[param:whichu5fkaon]{\code{which\_\allowbreak{}kaon}}\simcidx{Parameters!which_kaon@\code{which\_kaon}}, \hyperref[param:targu25A]{\code{targ\%\allowbreak{}A}}\simcidx{Parameters!targ.A@\code{targ\%A}}) \\
+\code{pizero\_\allowbreak{}ngamma\ not\ set\ correctly(\allowbreak{}must\ be\ 1\ or\ 2),\ stopping} & π0 run without \hyperref[param:pizerou5fngamma]{\code{pizero\_\allowbreak{}ngamma}}\simcidx{Parameters!pizero_ngamma@\code{pizero\_ngamma}} \\
+\code{I\ don't\ have\ ANY\ idea\ what\ (\allowbreak{}e,\allowbreak{}e'm)X\ we're\ doing!!!} & \hyperref[param:doingu5fsemi]{\code{doing\_\allowbreak{}semi}}\simcidx{Parameters!doing_semi@\code{doing\_semi}} without \hyperref[param:doingu5fpion]{\code{doing\_\allowbreak{}pion}}\simcidx{Parameters!doing_pion@\code{doing\_pion}} or \hyperref[param:doingu5fkaon]{\code{doing\_\allowbreak{}kaon}}\simcidx{Parameters!doing_kaon@\code{doing\_kaon}} \\
+\code{Moron!\ one\_\allowbreak{}tail>\allowbreak{}3\ turns\ radiation\ off,\ but\ using\_\allowbreak{}rad\ wants\ it\ on.} & \hyperref[param:oneu5ftail]{\code{one\_\allowbreak{}tail}}\simcidx{Parameters!one_tail@\code{one\_tail}} and \hyperref[param:usingu5frad]{\code{using\_\allowbreak{}rad}}\simcidx{Parameters!using_rad@\code{using\_rad}} \\
+\code{Idiot!\ check\ setting\ of\ de\allowbreak{}Forest\_\allowbreak{}flag} & |deForest\_\allowbreak{}flag| > 1 \\
+\code{BAD\ targ.\allowbreak{}angle\ .\allowbreak{}.\allowbreak{}.} & solid target turned by more than about 58° \\
+\end{simctable}
+\section*{\texorpdfstring{\code{simc++:\ input\ error} or \code{configuration\ error} (exit 2)}{simc++: input error or configuration error (exit 2)}}\addcontentsline{toc}{section}{\texorpdfstring{\code{simc++:\ input\ error} or \code{configuration\ error} (exit 2)}{simc++: input error or configuration error (exit 2)}}\label{user_manual-10u5ffaq:simc-input-error-or-configuration-error-exit-2}
+The input was refused before the run: arm code 6 (use 5 for the SHMS), π0 from the neutron on hydrogen, \hyperref[param:doingu5fdecay]{\code{doing\_\allowbreak{}decay}}\simcidx{Parameters!doing_decay@\code{doing\_decay}} for a
+hadron that is not a π or K, rho on A ≥ 4 or combined with another reaction, \hyperref[param:usingu5ftgtu5ffield]{\code{using\_\allowbreak{}tgt\_\allowbreak{}field}}\simcidx{Parameters!using_tgt_field@\code{using\_tgt\_field}} without \hyperref[param:tgtu5ffieldu5ffile]{\code{tgt\_\allowbreak{}field\_\allowbreak{}file}}\simcidx{Parameters!tgt_field_file@\code{tgt\_field\_file}},
+\code{-{}-{}threads}\simcidx{Command-line options!threads@\code{-{}-{}threads}} with \code{-{}-{}fortran-{}compat}\simcidx{Command-line options!fortran-compat@\code{-{}-{}fortran-{}compat}} or RANLUX, an unreadable JSON file. The message says which.
+
+\section*{\texorpdfstring{The run never ends}{The run never ends}}\addcontentsline{toc}{section}{\texorpdfstring{The run never ends}{The run never ends}}\label{user_manual-10u5ffaq:the-run-never-ends}
+With \code{ngen\ >\ 0}, SIMC++ runs until it has \hyperref[param:ngen]{\code{ngen}}\simcidx{Parameters!ngen@\code{ngen}} \textbf{accepted} events. If almost nothing is accepted
+(wrong angles or momenta, wide-open \code{SPedge} defaults, a kinematics outside the acceptance),\allowbreak{} it runs for a very long time.
+Test with a negative \hyperref[param:ngen]{\code{ngen}}\simcidx{Parameters!ngen@\code{ngen}} (\code{-{}-{}ngen\ -{}10000}\simcidx{Command-line options!ngen@\code{-{}-{}ngen}} = 10000 tries) and look at Ncontribute and the \code{.\allowbreak{}geni} stop counters. The
+progress lines ("... successes so far") show the rate.
+
+\section*{\texorpdfstring{All weights or the luminosity are 0}{All weights or the luminosity are 0}}\addcontentsline{toc}{section}{\texorpdfstring{All weights or the luminosity are 0}{All weights or the luminosity are 0}}\label{user_manual-10u5ffaq:all-weights-or-the-luminosity-are-0}
+Check \hyperref[param:targu25abundancy]{\code{targ\%\allowbreak{}abundancy}}\simcidx{Parameters!targ.abundancy@\code{targ\%abundancy}} (in \%, 100 for a pure target: the default 0 gives zero luminosity),\allowbreak{} \hyperref[param:EXPERu25charge]{\code{EXPER\%\allowbreak{}charge}}\simcidx{Parameters!EXPER.charge@\code{EXPER\%charge}}, and for
+A(e,e'p) with Benhar spectral functions \hyperref[param:transparency]{\code{transparency}}\simcidx{Parameters!transparency@\code{transparency}}. Delta runs have no cross section at all
+(\hyperref[user_manual-05u5freactions:55-eepu3c0-in-the-delta-region-doingu5fdelta]{5.5}).
+
+\section*{\texorpdfstring{Data files not found}{Data files not found}}\addcontentsline{toc}{section}{\texorpdfstring{Data files not found}{Data files not found}}\label{user_manual-10u5ffaq:data-files-not-found}
+\code{simc++\ -{}-{}print-{}data-{}dir} shows where the tables are looked for. Set \code{SIMC\_\allowbreak{}DATA\_\allowbreak{}DIR} to a directory with the layout of
+\code{data/} (\code{matrices/}, \code{pion/}, \code{kaon/}, \code{sidis/}, \code{spectral/}, \code{field/}), or use \code{-{}-{}data-{}dir}\simcidx{Command-line options!data-dir@\code{-{}-{}data-{}dir}} for the spectral and field
+files (\hyperref[user_manual-02u5finstallation:25-where-the-data-files-are-found]{2.5}). An installed \code{simc++} uses \code{\$SIMCPP\_\allowbreak{}PREFIX/\allowbreak{}share/\allowbreak{}simc/\allowbreak{}data}.
+
+\section*{\texorpdfstring{\code{error\ while\ loading\ shared\ libraries} or crashes in ROOT at start-up}{error while loading shared libraries or crashes in ROOT at start-up}}\addcontentsline{toc}{section}{\texorpdfstring{\code{error\ while\ loading\ shared\ libraries} or crashes in ROOT at start-up}{error while loading shared libraries or crashes in ROOT at start-up}}\label{user_manual-10u5ffaq:error-while-loading-shared-libraries-or-crashes-in-root-at-start-up}
+\code{LD\_\allowbreak{}LIBRARY\_\allowbreak{}PATH} must contain the \code{lib} of the ROOT 6.40 that SIMC++ was built with, and \textbf{not} a directory with an older
+ROOT or libtbb (for example \code{/\allowbreak{}usr/\allowbreak{}local/\allowbreak{}lib}) (\hyperref[user_manual-02u5finstallation:22-requirements]{2.2}).
+
+\section*{\texorpdfstring{NaN or constant columns in the tree}{NaN or constant columns in the tree}}\addcontentsline{toc}{section}{\texorpdfstring{NaN or constant columns in the tree}{NaN or constant columns in the tree}}\label{user_manual-10u5ffaq:nan-or-constant-columns-in-the-tree}
+\begin{simctable}{small}{3}{>{\raggedright\arraybackslash}p{\dimexpr 0.305\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.272\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.355\linewidth-2\tabcolsep\relax}}
+%
+\toprule\rowcolor{simchead}\simcth{column} & \simcth{when} & \simcth{why} \\\midrule\endfirsthead
+\multicolumn{3}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{column} & \simcth{when} & \simcth{why} \\\midrule\endhead
+\midrule\multicolumn{3}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+\code{*xfp\ *xpfp\ *yfp\ *ypfp\ *ytar} = 0 & \hyperref[param:spectu5fmode]{\code{spect\_\allowbreak{}mode}}\simcidx{Parameters!spect_mode@\code{spect\_mode}} ≠ 0, for the switched-off arm & no spectrometer simulated (\hyperref[user_manual-06u5fspectrometers:64-spectu5fmode-switching-the-spectrometer-monte-carlo-off]{6.4}) \\
+\code{th\_\allowbreak{}tarq} NaN & \hyperref[param:usingu5ftgtu5ffield]{\code{using\_\allowbreak{}tgt\_\allowbreak{}field}}\simcidx{Parameters!using_tgt_field@\code{using\_tgt\_field}} with \code{targ\_\allowbreak{}pol\ =\ 0} & no polarization direction \\
+\code{sigcent}, \code{centjac} = 0 & SIDIS/rho & not computed (central cross section disabled) \\
+\code{zi}, \code{pt2i}, \code{xfermi} = 0 & rho & not defined for rho \\
+\code{xcal\_\allowbreak{}gamma*} = −1e10 & π0 runs & the photon missed the calorimeter \\
+\code{Weight}, \code{siglab} without cross section & Delta runs & no Delta model (\hyperref[user_manual-05u5freactions:55-eepu3c0-in-the-delta-region-doingu5fdelta]{5.5}) \\
+\end{simctable}
+With \code{-{}-{}fortran-{}compat}\simcidx{Command-line options!fortran-compat@\code{-{}-{}fortran-{}compat}} a few more columns carry the legacy program's NaN or meaningless values (\code{pfermi}, Delta \code{sigcm},
+kaon \code{saghai}; see \code{docs/\allowbreak{}translation/\allowbreak{}markdown/\allowbreak{}user\_\allowbreak{}differences.\allowbreak{}md}).
+
+\code{simc\_\allowbreak{}compare} counts and excludes non-finite entries.
+
+\section*{\texorpdfstring{My numbers differ from a legacy SIMC run}{My numbers differ from a legacy SIMC run}}\addcontentsline{toc}{section}{\texorpdfstring{My numbers differ from a legacy SIMC run}{My numbers differ from a legacy SIMC run}}\label{user_manual-10u5ffaq:my-numbers-differ-from-a-legacy-simc-run}
+The default mode corrects known bugs of the legacy program and uses another random-number generator, so a default run is
+statistically equivalent, not identical, apart from the corrections. To reproduce the legacy result exactly use \code{ranlux},
+\code{-{}-{}fortran-{}compat}\simcidx{Command-line options!fortran-compat@\code{-{}-{}fortran-{}compat}} and one thread (\hyperref[user_manual-08u5frunningu5fandu5freproducibility:84-reproducing-legacy-simc-results-exactly]{8.4}).
+The statistical comparison and the list of expected differences are in \code{docs/\allowbreak{}translation/}.
+
+\section*{\texorpdfstring{Two runs with \code{-{}-{}threads} give different numbers than without}{Two runs with -{}-threads give different numbers than without}}\addcontentsline{toc}{section}{\texorpdfstring{Two runs with \code{-{}-{}threads} give different numbers than without}{Two runs with -{}-threads give different numbers than without}}\label{user_manual-10u5ffaq:two-runs-with---threads-give-different-numbers-than-without}
+That is expected: N threads use N random streams. A given seed and N are reproducible; \code{-{}-{}threads\ 1}\simcidx{Command-line options!threads@\code{-{}-{}threads}} equals the
+sequential run (\hyperref[user_manual-08u5frunningu5fandu5freproducibility:85-threads---threads-n]{8.5}).
+
+\section*{\texorpdfstring{Warnings about \code{pt\_\allowbreak{}b\_\allowbreak{}param}, \code{sigc\_\allowbreak{}*}, \code{random\_\allowbreak{}state\_\allowbreak{}file}, unknown names}{Warnings about pt\_\allowbreak{}b\_\allowbreak{}param,\allowbreak{} sigc\_*, random\_\allowbreak{}state\_\allowbreak{}file,\allowbreak{} unknown names}}\addcontentsline{toc}{section}{\texorpdfstring{Warnings about \code{pt\_\allowbreak{}b\_\allowbreak{}param}, \code{sigc\_\allowbreak{}*}, \code{random\_\allowbreak{}state\_\allowbreak{}file}, unknown names}{Warnings about pt\_\allowbreak{}b\_\allowbreak{}param,\allowbreak{} sigc\_*, random\_\allowbreak{}state\_\allowbreak{}file,\allowbreak{} unknown names}}\label{user_manual-10u5ffaq:warnings-about-ptu5fbu5fparam-sigcu5f-randomu5fstateu5ffile-unknown-names}
+These inputs are read and ignored (\hyperref[param:randomu5fstateu5ffile]{\code{random\_\allowbreak{}state\_\allowbreak{}file}}\simcidx{Parameters!random_state_file@\code{random\_state\_file}} is not supported; use the \code{ranlux} \code{"state"} option). Remove them from the
+input to silence the warnings. Unknown names are usually typos or legacy names.
+
+\section*{\texorpdfstring{The \code{.\allowbreak{}hist} "Input Spectrometer Limits" differ from my input}{The .hist "Input Spectrometer Limits" differ from my input}}\addcontentsline{toc}{section}{\texorpdfstring{The \code{.\allowbreak{}hist} "Input Spectrometer Limits" differ from my input}{The .hist "Input Spectrometer Limits" differ from my input}}\label{user_manual-10u5ffaq:the-hist-input-spectrometer-limits-differ-from-my-input}
+They are printed \textbf{after} widening by the spectrometer slop.
+
+\section*{\texorpdfstring{Can I use my own spectrometer,\allowbreak{} reaction or cross section?}{Can I use my own spectrometer,\allowbreak{} reaction or cross section?}}\addcontentsline{toc}{section}{\texorpdfstring{Can I use my own spectrometer,\allowbreak{} reaction or cross section?}{Can I use my own spectrometer,\allowbreak{} reaction or cross section?}}\label{user_manual-10u5ffaq:can-i-use-my-own-spectrometer-reaction-or-cross-section}
+Yes: every stage is a plug-in. See the developer manual (\code{docs/\allowbreak{}manual/\allowbreak{}markdown/\allowbreak{}developer/}) and \code{docs/\allowbreak{}manual/\allowbreak{}markdown/\allowbreak{}reference/\allowbreak{}EXTENDING.\allowbreak{}md}; the
+\code{examples/\allowbreak{}ideal\_\allowbreak{}box} and \code{examples/\allowbreak{}out\_\allowbreak{}of\_\allowbreak{}tree\_\allowbreak{}plugin} directories are complete examples.
+

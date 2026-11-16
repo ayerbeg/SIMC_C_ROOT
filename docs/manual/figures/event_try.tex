@@ -1,5 +1,10 @@
-% docs/latex/figures/event_try.tex — one try of the event loop (SimcRun::step), task P15.D5.
+% docs/manual/figures/event_try.tex - TikZ figure of the SIMC++ documentation: one try of the event loop (SimcRun::step), task P15.D5.
 % Order of calls as in src/driver/SimcRun.cpp (step), reactions/EventChain.h (generateEvent), driver/MonteCarlo.h.
+%   Compile alone (tools/build_docs_pdf.py does it for every figure): with TEXINPUTS=docs/common/latex//: run
+%   xelatex <name>.tex -> <name>.pdf (preview.sty crops the page to the picture); the books include that PDF.
+%   Packages: tikz, xcolor, fontspec, preview (simcfig.sty, simcfonts.sty); fonts TeX Gyre Pagella, TeX Gyre Heros,
+%   DejaVu Sans Mono. After a change, re-export the PNG of the Markdown edition (build_docs_pdf.py --png) and
+%   commit both.
 \documentclass{article}
 \usepackage{simcfonts,simcfig}
 \usepackage[active,tightpage]{preview}

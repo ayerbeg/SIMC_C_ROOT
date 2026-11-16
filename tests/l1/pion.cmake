@@ -23,7 +23,7 @@ set(_pion_l1 l1_pion_data_files l1_sig_blok l1_sig_param04 l1_sig_param_3000 l1_
     l1_sig_multipole l1_transform_to_cm_pion l1_peepi l1_pizero_decay_fixedrng l1_pion_plugin)
 set_tests_properties(${_pion_l1} PROPERTIES SKIP_RETURN_CODE 77 LABELS l1)
 
-# D-038 F10 (FORTRAN-BUG, corrected by default): both modes on the peepi table rows (docs/FORTRAN_DIFFERENCES.md)
+# D-038 F10 (FORTRAN-BUG, corrected by default): both modes on the peepi table rows (docs/translation/markdown/FORTRAN_DIFFERENCES.md)
 add_test(NAME fortran_diff_D038_F10_sigcm2_stale
          COMMAND test_l1_pion fortran_diff_D038_F10 ${_pfn}/peepi ${_pfn}/pion_state ${_pdata})
 set_tests_properties(fortran_diff_D038_F10_sigcm2_stale PROPERTIES SKIP_RETURN_CODE 77 LABELS "fortran_diff;unit")

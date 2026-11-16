@@ -35,7 +35,7 @@ using setup_detail::nint;
 RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITargetLossProvider* losses) {
     RunSetup s = RunSetup::FromParameters(p, opt.run_name);
     s.built = true;
-    s.fortran_compat = opt.fortran_compat;   // D-031 run option (docs/FORTRAN_DIFFERENCES.md)
+    s.fortran_compat = opt.fortran_compat;   // D-031 run option (docs/translation/markdown/FORTRAN_DIFFERENCES.md)
     auto stop = [&](const std::string& why) { s.stops.push_back("STOP " + why); };
     auto msg = [&](const std::string& m) { s.messages.push_back(m); };
     // D-032: a retired arm code (SHMS LSA tune) is an input error. The input readers reject it already; this covers

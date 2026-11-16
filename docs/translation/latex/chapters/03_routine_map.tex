@@ -1,0 +1,127 @@
+% docs/translation/latex/chapters/03_routine_map.tex - chapter of the LaTeX edition of the book "translation_report" (SIMC++ documentation).
+%   Converted once from docs/translation/markdown/03_routine_map.md by tools/md2latex.py; from then on THIS FILE is the source of the
+%   LaTeX edition and may be edited by hand. Re-running tools/md2latex.py --write-sources for this
+%   chapter OVERWRITES the hand edits (see docs/README.md).
+%   Compile: cmake --build <build> --target pdf, or tools/build_docs_pdf.py (figures, xelatex passes,
+%   makeindex with docs/common/latex/simcpp.ist); by hand, see docs/README.md. XeLaTeX, class
+%   docs/common/latex/simcpp.cls (packages: fontspec, tikz, xcolor, hyperref, listings, longtable, booktabs,
+%   titlesec, titletoc, fancyhdr, makeidx, preview, ...); fonts TeX Gyre Pagella, TeX Gyre Heros, DejaVu Sans
+%   Mono. The figures are built first from docs/{manual,translation}/figures/*.tex (preview.sty) into PDFs.
+\chapter{\texorpdfstring{Fortran → C++ map}{Fortran → C++ map}}\label{translation_report-03u5froutineu5fmap}
+\section{\texorpdfstring{The generated table}{The generated table}}\label{translation_report-03u5froutineu5fmap:31-the-generated-table}
+\hyperref[translation_report-fortranu5froutineu5fmap]{fortran\_\allowbreak{}routine\_\allowbreak{}map.\allowbreak{}md} lists \textbf{every routine} of the Fortran files that the Makefile links
+into \code{simc} (172 routines) with its line range, the C++ files that cite it, its status, and the L1 tables named after
+it. It is generated from the code, not written by hand:
+
+\begin{simcshell}[basicstyle=\ttfamily\tiny]
+python3 -I docs/translation/tools/gen_fortran_map.py      # rewrites docs/translation/markdown/fortran_routine_map.md
+\end{simcshell}
+The script reads the Fortran Makefile (\code{my\_\allowbreak{}objs} + \code{simc.\allowbreak{}f} + the module files), finds every SUBROUTINE / FUNCTION /
+PROGRAM statement, and searches \code{src/} and \code{include/} for lines that contain \code{<file>\allowbreak{}.\allowbreak{}f:\allowbreak{}<routine>} (or the file name and
+the routine name on one line). Routines that have no C++ counterpart on purpose carry a curated reason
+(\code{NOT\_\allowbreak{}PORTED} in the script: dead code, CERNLIB error handling, the HBOOK ntuple, F1F2IN21 branches that SIMC never
+reaches with A = 1, ...). At P15.D1: 132 routines cited by C++ code, 40 with a reason, 0 "not cited". \textbf{Re-run the
+script after a port} and check that no routine is "not cited".
+
+\code{project\_\allowbreak{}control/\allowbreak{}TRANSLATION\_\allowbreak{}MAP.\allowbreak{}md} is the original P0.3 audit table (2026-09-29,\allowbreak{} H(e,e'p) scope only); it is kept as a
+historical record and is superseded by the generated table.
+
+\section{\texorpdfstring{Curated map by subsystem}{Curated map by subsystem}}\label{translation_report-03u5froutineu5fmap:32-curated-map-by-subsystem}
+The main entry points (file → C++ function or class). Line numbers are those of the \code{/\allowbreak{}/\ Fortran:} comment at the
+C++ definition.
+
+\begin{simctable}{small}{2}{>{\raggedright\arraybackslash}p{\dimexpr 0.368\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.586\linewidth-2\tabcolsep\relax}}
+\caption{Curated map by subsystem}\\%
+\toprule\rowcolor{simchead}\simcth{Fortran} & \simcth{C++} \\\midrule\endfirsthead
+\multicolumn{2}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{Fortran} & \simcth{C++} \\\midrule\endhead
+\midrule\multicolumn{2}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+simc.f main l.53-160 / 169-352 / 354-620 & \code{driver::\allowbreak{}Simc\allowbreak{}Run::\allowbreak{}initialise}\simcidx{Classes and interfaces!SimcRun@\code{SimcRun}} / \code{step} / \code{finish} (src/\allowbreak{}driver/\allowbreak{}SimcRun.\allowbreak{}cpp) \\
+simc.\allowbreak{}f:\allowbreak{}montecarlo & \code{driver::\allowbreak{}Monte\allowbreak{}Carlo::\allowbreak{}run}\simcidx{Classes and interfaces!MonteCarlo@\code{MonteCarlo}} (MonteCarlo.\allowbreak{}cpp); π0 photons l.1489-1556 \code{driver::\allowbreak{}Pizero\allowbreak{}Calorimeter}\simcidx{Classes and interfaces!PizeroCalorimeter@\code{PizeroCalorimeter}} \\
+simc.\allowbreak{}f:\allowbreak{}calculate\_\allowbreak{}central & \code{driver::\allowbreak{}calculate\allowbreak{}Central} (Central.\allowbreak{}cpp) \\
+simc.\allowbreak{}f:\allowbreak{}report,\allowbreak{} .geni l.462-532, .gen l.534-612, \code{inc} & \code{driver::\allowbreak{}Format\allowbreak{}Hist} (RunReportHist.\allowbreak{}cpp),\allowbreak{} \code{FormatGeni} (RunReportGeni.\allowbreak{}cpp),\allowbreak{} \code{Fortran\allowbreak{}Hist\allowbreak{}Sink::\allowbreak{}format\allowbreak{}Gen}\simcidx{Classes and interfaces!FortranHistSink@\code{FortranHistSink}}, \code{Fortran\allowbreak{}Hist\allowbreak{}Sink::\allowbreak{}Inc}\simcidx{Classes and interfaces!FortranHistSink@\code{FortranHistSink}} (ReportSink.\allowbreak{}cpp) \\
+simc.f l.360-432 normalisation & \code{driver::\allowbreak{}Normalise} (RunReport.\allowbreak{}cpp) \\
+simc.\allowbreak{}f:\allowbreak{}226-238 pass\_cuts & \code{driver::\allowbreak{}PassCuts} (SimcRun.\allowbreak{}cpp) \\
+simc.\allowbreak{}f:\allowbreak{}120-155 field angles & \code{driver::\allowbreak{}Target\allowbreak{}Field\allowbreak{}Arm\allowbreak{}Angles} (TargetFieldAngles.\allowbreak{}cpp) \\
+dbase.\allowbreak{}f:\allowbreak{}dbase\_\allowbreak{}read (CTP read) & \code{Inp\allowbreak{}Reader::\allowbreak{}load\allowbreak{}Run}\simcidx{Classes and interfaces!InpReader@\code{InpReader}} (src/\allowbreak{}input/\allowbreak{}InpReader.\allowbreak{}cpp),\allowbreak{} \code{SimcParameters}\simcidx{Classes and interfaces!SimcParameters@\code{SimcParameters}} (variable table in the same order as regallvars) \\
+dbase.f post-read logic l.124-547 & \code{Build\allowbreak{}Reaction\allowbreak{}And\allowbreak{}Kinematics} (src/\allowbreak{}setup/\allowbreak{}SetupReaction.\allowbreak{}cpp) \\
+init.\allowbreak{}f:\allowbreak{}limits\_\allowbreak{}init & \code{BuildLimits} (SetupLimits.\allowbreak{}cpp) \\
+init.\allowbreak{}f:\allowbreak{}theory\_\allowbreak{}init,\allowbreak{} momentum distributions & SetupTheory.\allowbreak{}cpp \\
+init.\allowbreak{}f:\allowbreak{}min\_\allowbreak{}max\_\allowbreak{}init & \code{RunSetup}\simcidx{Classes and interfaces!RunSetup@\code{RunSetup}} default member values (\code{kMinMaxInit}) \\
+init.\allowbreak{}f:\allowbreak{}target\_\allowbreak{}init,\allowbreak{} target.f & \code{material::\allowbreak{}Hall\allowbreak{}CCryo\allowbreak{}Target::\allowbreak{}target\allowbreak{}Init}\simcidx{Classes and interfaces!HallCCryoTarget@\code{HallCCryoTarget}}, \code{trip} (trip\_\allowbreak{}thru\_\allowbreak{}target),\allowbreak{} \code{extreme\allowbreak{}Trip\allowbreak{}Thru\allowbreak{}Target}, \code{targetMusc}, \code{extremeTargetMusc}, \code{generateZ} (event.\allowbreak{}f:\allowbreak{}185) \\
+enerloss\_\allowbreak{}new.\allowbreak{}f,\allowbreak{} shared/\allowbreak{}musc.\allowbreak{}f,\allowbreak{} musc\_ext.f & \code{material::\allowbreak{}Simc\allowbreak{}Material}\simcidx{Classes and interfaces!SimcMaterial@\code{SimcMaterial}} \\
+init.\allowbreak{}f:\allowbreak{}radc\_\allowbreak{}init,\allowbreak{} radc\_\allowbreak{}init\_\allowbreak{}ev,\allowbreak{} basicrad\_\allowbreak{}init\_\allowbreak{}ev & \code{radiation::\allowbreak{}radc\allowbreak{}Init}, \code{radcInitEv}, \code{basicradInitEv} (src/\allowbreak{}radiation/\allowbreak{}RadcInit.\allowbreak{}cpp) \\
+radc.f & \code{radiation::\allowbreak{}generate\allowbreak{}Rad}, \code{basicrad}, \code{peakedRadWeight}, \code{extradFriedrich}, \code{extradPhi}, \code{schwinger}, \code{spen}, \code{lambdaDave} (Radc.cpp) \\
+brem.f & src/\allowbreak{}radiation/\allowbreak{}Brem.\allowbreak{}cpp (\code{brem}, \code{bremos}, \code{inter}, \code{inter\_\allowbreak{}prime}, \code{srad}, \code{spence}) \\
+event.\allowbreak{}f:\allowbreak{}generate (beam part l.150-212) & \code{reactions::\allowbreak{}Standard\allowbreak{}Beam::\allowbreak{}generate}\simcidx{Classes and interfaces!StandardBeam@\code{StandardBeam}} \\
+event.\allowbreak{}f:\allowbreak{}generate / complete\_\allowbreak{}ev / complete\_\allowbreak{}recon\_\allowbreak{}ev / complete\_\allowbreak{}main,\allowbreak{} (e,e'p) & \code{reactions::\allowbreak{}Eep\allowbreak{}Reaction\allowbreak{}Base}\simcidx{Classes and interfaces!EepReactionBase@\code{EepReactionBase}} (\code{completeEv}, \code{completeRecon}, \code{completeMain}, \code{genVolume}) + \code{Hydrogen\allowbreak{}Elastic::\allowbreak{}generate}\simcidx{Classes and interfaces!HydrogenElastic@\code{HydrogenElastic}}, \code{Nuclear\allowbreak{}Eep::\allowbreak{}generate}\simcidx{Classes and interfaces!NuclearEep@\code{NuclearEep}} \\
+event.f, doing\_pion / doing\_kaon / doing\_\allowbreak{}delta / doing\_semi / doing\_rho branches & \code{PionProduction}\simcidx{Classes and interfaces!PionProduction@\code{PionProduction}}, \code{KaonProduction}\simcidx{Classes and interfaces!KaonProduction@\code{KaonProduction}}, \code{DeltaProduction}\simcidx{Classes and interfaces!DeltaProduction@\code{DeltaProduction}}, \code{SidisProduction}\simcidx{Classes and interfaces!SidisProduction@\code{SidisProduction}}, \code{RhoProduction}\simcidx{Classes and interfaces!RhoProduction@\code{RhoProduction}} (src/\allowbreak{}reactions/\allowbreak{}*/\allowbreak{}) \\
+event.\allowbreak{}f:\allowbreak{}complete\_\allowbreak{}main l.1432-1563 & \code{reactions::\allowbreak{}assemble\allowbreak{}Weight} (EventChain.\allowbreak{}cpp) \\
+event.\allowbreak{}f:\allowbreak{}limits\_\allowbreak{}update,\allowbreak{} update\_\allowbreak{}range,\allowbreak{} update\_\allowbreak{}slop\_\allowbreak{}range & \code{reactions::\allowbreak{}limits\allowbreak{}Update}, \code{updateRange}, \code{updateSlopRange} \\
+event.\allowbreak{}f:\allowbreak{}physics\_\allowbreak{}angles,\allowbreak{} spectrometer\_\allowbreak{}angles; loren.f & \code{PhysicsAngles}, \code{Spectrometer\allowbreak{}Angles}, \code{loren} (src/\allowbreak{}setup/\allowbreak{}KinematicsUtils.\allowbreak{}cpp) \\
+jacobians.\allowbreak{}f:\allowbreak{}transform\_\allowbreak{}to\_\allowbreak{}cm & \code{reactions::\allowbreak{}transform\allowbreak{}To\allowbreak{}Cm} \\
+physics\_\allowbreak{}proton.\allowbreak{}f & \code{proton::\allowbreak{}sigMott}, \code{fofa\_\allowbreak{}best\_\allowbreak{}fit}, \code{sigep}, \code{deForest} (ProtonCrossSections.\allowbreak{}cpp); plug-ins in ProtonModels.\allowbreak{}cpp \\
+sf\_\allowbreak{}lookup.\allowbreak{}f & \code{nuclear::\allowbreak{}SfTable}\simcidx{Classes and interfaces!SfTable@\code{SfTable}} (\code{lookup}, \code{lookupDiff}, \code{generateEm}), theory-file weight (SpectralFunctionTables.\allowbreak{}cpp) \\
+physics\_\allowbreak{}pion.\allowbreak{}f & \code{pion::\allowbreak{}peepi}, \code{sigBlok}, \code{sigParam04}, \code{sigParam3000}, \code{sigParam2021}, \code{exclfit}, \code{sigmaid} (+ \code{MaidTables}\simcidx{Classes and interfaces!MaidTables@\code{MaidTables}}), \code{SigMultipole}\simcidx{Classes and interfaces!SigMultipole@\code{SigMultipole}} \\
+pizero\_\allowbreak{}decay.\allowbreak{}f & \code{pion::\allowbreak{}pizeroDecay} \\
+physics\_\allowbreak{}kaon.\allowbreak{}f,\allowbreak{} cern/fint.f & \code{kaon::\allowbreak{}peeK}, \code{eekeek}, \code{eekeeks}, \code{phspwght}, \code{sigFactorized}, \code{fint}, \code{SaghaiTables}\simcidx{Classes and interfaces!SaghaiTables@\code{SaghaiTables}} \\
+physics\_\allowbreak{}delta.\allowbreak{}f & \code{delta::\allowbreak{}peedelta} (DeltaModel.\allowbreak{}cpp) \\
+semi\_\allowbreak{}physics.\allowbreak{}f,\allowbreak{} semi\_\allowbreak{}dilution.\allowbreak{}f & \code{sidis::\allowbreak{}peepiX}, \code{slacemcfit}, \code{rhadGlobal}, \code{semiDilution} \\
+cteq5/\allowbreak{}Ctq5Pdf.\allowbreak{}f,\allowbreak{} fdss/\allowbreak{}fdss.\allowbreak{}f,\allowbreak{} F1F2IN21\_\allowbreak{}v1.0.f & \code{sidis::\allowbreak{}Cteq5Pdf}\simcidx{Classes and interfaces!Cteq5Pdf@\code{Cteq5Pdf}}, \code{FdssGrid}\simcidx{Classes and interfaces!FdssGrid@\code{FdssGrid}}, \code{f1f2in21} / \code{sf} / \code{rescsp} / \code{rescsn} / \code{resmodp} / \code{resmodn} \\
+rho\_\allowbreak{}physics.\allowbreak{}f,\allowbreak{} generate\_\allowbreak{}rho.\allowbreak{}f,\allowbreak{} rho\_\allowbreak{}decay.\allowbreak{}f & \code{rho::\allowbreak{}peerho}, \code{generateRho}, \code{rhoDecay} (RhoPhysics.\allowbreak{}cpp) \\
+shared/\allowbreak{}transp.\allowbreak{}f,\allowbreak{} project.f, rotate\_\allowbreak{}[hv]axis.\allowbreak{}f,\allowbreak{} locforunt.\allowbreak{}f,\allowbreak{} mc\_\allowbreak{}*\_\allowbreak{}recon.\allowbreak{}f & \code{optics::\allowbreak{}Cosy\allowbreak{}Engine}\simcidx{Classes and interfaces!CosyEngine@\code{CosyEngine}} (\code{transp}, \code{loadForward}, \code{loadRecon}, recon), \code{optics::\allowbreak{}project}, \code{rotateHaxis}, \code{rotateVaxis}, \code{powi} \\
+cern/lfit.f & \code{optics::\allowbreak{}lfit} \\
+hms/\allowbreak{}mc\_\allowbreak{}hms.\allowbreak{}f,\allowbreak{} mc\_\allowbreak{}hms\_\allowbreak{}hut.\allowbreak{}f,\allowbreak{} mc\_\allowbreak{}hms\_\allowbreak{}coll.\allowbreak{}f,\allowbreak{} pion\_\allowbreak{}coll\_\allowbreak{}absorb.\allowbreak{}f & \code{hms::\allowbreak{}McHms::\allowbreak{}mcHms}\simcidx{Classes and interfaces!McHms@\code{McHms}}, \code{hitDipole}, McHmsHut.\allowbreak{}cpp,\allowbreak{} McHmsColl.\allowbreak{}cpp; plug-in \code{HmsSpectrometer}\simcidx{Classes and interfaces!HmsSpectrometer@\code{HmsSpectrometer}} \\
+shms/*.f & \code{shms::\allowbreak{}Mc\allowbreak{}Shms::\allowbreak{}mc\allowbreak{}Shms}\simcidx{Classes and interfaces!McShms@\code{McShms}} (+ hut, coll); plug-in \code{ShmsSpectrometer}\simcidx{Classes and interfaces!ShmsSpectrometer@\code{ShmsSpectrometer}} \\
+sos/*.f & \code{sos::\allowbreak{}McSos::\allowbreak{}mcSos}\simcidx{Classes and interfaces!McSos@\code{McSos}} (+ hut); plug-in \code{SosSpectrometer}\simcidx{Classes and interfaces!SosSpectrometer@\code{SosSpectrometer}} \\
+hrsl/\emph{.f, hrsr/}.f & \code{hrs::\allowbreak{}McHrs::\allowbreak{}mcHrs}\simcidx{Classes and interfaces!McHrs@\code{McHrs}} (one class, side parameter; + hut); plug-in \code{HrsSpectrometer}\simcidx{Classes and interfaces!HrsSpectrometer@\code{HrsSpectrometer}} \\
+calo/\allowbreak{}mc\_\allowbreak{}calo.\allowbreak{}f,\allowbreak{} mc\_\allowbreak{}calo\_\allowbreak{}recon.\allowbreak{}f & \code{calo::\allowbreak{}Mc\allowbreak{}Calo::\allowbreak{}mc\allowbreak{}Calo}\simcidx{Classes and interfaces!McCalo@\code{McCalo}}, \code{mcCaloRecon}; plug-in \code{CaloSpectrometer}\simcidx{Classes and interfaces!CaloSpectrometer@\code{CaloSpectrometer}} \\
+trg\_\allowbreak{}track.\allowbreak{}f & \code{optics::\allowbreak{}Target\allowbreak{}Field}\simcidx{Classes and interfaces!TargetField@\code{TargetField}} (\code{init}, \code{field}, \code{deriv}, \code{rk4}, \code{trackToPlane}, \code{trackFromTgt}, \code{trackToTgt}) \\
+call\_\allowbreak{}ranlux.\allowbreak{}f,\allowbreak{} cern/\allowbreak{}ranlux.\allowbreak{}f & \code{RanluxRandom}\simcidx{Classes and interfaces!RanluxRandom@\code{RanluxRandom}} (\code{seed} = RLUXGO, \code{uniform} = grnd with the skip of every 1000th number) \\
+gauss1.f & \code{gauss1Polar} / \code{Gauss1} (core/\allowbreak{}random/\allowbreak{}Gauss1.h) \\
+results\_\allowbreak{}write.\allowbreak{}f,\allowbreak{} NtupleInit.\allowbreak{}f,\allowbreak{} util/\allowbreak{}root\_\allowbreak{}tree & \code{NtupleLayout} (\code{FillNtuple}, \code{FillEepNtuple}, \code{FillPionNtuple}, \code{FillSemiNtuple}, \code{FillRhoNtuple}), \code{RootTreeSink}\simcidx{Classes and interfaces!RootTreeSink@\code{RootTreeSink}} \\
+histograms.\allowbreak{}inc + simc.\allowbreak{}f:\allowbreak{}250-287 & \code{FortranHistSink}\simcidx{Classes and interfaces!FortranHistSink@\code{FortranHistSink}} (text \code{.\allowbreak{}gen}), \code{GenHistSink}\simcidx{Classes and interfaces!GenHistSink@\code{GenHistSink}} (\code{.\allowbreak{}gen.\allowbreak{}root}) \\
+\end{simctable}
+\section{\texorpdfstring{COMMON blocks and SAVEd locals}{COMMON blocks and SAVEd locals}}\label{translation_report-03u5froutineu5fmap:33-common-blocks-and-saved-locals}
+\begin{simctable}{small}{2}{>{\raggedright\arraybackslash}p{\dimexpr 0.383\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.570\linewidth-2\tabcolsep\relax}}
+\caption{COMMON blocks and SAVEd locals}\\%
+\toprule\rowcolor{simchead}\simcth{Fortran} & \simcth{C++ owner} \\\midrule\endfirsthead
+\multicolumn{2}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{Fortran} & \simcth{C++ owner} \\\midrule\endhead
+\midrule\multicolumn{2}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+\code{/\allowbreak{}gnrl/} (simulate.\allowbreak{}inc:\allowbreak{}91) & \code{RunSetup}\simcidx{Classes and interfaces!RunSetup@\code{RunSetup}} (Mh, Ebeam, ...); per try for doing\_rho: \code{MainEvent::\allowbreak{}gnrl}\simcidx{Classes and interfaces!MainEvent@\code{MainEvent}} with \code{gnrl\_\allowbreak{}per\_\allowbreak{}event} \\
+\code{/\allowbreak{}target\_\allowbreak{}info/\ targ} & \code{RunSetup::\allowbreak{}targ}\simcidx{Classes and interfaces!RunSetup@\code{RunSetup}} (\code{TargetInfo}\simcidx{Classes and interfaces!TargetInfo@\code{TargetInfo}}) \\
+\code{/\allowbreak{}ntuple\_\allowbreak{}variables/\ ntup,\ decdist} & \code{MainEvent::\allowbreak{}ntup}\simcidx{Classes and interfaces!MainEvent@\code{MainEvent}} (\code{NtupVars}\simcidx{Classes and interfaces!NtupVars@\code{NtupVars}}) \\
+\code{/\allowbreak{}pfermi/} & \code{MainEvent::\allowbreak{}pfermi}\simcidx{Classes and interfaces!MainEvent@\code{MainEvent}} (\code{FermiMomentum}\simcidx{Classes and interfaces!FermiMomentum@\code{FermiMomentum}}); the tables \code{eval,\ pval,\ mprob} in \code{RunSetup}\simcidx{Classes and interfaces!RunSetup@\code{RunSetup}} \\
+\code{/\allowbreak{}theory/} & \code{RunSetup}\simcidx{Classes and interfaces!RunSetup@\code{RunSetup}} (theory tables read by the set-up) \\
+\code{/\allowbreak{}decd/} & \code{RunSetup}\simcidx{Classes and interfaces!RunSetup@\code{RunSetup}} (ctau, doing\_\allowbreak{}decay) and \code{Spec\allowbreak{}Input::\allowbreak{}decay\_\allowbreak{}flag}\simcidx{Classes and interfaces!SpecInput@\code{SpecInput}} \\
+\code{/\allowbreak{}sigkaon/} & \code{kaon::\allowbreak{}Saghai\allowbreak{}Tables}\simcidx{Classes and interfaces!SaghaiTables@\code{SaghaiTables}}, the kaon model \\
+\code{/\allowbreak{}radccom/}, \code{/\allowbreak{}radctest/}, brem.inc \code{/\allowbreak{}bremcom/} & \code{radiation::\allowbreak{}Radc\allowbreak{}State}\simcidx{Classes and interfaces!RadcState@\code{RadcState}}, \code{RadcRun}\simcidx{Classes and interfaces!RadcRun@\code{RadcRun}} (kernel/\allowbreak{}RadcState.\allowbreak{}h) \\
+\code{/\allowbreak{}sftable/} + SAVEd sf\_lookup locals & \code{nuclear::\allowbreak{}SfTable}\simcidx{Classes and interfaces!SfTable@\code{SfTable}} \\
+\code{/\allowbreak{}track/}, \code{/\allowbreak{}driftdistances/} & the spectrometer kernels (\code{optics::\allowbreak{}Track}\simcidx{Classes and interfaces!Track@\code{Track}}, \code{CosyEngine}\simcidx{Classes and interfaces!CosyEngine@\code{CosyEngine}}) \\
+\code{/\allowbreak{}spectrometer1/}, \code{/\allowbreak{}spectrometer\_\allowbreak{}shms/}, SOS/\allowbreak{}HRS/\allowbreak{}calo counters & the kernels' counters, exposed by \code{ISpectrometer::\allowbreak{}stop\allowbreak{}Counters(\allowbreak{})}\simcidx{Classes and interfaces!ISpectrometer@\code{ISpectrometer}} \\
+histograms.\allowbreak{}inc \code{H} & \code{Fortran\allowbreak{}Hist\allowbreak{}Sink::\allowbreak{}Hist\allowbreak{}Set}\simcidx{Classes and interfaces!FortranHistSink@\code{FortranHistSink}} \\
+simc.f main-program locals \code{main,\ vertex,\ orig,\ recon} & \code{driver::\allowbreak{}Event\allowbreak{}State}\simcidx{Classes and interfaces!EventState@\code{EventState}} (one per run) \\
+simc.f:1334 SAVEd \code{tmpfact} & \code{Monte\allowbreak{}Carlo::\allowbreak{}tmpfact\_}\simcidx{Classes and interfaces!MonteCarlo@\code{MonteCarlo}} \\
+other SAVEd locals & members of the kernel object that represents the Fortran routine (\code{Eep\allowbreak{}Reaction\allowbreak{}Base::\allowbreak{}krel\_}\simcidx{Classes and interfaces!EepReactionBase@\code{EepReactionBase}}, \code{Hall\allowbreak{}CCryo\allowbreak{}Target::\allowbreak{}th\allowbreak{}Can\_}\simcidx{Classes and interfaces!HallCCryoTarget@\code{HallCCryoTarget}}, ...) \\
+\end{simctable}
+Zero-initialised COMMON semantics are reproduced by value-initialisation of the members (\code{\{0\}}, \code{\{\}}).
+
+\section{\texorpdfstring{Naming and comment conventions}{Naming and comment conventions}}\label{translation_report-03u5froutineu5fmap:34-naming-and-comment-conventions}
+\begin{itemize}
+\item \textbf{Origin comment} on every ported function or block, at the definition:
+\code{/\allowbreak{}/\ Fortran:\ event.\allowbreak{}f:\allowbreak{}complete\_\allowbreak{}ev\ (\allowbreak{}l.\allowbreak{}432-{}1054)}. For a block inside a routine: \code{/\allowbreak{}/\ l.\allowbreak{}226-{}238\ pass\_\allowbreak{}cuts} or
+\code{/\allowbreak{}/\ Fortran:\ simc.\allowbreak{}f:\allowbreak{}1334}. File headers list the routines of the file. The generator of §3.1 relies on the
+\code{file.\allowbreak{}f:\allowbreak{}routine} form: keep it.
+\item \textbf{Markers} (chapter 5): \code{FORTRAN-{}BUG(\allowbreak{}D-{}xxx)} (corrected in the default mode; the original code and the reason),
+\code{FORTRAN-{}DIFF-{}CANDIDATE(\allowbreak{}D-{}xxx)} (ambiguous, kept, with the question), \code{FORTRAN-{}OPEN(\allowbreak{}D-{}031\ flag\ 1)} (acceptance mode),
+\code{FORTRAN-{}QUIRK} (faithful odd behaviour, often with the finding id \code{D-{}xxx\ Fn}). At P15.D1 the code has 136
+FORTRAN-BUG,\allowbreak{} 87 FORTRAN-DIFF-CANDIDATE,\allowbreak{} 72 FORTRAN-QUIRK and 3 FORTRAN-OPEN markers.
+\item \textbf{Names}: C++ names are camelCase versions of the Fortran ones (\code{peaked\_\allowbreak{}rad\_\allowbreak{}weight} → \code{peakedRadWeight},
+\code{trip\_\allowbreak{}thru\_\allowbreak{}target} → \code{tripThruTarget}), in a namespace per module (\code{simc::\allowbreak{}radiation}, \code{simc::\allowbreak{}optics}, \code{simc::\allowbreak{}pion},
+...). Kernel argument mirrors keep the Fortran names (\code{McHmsArgs}\simcidx{Classes and interfaces!McHmsArgs@\code{McHmsArgs}}). Fortran 1-based arrays are either shifted to
+0-based with a comment (\code{teff(\allowbreak{}1:\allowbreak{}3)\ →\ [0.\allowbreak{}.\allowbreak{}2]}) or kept 1-based with an unused element 0 in kernels where the index
+arithmetic matters (\code{Fortran\allowbreak{}Hist\allowbreak{}Sink::\allowbreak{}Hist::\allowbreak{}buf[1.\allowbreak{}.\allowbreak{}50]}).
+\item Fortran variables of structure fields keep their names in C++ (\code{main.\allowbreak{}SP.\allowbreak{}p.\allowbreak{}delta}, \code{targ.\allowbreak{}Eloss[i].\allowbreak{}ave}), so a reader
+can grep both sources for the same word.
+\end{itemize}

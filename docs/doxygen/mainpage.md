@@ -12,9 +12,9 @@ from the header comments by Doxygen (`cmake --build <build> --target doc`).
 
 | document | for whom |
 |---|---|
-| [User manual](../manual/user/index.md) | installing and running SIMC++: inputs, reactions, spectrometers, outputs, reproducibility |
-| [Developer manual](../manual/developer/index.md) | architecture, data flow, build and tests, writing plug-ins, parallelism, coding standards |
-| [Translation report](../translation/index.md) | how SIMC++ was translated from the Fortran SIMC and validated, routine map, Fortran bugs and quirks |
+| [User manual](../manual/markdown/user/index.md) | installing and running SIMC++: inputs, reactions, spectrometers, outputs, reproducibility |
+| [Developer manual](../manual/markdown/developer/index.md) | architecture, data flow, build and tests, writing plug-ins, parallelism, coding standards |
+| [Translation report](../translation/markdown/index.md) | how SIMC++ was translated from the Fortran SIMC and validated, routine map, Fortran bugs and quirks |
 
 ## The framework in one page
 
@@ -64,4 +64,4 @@ from the header comments by Doxygen (`cmake --build <build> --target doc`).
   field reproduces, for the reader who wants to compare; the full mapping is in the translation report.
 * Units are given in brackets, e.g. `[MeV]`, `[rad]`, `[cm]`; "slope" means dx/dz or dy/dz.
 * `FORTRAN-BUG(D-xxx)` / `FORTRAN-QUIRK(D-xxx)` mark behaviour that differs between the default mode and
-  `fortran_compat`, catalogued in `docs/FORTRAN_DIFFERENCES.md`.
+  `fortran_compat`, catalogued in `docs/translation/markdown/FORTRAN_DIFFERENCES.md`.

@@ -1,5 +1,10 @@
-% docs/latex/figures/parallel_mode.tex — the parallel event loop (--threads N): SimcRun::runThreaded,
+% docs/manual/figures/parallel_mode.tex - TikZ figure of the SIMC++ documentation: the parallel event loop (--threads N): SimcRun::runThreaded,
 % src/driver/SimcRunParallel.cpp; Mt64Random::seedStream; IParallelSink; MergeTotals. Task P15.D5.
+%   Compile alone (tools/build_docs_pdf.py does it for every figure): with TEXINPUTS=docs/common/latex//: run
+%   xelatex <name>.tex -> <name>.pdf (preview.sty crops the page to the picture); the books include that PDF.
+%   Packages: tikz, xcolor, fontspec, preview (simcfig.sty, simcfonts.sty); fonts TeX Gyre Pagella, TeX Gyre Heros,
+%   DejaVu Sans Mono. After a change, re-export the PNG of the Markdown edition (build_docs_pdf.py --png) and
+%   commit both.
 \documentclass{article}
 \usepackage{simcfonts,simcfig}
 \usepackage[active,tightpage]{preview}

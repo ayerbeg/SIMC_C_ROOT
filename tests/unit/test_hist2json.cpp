@@ -1,5 +1,5 @@
 // tests/unit/test_hist2json.cpp
-//   test_hist2json <run.hist> <docs/summary.schema.json>
+//   test_hist2json <run.hist> <docs/manual/markdown/reference/summary.schema.json>
 // Parses a Fortran .hist (+ .geni next to it) and checks that
 //  * every line is understood (no parser warnings),
 //  * every standalone number printed in the .hist appears in the JSON with the same value,

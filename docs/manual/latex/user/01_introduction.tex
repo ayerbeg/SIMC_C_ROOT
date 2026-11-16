@@ -1,0 +1,92 @@
+% docs/manual/latex/user/01_introduction.tex - chapter of the LaTeX edition of the book "user_manual" (SIMC++ documentation).
+%   Converted once from docs/manual/markdown/user/01_introduction.md by tools/md2latex.py; from then on THIS FILE is the source of the
+%   LaTeX edition and may be edited by hand. Re-running tools/md2latex.py --write-sources for this
+%   chapter OVERWRITES the hand edits (see docs/README.md).
+%   Compile: cmake --build <build> --target pdf, or tools/build_docs_pdf.py (figures, xelatex passes,
+%   makeindex with docs/common/latex/simcpp.ist); by hand, see docs/README.md. XeLaTeX, class
+%   docs/common/latex/simcpp.cls (packages: fontspec, tikz, xcolor, hyperref, listings, longtable, booktabs,
+%   titlesec, titletoc, fancyhdr, makeidx, preview, ...); fonts TeX Gyre Pagella, TeX Gyre Heros, DejaVu Sans
+%   Mono. The figures are built first from docs/{manual,translation}/figures/*.tex (preview.sty) into PDFs.
+\chapter{\texorpdfstring{Introduction}{Introduction}}\label{user_manual-01u5fintroduction}
+\section{\texorpdfstring{What SIMC++ is}{What SIMC++ is}}\label{user_manual-01u5fintroduction:11-what-simc-is}
+SIMC++ is a Monte Carlo for coincidence electron-scattering experiments A(e,e'X) with magnetic spectrometers (Jefferson Lab
+Hall C, and the Hall A HRS). It generates events over a phase space matched to the spectrometer acceptances and weights
+them with a physics model. Each event goes through:
+
+\begin{itemize}
+\item \textbf{beam and target}: beam energy spread, beam size and raster, energy loss and multiple scattering in the target and its
+windows, Coulomb correction;
+\item \textbf{reaction}: event generation and the cross section of the chosen physics model;
+\item \textbf{radiative corrections}: radiative tails of the incoming electron, the scattered electron and the hadron;
+\item \textbf{spectrometers}: optics maps, apertures, decay in flight, multiple scattering, detector resolution and reconstruction;
+\item \textbf{normalisation}: luminosity, generation volume and event weight, so that the weighted events give a yield for the
+simulated beam charge.
+\end{itemize}
+SIMC++ is not a detector simulation (GEANT4) and not a general background generator: events are generated only where the
+spectrometers can see them.
+
+It is a C++20 / ROOT 6 program, \code{simc++}. It reads the classic SIMC input files (\code{.\allowbreak{}inp}) as they are, or a JSON
+configuration that can also choose the components ("plug-ins") of the simulation. It writes a ROOT tree with one entry per
+accepted event, text reports and a JSON run summary (\hyperref[user_manual-07u5foutputs]{chapter 7}).
+
+(SIMC++ is a translation of the Fortran SIMC, \code{simc\_\allowbreak{}gfortran}. The Fortran code is not needed to build or run it. How the
+translation was validated is described in \code{docs/\allowbreak{}translation/}.)
+
+\begin{figure}[htbp]
+\simcfigure{run_flow}
+\caption[A run of SIMC++]{A run of SIMC++: the inputs are read into SimcParameters and RunSetup, the pipeline creates the stages by name, the event loop calls them once per try, and finish() normalises and writes the outputs through the sinks}\label{fig:runu5fflow}
+\end{figure}
+\section{\texorpdfstring{What it simulates}{What it simulates}}\label{user_manual-01u5fintroduction:12-what-it-simulates}
+\begin{simctable}{small}{3}{>{\raggedright\arraybackslash}p{\dimexpr 0.559\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.232\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.141\linewidth-2\tabcolsep\relax}}
+%
+\toprule\rowcolor{simchead}\simcth{reaction (input flags)} & \simcth{targets} & \simcth{chapter} \\\midrule\endfirsthead
+\multicolumn{3}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{reaction (input flags)} & \simcth{targets} & \simcth{chapter} \\\midrule\endhead
+\midrule\multicolumn{3}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+elastic and quasi-elastic (e,e'p) (no reaction flag) & H, D, nuclei (theory or Benhar spectral functions) & \hyperref[user_manual-05u5freactions:52-heep-elastic-deep-and-aeep]{5.2} \\
+exclusive pion production (\hyperref[param:doingu5fpion]{\code{doing\_\allowbreak{}pion}}\simcidx{Parameters!doing_pion@\code{doing\_pion}}): π+, π−, π0, Δ final states, coherent & H, D, nuclei & \hyperref[user_manual-05u5freactions:53-exclusive-pion-production-doingu5fpion]{5.3} \\
+kaon electroproduction (\hyperref[param:doingu5fkaon]{\code{doing\_\allowbreak{}kaon}}\simcidx{Parameters!doing_kaon@\code{doing\_kaon}}): K+Λ, K+Σ0, K+Σ−, hypernuclei & H, D, nuclei & \hyperref[user_manual-05u5freactions:54-kaon-electroproduction-doingu5fkaon]{5.4} \\
+(e,e'p)π in the Delta region (\hyperref[param:doingu5fdelta]{\code{doing\_\allowbreak{}delta}}\simcidx{Parameters!doing_delta@\code{doing\_delta}}) & H, D, nuclei & \hyperref[user_manual-05u5freactions:55-eepu3c0-in-the-delta-region-doingu5fdelta]{5.5} \\
+semi-inclusive (e,\allowbreak{}e'π±/\allowbreak{}π0)X and (e,e'K±)X (\hyperref[param:doingu5fsemi]{\code{doing\_\allowbreak{}semi}}\simcidx{Parameters!doing_semi@\code{doing\_semi}}) & H, D, nuclei & \hyperref[user_manual-05u5freactions:56-semi-inclusive-production-doingu5fsemi]{5.6} \\
+exclusive ρ0 → π+π− (\hyperref[param:doingu5frho]{\code{doing\_\allowbreak{}rho}}\simcidx{Parameters!doing_rho@\code{doing\_rho}}) & H, D, ³He & \hyperref[user_manual-05u5freactions:57-exclusive-u3c10-production-doingu5frho]{5.7} \\
+phase-space (acceptance) runs (\hyperref[param:doingu5fphsp]{\code{doing\_\allowbreak{}phsp}}\simcidx{Parameters!doing_phsp@\code{doing\_phsp}}) & any & \hyperref[user_manual-05u5freactions:58-phase-space-and-acceptance-runs-doingu5fphsp]{5.8} \\
+\end{simctable}
+Spectrometers: HMS, SHMS, SOS, HRS-R, HRS-L and an NPS-like calorimeter arm with π0 → γγ detection; tracking through the
+magnetic field of a polarized target (\hyperref[user_manual-06u5fspectrometers]{chapter 6}).
+
+\section{\texorpdfstring{Run modes}{Run modes}}\label{user_manual-01u5fintroduction:13-run-modes}
+\begin{simctable}{small}{3}{>{\raggedright\arraybackslash}p{\dimexpr 0.209\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.393\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.330\linewidth-2\tabcolsep\relax}}
+%
+\toprule\rowcolor{simchead}\simcth{mode} & \simcth{how} & \simcth{use} \\\midrule\endfirsthead
+\multicolumn{3}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{mode} & \simcth{how} & \simcth{use} \\\midrule\endhead
+\midrule\multicolumn{3}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+default & nothing to do & physics runs \\
+legacy-compatible & \code{-{}-{}fortran-{}compat}\simcidx{Command-line options!fortran-compat@\code{-{}-{}fortran-{}compat}}, optionally with the \code{ranlux} random-number generator & reproduce results of the legacy Fortran SIMC exactly, including its known bugs \\
+\end{simctable}
+Both modes and the other run options (seeds, generators, threads) are described in
+\hyperref[user_manual-08u5frunningu5fandu5freproducibility]{chapter 8}. The log line \code{\ SIMC++:\ fortran\_\allowbreak{}compat\ =\ false\ (\allowbreak{}.\allowbreak{}.\allowbreak{}.\allowbreak{})} tells which mode a run
+used.
+
+\section{\texorpdfstring{Validation in one paragraph}{Validation in one paragraph}}\label{user_manual-01u5fintroduction:14-validation-in-one-paragraph}
+Every physics routine was checked number for number against the original code, and complete runs of all the example
+inputs distributed with SIMC reproduce the original output files exactly in the legacy-compatible mode. Default-mode runs
+agree statistically,\allowbreak{} except where a known bug of the original is corrected. The test suite keeps this true for every
+change (\hyperref[user_manual-02u5finstallation:26-running-the-tests]{2.6}); the evidence is in \code{docs/\allowbreak{}translation/}.
+
+\begin{figure}[htbp]
+\simcfigure{validation_ladder}
+\caption[The validation ladder]{The validation ladder: single routines on fixed inputs, the whole event chain on the random numbers of the original program, complete runs identical bit for bit, and complete runs compared statistically}\label{fig:validationu5fladder}
+\end{figure}
+\section{\texorpdfstring{Limitations}{Limitations}}\label{user_manual-01u5fintroduction:15-limitations}
+\begin{itemize}
+\item \textbf{Delta-region runs have no cross section in the weight} (no Delta model is implemented): the weight is phase space ×
+virtual-photon flux × a jacobian, so Delta yields are not physical rates (\hyperref[user_manual-05u5freactions:55-eepu3c0-in-the-delta-region-doingu5fdelta]{5.5}).
+\item \textbf{Acceptance runs on hydrogen} keep the elastic kinematics, and radiation stays on unless \code{using\_\allowbreak{}rad\ =\ 0}
+(\hyperref[user_manual-05u5freactions:58-phase-space-and-acceptance-runs-doingu5fphsp]{5.8}).
+\item \textbf{Model limitations}, for example: coherent pion and kaon production use the nucleon models; the ρ0 on D/³He has no
+Fermi motion; a π0 sent into the HMS/SHMS is transported like a charged particle. Each reaction section of
+\hyperref[user_manual-05u5freactions]{chapter 5} lists them.
+\item No \code{.\allowbreak{}bin} file and no PAW ntuple: the ROOT tree is written directly.
+\item The \code{debug(\allowbreak{}2.\allowbreak{}.\allowbreak{}6)} diagnostic print-outs are not implemented (\hyperref[user_manual-04u5finputs:46-parameter-reference]{4.6}).
+\end{itemize}

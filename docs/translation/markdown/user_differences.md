@@ -1,10 +1,10 @@
 # Differences between SIMC++ and the Fortran SIMC (user guide)
 
-The complete, line-by-line list is `docs/FORTRAN_DIFFERENCES.md`. Each item there gives the Fortran file and line, the
+The complete, line-by-line list is `docs/translation/markdown/FORTRAN_DIFFERENCES.md`. Each item there gives the Fortran file and line, the
 original behaviour, the C++ behaviour, the measured effect and the test that covers it. This guide summarises it for
 users: **what changes in your numbers, and when**. Everything in 10.1 is undone by `--fortran-compat`.
 
-## 1. Corrections of the default mode (class a)
+## 1. Corrections of the default mode (Category A)
 
 ### Changes that can move yields, weights or acceptances
 
@@ -61,15 +61,15 @@ users: **what changes in your numbers, and when**. Everything in 10.1 is undone 
 | D-037 F9 | `doing_decay` with a hadron that is not π/K | refused (the Fortran STOPs silently at the first decay) |
 | D-025/D-032 | SHMS LSA tune | checked at every call (no valid input affected) |
 
-## 2. Kept as in the Fortran: acceptance mode (class c)
+## 2. Kept as in the Fortran: acceptance mode (Category C)
 
 The user has not decided this yet (D-031 item 1), so it is kept in both modes. On hydrogen, `doing_phsp` keeps the
 elastic kinematics; radiation stays on; the target mass for the photon limits is 0
-([5.8](../manual/user/05_reactions.md#58-phase-space-and-acceptance-runs-doing_phsp)).
+([5.8](../../manual/markdown/user/05_reactions.md#58-phase-space-and-acceptance-runs-doing_phsp)).
 
 ## 3. Questions open for experts (the expert list)
 
-These Fortran behaviours **might** be intentional. SIMC++ keeps them in both modes (`docs/FORTRAN_DIFFERENCES.md` §4).
+These Fortran behaviours **might** be intentional. SIMC++ keeps them in both modes (`docs/translation/markdown/FORTRAN_DIFFERENCES.md` §4).
 In plain words:
 
 * **Delta weight without cross section** (D-048 F4): Delta yields are not rates. A related question is whether a factor
@@ -100,9 +100,9 @@ In plain words:
 * **Bookkeeping**: with ngen < 0 wtcontr is divided by the tries; `doing_herho` only for A = 3; SAVEd values in a few
   report quantities (D-024, D-015 tmpfact, D-018).
 
-## 4. Deliberate differences of SIMC++ (class dev)
+## 4. Deliberate differences of SIMC++ (Category DEV)
 
-* Default generator mt64 instead of RANLUX; RANLUX available ([8.2](../manual/user/08_running_and_reproducibility.md#82-random-number-generators-mt64-and-ranlux)); `random_state_file` ignored.
+* Default generator mt64 instead of RANLUX; RANLUX available ([8.2](../../manual/markdown/user/08_running_and_reproducibility.md#82-random-number-generators-mt64-and-ranlux)); `random_state_file` ignored.
 * STOP → exit status 3; rejected input → 2 (the Fortran always exits 0).
 * JSON input as a superset of the `.inp`; plug-in selection; `--threads`.
 * Outputs: the ROOT tree written directly, plus the summary JSON and `.gen.root`; no `.bin`.

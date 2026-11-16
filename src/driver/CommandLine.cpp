@@ -7,11 +7,11 @@
 //
 // Input:
 //   * a Fortran .inp (CTP syntax, + its extra_dbase_file), read exactly like dbase.f (InpReader), or
-//   * a SIMC++ JSON: {"parameters": {...} (inp2json output), "pipeline": {...} (optional, docs/DRIVER.md),
+//   * a SIMC++ JSON: {"parameters": {...} (inp2json output), "pipeline": {...} (optional, docs/manual/markdown/reference/DRIVER.md),
 //                     "run": {"name": ..., "output_dir": ..., "fortran_compat": false} (optional)}.
 // --fortran-compat (or "run": {"fortran_compat": true}) keeps the exact Fortran behaviour, including the clear Fortran
-// bugs that SIMC++ corrects by default (D-031, docs/FORTRAN_DIFFERENCES.md). It exists for the bitwise validation.
-// --threads N (docs/PERFORMANCE.md): the event loop on N threads with independent mt64 streams (reproducible for a
+// bugs that SIMC++ corrects by default (D-031, docs/translation/markdown/FORTRAN_DIFFERENCES.md). It exists for the bitwise validation.
+// --threads N (docs/manual/markdown/reference/PERFORMANCE.md): the event loop on N threads with independent mt64 streams (reproducible for a
 // given seed and N; statistically equivalent to, not bitwise equal to, the one-thread run). Default 1 (or the pipeline
 // "threads"). Refused (exit 2) with --fortran-compat and with an rng other than mt64.
 // --print-data-dir prints the default data directory (include/simc/core/DataPath.h: env SIMC_DATA_DIR, the installed

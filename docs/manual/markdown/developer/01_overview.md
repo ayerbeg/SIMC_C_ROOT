@@ -10,7 +10,7 @@ reports.
 SIMC++ originates from the Fortran SIMC (`simc_gfortran`): its physics and its numerical results reproduce that program,
 and its text outputs keep the Fortran formats. How the translation was done and validated, the routine-by-routine map,
 the numerical rules for bitwise fidelity and the catalogue of every Fortran bug and quirk are in the separate
-**[translation report](../../translation/index.md)**. This manual is about the SIMC++ framework itself.
+**[translation report](../../../translation/markdown/index.md)**. This manual is about the SIMC++ framework itself.
 
 ## 1.2 The framework in one page
 

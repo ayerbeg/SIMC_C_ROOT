@@ -1,7 +1,7 @@
 // tests/fortran_diff/test_fortran_differences.cpp — task P7.5 (D-031, D-032).
 //
-// One sub-test per item of docs/FORTRAN_DIFFERENCES.md that changes behaviour. For each corrected clear Fortran bug
-// (class a) the test runs the C++ code twice: with fortran_compat = true it must give the Fortran result (taken from
+// One sub-test per item of docs/translation/markdown/FORTRAN_DIFFERENCES.md that changes behaviour. For each corrected clear Fortran bug
+// (Category A) the test runs the C++ code twice: with fortran_compat = true it must give the Fortran result (taken from
 // the Fortran source/reference where possible), with the default (corrected) the corrected result.
 //
 //   usage: test_fortran_differences <item> <reference dir> <simc_gfortran dir>

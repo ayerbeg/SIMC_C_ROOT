@@ -1,0 +1,225 @@
+% docs/manual/latex/developer/04_extending.tex - chapter of the LaTeX edition of the book "developer_manual" (SIMC++ documentation).
+%   Converted once from docs/manual/markdown/developer/04_extending.md by tools/md2latex.py; from then on THIS FILE is the source of the
+%   LaTeX edition and may be edited by hand. Re-running tools/md2latex.py --write-sources for this
+%   chapter OVERWRITES the hand edits (see docs/README.md).
+%   Compile: cmake --build <build> --target pdf, or tools/build_docs_pdf.py (figures, xelatex passes,
+%   makeindex with docs/common/latex/simcpp.ist); by hand, see docs/README.md. XeLaTeX, class
+%   docs/common/latex/simcpp.cls (packages: fontspec, tikz, xcolor, hyperref, listings, longtable, booktabs,
+%   titlesec, titletoc, fancyhdr, makeidx, preview, ...); fonts TeX Gyre Pagella, TeX Gyre Heros, DejaVu Sans
+%   Mono. The figures are built first from docs/{manual,translation}/figures/*.tex (preview.sty) into PDFs.
+\chapter{\texorpdfstring{Extending SIMC++}{Extending SIMC++}}\label{developer_manual-04u5fextending}
+\simcabstract{The mechanics of every stage interface (signatures,\allowbreak{} configuration keys, the in-tree and out-of-tree build) are in
+EXTENDING.md\footnote{\code{docs/\allowbreak{}manual/\allowbreak{}markdown/\allowbreak{}reference/\allowbreak{}EXTENDING.\allowbreak{}md}}. This chapter gives the step-by-step recipes with code that is compiled and tested:
+\code{examples/\allowbreak{}dev\_\allowbreak{}manual/} (CTest \code{example\_\allowbreak{}dev\_\allowbreak{}manual\_\allowbreak{}plugins}), \code{examples/\allowbreak{}ideal\_\allowbreak{}box/} (\code{example\_\allowbreak{}ideal\_\allowbreak{}box\_\allowbreak{}*}) and
+\code{examples/\allowbreak{}out\_\allowbreak{}of\_\allowbreak{}tree\_\allowbreak{}plugin/} (\code{package\_\allowbreak{}out\_\allowbreak{}of\_\allowbreak{}tree\_\allowbreak{}plugin}).}
+\section{\texorpdfstring{The three steps (every plug-in)}{The three steps (every plug-in)}}\label{developer_manual-04u5fextending:41-the-three-steps-every-plug-in}
+\begin{enumerate}
+\item Implement one interface from \code{include/\allowbreak{}simc/\allowbreak{}stages/} (§3.5 of chapter 3 gives the contracts).
+\item Register it under a name in its \code{.\allowbreak{}cpp}: \code{SIMC\_\allowbreak{}REGISTER(\allowbreak{}simc::\allowbreak{}<Interface>\allowbreak{},\ "<name>\allowbreak{}",\ <Class>\allowbreak{})}, and compile it into an
+\textbf{OBJECT} library that the executable links directly (chapter 2 §2.3).
+\item Select it in the JSON \code{pipeline} of a run (or a file given to \code{simc++\ -{}-{}pipeline\ FILE}). A stage is \code{"name"} or
+\code{\{"type":\ "name",\ <config\ keys>\allowbreak{}\}}; the keys reach \code{configure(\allowbreak{})}.
+\end{enumerate}
+Where to put the code:
+
+\begin{itemize}
+\item \textbf{in tree} (a new built-in stage): \code{src/\allowbreak{}<module>\allowbreak{}/} with its own \code{CMakeLists.\allowbreak{}txt} (OBJECT library), added with
+\code{add\_\allowbreak{}subdirectory} in the top-level CMakeLists.\allowbreak{}txt and appended to \code{SIMC\_\allowbreak{}DRIVER\_\allowbreak{}LIBS} in src/\allowbreak{}driver/\allowbreak{}CMakeLists.\allowbreak{}txt; the
+public header in \code{include/\allowbreak{}simc/\allowbreak{}<module>\allowbreak{}/}, private kernel state in \code{include/\allowbreak{}simc/\allowbreak{}<module>\allowbreak{}/\allowbreak{}kernel/}; then add the header
+to the reference table of chapter 3 §3.9 (the \code{docs\_\allowbreak{}dev\_\allowbreak{}manual} test checks it).
+\item \textbf{examples}: an OBJECT library in examples/\allowbreak{}CMakeLists.\allowbreak{}txt; append it to \code{SIMC\_\allowbreak{}EXAMPLE\_\allowbreak{}PLUGINS} to make it available in
+\code{simc++} (like \code{ideal\_\allowbreak{}box}), or link it only into its test (like \code{dev\_\allowbreak{}manual}).
+\item \textbf{out of tree}: compile the plug-in source into your own executable that links \code{SIMC::\allowbreak{}simc} from the installed
+package and calls \code{simc::\allowbreak{}driver::\allowbreak{}Command\allowbreak{}Line\allowbreak{}Main} (§4.6).
+\end{itemize}
+\section{\texorpdfstring{A new physics model (\code{IPhysicsModel})}{A new physics model (IPhysicsModel)}}\label{developer_manual-04u5fextending:42-a-new-physics-model-iphysicsmodel}
+The model receives the completed vertex and returns the cross section in the units the reaction expects
+(for H(e,e'p): those of the \code{sigep} model). Complete example:
+
+\simcsource{examples/\allowbreak{}dev\_\allowbreak{}manual/\allowbreak{}Flat\allowbreak{}Model.\allowbreak{}cpp}
+\begin{simccode}[basicstyle=\ttfamily\scriptsize,style=simccpp]
+class FlatModel : public simc::IPhysicsModel {
+public:
+    std::string name() const override { return "example_flat"; }
+    void configure(const simc::Json& config, const simc::SimcParameters&) override {
+        if (config.is_object()) value_ = config.value("value", value_);
+    }
+    void init(const simc::StageContext&) override {}
+    double sigcc(const simc::Event&, const simc::MainEvent&) override { return value_; }
+    double sigccRecon(const simc::Event&, const simc::MainEvent&) override { return value_; }
+
+private:
+    double value_{1.0};
+};
+
+}  // namespace mylab
+
+SIMC_REGISTER(simc::IPhysicsModel, "example_flat", mylab::FlatModel)
+\end{simccode}
+Select it with \code{\{"pipeline":\ \{"physics":\ \{"type":\ "example\_\allowbreak{}flat",\ "value":\ 2.\allowbreak{}5\}\}\}}. The test runs H(e,e'p) with it and
+checks that every success has \code{sigcc\ =\ 2.\allowbreak{}5}. A model that must also write event fields (CM angles, jacobians,
+\code{ntup.\allowbreak{}sigcm}, as the \code{pion} model does) overrides \code{sigcc\allowbreak{}Main(\allowbreak{}vertex,\ main\&)}; the reactions call that one. Models
+that read tables take a \code{data\_\allowbreak{}dir} key and default to \code{simc::\allowbreak{}Data\allowbreak{}Dir(\allowbreak{}"<sub>\allowbreak{}")}, and read the tables in \code{init(\allowbreak{})} (a missing
+file is a start-up error). Templates: src/\allowbreak{}physics/\allowbreak{}proton/\allowbreak{}ProtonModels.\allowbreak{}cpp,\allowbreak{} src/\allowbreak{}physics/\allowbreak{}pion/\allowbreak{}PionModel.\allowbreak{}cpp.
+
+Put the numerical part in a kernel function (\code{double\ pee\allowbreak{}X(\allowbreak{}const\ Event\&,\ Main\allowbreak{}Event\&,\ const\ XConfig\&)}) with a config
+struct for the run constants (and \code{fortran\_\allowbreak{}compat} if the model has a compat behaviour), and test it on fixed inputs. A
+model ported from the Fortran also needs a reference table (see the
+translation report\footnote{From SIMC to SIMC++, ``2.7 Adding a new Fortran reference, end to end'' (\code{docs/\allowbreak{}translation/\allowbreak{}markdown/\allowbreak{}02\_\allowbreak{}validation.\allowbreak{}md})}).
+
+\section{\texorpdfstring{A new output sink (\code{IOutputSink}, \code{IParallelSink})}{A new output sink (IOutputSink,\allowbreak{} IParallelSink)}}\label{developer_manual-04u5fextending:43-a-new-output-sink-ioutputsink-iparallelsink}
+\code{fill} sees \textbf{every} try (use \code{success} to select contributing events, \code{main.\allowbreak{}weight} as their weight); \code{endRun} gets
+the \code{RunSummary}\simcidx{Classes and interfaces!RunSummary@\code{RunSummary}}. To work with \code{-{}-{}threads\ N}\simcidx{Command-line options!threads@\code{-{}-{}threads}}, also implement \code{IParallelSink}\simcidx{Classes and interfaces!IParallelSink@\code{IParallelSink}}: \code{makeWorkerSink} returns a new, configured
+sink (it gets \code{beginRun} and \code{fill}, never \code{endRun}; return \code{nullptr} if \code{fill} does nothing) and \code{mergeWorkerSink} adds a
+worker's content, called in the worker order 0..N−1 before \code{endRun}:
+
+\simcsource{examples/\allowbreak{}dev\_\allowbreak{}manual/\allowbreak{}Count\allowbreak{}Sink.\allowbreak{}cpp}
+\begin{simccode}[basicstyle=\ttfamily\tiny,style=simccpp]
+    void fill(const simc::MainEvent& main, const simc::Event&, const simc::Event&, const simc::Event&,
+              bool success) override {
+        ++tries_;
+        if (success) {
+            ++successes_;
+            sumWeight_ += main.weight;
+        }
+    }
+    void endRun(const simc::RunSummary& summary) override {
+        std::ofstream f(file_);
+        if (!f) throw std::runtime_error("example_count: cannot write " + file_);
+        f << "tries " << tries_ << "\nsuccesses " << successes_ << "\nsum_weight " << sumWeight_ << "\nntried "
+          << summary.ntried << "\n";
+    }
+
+    // --threads N: a fresh sink per worker (fill only), merged in the worker order 0..N-1 before endRun().
+    std::unique_ptr<simc::IOutputSink> makeWorkerSink(int, int) const override {
+        auto w = std::make_unique<CountSink>();
+        w->file_ = file_;   // configured like this one; a worker sink never writes (no endRun)
+        return w;
+    }
+    void mergeWorkerSink(simc::IOutputSink& sink) override {
+        const auto& w = dynamic_cast<const CountSink&>(sink);
+        tries_ += w.tries_;
+        successes_ += w.successes_;
+        sumWeight_ += w.sumWeight_;
+    }
+\end{simccode}
+The pipeline key \code{sinks} \textbf{replaces} the default list, so name the defaults you still want:
+\code{\{"pipeline":\ \{"sinks":\ ["run\_\allowbreak{}summary",\ "example\_\allowbreak{}count"],\ "threads":\ 2\}\}}. The test checks that the one-thread counts equal
+the run totals and that the two-thread merged counts equal \code{ngen}\simcidx{Parameters!ngen@\code{ngen}} and the merged \code{ntried}. A sink created in code is added
+with \code{Simc\allowbreak{}Run::\allowbreak{}add\allowbreak{}Sink(\allowbreak{}std::\allowbreak{}make\_\allowbreak{}unique<My\allowbreak{}Sink>\allowbreak{}(\allowbreak{}))} (no registration). A sink that needs the full report (central event,
+limits) also implements \code{driver::\allowbreak{}IReport\allowbreak{}Sink::\allowbreak{}write\allowbreak{}Report}\simcidx{Classes and interfaces!IReportSink@\code{IReportSink}}. Templates: src/\allowbreak{}output/\allowbreak{}RunSummarySink.\allowbreak{}cpp (simplest),
+RootTreeSink.\allowbreak{}cpp (worker temporary files), GenHistSink.\allowbreak{}cpp (histograms summed).
+
+\section{\texorpdfstring{A new spectrometer (\code{ISpectrometer})}{A new spectrometer (ISpectrometer)}}\label{developer_manual-04u5fextending:44-a-new-spectrometer-ispectrometer}
+The input is the track in the TRANSPORT frame at z = 0 (cm, slopes, delta \%, central momentum MeV/c, mass² MeV²);
+return \code{SpecResult}\simcidx{Classes and interfaces!SpecResult@\code{SpecResult}} with \code{ok}/\code{stop\_\allowbreak{}reason}, the reconstructed target quantities, the focal plane, the path length,
+optionally \code{resolution\_\allowbreak{}factor}, and \code{m2\_\allowbreak{}final}/\code{Mh2\_\allowbreak{}final} (= \code{in.\allowbreak{}m2} without decay). \code{stopCounters(\allowbreak{})} must contain
+\code{trials} and \code{successes}. The minimal out-of-tree example:
+
+\simcsource{examples/\allowbreak{}out\_\allowbreak{}of\_\allowbreak{}tree\_\allowbreak{}plugin/\allowbreak{}Toy\allowbreak{}Window\allowbreak{}Spectrometer.\allowbreak{}cpp}
+\begin{simccode}[basicstyle=\ttfamily\footnotesize,style=simccpp]
+    simc::SpecResult transport(const simc::SpecInput& in, simc::IRandom&) override {
+        simc::SpecResult r;
+        r.m2_final = in.m2;
+        r.Mh2_final = in.m2;
+        ++counts_["trials"];
+        if (std::fabs(in.delta) > deltaMax_) {
+            ++counts_["delta"];
+            r.stop_reason = "delta";
+            return r;
+        }
+        ++counts_["successes"];
+        r.ok = true;
+        r.delta_recon = in.delta;
+        r.dxdz_recon = in.dxdz;
+        r.dydz_recon = in.dydz;
+        r.y_recon = in.y;
+        r.x_fp = in.x;
+        r.dx_fp = in.dxdz;
+        r.y_fp = in.y;
+        r.dy_fp = in.dydz;
+        r.resolution_factor = 1.0;
+        return r;
+    }
+\end{simccode}
+Select it per arm: \code{\{"pipeline":\ \{"spectrometers":\ \{"hadron":\ \{"type":\ "toy\_\allowbreak{}window",\ "delta\_\allowbreak{}max":\ 8.\allowbreak{}0\}\}\}\}}. Arms with the
+same type and the same config share one object (one counter block). The arm \emph{codes} of the input still select the
+default plug-in, the target-window materials in \code{hallc\_\allowbreak{}cryo} and the built-in \code{.\allowbreak{}geni} blocks; a plug-in replaces the
+single-arm Monte Carlo only, and its counters appear in a generic \code{.\allowbreak{}geni} block and in the summary JSON. For real optics
+reuse \code{optics::\allowbreak{}Cosy\allowbreak{}Engine}\simcidx{Classes and interfaces!CosyEngine@\code{CosyEngine}} (COSY maps, \code{transp}, \code{project}, recon); put the kernel state (track, counters,
+argument mirrors) in \code{include/\allowbreak{}simc/\allowbreak{}spectrometers/\allowbreak{}<name>\allowbreak{}/\allowbreak{}kernel/} behind a pimpl, as \code{HmsSpectrometer}\simcidx{Classes and interfaces!HmsSpectrometer@\code{HmsSpectrometer}} does. A spectrometer ported
+from the Fortran also needs reference ray tables and a full-run identity test (translation report). For the target-field tracking implement \code{reconstruct\allowbreak{}Last\allowbreak{}Track}.
+
+\section{\texorpdfstring{A new reaction (\code{IReaction})}{A new reaction (IReaction)}}\label{developer_manual-04u5fextending:45-a-new-reaction-ireaction}
+A reaction is the largest plug-in: it owns the generation, the vertex completion and the weight. Steps:
+
+\begin{enumerate}
+\item \textbf{Choose a base.} An (e,\allowbreak{}e'p)-like reaction derives from \code{reactions::\allowbreak{}Eep\allowbreak{}Reaction\allowbreak{}Base}\simcidx{Classes and interfaces!EepReactionBase@\code{EepReactionBase}} and implements \code{generate(\allowbreak{})} and
+\code{spectralWeight(\allowbreak{})}; \code{completeEv}, \code{completeRecon}, \code{completeMain} and \code{genVolume} are shared by the family.
+The structure, from \code{include/\allowbreak{}simc/\allowbreak{}reactions/\allowbreak{}Hydrogen\allowbreak{}Elastic.\allowbreak{}h}:
+
+\simcsource{include/\allowbreak{}simc/\allowbreak{}reactions/\allowbreak{}Hydrogen\allowbreak{}Elastic.\allowbreak{}h}
+\begin{simccode}[basicstyle=\ttfamily\footnotesize,style=simccpp]
+class HydrogenElastic : public EepReactionBase {
+public:
+    explicit HydrogenElastic(std::string name = "hydrogen_elastic");
+
+    void init(const StageContext& ctx) override;
+    bool generate(MainEvent& main, Event& vertex, Event& orig, IRandom& rng) override;
+    double spectralWeight(const Event& vertex) override;
+};
+\end{simccode}
+A reaction with its own kinematics derives from \code{IReaction}\simcidx{Classes and interfaces!IReaction@\code{IReaction}} directly or from \code{PionProduction}\simcidx{Classes and interfaces!PionProduction@\code{PionProduction}} (its own \code{completeEv}
+and \code{completeMain}), like the kaon, Delta and SIDIS reactions; rho is the example of a reaction that changes the hadron
+mass per try (\code{MainEvent::\allowbreak{}gnrl}\simcidx{Classes and interfaces!MainEvent@\code{MainEvent}}).
+\item \textbf{\code{init(\allowbreak{}ctx)}}: refuse set-ups it cannot handle (check \code{ctx.\allowbreak{}setup.\allowbreak{}flags}, throw \code{std::\allowbreak{}invalid\_\allowbreak{}argument} or
+\code{NotPorted}\simcidx{Classes and interfaces!NotPorted@\code{NotPorted}}), keep \code{ctx.\allowbreak{}target}, \code{ctx.\allowbreak{}radiator}, \code{ctx.\allowbreak{}physics} (\code{require\allowbreak{}Target(\allowbreak{}name(\allowbreak{}))} ...).
+\item \textbf{\code{generate}} (called after \code{IBeam::\allowbreak{}generate}\simcidx{Classes and interfaces!IBeam@\code{IBeam}}): set \code{main.\allowbreak{}gen\_\allowbreak{}weight}, draw the generated variables from the
+generation limits in \code{RunSetup::\allowbreak{}gen}\simcidx{Classes and interfaces!RunSetup@\code{RunSetup}} (every draw through \code{rng}, in a fixed order), call \code{completeEv}, then
+\code{radiator-{}>\allowbreak{}radiate(\allowbreak{}main,\ vertex,\ orig,\ rng,\ complete\allowbreak{}Ev\allowbreak{}Fn)} when \code{using\_\allowbreak{}rad}\simcidx{Parameters!using_rad@\code{using\_rad}}, else \code{orig\ =\ vertex}.
+\item \textbf{\code{completeEv}}: the vertex kinematics, \code{target-{}>\allowbreak{}trip\allowbreak{}Thru\allowbreak{}Target} for arms 2 and 3 (\code{main.\allowbreak{}target.\allowbreak{}Eloss/\allowbreak{}teff}), and
+finally \code{radiator-{}>\allowbreak{}init\allowbreak{}Event(\allowbreak{}main,\ vertex)}.
+\item \textbf{\code{completeRecon}}: the reconstructed kinematics from the spectrometer quantities in \code{recon}.
+\item \textbf{\code{completeMain}}: \code{main.\allowbreak{}SF\_\allowbreak{}weight}, then \code{sigcc}/\code{sigcc\_\allowbreak{}recon}/\code{weight} with the model (for the (e,e'p) family
+\code{reactions::\allowbreak{}assemble\allowbreak{}Weight(\allowbreak{}force\_\allowbreak{}sigcc,\ main,\ vertex,\ vertex0,\ recon,\ model,\ Main\allowbreak{}Context::\allowbreak{}From\allowbreak{}Setup(\allowbreak{}setup))}); return
+false when the event cannot contribute unless \code{force\_\allowbreak{}sigcc} (the central event).
+\item \textbf{\code{genVolume}}: the generated phase-space volume.
+\item Optional: \code{prepareCentral}, \code{finalTargetState}, \code{beginTry}.
+\item \textbf{Register and select}: \code{SIMC\_\allowbreak{}REGISTER(\allowbreak{}IReaction,\ "my\_\allowbreak{}reaction",\ My\allowbreak{}Reaction)}, \code{\{"pipeline":\ \{"reaction":\ "my\_\allowbreak{}reaction",\ "physics":\ "my\_\allowbreak{}model"\}\}}. \code{Pipeline\allowbreak{}Config::\allowbreak{}Defaults}\simcidx{Classes and interfaces!PipelineConfig@\code{PipelineConfig}} picks the built-in reactions from the \code{doing\_\allowbreak{}*}
+flags; a new reaction is selected through the JSON (or add its flag rule to \code{Defaults} in src/\allowbreak{}driver/\allowbreak{}Pipeline.\allowbreak{}cpp).
+The ntuple layout follows the reaction flags (output/\allowbreak{}NtupleLayout.\allowbreak{}h); a reaction with new columns needs a layout there.
+\item \textbf{Tests}: a run through the driver (like \code{example\_\allowbreak{}dev\_\allowbreak{}manual\_\allowbreak{}plugins}), tests of the kernels on fixed inputs (with a
+\code{ScriptedRandom}\simcidx{Classes and interfaces!ScriptedRandom@\code{ScriptedRandom}}), a regression baseline in both modes (\code{tests/\allowbreak{}regression}) and a statistical comparison with
+\code{simc\_\allowbreak{}compare}. A reaction ported from the Fortran needs the reference tests of the translation report.
+\end{enumerate}
+\section{\texorpdfstring{Out of tree}{Out of tree}}\label{developer_manual-04u5fextending:46-out-of-tree}
+\simcsource{examples/\allowbreak{}out\_\allowbreak{}of\_\allowbreak{}tree\_\allowbreak{}plugin/\allowbreak{}CMake\allowbreak{}Lists.\allowbreak{}txt}
+\begin{simccode}[basicstyle=\ttfamily\footnotesize,style=simccmake]
+find_package(SIMC 2.0 REQUIRED)
+
+add_executable(my_simc main.cpp ToyWindowSpectrometer.cpp)
+target_link_libraries(my_simc PRIVATE SIMC::simc)
+\end{simccode}
+\simcsource{examples/\allowbreak{}out\_\allowbreak{}of\_\allowbreak{}tree\_\allowbreak{}plugin/\allowbreak{}main.\allowbreak{}cpp}
+\begin{simccode}[basicstyle=\ttfamily\footnotesize,style=simccpp]
+#include "simc/driver/CommandLine.h"
+
+int main(int argc, char** argv) { return simc::driver::CommandLineMain(argc, argv); }
+\end{simccode}
+\code{cmake\ -{}S\ my\_\allowbreak{}plugin\ -{}B\ build\ -{}DCMAKE\_\allowbreak{}PREFIX\_\allowbreak{}PATH=\allowbreak{}"<prefix>\allowbreak{};<ROOT\ install>\allowbreak{}"}, then \code{build/\allowbreak{}my\_\allowbreak{}simc\ run.\allowbreak{}inp\ -{}-{}pipeline\ toy\_\allowbreak{}window.\allowbreak{}json\ -{}o\ out}. The installed data are found without \code{-{}-{}data-{}dir}\simcidx{Command-line options!data-dir@\code{-{}-{}data-{}dir}} (chapter 2 §2.7). Only the installed public
+headers are available (no \code{kernel/} headers). Plug-ins are linked, not loaded at run time (no dlopen).
+
+\section{\texorpdfstring{Rules: state and thread safety}{Rules: state and thread safety}}\label{developer_manual-04u5fextending:47-rules-state-and-thread-safety}
+\begin{itemize}
+\item \textbf{No global or static mutable state.} Values kept between calls become members of the object; caches
+are members too. With \code{-{}-{}threads\ N}\simcidx{Command-line options!threads@\code{-{}-{}threads}} every worker builds its own instance of every stage, so a \code{static} cache would be
+shared between threads (a data race) and between runs. The only process-wide mutable state is the Registry (filled at
+static initialisation,\allowbreak{} read-only afterwards) and the column lists of \code{NtupleLayout} (under a mutex).
+\item A stage takes its collaborators from the \code{StageContext}\simcidx{Classes and interfaces!StageContext@\code{StageContext}} and never casts them to concrete classes.
+\item All random numbers come from the \code{IRandom}\simcidx{Classes and interfaces!IRandom@\code{IRandom}} passed to the call, never from another generator.
+\item A worker sink sees only the \code{fill} arguments; it must not write the run's files or use the master's collaborators.
+\item Internal units everywhere; convert input units in \code{configure}/\code{init} only.
+\item Honour \code{"verbose":\ false} (\code{-{}-{}quiet}\simcidx{Command-line options!quiet@\code{-{}-{}quiet}}) for messages; write messages to the log stream the driver gives, not to stderr.
+\item ROOT objects: each worker owns its \code{TFile}/\code{TTree}/\code{TH1} (\code{Set\allowbreak{}Directory(\allowbreak{}nullptr)}); call
+\code{ROOT::\allowbreak{}Enable\allowbreak{}Thread\allowbreak{}Safety(\allowbreak{})} in \code{makeWorkerSink}.
+\end{itemize}

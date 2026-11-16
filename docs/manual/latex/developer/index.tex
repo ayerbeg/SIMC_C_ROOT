@@ -1,0 +1,58 @@
+% docs/manual/latex/developer/index.tex - chapter of the LaTeX edition of the book "developer_manual" (SIMC++ documentation).
+%   Converted once from docs/manual/markdown/developer/index.md by tools/md2latex.py; from then on THIS FILE is the source of the
+%   LaTeX edition and may be edited by hand. Re-running tools/md2latex.py --write-sources for this
+%   chapter OVERWRITES the hand edits (see docs/README.md).
+%   Compile: cmake --build <build> --target pdf, or tools/build_docs_pdf.py (figures, xelatex passes,
+%   makeindex with docs/common/latex/simcpp.ist); by hand, see docs/README.md. XeLaTeX, class
+%   docs/common/latex/simcpp.cls (packages: fontspec, tikz, xcolor, hyperref, listings, longtable, booktabs,
+%   titlesec, titletoc, fancyhdr, makeidx, preview, ...); fonts TeX Gyre Pagella, TeX Gyre Heros, DejaVu Sans
+%   Mono. The figures are built first from docs/{manual,translation}/figures/*.tex (preview.sty) into PDFs.
+\chapter*{About this manual}\addcontentsline{toc}{chapter}{About this manual}\markboth{About this manual}{About this manual}\label{developer_manual-index}
+This manual is for people who maintain and extend the SIMC++ framework: its architecture,\allowbreak{} data flow, interfaces,
+build, tests, plug-ins, parallelism and coding standards. Users who only want to run SIMC++ should read the
+user manual\footnote{SIMC++ User Manual, ``SIMC++ user manual'' (\code{docs/\allowbreak{}manual/\allowbreak{}markdown/\allowbreak{}user/\allowbreak{}index.\allowbreak{}md})}. How SIMC++ was translated from the Fortran SIMC and validated against it, with every
+Fortran detail, is in the translation report\footnote{From SIMC to SIMC++, ``SIMC Fortran → SIMC++ translation report'' (\code{docs/\allowbreak{}translation/\allowbreak{}markdown/\allowbreak{}index.\allowbreak{}md})}.
+
+\section*{\texorpdfstring{Chapters}{Chapters}}\addcontentsline{toc}{section}{\texorpdfstring{Chapters}{Chapters}}\label{developer_manual-index:chapters}
+\begin{enumerate}
+\item \hyperref[developer_manual-01u5foverview]{Overview}: what SIMC++ is, the framework in one page, design principles, source layout.
+\item \hyperref[developer_manual-02u5fbuild]{Build system and tests}: CMake layout, targets, OBJECT libraries and registration,\allowbreak{} options, CTest
+labels, \code{check\_\allowbreak{}all.\allowbreak{}sh}, the installed package.
+\item \hyperref[developer_manual-03u5farchitecture]{Architecture and data flow}: driver, event structures, kernels and stages, the registry,
+every stage interface with its contract, the order of calls in one try, the normalisation,\allowbreak{} and the
+\hyperref[developer_manual-03u5farchitecture:39-public-header-reference]{public header reference}.
+\item \hyperref[developer_manual-04u5fextending]{Extending SIMC++}: a new reaction, spectrometer,\allowbreak{} physics model or sink, step by step, with compiled
+examples; state and thread-safety rules.
+\item \hyperref[developer_manual-05u5fparallel]{Parallelism and performance internals}.
+\item \hyperref[developer_manual-06u5fstandards]{Coding standards, commits, technical debt}.
+\end{enumerate}
+\section*{\texorpdfstring{Detailed references}{Detailed references}}\addcontentsline{toc}{section}{\texorpdfstring{Detailed references}{Detailed references}}\label{developer_manual-index:detailed-references}
+\begin{simctable}{small}{2}{>{\raggedright\arraybackslash}p{\dimexpr 0.345\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.608\linewidth-2\tabcolsep\relax}}
+%
+\toprule\rowcolor{simchead}\simcth{document} & \simcth{content} \\\midrule\endfirsthead
+\multicolumn{2}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{document} & \simcth{content} \\\midrule\endhead
+\midrule\multicolumn{2}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+ARCHITECTURE.md\footnotemark{} & layers, stage table, plug-in wiring, per-event data flow, source layout (short reference) \\
+EXTENDING.md\footnotemark{} & every stage interface with its contract and the in-tree / out-of-tree plug-in mechanics \\
+DRIVER.md\footnotemark{} & the \code{simc++} command line and \code{SimcRun}\simcidx{Classes and interfaces!SimcRun@\code{SimcRun}} options \\
+PERFORMANCE.md\footnotemark{} & profile, bitwise-neutral optimisations,\allowbreak{} \code{-{}-{}threads\ N}\simcidx{Command-line options!threads@\code{-{}-{}threads}} \\
+OUTPUT\_\allowbreak{}FORMAT.md\footnotemark{}, INP\_\allowbreak{}JSON\_\allowbreak{}MAPPING.md\footnotemark{} & output files and the .inp → JSON mapping \\
+validation/\allowbreak{}README.md\footnotemark{} & \code{simc\_\allowbreak{}compare}: usage, statistics, verdict \\
+\end{simctable}
+\addtocounter{footnote}{-7}
+\stepcounter{footnote}\footnotetext{\code{docs/\allowbreak{}manual/\allowbreak{}markdown/\allowbreak{}reference/\allowbreak{}ARCHITECTURE.\allowbreak{}md}}
+\stepcounter{footnote}\footnotetext{\code{docs/\allowbreak{}manual/\allowbreak{}markdown/\allowbreak{}reference/\allowbreak{}EXTENDING.\allowbreak{}md}}
+\stepcounter{footnote}\footnotetext{\code{docs/\allowbreak{}manual/\allowbreak{}markdown/\allowbreak{}reference/\allowbreak{}DRIVER.\allowbreak{}md}}
+\stepcounter{footnote}\footnotetext{\code{docs/\allowbreak{}manual/\allowbreak{}markdown/\allowbreak{}reference/\allowbreak{}PERFORMANCE.\allowbreak{}md}}
+\stepcounter{footnote}\footnotetext{\code{docs/\allowbreak{}manual/\allowbreak{}markdown/\allowbreak{}reference/\allowbreak{}OUTPUT\_\allowbreak{}FORMAT.\allowbreak{}md}}
+\stepcounter{footnote}\footnotetext{\code{docs/\allowbreak{}manual/\allowbreak{}markdown/\allowbreak{}reference/\allowbreak{}INP\_\allowbreak{}JSON\_\allowbreak{}MAPPING.\allowbreak{}md}}
+\stepcounter{footnote}\footnotetext{\code{validation/\allowbreak{}README.\allowbreak{}md}}
+\section*{\texorpdfstring{Conventions of this manual}{Conventions of this manual}}\addcontentsline{toc}{section}{\texorpdfstring{Conventions of this manual}{Conventions of this manual}}\label{developer_manual-index:conventions-of-this-manual}
+\begin{itemize}
+\item Paths are relative to the SIMC++ source tree \code{SIMC++\_\allowbreak{}Claude/} unless they are absolute.
+\item A code block preceded by an HTML comment \code{<!-{}-{}\ from:\ path\ -{}-{}>} is copied verbatim from that file, which is compiled
+and tested. The CTest \code{docs\_\allowbreak{}dev\_\allowbreak{}manual} checks that every copy still matches and that every header of \code{include/\allowbreak{}simc}
+is described here.
+\item When the code and this manual disagree, the code is right: please fix the manual.
+\end{itemize}

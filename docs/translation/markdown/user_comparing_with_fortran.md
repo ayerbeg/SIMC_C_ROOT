@@ -3,13 +3,13 @@
 Two kinds of comparison are possible:
 
 * **exact**: RANLUX + `--fortran-compat` against a Fortran run of the same input. The files must be identical
-  ([8.4](../manual/user/08_running_and_reproducibility.md#84-reproducing-legacy-simc-results-exactly));
+  ([8.4](../../manual/markdown/user/08_running_and_reproducibility.md#84-reproducing-legacy-simc-results-exactly));
 * **statistical**: any SIMC++ run (default mode, mt64, any seed, any number of threads) against a Fortran run, with
   `simc_compare`. This guide covers it. The full description of the statistics is in `validation/README.md`.
 
 ## 1. Building `simc_compare`
 
-`simc_compare` is a separate CMake project in `validation/` (user manual [2.3](../manual/user/02_installation.md#23-building)):
+`simc_compare` is a separate CMake project in `validation/` (user manual [2.3](../../manual/markdown/user/02_installation.md#23-building)):
 
 ```bash
 cmake -S $SIMCPP_SRC/validation -B $SIMCPP_BUILD-validation -DCMAKE_PREFIX_PATH=$ROOTSYS -DCMAKE_BUILD_TYPE=Release
@@ -85,7 +85,7 @@ not reproduce the run's own wtcontr within 0.2 % (usually a wrong mode).
 ## 5. Expected differences in the default mode
 
 The default mode corrects clear Fortran bugs, so some comparisons against Fortran runs **fail on purpose**. The project's
-L2 runs (`docs/FORTRAN_DIFFERENCES.md` §7-§17) found these typical cases:
+L2 runs (`docs/translation/markdown/FORTRAN_DIFFERENCES.md` §7-§17) found these typical cases:
 
 | run type | what fails | why |
 |---|---|---|

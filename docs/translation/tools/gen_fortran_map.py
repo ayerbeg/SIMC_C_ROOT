@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Generate docs/translation/fortran_routine_map.md: every routine of the Fortran SIMC program -> the C++ files that
+"""Generate docs/translation/markdown/fortran_routine_map.md: every routine of the Fortran SIMC program -> the C++ files that
 cite it (`// Fortran: file.f:routine ...` comments), plus the L1 reference tables that exist for it.
 
 Usage: gen_fortran_map.py [--fortran DIR] [--reference DIR] [--out FILE]
-Defaults: $SIMC_FORTRAN, $SIMC_REFERENCE (environment), docs/translation/fortran_routine_map.md
+Defaults: $SIMC_FORTRAN, $SIMC_REFERENCE (environment), docs/translation/markdown/fortran_routine_map.md
 (relative to the SIMC++ source tree, found from this script's location). The Fortran tree is only read.
 
 The routine list is the set of SUBROUTINE/FUNCTION/PROGRAM statements of the files the Fortran Makefile links into

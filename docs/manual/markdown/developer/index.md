@@ -3,7 +3,7 @@
 This manual is for people who maintain and extend the SIMC++ framework: its architecture, data flow, interfaces,
 build, tests, plug-ins, parallelism and coding standards. Users who only want to run SIMC++ should read the
 [user manual](../user/index.md). How SIMC++ was translated from the Fortran SIMC and validated against it, with every
-Fortran detail, is in the [translation report](../../translation/index.md).
+Fortran detail, is in the [translation report](../../../translation/markdown/index.md).
 
 ## Chapters
 
@@ -22,12 +22,12 @@ Fortran detail, is in the [translation report](../../translation/index.md).
 
 | document | content |
 |---|---|
-| [ARCHITECTURE.md](../../ARCHITECTURE.md) | layers, stage table, plug-in wiring, per-event data flow, source layout (short reference) |
-| [EXTENDING.md](../../EXTENDING.md) | every stage interface with its contract and the in-tree / out-of-tree plug-in mechanics |
-| [DRIVER.md](../../DRIVER.md) | the `simc++` command line and `SimcRun` options |
-| [PERFORMANCE.md](../../PERFORMANCE.md) | profile, bitwise-neutral optimisations, `--threads N` |
-| [OUTPUT_FORMAT.md](../../OUTPUT_FORMAT.md), [INP_JSON_MAPPING.md](../../INP_JSON_MAPPING.md) | output files and the .inp → JSON mapping |
-| [validation/README.md](../../../validation/README.md) | `simc_compare`: usage, statistics, verdict |
+| [ARCHITECTURE.md](../reference/ARCHITECTURE.md) | layers, stage table, plug-in wiring, per-event data flow, source layout (short reference) |
+| [EXTENDING.md](../reference/EXTENDING.md) | every stage interface with its contract and the in-tree / out-of-tree plug-in mechanics |
+| [DRIVER.md](../reference/DRIVER.md) | the `simc++` command line and `SimcRun` options |
+| [PERFORMANCE.md](../reference/PERFORMANCE.md) | profile, bitwise-neutral optimisations, `--threads N` |
+| [OUTPUT_FORMAT.md](../reference/OUTPUT_FORMAT.md), [INP_JSON_MAPPING.md](../reference/INP_JSON_MAPPING.md) | output files and the .inp → JSON mapping |
+| [validation/README.md](../../../../validation/README.md) | `simc_compare`: usage, statistics, verdict |
 
 ## Conventions of this manual
 

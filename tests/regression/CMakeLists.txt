@@ -227,7 +227,7 @@ foreach(_f ${SIMC_SHIPPED_FOLDERS})
                          ENVIRONMENT "REF=${SIMC_REFERENCE_DIR}/runs;JOBS=1" LABELS "regression_shipped;slow")
 endforeach()
 
-# P15.4: the parallel event loop (--threads N; docs/PERFORMANCE.md). Reproducibility: two runs with the same (seed, N) are
+# P15.4: the parallel event loop (--threads N; docs/manual/markdown/reference/PERFORMANCE.md). Reproducibility: two runs with the same (seed, N) are
 # identical (H(e,e'p) rad: HMS+SHMS; the polarized-target pion example: target field + pion + SHMS); --threads 1 is the
 # sequential loop bit for bit; --threads > 1 is refused with --fortran-compat and with the rng "ranlux".
 add_test(NAME threads_reproducibility_eep

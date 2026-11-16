@@ -1,4 +1,4 @@
-// src/driver/SimcRunParallel.cpp — the parallel event loop of SimcRun (docs/PERFORMANCE.md).
+// src/driver/SimcRunParallel.cpp — the parallel event loop of SimcRun (docs/manual/markdown/reference/PERFORMANCE.md).
 //
 // Not a Fortran feature: the Fortran SIMC (and SimcRun::step) runs one try after the other on one random stream. Here
 // N worker SimcRun objects, each with its own stages built from the same input (set-up, target, radiator, beam, physics,
@@ -83,7 +83,7 @@ void SimcRun::runThreaded(int n) {
     const long sign = params_.ngen < 0 ? -1 : 1;
     const std::uint64_t base = Mt64Random::BaseSeed(pipe_.rng.config, params_);
     log(" SIMC++: event loop on " + std::to_string(nw) + " threads (mt64 streams seed_seq(" + std::to_string(base) +
-        ", worker); docs/PERFORMANCE.md)");
+        ", worker); docs/manual/markdown/reference/PERFORMANCE.md)");
 
     // ---- 2. the workers, built one after the other in this thread
     NullStream nullLog;

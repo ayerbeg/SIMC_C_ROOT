@@ -1,0 +1,90 @@
+% docs/manual/latex/developer/05_parallel.tex - chapter of the LaTeX edition of the book "developer_manual" (SIMC++ documentation).
+%   Converted once from docs/manual/markdown/developer/05_parallel.md by tools/md2latex.py; from then on THIS FILE is the source of the
+%   LaTeX edition and may be edited by hand. Re-running tools/md2latex.py --write-sources for this
+%   chapter OVERWRITES the hand edits (see docs/README.md).
+%   Compile: cmake --build <build> --target pdf, or tools/build_docs_pdf.py (figures, xelatex passes,
+%   makeindex with docs/common/latex/simcpp.ist); by hand, see docs/README.md. XeLaTeX, class
+%   docs/common/latex/simcpp.cls (packages: fontspec, tikz, xcolor, hyperref, listings, longtable, booktabs,
+%   titlesec, titletoc, fancyhdr, makeidx, preview, ...); fonts TeX Gyre Pagella, TeX Gyre Heros, DejaVu Sans
+%   Mono. The figures are built first from docs/{manual,translation}/figures/*.tex (preview.sty) into PDFs.
+\chapter{\texorpdfstring{Parallelism and performance internals}{Parallelism and performance internals}}\label{developer_manual-05u5fparallel}
+\simcabstract{User-level description,\allowbreak{} numbers and the L2 validation of the threaded runs: PERFORMANCE.md\footnote{\code{docs/\allowbreak{}manual/\allowbreak{}markdown/\allowbreak{}reference/\allowbreak{}PERFORMANCE.\allowbreak{}md}}.
+This chapter is the implementation view.}
+\section{\texorpdfstring{The parallel event loop (\code{Simc\allowbreak{}Run::\allowbreak{}run\allowbreak{}Threaded}, src/\allowbreak{}driver/\allowbreak{}SimcRunParallel.\allowbreak{}cpp)}{The parallel event loop (SimcRun::\allowbreak{}runThreaded,\allowbreak{} src/\allowbreak{}driver/\allowbreak{}SimcRunParallel.\allowbreak{}cpp)}}\label{developer_manual-05u5fparallel:51-the-parallel-event-loop-simcrunrunthreaded-srcdriversimcrunparallelcpp}
+\code{SimcRun::\allowbreak{}run(\allowbreak{})}\simcidx{Classes and interfaces!SimcRun@\code{SimcRun}} calls \code{runThreaded(\allowbreak{}n)} when \code{threadCount(\allowbreak{})\ >\ 1} (\code{Run\allowbreak{}Options::\allowbreak{}threads}\simcidx{Classes and interfaces!RunOptions@\code{RunOptions}}, i.e.
+\code{-{}-{}threads\ N}\simcidx{Command-line options!threads@\code{-{}-{}threads}}, else the pipeline \code{"threads"}, else 1). Sequence:
+
+\begin{enumerate}
+\item \textbf{Master} \code{initialise(\allowbreak{})}: the set-up, the messages, the master stages and sinks (\code{beginRun}). The master's stages
+are used only for the central event and the report; the master runs no tries.
+\item \textbf{Refusals} (\code{threadsRefusal(\allowbreak{}n)}, \code{std::\allowbreak{}invalid\_\allowbreak{}argument}, \code{simc++} exit 2): \code{fortran\_\allowbreak{}compat} (the exact
+reproduction of the original program needs one sequential stream), an rng other than \code{mt64} or a source set with \code{setRandom}
+(RANLUX and scripted streams are sequential),\allowbreak{} a sink that does not implement \code{IParallelSink}\simcidx{Classes and interfaces!IParallelSink@\code{IParallelSink}}.
+\item \textbf{Workers}, built one after the other in the master thread: \code{nw\ =\ min(\allowbreak{}n,\ |\allowbreak{}ngen|\allowbreak{})} \code{SimcRun}\simcidx{Classes and interfaces!SimcRun@\code{SimcRun}} objects with the same
+parameters and pipeline but no registry sinks and a silent driver log; worker k gets \code{ngen\_\allowbreak{}k\ =\ ngen/\allowbreak{}nw} (+1 for
+\code{k\ <\ ngen\ \%\ nw}, sign kept: successes or tries), its own \code{Mt64Random}\simcidx{Classes and interfaces!Mt64Random@\code{Mt64Random}} seeded with \code{seed\allowbreak{}Stream(\allowbreak{}base,\ k)}, and one
+worker sink per master sink (\code{make\allowbreak{}Worker\allowbreak{}Sink(\allowbreak{}k,\ nw)}, added with \code{addSink}; \code{nullptr} = none). Each worker's
+\code{initialise(\allowbreak{})} builds its \textbf{own} stages (target, radiator, beam, model, reaction, spectrometers) and set-up.
+\item \textbf{Threads}: \code{std::\allowbreak{}thread} per worker running \code{while\ (\allowbreak{}!done(\allowbreak{}))\ step(\allowbreak{})}; nothing is exchanged during the loop except
+two relaxed atomics per worker (tries, events) for the progress line the master prints every 10 s. An exception in a
+worker sets an abort flag; after the join the first failing worker's exception (in worker order) is rethrown.
+\item \textbf{Merge, in the fixed worker order 0..nw−1}: \code{MergeTotals} (driver/\allowbreak{}RunReport.\allowbreak{}h: ntried, nevent, ncontribute,\allowbreak{}
+npasscuts, wtcontribute,\allowbreak{} sum\_sigcc and the resolution sums added; the contrib/\allowbreak{}slop ranges combined as min/max with the
+\code{update\_\allowbreak{}range} comparisons,\allowbreak{} \code{reactions::\allowbreak{}merge\allowbreak{}Contrib/\allowbreak{}merge\allowbreak{}Slops}), the stop counters (summed per key), every sink
+(\code{mergeWorkerSink}). The end-of-run target state (\code{finalTargetState}) is the last worker's.
+\item \textbf{Master} \code{finish(\allowbreak{})}: \code{normfac\ =\ luminosity\ *\ genvol\ /\ ntried} from the merged totals, then every output exactly as
+in a one-thread run; the summary gets \code{run.\allowbreak{}threads\ =\ nw}.
+\end{enumerate}
+\textbf{Streams}: \code{Mt64Random::\allowbreak{}seed\allowbreak{}Stream(\allowbreak{}base,\ k)} seeds \code{std::\allowbreak{}mt19937\_\allowbreak{}64} with \code{std::\allowbreak{}seed\_\allowbreak{}seq\{base\ \&\ 0xffffffff,\ base\ >\allowbreak{}>\ 32,\ k,\ 0x53494d43\}}; \code{base\ =\ Mt64Random::\allowbreak{}Base\allowbreak{}Seed(\allowbreak{}config,\ params)} is the seed the one-thread run would use. A stream
+depends only on (base, k), not on N, and differs from the one-thread stream (\code{seed(\allowbreak{}base)}).
+
+\textbf{Determinism}: no result depends on thread timing (fixed split, fixed streams, fixed merge order), so (seed, N) always
+gives the same files (\code{threads\_\allowbreak{}reproducibility\_\allowbreak{}eep/\allowbreak{}\_\allowbreak{}poltar}); \code{-{}-{}threads\ 1}\simcidx{Command-line options!threads@\code{-{}-{}threads}} is the sequential loop bit for bit
+(\code{threads\_\allowbreak{}one\_\allowbreak{}is\_\allowbreak{}sequential}); refusals: \code{threads\_\allowbreak{}refusal}. The threaded output is statistically equivalent to, not
+bitwise equal to, the one-thread output (validated by L2, PERFORMANCE.md §3).
+
+\textbf{Sinks} (\code{IParallelSink}\simcidx{Classes and interfaces!IParallelSink@\code{IParallelSink}} implementations): \code{RootTreeSink}\simcidx{Classes and interfaces!RootTreeSink@\code{RootTreeSink}} (worker temporary files \code{<run>\allowbreak{}.\allowbreak{}root.\allowbreak{}w<k>\allowbreak{}.\allowbreak{}tmp}, entries
+appended in worker order, files removed), \code{GenHistSink}\simcidx{Classes and interfaces!GenHistSink@\code{GenHistSink}} and \code{FortranHistSink}\simcidx{Classes and interfaces!FortranHistSink@\code{FortranHistSink}} (histograms summed; TH1D errors in
+quadrature),\allowbreak{} \code{RunSummarySink}\simcidx{Classes and interfaces!RunSummarySink@\code{RunSummarySink}} (\code{nullptr}: works at \code{endRun} from the merged report).
+
+\textbf{Thread safety}: every stage and every piece of kernel state is per worker (one \code{SimcRun}\simcidx{Classes and interfaces!SimcRun@\code{SimcRun}} per worker). The only
+process-wide mutable state is the Registry (read-only after static initialisation; workers are built in the master
+thread) and the \code{NtupleLayout} column lists (guarded by a mutex). ROOT: per-worker \code{TFile}/\code{TTree}/\code{TH1D} without
+directory, \code{ROOT::\allowbreak{}Enable\allowbreak{}Thread\allowbreak{}Safety(\allowbreak{})} called in \code{makeWorkerSink}. Stage warnings go to
+\code{std::\allowbreak{}cout} from each worker and may interleave (\code{-{}-{}quiet}\simcidx{Command-line options!quiet@\code{-{}-{}quiet}} silences them). ThreadSanitizer (clang, \code{-{}fsanitize=\allowbreak{}thread})
+runs of six representative inputs report no race (P15.4).
+
+\begin{simcwarning}
+a new stage with a \code{static} mutable cache breaks this (chapter 4 §4.7).
+\end{simcwarning}
+\textbf{Cost}: each worker builds its stages (0.1-0.3 s, mostly the pion MAID tables) and holds its own tables (pion: about
++15 MB per worker).
+
+\begin{figure}[htbp]
+\simcfigure{parallel_mode}
+\caption[The parallel event loop]{The parallel event loop: the master builds N workers with their own stages and random streams, the workers run independently,\allowbreak{} and the results are merged in a fixed order}\label{fig:parallelu5fmode}
+\end{figure}
+\section{\texorpdfstring{Single-thread hot spots}{Single-thread hot spots}}\label{developer_manual-05u5fparallel:52-single-thread-hot-spots}
+Profile (callgrind, PERFORMANCE.md §1): before P15.4 libm \code{tgamma} was 20-56 \% of radiative runs (29 calls per try in the per-event radiation set-up and the peaked radiation weight, on 12 distinct arguments), then the COSY \code{transp}
+maps, \code{trip\_\allowbreak{}thru\_\allowbreak{}target} (energy loss: log/pow), \code{generate\_\allowbreak{}rad}, the target-field Runge-Kutta (\code{TargetField::\allowbreak{}rk4}\simcidx{Classes and interfaces!TargetField@\code{TargetField}}), the
+MAID table parsing at start-up, and \code{std::\allowbreak{}map} lookups in \code{GenHistSink::\allowbreak{}fill}\simcidx{Classes and interfaces!GenHistSink@\code{GenHistSink}}.
+
+Bitwise-neutral optimisations (P15.4), each proved by the golden set (\code{p153\_\allowbreak{}golden.\allowbreak{}sh}, 326 identical files) and the
+replay/\allowbreak{}RANLUX tests:
+
+\begin{simctable}{small}{3}{>{\raggedright\arraybackslash}p{\dimexpr 0.323\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.240\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.369\linewidth-2\tabcolsep\relax}}
+%
+\toprule\rowcolor{simchead}\simcth{optimisation} & \simcth{where} & \simcth{why it cannot change a bit} \\\midrule\endfirsthead
+\multicolumn{3}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{optimisation} & \simcth{where} & \simcth{why it cannot change a bit} \\\midrule\endhead
+\midrule\multicolumn{3}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+\code{tgamma} memo (16 slots, key = argument bit pattern) & \code{radiation::\allowbreak{}Tgamma\allowbreak{}Memo}\simcidx{Classes and interfaces!TgammaMemo@\code{TgammaMemo}} in \code{RadcState}\simcidx{Classes and interfaces!RadcState@\code{RadcState}} & pure function: the cached value is the value the call returns \\
+COSY power tables & \code{Cosy\allowbreak{}Engine::\allowbreak{}transp}\simcidx{Classes and interfaces!CosyEngine@\code{CosyEngine}}/recon (\code{PowerTable}) & the same \code{powi(\allowbreak{}x,\ k)} computed once per call and variable; products formed in the same order \\
+MAID tables with \code{std::\allowbreak{}from\_\allowbreak{}chars} & \code{pion::\allowbreak{}Maid\allowbreak{}Tables::\allowbreak{}load}\simcidx{Classes and interfaces!MaidTables@\code{MaidTables}} & correctly rounded like \code{strtod}; anything else falls back to \code{strtod} \\
+\code{GenHistSink}\simcidx{Classes and interfaces!GenHistSink@\code{GenHistSink}} histograms resolved once & \code{Gen\allowbreak{}Hist\allowbreak{}Sink::\allowbreak{}inc(\allowbreak{}slot,\ .\allowbreak{}.\allowbreak{}.\allowbreak{})} & same TH1D calls without map lookups \\
+\end{simctable}
+Rules for future optimisations: an optimisation in a kernel must leave every bit unchanged (verify with
+\code{p153\_\allowbreak{}golden.\allowbreak{}sh\ check} and the \code{replay|\allowbreak{}ranlux} tests); no fast-math, no \code{-{}march}, no reordering of floating-point
+expressions,\allowbreak{} no replacement of libm calls by approximations. Remaining ideas are listed in PERFORMANCE.md §4 (a faster
+correctly rounded gamma, parallel worker construction).
+

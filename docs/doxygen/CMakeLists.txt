@@ -7,16 +7,15 @@
 #                          documented function its @param / @return (works without Doxygen).
 #   CTest docs_doxygen     (label docs): run_doxygen.py — runs Doxygen and requires 0 warnings for include/; skipped
 #                          (exit 77) when Doxygen is not installed.
-# Options: SIMC_DOXYGEN_MANUALS (ON) also renders the Markdown manuals (docs/manual, docs/translation and the reference
-# documents of docs/) as pages, so that the main page's links to them resolve inside the HTML.
+# Options: SIMC_DOXYGEN_MANUALS (ON) also renders the Markdown editions (docs/manual/markdown/{user,developer,reference},
+# docs/translation/markdown) as pages, so that the main page's links to them resolve inside the HTML.
 find_package(Doxygen QUIET OPTIONAL_COMPONENTS dot)
 option(SIMC_DOXYGEN_MANUALS "Render the Markdown manuals as pages of the Doxygen reference" ON)
 
 set(SIMC_DOXYGEN_OUT "${CMAKE_CURRENT_BINARY_DIR}")
 set(SIMC_DOXYGEN_MANUAL_INPUTS "")
 if(SIMC_DOXYGEN_MANUALS)
-    foreach(_d manual/user manual/developer translation ARCHITECTURE.md EXTENDING.md DRIVER.md PERFORMANCE.md
-               OUTPUT_FORMAT.md INP_JSON_MAPPING.md FORTRAN_DIFFERENCES.md)
+    foreach(_d manual/markdown/user manual/markdown/developer manual/markdown/reference translation/markdown)
         string(APPEND SIMC_DOXYGEN_MANUAL_INPUTS " \"${CMAKE_SOURCE_DIR}/docs/${_d}\"")
     endforeach()
 endif()

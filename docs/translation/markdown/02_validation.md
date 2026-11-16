@@ -89,7 +89,7 @@ bitwise identity proves the flag is a fluctuation.
 ## 2.5 simc_compare (L2)
 
 `validation/` is its own CMake project (`simc_compare`, `simc_mode_diff`); full documentation in
-[validation/README.md](../../validation/README.md). Sources: simc_compare.cpp (CLI, loading, exit status),
+[validation/README.md](../../../validation/README.md). Sources: simc_compare.cpp (CLI, loading, exit status),
 CompareCommon.{h,cpp} (config, tree, records, normalisation), CompareRunLevel.cpp, CompareTreeLevel.cpp,
 CompareReport.cpp (verdict, summary.txt/json, PDF), RunSummary.{h,cpp} (reads summary JSON or `.hist/.geni`), Stats.
 

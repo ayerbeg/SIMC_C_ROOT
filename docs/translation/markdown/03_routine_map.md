@@ -7,7 +7,7 @@ into `simc` (172 routines) with its line range, the C++ files that cite it, its 
 it. It is generated from the code, not written by hand:
 
 ```bash
-python3 -I docs/translation/tools/gen_fortran_map.py      # rewrites docs/translation/fortran_routine_map.md
+python3 -I docs/translation/tools/gen_fortran_map.py      # rewrites docs/translation/markdown/fortran_routine_map.md
 ```
 
 The script reads the Fortran Makefile (`my_objs` + `simc.f` + the module files), finds every SUBROUTINE / FUNCTION /

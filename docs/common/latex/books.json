@@ -1,69 +1,145 @@
 {
   "user_manual": {
     "title": "SIMC++ User Manual",
-    "subtitle": "Installing, configuring and running the Hall C coincidence Monte Carlo",
+    "subtitle": "Installing, configuring and running the Monte Carlo simulation of electron-scattering experiments with magnetic spectrometers",
     "kicker": "SIMC++ documentation",
     "output": "SIMCpp_User_Manual",
-    "dir": "docs/manual/user",
+    "dir": "docs/manual/markdown/user",
     "index_title": "About this manual",
-    "front": ["front/user_reading.tex", "front/conventions.tex"],
-    "parts": [
-      {"title": "Getting started",
-       "intro": "What SIMC++ simulates, how to build and install it, and a first run from an example input.",
-       "chapters": ["01_introduction.md", "02_installation.md", "03_quick_start.md"]},
-      {"title": "Configuring a simulation",
-       "intro": "The input files, every input parameter, the reactions and the spectrometers.",
-       "chapters": ["04_inputs.md", "05_reactions.md", "06_spectrometers.md"]},
-      {"title": "Results and reproducibility",
-       "intro": "What a run writes, how to reproduce a run exactly, and how to make runs faster.",
-       "chapters": ["07_outputs.md", "08_running_and_reproducibility.md", "09_performance.md"]},
-      {"title": "Help",
-       "intro": "Common messages and problems, and what to do about them.",
-       "chapters": ["10_faq.md"]}
+    "front": [
+      "front/user_reading.tex",
+      "conventions.tex"
     ],
-    "appendices": ["VERIFIED_EXAMPLES.md"]
+    "parts": [
+      {
+        "title": "Getting started",
+        "intro": "What SIMC++ simulates, how to build and install it, and a first run from an example input.",
+        "chapters": [
+          "01_introduction.md",
+          "02_installation.md",
+          "03_quick_start.md"
+        ]
+      },
+      {
+        "title": "Configuring a simulation",
+        "intro": "The input files, every input parameter, the reactions and the spectrometers.",
+        "chapters": [
+          "04_inputs.md",
+          "05_reactions.md",
+          "06_spectrometers.md"
+        ]
+      },
+      {
+        "title": "Results and reproducibility",
+        "intro": "What a run writes, how to reproduce a run exactly, and how to make runs faster.",
+        "chapters": [
+          "07_outputs.md",
+          "08_running_and_reproducibility.md",
+          "09_performance.md"
+        ]
+      },
+      {
+        "title": "Help",
+        "intro": "Common messages and problems, and what to do about them.",
+        "chapters": [
+          "10_faq.md"
+        ]
+      }
+    ],
+    "appendices": [
+      "VERIFIED_EXAMPLES.md"
+    ],
+    "latex_dir": "docs/manual/latex",
+    "chapter_dir": "user"
   },
   "developer_manual": {
     "title": "SIMC++ Developer Manual",
     "subtitle": "Architecture, interfaces, build, plug-ins and parallelism of the SIMC++ framework",
     "kicker": "SIMC++ documentation",
     "output": "SIMCpp_Developer_Manual",
-    "dir": "docs/manual/developer",
+    "dir": "docs/manual/markdown/developer",
     "index_title": "About this manual",
-    "front": ["front/developer_reading.tex", "front/conventions.tex"],
-    "parts": [
-      {"title": "Foundations",
-       "intro": "What the framework is made of, where the code lives, and how it is built and tested.",
-       "chapters": ["01_overview.md", "02_build.md"]},
-      {"title": "Architecture",
-       "intro": "The driver, the events, the stage interfaces with their contracts, and the public headers.",
-       "chapters": ["03_architecture.md"]},
-      {"title": "Extending and maintaining",
-       "intro": "New plug-ins step by step, the parallel event loop, and the rules of the code base.",
-       "chapters": ["04_extending.md", "05_parallel.md", "06_standards.md"]}
+    "front": [
+      "front/developer_reading.tex",
+      "conventions.tex"
     ],
-    "appendices": []
+    "parts": [
+      {
+        "title": "Foundations",
+        "intro": "What the framework is made of, where the code lives, and how it is built and tested.",
+        "chapters": [
+          "01_overview.md",
+          "02_build.md"
+        ]
+      },
+      {
+        "title": "Architecture",
+        "intro": "The driver, the events, the stage interfaces with their contracts, and the public headers.",
+        "chapters": [
+          "03_architecture.md"
+        ]
+      },
+      {
+        "title": "Extending and maintaining",
+        "intro": "New plug-ins step by step, the parallel event loop, and the rules of the code base.",
+        "chapters": [
+          "04_extending.md",
+          "05_parallel.md",
+          "06_standards.md"
+        ]
+      }
+    ],
+    "appendices": [],
+    "latex_dir": "docs/manual/latex",
+    "chapter_dir": "developer"
   },
   "translation_report": {
     "title": "From SIMC to SIMC++",
     "subtitle": "Translation and validation report: the Fortran SIMC rewritten in C++",
     "kicker": "SIMC++ documentation",
     "output": "SIMC_Fortran_to_SIMCpp_Translation_Report",
-    "dir": "docs/translation",
+    "dir": "docs/translation/markdown",
     "index_title": "About this report",
     "dashboard": true,
-    "front": ["front/translation_reading.tex", "front/conventions.tex"],
-    "parts": [
-      {"title": "Method",
-       "intro": "How the translation was organised and how it was proved against the Fortran.",
-       "chapters": ["01_methodology.md", "02_validation.md"]},
-      {"title": "The mapping",
-       "intro": "Which C++ code replaces which Fortran routine, the numerical rules for bitwise identity, and the switch that restores the Fortran behaviour.",
-       "chapters": ["03_routine_map.md", "04_numerics.md", "05_compat.md"]},
-      {"title": "Findings",
-       "intro": "Every Fortran bug, quirk and deliberate deviation found during the translation.",
-       "chapters": ["06_catalogue.md"]}
+    "front": [
+      "front/translation_reading.tex",
+      "conventions.tex"
     ],
-    "appendices": ["fortran_routine_map.md", "user_comparing_with_fortran.md", "user_differences.md"]
+    "parts": [
+      {
+        "title": "Method",
+        "intro": "How the translation was organised and how it was proved against the Fortran.",
+        "chapters": [
+          "01_methodology.md",
+          "02_validation.md"
+        ]
+      },
+      {
+        "title": "The mapping",
+        "intro": "Which C++ code replaces which Fortran routine, the numerical rules for bitwise identity, and the switch that restores the Fortran behaviour.",
+        "chapters": [
+          "03_routine_map.md",
+          "04_numerics.md",
+          "05_compat.md"
+        ]
+      },
+      {
+        "title": "Findings",
+        "intro": "Every Fortran bug, quirk and deliberate deviation found during the translation.",
+        "chapters": [
+          "06_catalogue.md"
+        ]
+      }
+    ],
+    "appendices": [
+      "fortran_routine_map.md",
+      "user_comparing_with_fortran.md",
+      "user_differences.md"
+    ],
+    "latex_dir": "docs/translation/latex",
+    "chapter_dir": "chapters",
+    "not_in_book": [
+      "FORTRAN_DIFFERENCES.md"
+    ]
   }
 }

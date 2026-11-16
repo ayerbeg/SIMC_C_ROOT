@@ -1,6 +1,6 @@
 # SIMC++ architecture (v2)
 
-Status: v2, task P7.4 (2026-10-04); updated in P8.2 (reaction-owned weight, D/A(e,e'p), spectral functions), P15.3/P15.4 (layout, package, threads) and P15.D1 (labels, limitations). It replaces v1 (P1.1). The developer manual ([manual/developer/index.md](manual/developer/index.md)) is the narrative entry point; this page is its short reference. The driver itself is described in
+Status: v2, task P7.4 (2026-10-04); updated in P8.2 (reaction-owned weight, D/A(e,e'p), spectral functions), P15.3/P15.4 (layout, package, threads) and P15.D1 (labels, limitations). It replaces v1 (P1.1). The developer manual ([manual/developer/index.md](../developer/index.md)) is the narrative entry point; this page is its short reference. The driver itself is described in
 [DRIVER.md](DRIVER.md), the output files in [OUTPUT_FORMAT.md](OUTPUT_FORMAT.md), the input mapping in
 [INP_JSON_MAPPING.md](INP_JSON_MAPPING.md), and how to add plug-ins in [EXTENDING.md](EXTENDING.md).
 
@@ -13,7 +13,7 @@ Status: v2, task P7.4 (2026-10-04); updated in P8.2 (reaction-owned weight, D/A(
    (`--fortran-compat`, JSON `"run": {"fortran_compat": true}`, `RunSetup::fortran_compat`) restores the exact Fortran
    behaviour for the bitwise L1/replay/regression tests. Ambiguous cases keep the Fortran behaviour and are marked
    `FORTRAN-DIFF-CANDIDATE(D-xxx)` with the question; the open acceptance-mode items `FORTRAN-OPEN(D-031 flag 1)`;
-   documented faithful oddities `FORTRAN-QUIRK(D-xxx)`. Every item is listed in [FORTRAN_DIFFERENCES.md](FORTRAN_DIFFERENCES.md).
+   documented faithful oddities `FORTRAN-QUIRK(D-xxx)`. Every item is listed in [FORTRAN_DIFFERENCES.md](../../../translation/markdown/FORTRAN_DIFFERENCES.md).
 2. **A modern, object-oriented framework around faithful kernels** (D-026). The Fortran-faithful code ("kernels")
    is the numerical core. The rest — stage interfaces, plug-ins, driver, I/O — is ordinary C++20: explicit inputs
    and outputs, RAII and `unique_ptr` ownership, value types for events, const-correct interfaces, no global state.
@@ -151,8 +151,8 @@ replays (§7) possible.
 * The stage interfaces carry the physics content of the Fortran argument lists, without the Fortran-isms: return
   values instead of output arguments, `std::optional` for "written or not" (`SpecResult::resolution_factor`),
   0-based tails (`RadiationValues`, `photonEnergies`).
-* `FORTRAN-QUIRK` marks reproduced odd behaviour (FORTRAN_DIFFERENCES.md class d); `FORTRAN-BUG`, `FORTRAN-DIFF-CANDIDATE`
-  and `FORTRAN-OPEN` the classes a, b, c. The `fortran_compat` flag is read once into `RunSetup` and reaches every stage
+* `FORTRAN-QUIRK` marks reproduced odd behaviour (FORTRAN_DIFFERENCES.md Category D); `FORTRAN-BUG`, `FORTRAN-DIFF-CANDIDATE`
+  and `FORTRAN-OPEN` Categories A, B, C. The `fortran_compat` flag is read once into `RunSetup` and reaches every stage
   through `StageContext::setup`; kernels get it explicitly (function argument, `ExtremeTripArgs`, `DeForestState`,
   `CosyEngine::setFortranCompat`). Persistent quirks (stale values) live in an object, never in a
   global: `EventState` (stale event fields), `MonteCarlo::tmpfact_`, `EepReactionBase::krel_`, `nuclear::SfTable` (the SAVEd sf_lookup locals),
@@ -220,7 +220,7 @@ builds and tests). `--data-dir` and the stages' `matrix_dir`/`data_dir` JSON key
 find_package(SIMC), runs it, and checks that the installed `simc++` and `my_simc` use the installed data without
 `--data-dir` (and that `SIMC_DATA_DIR` overrides it).
 
-**Performance and the parallel event loop (P15.4).** docs/PERFORMANCE.md: the profile, the bitwise-neutral
+**Performance and the parallel event loop (P15.4).** docs/manual/markdown/reference/PERFORMANCE.md: the profile, the bitwise-neutral
 single-thread optimisations (tgamma memo, COSY power tables) and `--threads N` (`SimcRun::runThreaded`,
 src/driver/SimcRunParallel.cpp): N worker `SimcRun`s with their own stages and mt64 streams, merged in the fixed worker
 order (`MergeTotals`, `IParallelSink` sinks), refused with `--fortran-compat` / RANLUX.

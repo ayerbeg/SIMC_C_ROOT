@@ -1,0 +1,158 @@
+% docs/manual/latex/user/05_reactions.tex - chapter of the LaTeX edition of the book "user_manual" (SIMC++ documentation).
+%   Converted once from docs/manual/markdown/user/05_reactions.md by tools/md2latex.py; from then on THIS FILE is the source of the
+%   LaTeX edition and may be edited by hand. Re-running tools/md2latex.py --write-sources for this
+%   chapter OVERWRITES the hand edits (see docs/README.md).
+%   Compile: cmake --build <build> --target pdf, or tools/build_docs_pdf.py (figures, xelatex passes,
+%   makeindex with docs/common/latex/simcpp.ist); by hand, see docs/README.md. XeLaTeX, class
+%   docs/common/latex/simcpp.cls (packages: fontspec, tikz, xcolor, hyperref, listings, longtable, booktabs,
+%   titlesec, titletoc, fancyhdr, makeidx, preview, ...); fonts TeX Gyre Pagella, TeX Gyre Heros, DejaVu Sans
+%   Mono. The figures are built first from docs/{manual,translation}/figures/*.tex (preview.sty) into PDFs.
+\chapter{\texorpdfstring{Reactions}{Reactions}}\label{user_manual-05u5freactions}
+\section{\texorpdfstring{How the reaction is chosen}{How the reaction is chosen}}\label{user_manual-05u5freactions:51-how-the-reaction-is-chosen}
+The reaction follows from the reaction flags and from \hyperref[param:targu25A]{\code{targ\%\allowbreak{}A}}\simcidx{Parameters!targ.A@\code{targ\%A}}. SIMC++ then picks the reaction and physics-model plug-ins
+(\code{Pipeline\allowbreak{}Config::\allowbreak{}Defaults}\simcidx{Classes and interfaces!PipelineConfig@\code{PipelineConfig}}, \code{src/\allowbreak{}driver/\allowbreak{}Pipeline.\allowbreak{}cpp}). The first matching row wins:
+
+\begin{simctable}{footnotesize}{5}{>{\raggedright\arraybackslash}p{\dimexpr 0.218\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.129\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.197\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.150\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.207\linewidth-2\tabcolsep\relax}}
+\caption{How the reaction is chosen}\\%
+\toprule\rowcolor{simchead}\simcth{flags} & \simcth{target} & \simcth{reaction plug-in} & \simcth{physics model} & \simcth{tree layout (\hyperref[user_manual-07u5foutputs:71-the-event-tree-h10]{7.1})} \\\midrule\endfirsthead
+\multicolumn{5}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{flags} & \simcth{target} & \simcth{reaction plug-in} & \simcth{physics model} & \simcth{tree layout (\hyperref[user_manual-07u5foutputs:71-the-event-tree-h10]{7.1})} \\\midrule\endhead
+\midrule\multicolumn{5}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+\code{doing\_\allowbreak{}phsp\ =\ 1} & any & \code{phase\_\allowbreak{}space} & none (σ = 1) & as the reaction it replaces \\
+none of the flags below & A = 1 & \code{hydrogen\_\allowbreak{}elastic} & \code{sigep} & (e,e'p), 46 columns \\
+none & A = 2 & \code{deuterium\_\allowbreak{}eep} & \code{deforest} & (e,e'p) \\
+none & A ≥ 3 & \code{nucleus\_\allowbreak{}eep} & \code{deforest} & (e,e'p) \\
+\hyperref[param:doingu5fpion]{\code{doing\_\allowbreak{}pion}}\simcidx{Parameters!doing_pion@\code{doing\_pion}} & any & \code{pion\_\allowbreak{}production} & \code{pion} & pion, 53 (65 with π0) \\
+\hyperref[param:doingu5fkaon]{\code{doing\_\allowbreak{}kaon}}\simcidx{Parameters!doing_kaon@\code{doing\_kaon}} & any & \code{kaon\_\allowbreak{}production} & \code{kaon} & kaon, 55 \\
+\hyperref[param:doingu5fdelta]{\code{doing\_\allowbreak{}delta}}\simcidx{Parameters!doing_delta@\code{doing\_delta}} & any & \code{delta\_\allowbreak{}production} & \code{delta} & pion layout, 53 \\
+\hyperref[param:doingu5fsemi]{\code{doing\_\allowbreak{}semi}}\simcidx{Parameters!doing_semi@\code{doing\_semi}} + \hyperref[param:doingu5fpion]{\code{doing\_\allowbreak{}pion}}\simcidx{Parameters!doing_pion@\code{doing\_pion}} or \hyperref[param:doingu5fkaon]{\code{doing\_\allowbreak{}kaon}}\simcidx{Parameters!doing_kaon@\code{doing\_kaon}} & any & \code{sidis\_\allowbreak{}production} & \code{sidis} & SIDIS, 56 (68 with π0) \\
+\hyperref[param:doingu5frho]{\code{doing\_\allowbreak{}rho}}\simcidx{Parameters!doing_rho@\code{doing\_rho}} & A = 1, 2, 3 & \code{rho\_\allowbreak{}production} & \code{rho} & rho, 59 \\
+\end{simctable}
+\hyperref[param:doingu5fsemi]{\code{doing\_\allowbreak{}semi}}\simcidx{Parameters!doing_semi@\code{doing\_semi}} takes priority: \hyperref[param:doingu5fpion]{\code{doing\_\allowbreak{}pion}}\simcidx{Parameters!doing_pion@\code{doing\_pion}}/\hyperref[param:doingu5fkaon]{\code{doing\_\allowbreak{}kaon}}\simcidx{Parameters!doing_kaon@\code{doing\_kaon}} then only select the SIDIS hadron. With \hyperref[param:usingu5ftgtu5ffield]{\code{using\_\allowbreak{}tgt\_\allowbreak{}field}}\simcidx{Parameters!using_tgt_field@\code{using\_tgt\_field}}, 8
+polarized-target columns are added (\hyperref[user_manual-07u5foutputs:717-polarized-target-columns-usingu5ftgtu5ffield]{7.1.7}). The log shows
+the reaction title (for example \code{\ ****-{}-{}-{}-{}-{}-{}-{}-{}\ \ H(\allowbreak{}e,\allowbreak{}e'pi+)X\ \ -{}-{}-{}-{}-{}-{}-{}-{}****}).
+
+Common to all reactions: the beam (energy spread \hyperref[param:dEbeam]{\code{dEbeam}}\simcidx{Parameters!dEbeam@\code{dEbeam}}, size \code{gen\%\allowbreak{}xwid/\allowbreak{}ywid}, raster), the target (energy loss,
+multiple scattering, Coulomb correction),\allowbreak{} the radiative tails (\hyperref[param:usingu5frad]{\code{using\_\allowbreak{}rad}}\simcidx{Parameters!using_rad@\code{using\_rad}}), the two spectrometer arms and the
+normalisation. The generation volume \code{genvol} is the product of the generated ranges: the electron solid angle; also the
+hadron solid angle and the electron energy for every reaction except H(e,e'p); also the hadron energy for A(e,e'p) and
+SIDIS.
+
+\section{\texorpdfstring{H(e,e'p) elastic, D(e,e'p) and A(e,e'p)}{H(e,e'p) elastic, D(e,e'p) and A(e,e'p)}}\label{user_manual-05u5freactions:52-heep-elastic-deep-and-aeep}
+\begin{itemize}
+\item \textbf{H(e,e'p)} (\code{hydrogen\_\allowbreak{}elastic}, model \code{sigep}): elastic scattering. Only the electron angles are generated; the
+proton follows from the kinematics. Elastic e-p cross section with a proton form-factor fit.
+\item \textbf{D(e,e'p) and A(e,e'p)} (\code{deuterium\_\allowbreak{}eep}, \code{nucleus\_\allowbreak{}eep}, model \code{deforest}): quasi-elastic knock-out with the de Forest
+off-shell cross section (\hyperref[param:deForestu5fflag]{\code{deForest\_\allowbreak{}flag}}\simcidx{Parameters!deForest_flag@\code{deForest\_flag}}: σcc1, σcc2 or σcc1 on-shell) times a spectral function:
+
+\begin{itemize}
+\item \textbf{theory files} (default): \code{h2.\allowbreak{}theory}, \code{c12.\allowbreak{}theory}, \code{fe56.\allowbreak{}theory}, \code{au197.\allowbreak{}theory} in the data directory's
+\code{spectral/}, chosen from A (2, 12, 56, 197). Any other A uses the C-12 file, with a WARNING;
+\item \textbf{Benhar spectral functions} (\code{use\_\allowbreak{}benhar\_\allowbreak{}sf\ =\ 1}): \code{benharsf\_\allowbreak{}*.\allowbreak{}dat}, weighted by \hyperref[param:transparency]{\code{transparency}}\simcidx{Parameters!transparency@\code{transparency}}.
+\end{itemize}
+In a JSON input, \code{"pipeline":\ \{"reaction":\ \{"spectral\_\allowbreak{}function":\ \{"type":\ "benhar",\ "file":\ "benharsf\_\allowbreak{}12.\allowbreak{}dat",\ "transparency":\ 0.\allowbreak{}6\}\}\}} chooses the file explicitly (\code{-{}-{}data-{}dir}\simcidx{Command-line options!data-dir@\code{-{}-{}data-{}dir}} sets its directory). \code{cuts\%\allowbreak{}Em} limits the generated
+missing energy.
+\end{itemize}
+Limitations: the D(e,e'p) weight has no hadron-angle jacobian while A(e,e'p) has one (a ≤ 1.5 \% effect at the corners of
+the generated solid angle); He-3 and He-4 use the C-12 spectral function unless you give a file.
+
+\section{\texorpdfstring{Exclusive pion production (\code{doing\_\allowbreak{}pion})}{Exclusive pion production (doing\_\allowbreak{}pion)}}\label{user_manual-05u5freactions:53-exclusive-pion-production-doingu5fpion}
+\code{pion\_\allowbreak{}production} with the \code{pion} model: H(e,e'π+)n, D/A(e,e'π±) quasifree (Fermi motion from momentum distributions),\allowbreak{} Δ
+final states and coherent production, selected with \hyperref[param:whichu5fpion]{\code{which\_\allowbreak{}pion}}\simcidx{Parameters!which_pion@\code{which\_pion}} (\hyperref[user_manual-04u5finputs:46-parameter-reference]{4.6}). The cross
+section is a parametrisation of the pion electroproduction data; below W = 2 GeV the MAID2007 tables (data directory
+\code{pion/}) are also evaluated.
+
+\begin{itemize}
+\item \textbf{π0} (\code{doing\_\allowbreak{}pizero\ =\ 1}): the π0 decays to γγ. With the calorimeter arm 7/8 as hadron arm both photons are tracked
+to the calorimeter,\allowbreak{} and \hyperref[param:pizerou5fngamma]{\code{pizero\_\allowbreak{}ngamma}}\simcidx{Parameters!pizero_ngamma@\code{pizero\_ngamma}} (1 or 2) says how many must hit (\hyperref[user_manual-06u5fspectrometers:63-the-calorimeter-arms-7-and-8]{6.3}).
+The tree gets 12 photon columns.
+\item \textbf{Decay in flight} (\code{doing\_\allowbreak{}decay\ =\ 1}, \hyperref[param:ctau]{\code{ctau}}\simcidx{Parameters!ctau@\code{ctau}}): π → μν in the spectrometer; the \code{Mhadron} column is the mass of the
+particle that reached the detectors.
+\item Not allowed (the run stops or is refused): π− from hydrogen, coherent production on H or D, coherent π− on ³He,
+coherent production on \textsuperscript{4}He,\allowbreak{} π0 "from the neutron" (\code{which\_\allowbreak{}pion\ =\ 1}) on hydrogen.
+\end{itemize}
+Limitations: coherent production uses the nucleon fit with the photon-nucleus W; for the Δ final states a new
+Breit-Wigner Δ mass is drawn when the incoming-electron radiation recomputes the event; the MAID amplitudes are single
+precision and taken from the nearest grid point.
+
+\section{\texorpdfstring{Kaon electroproduction (\code{doing\_\allowbreak{}kaon})}{Kaon electroproduction (doing\_\allowbreak{}kaon)}}\label{user_manual-05u5freactions:54-kaon-electroproduction-doingu5fkaon}
+\code{kaon\_\allowbreak{}production} with the \code{kaon} model: K+Λ, K+Σ0, K+Σ− (on the neutron), quasifree on D and A, and coherent hypernucleus
+production (\hyperref[param:whichu5fkaon]{\code{which\_\allowbreak{}kaon}}\simcidx{Parameters!which_kaon@\code{which\_kaon}} 10/11/12). The weight uses the factorized model (\code{sigcm} and \code{factor} columns); the Saghai model
+is evaluated for the \code{saghai} column. Tables in the data directory's \code{kaon/}.
+
+\begin{itemize}
+\item With \code{doing\_\allowbreak{}decay\ =\ 1} the kaon decays in flight (70 \% μν, 30 \% ππ). With \code{doing\_\allowbreak{}decay\ =\ 0} the weight is multiplied by
+the kaon's survival probability to the detectors, which is also written to \code{decdist}.
+\end{itemize}
+Limitations: a fixed decay model (branching ratios and decay momentum); coherent production uses the nucleon formulas;
+the proton mass is used in the Σ− kinematics of the factorized model.
+
+\section{\texorpdfstring{(e,e'p)π in the Delta region (\code{doing\_\allowbreak{}delta})}{(e,e'p)π in the Delta region (doing\_\allowbreak{}delta)}}\label{user_manual-05u5freactions:55-eepu3c0-in-the-delta-region-doingu5fdelta}
+\code{delta\_\allowbreak{}production} with the \code{delta} model: p(e,e'p)π with the proton detected and the pion missing (the missing particle
+has the charged-pion mass). D and nuclei are supported in the default mode.
+
+\textbf{The event weight contains no cross section} (no Delta model is implemented). The weight is phase space × virtual-photon
+flux × the jacobian of the proton angles. The yields, the \code{.\allowbreak{}hist} wtcontr and the \code{Weight} column of a Delta run are
+therefore \textbf{not physical rates}; use Delta runs for acceptance and kinematic studies only. The \code{sigcm} column holds a
+pion-production fit evaluated at the proton's CM angles, for information; it is not in the weight.
+
+\hyperref[param:whichu5fpion]{\code{which\_\allowbreak{}pion}}\simcidx{Parameters!which_pion@\code{which\_pion}} 2 or 3 also acts on Delta runs: a Breit-Wigner Δ mass then replaces the recoil pion.
+
+\section{\texorpdfstring{Semi-inclusive production (\code{doing\_\allowbreak{}semi})}{Semi-inclusive production (doing\_\allowbreak{}semi)}}\label{user_manual-05u5freactions:56-semi-inclusive-production-doingu5fsemi}
+\code{sidis\_\allowbreak{}production} with the \code{sidis} model: (e,e'π±)X with CTEQ5M parton distributions and a 2021 fit of the pion
+fragmentation functions (P. Bosted), (e,e'K±)X with fDSS fragmentation,\allowbreak{} π0 as the average of π+ and π−. Deuterium uses the
+isospin-symmetric nucleon sum; A ≥ 3 adds the SLAC EMC fit and a hadron-attenuation fit. Tables in the data directory's
+\code{sidis/}.
+
+\begin{simctable}{small}{2}{>{\raggedright\arraybackslash}p{\dimexpr 0.476\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.477\linewidth-2\tabcolsep\relax}}
+%
+\toprule\rowcolor{simchead}\simcth{inputs} & \simcth{hadron} \\\midrule\endfirsthead
+\multicolumn{2}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{inputs} & \simcth{hadron} \\\midrule\endhead
+\midrule\multicolumn{2}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+\code{doing\_\allowbreak{}semi=\allowbreak{}1\ doing\_\allowbreak{}pion=\allowbreak{}1\ doing\_\allowbreak{}hplus=\allowbreak{}1} / \code{0} & π+ / π− \\
+\code{doing\_\allowbreak{}semi=\allowbreak{}1\ doing\_\allowbreak{}pion=\allowbreak{}1\ doing\_\allowbreak{}pizero=\allowbreak{}1} & π0 (with the calorimeter arm; \hyperref[param:pizerou5fngamma]{\code{pizero\_\allowbreak{}ngamma}}\simcidx{Parameters!pizero_ngamma@\code{pizero\_ngamma}} required) \\
+\code{doing\_\allowbreak{}semi=\allowbreak{}1\ doing\_\allowbreak{}kaon=\allowbreak{}1\ doing\_\allowbreak{}hplus=\allowbreak{}1} / \code{0} & K+ / K− \\
+\code{doing\_\allowbreak{}semi=\allowbreak{}1} alone & the run stops: \code{I\ don't\ have\ ANY\ idea\ what\ (\allowbreak{}e,\allowbreak{}e'm)X\ we're\ doing!!!} \\
+\end{simctable}
+Other inputs: \hyperref[param:dou5ffermi]{\code{do\_\allowbreak{}fermi}}\simcidx{Parameters!do_fermi@\code{do\_fermi}} (Fermi motion, D and A only), \hyperref[param:doingu5fdecay]{\code{doing\_\allowbreak{}decay}}\simcidx{Parameters!doing_decay@\code{doing\_decay}}/\hyperref[param:ctau]{\code{ctau}}\simcidx{Parameters!ctau@\code{ctau}} (with decay OFF the survival probability goes
+to \code{decdist} and multiplies the weight for kaons only). \hyperref[param:ptu5fbu5fparam]{\code{pt\_\allowbreak{}b\_\allowbreak{}param}}\simcidx{Parameters!pt_b_param@\code{pt\_b\_param}} and \code{sigc\_\allowbreak{}*} are read and ignored. Events where the
+parton distributions vanish, or where Fermi motion gives x\_Bj ≤ 0, get weight 0. \hyperref[param:doingu5fsemi]{\code{doing\_\allowbreak{}semi}}\simcidx{Parameters!doing_semi@\code{doing\_semi}} with \hyperref[param:doingu5fphsp]{\code{doing\_\allowbreak{}phsp}}\simcidx{Parameters!doing_phsp@\code{doing\_phsp}} is refused.
+
+Limitations: the 2π / πK threshold uses an approximate missing-mass formula, also for kaons and with Fermi motion; with
+radiation the generated hadron-energy range is wide; the hadron-attenuation factor for deuterium is not 1.
+
+\section{\texorpdfstring{Exclusive ρ0 production (\code{doing\_\allowbreak{}rho})}{Exclusive ρ0 production (doing\_\allowbreak{}rho)}}\label{user_manual-05u5freactions:57-exclusive-u3c10-production-doingu5frho}
+\code{rho\_\allowbreak{}production} with the \code{rho} model: p(e,e'ρ0)p, ρ0 → π+π−, with one pion detected (\hyperref[param:doingu5fhplus]{\code{doing\_\allowbreak{}hplus}}\simcidx{Parameters!doing_hplus@\code{doing\_hplus}} chooses π+ or π−). The ρ
+mass is drawn from a Breit-Wigner and the decay angles from the ρ decay distribution; the \code{Mrho} and \code{Thrho} columns record
+them.
+
+\begin{itemize}
+\item Targets: H; D and ³He with a nucleon at rest (no Fermi motion, no ³He spectral function). A ≥ 4 is refused.
+\item Hadron arm 1, 2, 3, 4 or 5; the calorimeter is refused. \hyperref[param:doingu5frho]{\code{doing\_\allowbreak{}rho}}\simcidx{Parameters!doing_rho@\code{doing\_rho}} together with another reaction flag or with
+\hyperref[param:doingu5fpizero]{\code{doing\_\allowbreak{}pizero}}\simcidx{Parameters!doing_pizero@\code{doing\_pizero}} is refused.
+\item The ρ is generated over 4π, so the efficiency is low (about 3e-4 accepted events per try): runs of 1e5 events take hours
+(use \code{-{}-{}threads}\simcidx{Command-line options!threads@\code{-{}-{}threads}}).
+\end{itemize}
+Limitations: s without the Fermi terms, t at the ρ pole mass, decay angles in the lab-axis frame rather than the helicity
+frame, radiation of the neutral ρ (most of its tail-3 tries fail), and a new ρ drawn when the incoming-electron radiation
+recomputes the event.
+
+\section{\texorpdfstring{Phase-space and acceptance runs (\code{doing\_\allowbreak{}phsp})}{Phase-space and acceptance runs (doing\_\allowbreak{}phsp)}}\label{user_manual-05u5freactions:58-phase-space-and-acceptance-runs-doingu5fphsp}
+\code{doing\_\allowbreak{}phsp\ =\ 1} sets the cross section to 1 and normfac to 1, for acceptance studies: the weight is then the generation
+weight only. Two properties to know:
+
+\begin{itemize}
+\item \textbf{On hydrogen the kinematics stay elastic.} The proton is still computed from the elastic kinematics, so the run is an
+elastic acceptance run, not a flat phase space.
+\item \textbf{Radiation stays on} if \code{using\_\allowbreak{}rad\ =\ 1}, with the photon limits computed for a target mass of 0. At high energy this
+can give zero accepted events. Set \code{using\_\allowbreak{}rad\ =\ 0} for a pure acceptance run.
+\end{itemize}
+\hyperref[param:doingu5fphsp]{\code{doing\_\allowbreak{}phsp}}\simcidx{Parameters!doing_phsp@\code{doing\_phsp}} switches off the pion, kaon, Delta and rho physics but keeps the hadron mass that these flags selected.
+
+To measure the acceptance of one spectrometer,\allowbreak{} or to throw events at a spectrometer without simulating it, see
+\hyperref[param:spectu5fmode]{\code{spect\_\allowbreak{}mode}}\simcidx{Parameters!spect_mode@\code{spect\_mode}} (\hyperref[user_manual-06u5fspectrometers:64-spectu5fmode-switching-the-spectrometer-monte-carlo-off]{6.4}).
+
+(How each reaction behaves in the legacy-compatible mode, and what the default mode corrects, is listed in
+\code{docs/\allowbreak{}translation/\allowbreak{}markdown/\allowbreak{}user\_\allowbreak{}differences.\allowbreak{}md}.)
+

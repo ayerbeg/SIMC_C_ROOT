@@ -2,7 +2,7 @@
 #   cmake --install <simc build> --prefix <prefix>
 #   cmake -S examples/out_of_tree_plugin -B build -DCMAKE_PREFIX_PATH="<prefix>;<ROOT install>"
 #   cmake --build build && build/my_simc <file.inp> --pipeline toy_window.json -o out
-# Mechanism (docs/EXTENDING.md): plug-ins register themselves at static-initialisation time (SIMC_REGISTER); they are
+# Mechanism (docs/manual/markdown/reference/EXTENDING.md): plug-ins register themselves at static-initialisation time (SIMC_REGISTER); they are
 # LINKED into an executable, not loaded at run time. my_simc = the simc++ command line (simc::driver::CommandLineMain)
 # + this plug-in; SIMC::simc brings the built-in stages.
 cmake_minimum_required(VERSION 3.16)

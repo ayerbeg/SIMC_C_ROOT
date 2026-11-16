@@ -1,8 +1,16 @@
-% docs/latex/simcpp.cls — document class of the SIMC++ books (user manual, developer manual, translation report),
-% task P15.D5. XeLaTeX. The text of the books is generated from the Markdown sources by tools/md2latex.py; this class
-% gives them their design: title page with the SIMC++ logo, part pages, chapter openings with an abstract, running
-% headers, callout boxes, command/code listings, reference tables, the parameter reference, index.
-% Palette and TikZ styles: simcfig.sty; typefaces: simcfonts.sty. Build: tools/build_docs_pdf.py (CMake target pdf).
+% docs/common/latex/simcpp.cls - document class of the three SIMC++ books (user manual, developer manual, translation
+% report): title page with the SIMC++ logo, part pages, chapter openings with an abstract, running headers, callout
+% boxes, command/code listings, reference tables, the parameter reference, the index, the dashboard page.
+% Shared by the LaTeX editions in docs/manual/latex/ and docs/translation/latex/ (see docs/README.md).
+% Compile a book: cmake --build <build> --target pdf, or python3 -I tools/build_docs_pdf.py --source-root . --build-dir DIR
+%   (figures first, then xelatex, makeindex -s docs/common/latex/simcpp.ist, xelatex until the references settle).
+%   By hand: TEXINPUTS must contain docs/common/latex//, docs/common/figures and the directory of the figure PDFs.
+% Engine: XeLaTeX. Packages: fontspec, xcolor, tikz, geometry, microtype, etoolbox, calc, xparse, environ, array,
+%   longtable, booktabs, pdflscape, graphicx, enumitem, listings, caption, titlesec, titletoc, fancyhdr, makeidx,
+%   placeins, ragged2e, url, hyperref, bookmark (all in TeX Live). Fonts: TeX Gyre Pagella, TeX Gyre Heros,
+%   DejaVu Sans Mono (simcfonts.sty). Palette and TikZ styles: simcfig.sty.
+% Figures: the books include the PDFs built from docs/{manual,translation}/figures/*.tex (preview.sty), so these must
+%   be compiled first (tools/build_docs_pdf.py does it).
 \NeedsTeXFormat{LaTeX2e}
 \ProvidesClass{simcpp}[2026/11/16 SIMC++ documentation class]
 \LoadClass[11pt,a4paper,oneside,openany]{book}
@@ -31,13 +39,20 @@
 \raggedbottom
 \makeindex
 
-% ---- metadata (written by md2latex into <book>_meta.tex) -----------------------------------------------------------
+% ---- metadata: \simcsetmeta in the book's main .tex; version and date from simcpp_version.tex, written at build time
+% by tools/md2latex.py --generated (git describe and commit date); without it "unversioned" and today
 \newcommand\simctitle{}\newcommand\simcsubtitle{}\newcommand\simcversion{}\newcommand\simcdate{}
 \newcommand\simckicker{}
 \newcommand\simcsetmeta[5]{\renewcommand\simctitle{#1}\renewcommand\simcsubtitle{#2}%
   \renewcommand\simcversion{#3}\renewcommand\simcdate{#4}\renewcommand\simckicker{#5}%
-  \hypersetup{pdftitle={#1},pdfsubject={#2},pdfauthor={SIMC++ project},pdfkeywords={SIMC++, SIMC, Hall C, Monte Carlo}}}
-\newcommand\simclogo{simcpp_logo}   % docs/figures/simcpp_logo.png (TEXINPUTS / \graphicspath)
+  \hypersetup{pdftitle={#1},pdfsubject={#2},pdfauthor={SIMC++ project},pdfkeywords={SIMC++, SIMC, Monte Carlo, electron scattering, spectrometers}}}
+\newcommand\simclogo{simcpp_logo}   % docs/common/figures/simcpp_logo.png (TEXINPUTS)
+\newcommand\simcbuildversion{unversioned}\newcommand\simcbuilddate{\today}
+\InputIfFileExists{simcpp_version.tex}{}{}
+% the dashboard page of the translation report is data, written at build time; placeholder when it is missing
+\newcommand\simcnodashboard{\chapter*{The translation at a glance}\addcontentsline{toc}{chapter}{The translation at a glance}%
+  \label{dashboard}This page is generated at build time from the catalogue (tools/md2latex.py --generated); it was not
+  found when this PDF was compiled.\clearpage}
 
 % ---- inline elements ------------------------------------------------------------------------------------------------
 \DeclareRobustCommand\code[1]{\leavevmode{\ttfamily\hyphenchar\font=-1\color{simcblue!70!simcnavy}#1}}
@@ -120,8 +135,6 @@
     \fill[simcblue] (current page.north west) rectangle ([yshift=-14mm]current page.north east);
     \node[anchor=west, text=white, font=\sffamily\bfseries\small] at ([xshift=25mm,yshift=-7mm]current page.north west)
       {\MakeUppercase{\simckicker}};
-    \node[anchor=east, text=white, font=\sffamily\small] at ([xshift=-25mm,yshift=-7mm]current page.north east)
-      {Hall C coincidence Monte Carlo};
     \node[anchor=north] at ([yshift=-36mm]current page.north)
       {\includegraphics[width=128mm]{\simclogo}};
     \node[anchor=north west, text width=160mm, align=left, text=simcnavy,
@@ -137,7 +150,7 @@
       {\textbf{Version} \texttt{\simcversion}\\[2pt]\textbf{Date} \simcdate};
     \node[anchor=south east, text=white!80!simcblue, align=right, font=\sffamily\footnotesize]
       at ([xshift=-25mm,yshift=11mm]current page.south east)
-      {Generated from the Markdown sources\\[2pt] of the SIMC++ repository (\texttt{docs/})};
+      {LaTeX edition of the SIMC++ documentation\\[2pt] (repository directory \texttt{docs/})};
   \end{tikzpicture}
   \end{titlepage}}
 
@@ -146,10 +159,11 @@
   \thispagestyle{empty}\null\vfill
   {\small\sffamily\color{simcgray}
   \textbf{\color{simcnavy}\simctitle}\\[2pt]\simcsubtitle\par\medskip
-  Version \texttt{\simcversion} of \simcdate. This book is generated from the Markdown documentation of the SIMC++
-  repository by \texttt{tools/md2latex.py}; the Markdown files are the reference text and are readable on their own,
-  for example in the repository browser. Build: \texttt{cmake --build build --target pdf}.\par\medskip
-  SIMC++ is the C++ translation of SIMC, the Monte Carlo of Jefferson Lab Hall C (Fortran, \texttt{simc\_gfortran}).\par}
+  Version \texttt{\simcversion} of \simcdate. This is the LaTeX edition of the SIMC++ documentation; a Markdown
+  edition of the same text, readable in the repository browser, is kept next to it (\texttt{docs/README.md}).
+  Build: \texttt{cmake --build build --target pdf}.\par\medskip
+  SIMC++ is the C++ translation of SIMC (Fortran, \texttt{simc\_gfortran}), the Monte Carlo simulation of
+  electron-scattering experiments with magnetic spectrometers developed at Jefferson Lab.\par}
   \clearpage}
 
 % ---- book structure ------------------------------------------------------------------------------------------------
@@ -335,7 +349,7 @@
   \simcdashtile{#1}{findings catalogued (bugs, quirks, deviations)}{simcred}\hfill
   \simcdashtile{#5}{validation levels against the Fortran}{simcgreen}\par}
 \newenvironment{simcdashbars}{\par\medskip\noindent\begin{tikzpicture}[x=1mm,y=1mm]}{\end{tikzpicture}\par}
-% \simcdashbar{index}{class}{meaning}{count}{fraction of the largest}{colour}
+% \simcdashbar{index}{Category}{meaning}{count}{fraction of the largest}{colour}
 \newcommand\simcdashbar[6]{%
   \node[anchor=east, font=\sffamily\bfseries\small, text=simcnavy] at (12,-#1*7) {#2};
   \node[anchor=west, font=\sffamily\scriptsize, text=simcgray, text width=58mm] at (14,-#1*7) {#3};

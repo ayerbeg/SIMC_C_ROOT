@@ -1,6 +1,6 @@
 # 9. Performance tips
 
-Measured on the development machine (Intel i7-3770, 4 cores / 8 hardware threads, GCC 16.2 `-O3`; `docs/PERFORMANCE.md`).
+Measured on the development machine (Intel i7-3770, 4 cores / 8 hardware threads, GCC 16.2 `-O3`; `docs/manual/markdown/reference/PERFORMANCE.md`).
 
 ## 9.1 Speed
 
@@ -21,7 +21,7 @@ about 3000 for rho.
 
 ## 9.2 Tips
 
-* **Use threads.** `--threads 4` gave 2.8-3.4× and `--threads 8` 2.8-4.3× on the 4-core machine (`docs/PERFORMANCE.md`
+* **Use threads.** `--threads 4` gave 2.8-3.4× and `--threads 8` 2.8-4.3× on the 4-core machine (`docs/manual/markdown/reference/PERFORMANCE.md`
   §3). Beyond the number of physical cores only hyper-threading helps. Threads are not allowed with `--fortran-compat` or
   RANLUX ([8.5](08_running_and_reproducibility.md#85-threads---threads-n)).
 * **Memory with threads.** Each thread holds its own tables; a pion run on 8 threads uses about 450 MB. Each thread also

@@ -31,10 +31,10 @@ Without the validation data every test that needs it is skipped (exit 77, "Skipp
 Flags: `-Wall -Wextra -pedantic` everywhere (the build has 0 warnings; keep it so), Release `-O3 -DNDEBUG`. **Do not
 add `-march=native`, `-ffast-math` or `-ffp-contract=fast`**: FMA contraction and value-unsafe optimisations change the
 floating-point results and break every bitwise reference test (the numerical rules are in the
-[translation report](../../translation/04_numerics.md)).
+[translation report](../../../translation/markdown/04_numerics.md)).
 
 The comparison tool `simc_compare` is a separate CMake project in `validation/` (its own build directory and CTest
-suite; the statistics are documented in [validation/README.md](../../../validation/README.md)).
+suite; the statistics are documented in [validation/README.md](../../../../validation/README.md)).
 
 ## 2.2 Layout and targets
 
@@ -116,7 +116,7 @@ Tests are grouped by directory and labelled:
 their reference input is missing. The L1 and fortran_diff tests run through `tests/toolchain_guard.sh`
 (`CMAKE_TEST_LAUNCHER`): on a failure it prints the toolchain of the references (`reference/TOOLCHAIN.txt`) next to
 the current one, because a libm update changes bits. What each reference test proves is described in the
-[translation report](../../translation/02_validation.md).
+[translation report](../../../translation/markdown/02_validation.md).
 
 The `simc_compare` project has its own suite (`cmake -S validation -B vbuild && cmake --build vbuild && ctest
 --test-dir vbuild`): A-vs-A, reference-vs-reference, sensitivity (rad vs norad, shifted `hsdelta`), JSON vs `.hist`,

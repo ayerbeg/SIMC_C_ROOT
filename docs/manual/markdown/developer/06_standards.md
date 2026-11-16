@@ -16,7 +16,7 @@
   expression, refactor around it and prove that nothing changed with the golden set (`validation/scripts/p153_golden.sh`)
   and the replay tests. The numerical rules (no `std::pow(x, 2)`, which the unit test `lint_no_pow_square` enforces;
   `optics::powi` for integer powers; quad precision where required), the origin comments and the markers for
-  behaviour that differs between the two modes are described in the [translation report](../../translation/index.md),
+  behaviour that differs between the two modes are described in the [translation report](../../../translation/markdown/index.md),
   chapters 3-5.
 * **Interfaces** carry physics: return values instead of output arguments, `std::optional` for "written or not",
   0-based arrays (with a comment where a kernel keeps another convention).
@@ -57,7 +57,7 @@
   decided by the user).
 
 Open physics questions about the original program's behaviour (the expert list, the acceptance mode, the Delta weight)
-are listed in the [translation report](../../translation/06_catalogue.md).
+are listed in the [translation report](../../../translation/markdown/06_catalogue.md).
 
 ## 6.4 Known loose ends
 

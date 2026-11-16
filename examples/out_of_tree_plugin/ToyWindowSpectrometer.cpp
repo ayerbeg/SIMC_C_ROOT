@@ -1,5 +1,5 @@
 // examples/out_of_tree_plugin/ToyWindowSpectrometer.cpp — a minimal ISpectrometer written outside the SIMC++ tree
-// (task P15.3, docs/EXTENDING.md). "toy_window": accepts a track when |delta| <= delta_max (%) and returns it
+// (task P15.3, docs/manual/markdown/reference/EXTENDING.md). "toy_window": accepts a track when |delta| <= delta_max (%) and returns it
 // unchanged (perfect reconstruction, unit optics). JSON config: {"type": "toy_window", "delta_max": 8.0}.
 // Stop counters (printed in the .geni and the summary): trials, delta, successes.
 #include <cmath>

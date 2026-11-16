@@ -70,7 +70,7 @@ constants: `/gnrl/` except the per-try masses, `/target_info/`, cuts, limits), `
 `main`, `vertex`, `orig`, `recon`), `MainEvent::ntup` (`/ntuple_variables/`), `MainEvent::pfermi` (`/pfermi/`),
 `MainEvent::gnrl` (the per-try `/gnrl/` masses of doing_rho), `radiation::RadcState` (`/radccom/`), the spectrometer
 kernels (`/track/`, stop counters), `nuclear::SfTable` (`/sftable/` and the SAVEd locals of sf_lookup),
-`optics::TargetField` (the trg_track COMMONs). Nothing is a global variable. The developer manual ([chapter 3](../manual/developer/03_architecture.md))
+`optics::TargetField` (the trg_track COMMONs). Nothing is a global variable. The developer manual ([chapter 3](../../manual/markdown/developer/03_architecture.md))
 describes these classes; chapter 3 here gives the routine-level map.
 
 ## 1.3 Design principles
@@ -110,7 +110,7 @@ describes these classes; chapter 3 here gives the routine-level map.
   (`reference/P<n>.F<k>_report.md`) listing every bug and oddity found while instrumenting the code; (C) the C++ port,
   routine by routine, each with its L1 test; then the integration into the driver with replays of the captures, a
   regression baseline and an L2 comparison in both modes; (R) the director's review and classification of the findings
-  (class a/b/c/d, chapter 5).
+  (Categories A/B/C/D, chapter 5).
 * **Reading order of a port.** Read the whole Fortran routine and its callers, the COMMON blocks and includes; note units,
   1-based and column-major indexing, implicit typing (`i`-`n` integers), `real*4` vs `real*8`, `-fno-automatic`
   (static locals), `save`/`data` initialisation and GOTO flow; port the same algorithm with the same operation order and

@@ -1,14 +1,20 @@
 #!/usr/bin/env python3
-"""md2latex.py - convert the SIMC++ Markdown manuals into the bodies of the LaTeX books (task P15.D5).
+"""md2latex.py - optional helper: convert the Markdown edition of the SIMC++ books into LaTeX (tasks P15.D5, P15.D6).
 
-usage: md2latex.py --book NAME [--book NAME ...] --source-root DIR --outdir DIR [--figdir DIR]
+usage: md2latex.py --source-root DIR --book NAME [--book NAME ...]
+                   (--write-sources [--chapter FILE.md ...] [--skeleton] | --generated OUTDIR | --check)
 
-The Markdown files under docs/manual/user, docs/manual/developer and docs/translation stay the single source of the
-text.  This script reads the book manifest docs/latex/books.json (parts, chapter files, appendices, PDF-only front
-matter) and writes, for every requested book NAME, into --outdir:
-    NAME_meta.tex   title, subtitle, version (git describe), date (commit date) as macros
-    NAME_body.tex   front matter (the index.md of the manual + the PDF-only files), parts, chapters, appendices
-The LaTeX skeletons docs/latex/<NAME>.tex (class docs/latex/simcpp.cls) \\input these two files.
+Each book has two editable editions: Markdown (docs/manual/markdown/{user,developer}, docs/translation/markdown) and
+LaTeX (docs/manual/latex, docs/translation/latex; committed). This script was used once to create the LaTeX chapters
+and can re-synchronise a chapter after a large change of its Markdown text:
+  --write-sources  rewrites <latex_dir>/<chapter_dir>/<name>.tex for every chapter of the book (or only the --chapter
+                   files), from the Markdown. THIS OVERWRITES HAND EDITS of those .tex files: compare with git diff and
+                   re-apply them. --skeleton also rewrites the book's main file <latex_dir>/<NAME>.tex.
+  --generated DIR  writes the build-time inputs (used by tools/build_docs_pdf.py): simcpp_version.tex (git describe,
+                   commit date) and, for the translation report, <NAME>_dashboard.tex (numbers read from the catalogue,
+                   the routine map and the validation chapter).
+  --check          converts in memory and reports the errors only.
+The book manifest is docs/common/latex/books.json (Markdown dir, LaTeX dir, parts, chapters, appendices, front matter).
 
 Supported Markdown (GitHub flavour, the subset used by the manuals):
   ATX headings (# .. ####), paragraphs, **strong**, *emphasis*, _emphasis_, `code spans`, backslash escapes,
@@ -17,7 +23,7 @@ Supported Markdown (GitHub flavour, the subset used by the manuals):
   <br> inside cells), block quotes, callouts (`> **Note:**`, `> **Tip:**`, `> **Warning:**`, `> **Legacy SIMC:**`),
   links (same chapter / other chapter of the book -> \\hyperref; other files -> text + footnote with the path;
   http(s) -> \\href), images (`![caption](../figures/x.png)` alone in a paragraph -> numbered figure; a figure whose
-  TikZ source docs/latex/figures/x.tex exists is included as the PDF built from it), autolinks <http://...>,
+  TikZ source docs/{manual,translation}/figures/x.tex exists is included as the PDF built from it), autolinks <http://...>,
   inline <br>, HTML comments (`<!-- from: path -->` -> "source" caption of the next listing,
   `<!-- abstract: text -->` -> chapter abstract; other comments are invisible on GitHub and are skipped),
   horizontal rules.
@@ -351,7 +357,8 @@ class Book:
         for line in open(idx, encoding='utf-8'):
             for t in re.findall(r'\]\(([^)#\s]+\.md)(?:#[^)]*)?\)', line):
                 p = os.path.normpath(os.path.join(self.dir, t))
-                if os.path.dirname(p) == self.dir and p not in order and p != idx:
+                if os.path.dirname(p) == self.dir and p not in order and p != idx and \
+                        os.path.basename(p) not in self.spec.get('not_in_book', []):
                     order.append(p)
         chapters = [os.path.join(self.dir, c) for part in self.spec['parts'] for c in part['chapters']]
         appendices = [os.path.join(self.dir, c) for c in self.spec.get('appendices', [])]
@@ -556,11 +563,10 @@ class Book:
             self.errors.append(f'{self.cur}:{ln}: image not found: {target}')
             return ''
         stem = os.path.splitext(os.path.basename(path))[0]
-        tikz = os.path.join(self.root, 'docs', 'latex', 'figures', stem + '.tex')
-        if os.path.exists(tikz):
-            gfx = os.path.join(self.figdir, stem + '.pdf').replace('\\', '/')
+        if find_tikz(self.root, stem):
+            gfx = stem          # the PDF built from docs/<edition>/figures/<stem>.tex, found through TEXINPUTS
         else:
-            gfx = path
+            gfx = os.path.relpath(path, self.root).replace('\\', '/')
         if inline:
             return r'\includegraphics[height=1.2em]{%s}' % gfx
         cap = self.inline(alt, ln, 'caption')
@@ -796,29 +802,50 @@ class Book:
         self.render_blocks(blocks, out)
         return ''.join(out)
 
-    def convert(self, front_tex):
-        body = ['\\simcfrontmatter\n']
+    def tex_name(self, path):
+        """Name of the committed LaTeX file of a Markdown file, relative to the book's LaTeX directory."""
+        return self.spec['chapter_dir'] + '/' + os.path.splitext(os.path.basename(path))[0]
+
+    def front_file(self, f):
+        """A PDF-only front-matter file: relative to the book's LaTeX directory, or a shared one of docs/common/latex."""
+        for d in (os.path.join(self.root, self.spec['latex_dir']), os.path.join(self.root, 'docs', 'common', 'latex')):
+            if os.path.exists(os.path.join(d, f)):
+                return os.path.splitext(f)[0]
+        self.errors.append(f'{BOOKS_JSON}: front-matter file not found: {f}')
+        return os.path.splitext(f)[0]
+
+    def convert(self):
+        """Returns (book skeleton text, {relative .tex name: chapter text}) for the committed LaTeX edition."""
+        files = {}
+        sk = ['\\begin{document}\n\\simcfrontmatter\n']
         idx = self.files[0][0]
-        body.append(self.render_file(idx, 'index', None))
+        files[self.tex_name(idx)] = self.render_file(idx, 'index', None)
+        sk.append('\\input{%s}\n' % self.tex_name(idx))
         for f in self.spec.get('front', []):
-            if not os.path.exists(os.path.join(self.root, 'docs', 'latex', f)):
-                self.errors.append(f'docs/latex/books.json: front-matter file not found: docs/latex/{f}')
-            body.append('\\input{%s}\n' % f)
-        if front_tex:
-            body.append(front_tex)
-        body.append('\\simcmainmatter\n')
+            sk.append('\\input{%s}\n' % self.front_file(f))
+        if self.spec.get('dashboard'):
+            sk.append('%% the dashboard page is data (catalogue and routine-map totals): written at build time by\n'
+                      '%% tools/md2latex.py --generated (tools/build_docs_pdf.py does it), never edited by hand\n'
+                      '\\InputIfFileExists{%s_dashboard.tex}{}{\\simcnodashboard}\n' % self.name)
+        sk.append('\\simcmainmatter\n')
         chapter_no = 0
         for part in self.spec['parts']:
-            body.append('\\simcpart{%s}{%s}\n' % (esc_text(part['title']), self.inline(part.get('intro', ''), 0)))
+            sk.append('\n\\simcpart{%s}\n  {%s}\n' % (esc_text(part['title']), self.inline(part.get('intro', ''), 0)))
             for c in part['chapters']:
                 chapter_no += 1
-                body.append(self.render_file(os.path.join(self.dir, c), 'chapter', chapter_no))
+                path = os.path.join(self.dir, c)
+                files[self.tex_name(path)] = self.render_file(path, 'chapter', chapter_no)
+                sk.append('\\input{%s}\n' % self.tex_name(path))
         if self.spec.get('appendices'):
-            body.append('\\simcappendix\n')
+            sk.append('\n\\simcappendix\n')
             for a in self.spec['appendices']:
-                body.append(self.render_file(os.path.join(self.dir, a), 'appendix', None))
-        body.append('\\simcbackmatter\n')
-        return ''.join(body)
+                path = os.path.join(self.dir, a)
+                files[self.tex_name(path)] = self.render_file(path, 'appendix', None)
+                sk.append('\\input{%s}\n' % self.tex_name(path))
+        sk.append('\\simcbackmatter\n\\end{document}\n')
+        head = ('\\documentclass{simcpp}\n\\simcsetmeta{%s}\n  {%s}\n  {\\simcbuildversion}{\\simcbuilddate}{%s}\n'
+                % (esc_text(self.spec['title']), esc_text(self.spec['subtitle']), esc_text(self.spec.get('kicker', 'SIMC++'))))
+        return head + ''.join(sk), files
 
 
 def parse_link(s, i):
@@ -1001,8 +1028,8 @@ def load_vocabulary(root):
                     m = re.match(r'^\s*(?:class|struct)\s+([A-Z][A-Za-z0-9]+)\b(?!;)', line)
                     if m and not line.rstrip().endswith(';'):
                         CLASSES.add(m.group(1))
-    drv = os.path.join(root, 'docs', 'DRIVER.md')
-    usage = os.path.join(root, 'docs', 'manual', 'user', 'VERIFIED_EXAMPLES.md')
+    drv = os.path.join(root, 'docs', 'manual', 'markdown', 'reference', 'DRIVER.md')
+    usage = os.path.join(root, 'docs', 'manual', 'markdown', 'user', 'VERIFIED_EXAMPLES.md')
     for p in (drv, usage):
         if os.path.exists(p):
             OPTIONS.update(re.findall(r'(--[a-z][a-z0-9-]+)', open(p, encoding='utf-8').read()))
@@ -1010,7 +1037,7 @@ def load_vocabulary(root):
 
 def parameter_names(root):
     names, in_ref = [], False
-    for line in open(os.path.join(root, 'docs', 'manual', 'user', '04_inputs.md'), encoding='utf-8'):
+    for line in open(os.path.join(root, 'docs', 'manual', 'markdown', 'user', '04_inputs.md'), encoding='utf-8'):
         if line.startswith('|') and [plain(c) for c in split_row(line)] == PARAM_HEADER:
             in_ref = True
             continue
@@ -1036,13 +1063,13 @@ def git_meta(root):
 # ----------------------------------------------------------------------------------------------------------------------
 # translation report: the dashboard page, from the Markdown data
 
-def dashboard(root, figdir, errors):
-    cat = os.path.join(root, 'docs', 'translation', '06_catalogue.md')
-    rmap = os.path.join(root, 'docs', 'translation', 'fortran_routine_map.md')
-    val = os.path.join(root, 'docs', 'translation', '02_validation.md')
+def dashboard(root, errors):
+    cat = os.path.join(root, 'docs', 'translation', 'markdown', '06_catalogue.md')
+    rmap = os.path.join(root, 'docs', 'translation', 'markdown', 'fortran_routine_map.md')
+    val = os.path.join(root, 'docs', 'translation', 'markdown', '02_validation.md')
     classes = []
     for line in open(cat, encoding='utf-8'):
-        m = re.match(r'^\|\s*(a|a-np|b|c|d|dev)\s*\|\s*(.*?)\s*\|\s*(\d+)\s*\|\s*$', line)
+        m = re.match(r'^\|\s*(A|A-NP|B|C|D|DEV)\s*\|\s*(.*?)\s*\|\s*(\d+)\s*\|\s*$', line)
         if m:
             classes.append((m.group(1), m.group(2), int(m.group(3))))
     m = re.search(r'Totals:\s*(\d+) routines,\s*(\d+) cited by C\+\+ code,\s*(\d+) without',
@@ -1060,7 +1087,7 @@ def dashboard(root, figdir, errors):
             if cells and not set(cells[0]) <= set('-: '):
                 levels.append(cells)
     if not classes or not m or not levels:
-        errors.append(f'{cat}: cannot read the data of the dashboard page (class table, routine totals, '
+        errors.append(f'{cat}: cannot read the data of the dashboard page (Category table, routine totals, '
                       f'validation levels)')
         return ''
     total = sum(c[2] for c in classes)
@@ -1068,61 +1095,119 @@ def dashboard(root, figdir, errors):
     bars = []
     for k, (c, meaning, cnt) in enumerate(classes):
         short = meaning.split(':')[0]
-        colour = {'a': 'simcred', 'dev': 'simcgreen'}.get(c, 'simcblue')
+        colour = {'A': 'simcred', 'DEV': 'simcgreen'}.get(c, 'simcblue')
         bars.append(r'\simcdashbar{%d}{%s}{%s}{%d}{%.4f}{%s}' % (k, esc_text(c), esc_text(short), cnt, cnt / mx,
                                                                  colour))
     lv = [r'\simcdashlevel{%s}{%s}' % (esc_text(plain(cells[0])), esc_text(plain(cells[1]))) for cells in levels]
-    ladder = os.path.join(figdir, 'validation_ladder.pdf').replace('\\', '/')
     return ('\\chapter*{The translation at a glance}\\addcontentsline{toc}{chapter}{The translation at a glance}'
             '\\markboth{The translation at a glance}{}\\label{dashboard}\n'
-            '\\simcabstract{The numbers of this page are read from the report itself when the book is built: the class '
+            '\\simcabstract{The numbers of this page are read from the report itself when the book is built: the Category '
             'table of the catalogue (chapter~\\ref{translation_report-06u5fcatalogue}), the totals of the generated routine '
             'map (appendix~\\ref{translation_report-fortranu5froutineu5fmap}) and the levels of the validation framework '
             '(chapter~\\ref{translation_report-02u5fvalidation}).}\n'
             '\\simcdashtiles{%d}{%s}{%s}{%s}{%d}\n'
-            '\\section*{Findings by class}\n\\begin{simcdashbars}\n%s\n\\end{simcdashbars}\n'
+            '\\section*{Findings by Category}\n\\begin{simcdashbars}\n%s\n\\end{simcdashbars}\n'
             '\\section*{The validation ladder}\n\\begin{center}\\includegraphics[width=0.8\\linewidth]{%s}\\end{center}\n'
             '\\begin{simcdashlevels}\n%s\n\\end{simcdashlevels}\n\\clearpage\n'
-            % (total, m.group(1), m.group(2), m.group(3), len(levels), '\n'.join(bars), ladder, '\n'.join(lv)))
+            % (total, m.group(1), m.group(2), m.group(3), len(levels), '\n'.join(bars), 'validation_ladder', '\n'.join(lv)))
 
 
 # ----------------------------------------------------------------------------------------------------------------------
 
+BOOKS_JSON = 'docs/common/latex/books.json'
+
+
+def find_tikz(root, stem):
+    """The TikZ source docs/<edition>/figures/<stem>.tex of a figure (manual, translation or common), or None."""
+    for ed in ('manual', 'translation', 'common'):
+        p = os.path.join(root, 'docs', ed, 'figures', stem + '.tex')
+        if os.path.exists(p):
+            return p
+    return None
+
+
+def tex_header(kind, rel, book, md=None):
+    """The header comment of a written .tex file (rel: its path in the repository)."""
+    src = f'%   Converted once from {md} by tools/md2latex.py; from then on THIS FILE is the source of the\n' \
+          f'%   LaTeX edition and may be edited by hand. Re-running tools/md2latex.py --write-sources for this\n' \
+          f'%   chapter OVERWRITES the hand edits (see docs/README.md).\n' if md else ''
+    return (f'% {rel} - {kind} of the LaTeX edition of the book "{book}" (SIMC++ documentation).\n' + src +
+            '%   Compile: cmake --build <build> --target pdf, or tools/build_docs_pdf.py (figures, xelatex passes,\n'
+            '%   makeindex with docs/common/latex/simcpp.ist); by hand, see docs/README.md. XeLaTeX, class\n'
+            '%   docs/common/latex/simcpp.cls (packages: fontspec, tikz, xcolor, hyperref, listings, longtable, booktabs,\n'
+            '%   titlesec, titletoc, fancyhdr, makeidx, preview, ...); fonts TeX Gyre Pagella, TeX Gyre Heros, DejaVu Sans\n'
+            '%   Mono. The figures are built first from docs/{manual,translation}/figures/*.tex (preview.sty) into PDFs.\n')
+
+
 def main(argv):
-    ap = argparse.ArgumentParser(description='Markdown manuals -> LaTeX book bodies (SIMC++)')
+    ap = argparse.ArgumentParser(description='Markdown manuals -> LaTeX edition of the books (SIMC++)')
     ap.add_argument('--book', action='append', required=True)
     ap.add_argument('--source-root', required=True)
-    ap.add_argument('--outdir', required=True)
-    ap.add_argument('--figdir', default='figures', help='directory of the figure PDFs as seen from LaTeX')
+    mode = ap.add_mutually_exclusive_group(required=True)
+    mode.add_argument('--write-sources', action='store_true',
+                      help='(re)write the committed chapter .tex files of the book from the Markdown (OVERWRITES hand '
+                           'edits); with --chapter only those chapters')
+    mode.add_argument('--generated', metavar='OUTDIR',
+                      help='write the build-time files into OUTDIR: simcpp_version.tex (git describe, commit date) and '
+                           'the dashboard page of the translation report')
+    mode.add_argument('--check', action='store_true', help='convert in memory and report the errors only')
+    ap.add_argument('--chapter', action='append', default=[], help='Markdown file name (e.g. 04_inputs.md)')
+    ap.add_argument('--skeleton', action='store_true', help='with --write-sources: also rewrite the book .tex')
     a = ap.parse_args(argv[1:])
     root = os.path.abspath(a.source_root)
-    with open(os.path.join(root, 'docs', 'latex', 'books.json'), encoding='utf-8') as f:
+    with open(os.path.join(root, BOOKS_JSON), encoding='utf-8') as f:
         books = json.load(f)
+    errors = []
+    if a.generated:
+        os.makedirs(a.generated, exist_ok=True)
+        version, date = git_meta(root)
+        with open(os.path.join(a.generated, 'simcpp_version.tex'), 'w', encoding='utf-8') as f:
+            f.write('%% written by tools/md2latex.py --generated\n\\renewcommand\\simcbuildversion{%s}'
+                    '\\renewcommand\\simcbuilddate{%s}\n' % (esc_text(version), esc_text(date)))
+        for name in a.book:
+            if books.get(name, {}).get('dashboard'):
+                with open(os.path.join(a.generated, name + '_dashboard.tex'), 'w', encoding='utf-8') as f:
+                    f.write('% written by tools/md2latex.py --generated from the translation report data: do not edit\n'
+                            + dashboard(root, errors))
+        for e in errors:
+            print(e)
+        return 1 if errors else 0
     load_vocabulary(root)
     params = parameter_names(root)
-    version, date = git_meta(root)
-    os.makedirs(a.outdir, exist_ok=True)
-    errors = []
+    written = 0
     for name in a.book:
         if name not in books:
             print(f'md2latex: unknown book {name} (known: {", ".join(books)})', file=sys.stderr)
             return 2
         spec = books[name]
-        bk = Book(name, spec, root, a.outdir, a.figdir, books, errors)
+        bk = Book(name, spec, root, None, None, books, errors)
         bk.collect()
         has_ref = any('04_inputs.md' in c for p in spec['parts'] for c in p['chapters'])
         bk.params = {p: ('param:' + label_safe(p)) if has_ref else None for p in params}
-        front = dashboard(root, a.figdir, errors) if spec.get('dashboard') else ''
-        body = bk.convert(front)
-        with open(os.path.join(a.outdir, name + '_body.tex'), 'w', encoding='utf-8') as f:
-            f.write('% generated by tools/md2latex.py from the Markdown sources: do not edit\n' + body)
-        with open(os.path.join(a.outdir, name + '_meta.tex'), 'w', encoding='utf-8') as f:
-            f.write('%% generated by tools/md2latex.py\n\\simcsetmeta{%s}{%s}{%s}{%s}{%s}\n' % (
-                esc_text(spec['title']), esc_text(spec['subtitle']), esc_text(version), esc_text(date),
-                esc_text(spec.get('kicker', 'SIMC++'))))
+        skeleton, files = bk.convert()
+        if not a.write_sources:
+            continue
+        ldir = os.path.join(root, spec['latex_dir'])
+        for rel, text in files.items():
+            stem = os.path.basename(rel)
+            if a.chapter and stem + '.md' not in a.chapter:
+                continue
+            path = os.path.join(ldir, rel + '.tex')
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            md = os.path.relpath(os.path.join(bk.dir, stem + '.md'), root)
+            with open(path, 'w', encoding='utf-8') as f:
+                f.write(tex_header('chapter', os.path.relpath(path, root), name, md) + text)
+            written += 1
+        if a.skeleton:
+            path = os.path.join(ldir, name + '.tex')
+            with open(path, 'w', encoding='utf-8') as f:
+                f.write(tex_header('main file', os.path.relpath(path, root), name) +
+                        '%   Structure (parts, chapter order) is edited HERE; docs/common/latex/books.json only drives\n'
+                        '%   tools/md2latex.py when chapters are re-converted from the Markdown.\n' + skeleton)
+            written += 1
     for e in errors:
         print(e)
-    print(f'md2latex: {len(a.book)} book(s), {len(errors)} error(s)')
+    print(f'md2latex: {len(a.book)} book(s), {written} file(s) written, {len(errors)} error(s)')
     return 1 if errors else 0
 
 

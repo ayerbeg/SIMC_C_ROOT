@@ -1,0 +1,167 @@
+% docs/translation/latex/chapters/02_validation.tex - chapter of the LaTeX edition of the book "translation_report" (SIMC++ documentation).
+%   Converted once from docs/translation/markdown/02_validation.md by tools/md2latex.py; from then on THIS FILE is the source of the
+%   LaTeX edition and may be edited by hand. Re-running tools/md2latex.py --write-sources for this
+%   chapter OVERWRITES the hand edits (see docs/README.md).
+%   Compile: cmake --build <build> --target pdf, or tools/build_docs_pdf.py (figures, xelatex passes,
+%   makeindex with docs/common/latex/simcpp.ist); by hand, see docs/README.md. XeLaTeX, class
+%   docs/common/latex/simcpp.cls (packages: fontspec, tikz, xcolor, hyperref, listings, longtable, booktabs,
+%   titlesec, titletoc, fancyhdr, makeidx, preview, ...); fonts TeX Gyre Pagella, TeX Gyre Heros, DejaVu Sans
+%   Mono. The figures are built first from docs/{manual,translation}/figures/*.tex (preview.sty) into PDFs.
+\chapter{\texorpdfstring{Validation framework}{Validation framework}}\label{translation_report-02u5fvalidation}
+\simcabstract{SIMC++ is validated at four levels against the Fortran, plus C++-against-C++ identity for refactors. Every result is
+recorded in the project's \code{project\_\allowbreak{}control/\allowbreak{}VALIDATION\_\allowbreak{}LEDGER.\allowbreak{}md} (date, task, Fortran reference, C++ run,
+commit, metrics, tolerance, verdict).}
+\begin{simctable}{footnotesize}{4}{>{\raggedright\arraybackslash}p{\dimexpr 0.131\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.321\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.253\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.214\linewidth-2\tabcolsep\relax}}
+%
+\toprule\rowcolor{simchead}\simcth{level} & \simcth{question} & \simcth{Fortran side} & \simcth{C++ side} \\\midrule\endfirsthead
+\multicolumn{4}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{level} & \simcth{question} & \simcth{Fortran side} & \simcth{C++ side} \\\midrule\endhead
+\midrule\multicolumn{4}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+L1 tables & does one routine give the same numbers on fixed inputs? & harness drivers → \code{reference/\allowbreak{}functions/\allowbreak{}<routine>\allowbreak{}/} & \code{tests/\allowbreak{}l1/\allowbreak{}test\_\allowbreak{}l1\_\allowbreak{}*.\allowbreak{}cpp} (label \code{l1}) \\
+replays & does the whole chain give the same numbers on the Fortran's own random stream? & capture programs (\code{ld\ -{}-{}wrap} recorders) → \code{reference/\allowbreak{}functions/\allowbreak{}event\_\allowbreak{}capture*}, \code{reference/\allowbreak{}runs/\allowbreak{}*\_\allowbreak{}cap} & \code{l1\_\allowbreak{}*\_\allowbreak{}replay\_\allowbreak{}*} (labels \code{l1;replay}) \\
+RANLUX full runs & is a complete run identical to the Fortran run of the same seed? & \code{reference/\allowbreak{}runs/\allowbreak{}<tag>\allowbreak{}/} (.inp .hist .geni .gen .root) & \code{l1\_\allowbreak{}simcrun\_\allowbreak{}ranlux\_\allowbreak{}*}, \code{regression\_\allowbreak{}shipped\_\allowbreak{}*} \\
+L2 & is the run statistically the same (the acceptance test, D-002)? & \code{reference/\allowbreak{}runs/\allowbreak{}<tag>\allowbreak{}\_\allowbreak{}A}, \code{\_\allowbreak{}B} & \code{simc\_\allowbreak{}compare} \\
+identity & did a refactor change any output? & — & \code{regression\_\allowbreak{}*}, \code{p153\_\allowbreak{}golden.\allowbreak{}sh} \\
+\end{simctable}
+\begin{figure}[htbp]
+\simcfigure{validation_ladder}
+\caption[The validation ladder]{The validation ladder: single routines on fixed inputs, the whole event chain on the random numbers of the original program, complete runs identical bit for bit, and complete runs compared statistically}\label{fig:validationu5fladder}
+\end{figure}
+\section{\texorpdfstring{The Fortran L1 harness and the tables}{The Fortran L1 harness and the tables}}\label{translation_report-02u5fvalidation:21-the-fortran-l1-harness-and-the-tables}
+the Fortran L1 harness \code{fortran\_\allowbreak{}harness/} (a sibling of the reference data; README.md there; conventions in \code{reference/\allowbreak{}functions/\allowbreak{}README.\allowbreak{}md}) links the
+\textbf{unmodified} SIMC objects (archived into \code{lib/\allowbreak{}libsimcobjs.\allowbreak{}a}, built with the SIMC Makefile flags) with one driver per
+routine, \code{<group>\allowbreak{}/\allowbreak{}drv\_\allowbreak{}<routine>\allowbreak{}.\allowbreak{}f}. A driver reads \code{input.\allowbreak{}txt}, fills the arguments and COMMON fields \textbf{by column
+name}, calls the routine and writes \code{output.\allowbreak{}txt}. The harness is run by the fortran-reference agent only; SIMC itself
+is never modified or rebuilt.
+
+Table format (\code{reference/\allowbreak{}functions/\allowbreak{}<routine>\allowbreak{}/}):
+
+\begin{itemize}
+\item \code{input.\allowbreak{}txt}, \code{output.\allowbreak{}txt}: whitespace-separated,\allowbreak{} first line = header with the column names, \code{\#} comment lines; one row
+per point, same order in both files; \code{output.\allowbreak{}txt} echoes the input columns and appends the outputs;
+\item numbers in \code{\%\allowbreak{}24.\allowbreak{}16E} / \code{ES24.\allowbreak{}16E3} (17 significant digits: text → double is exact); integer controls written as reals;
+\item structure fields named \code{<member>\allowbreak{}\_\allowbreak{}<submember>} (\code{e\_\allowbreak{}theta} = \code{vertex\%\allowbreak{}e\%\allowbreak{}theta}); \code{gen\_\allowbreak{}*} columns document the generator;
+\item SIMC-internal units (MeV, MeV/c, MeV², rad, cm);
+\item \code{README.\allowbreak{}txt}: routine, file:lines, every COMMON/\allowbreak{}field read, units, grid, notes; \code{driver.\allowbreak{}log}: stdout incl. warnings;
+\code{check\_\allowbreak{}*}: cross-checks against archived SIMC runs.
+\end{itemize}
+Variants: \code{<routine>\allowbreak{}\_\allowbreak{}fixedrng/} (random numbers scripted through the columns \code{u1.\allowbreak{}.\allowbreak{}uK} (grnd) and \code{g1.\allowbreak{}.\allowbreak{}gK} (gauss1),
+with \code{n\_\allowbreak{}unif}, \code{n\_\allowbreak{}gauss}, \code{rng\_\allowbreak{}err} outputs; harness stubs \code{common/\allowbreak{}rng\_\allowbreak{}stub\_\allowbreak{}*.\allowbreak{}f} replace grnd/\allowbreak{}gauss1);
+\code{distributions/}, \code{rad\_\allowbreak{}distributions/}, \code{mc\_\allowbreak{}distributions} (real RNG, summary statistics and histograms for routines whose
+random structure is checked statistically); \code{<x>\allowbreak{}\_\allowbreak{}state/} (the COMMON state a configuration leaves, e.g. \code{pion\_\allowbreak{}state}).
+
+\section{\texorpdfstring{The C++ L1 runners}{The C++ L1 runners}}\label{translation_report-02u5fvalidation:22-the-c-l1-runners}
+\code{tests/\allowbreak{}l1/\allowbreak{}L1Runner.\allowbreak{}\{h,\allowbreak{}cpp\}} (\code{simcl1} namespace): \code{Table::\allowbreak{}load}, \code{Row} (columns by name), \code{Column\allowbreak{}Spec\ \{name,\ rel\_\allowbreak{}tol,\ abs\_\allowbreak{}tol\}} (pass if |rel| ≤ rel\_tol or |abs| ≤ abs\_tol), \code{compare(\allowbreak{}in,\ ref,\ cols,\ adapter)}, \code{report}. The runner checks
+that the echoed input columns of \code{output.\allowbreak{}txt} are bit-identical to \code{input.\allowbreak{}txt} (guards against a stale table) and
+reports per column: max |rel|, max |abs|, the worst row, the number of bitwise-equal rows and NaN mismatches. Exit 0
+pass, 1 fail, 77 table missing (CTest SKIP).
+
+A routine needs an adapter: given one input row, evaluate the C++ and fill the output columns. Fixed-RNG tables feed
+\code{ScriptedRandom}\simcidx{Classes and interfaces!ScriptedRandom@\code{ScriptedRandom}} with the row's \code{u*}/\code{g*} columns (mode \code{Scripted} like the stubs, or \code{Algorithm} = the real gauss1 on the
+scripted uniforms) and also compare the number of draws. The default tolerance is bitwise (or 1e-12 rel, D-010); a test
+that needs more states why in its \code{.\allowbreak{}cmake} file. One \code{.\allowbreak{}cmake} per module (tests/\allowbreak{}l1/\allowbreak{}\{material,\allowbreak{}radiation,\allowbreak{}hms,\allowbreak{}pion,\allowbreak{}...\}.cmake),\allowbreak{}
+included OPTIONAL by tests/\allowbreak{}l1/\allowbreak{}CMakeLists.\allowbreak{}txt,\allowbreak{} which labels every test \code{l1} (+ \code{replay} for names with \code{\_\allowbreak{}replay\_}).
+Data-file tests (\code{l1\_\allowbreak{}*\_\allowbreak{}data\_\allowbreak{}files}) check the md5 of the copies in \code{data/}.
+
+\section{\texorpdfstring{Captures and replays}{Captures and replays}}\label{translation_report-02u5fvalidation:23-captures-and-replays}
+A capture is an unmodified SIMC program linked with \code{ld\ -{}-{}wrap} recorders (e.g. \code{fortran\_\allowbreak{}harness/\allowbreak{}event/\allowbreak{}cap\_\allowbreak{}simc}):
+the real routines run unchanged and the wrappers log every random number (\code{cap\_\allowbreak{}rng.\allowbreak{}txt}: ntried, phase, kind grnd/\allowbreak{}gauss1,\allowbreak{}
+value, number of grnd inside each gauss1) and the inputs/\allowbreak{}outputs of selected routines per try (\code{cap\_\allowbreak{}generate.\allowbreak{}txt},
+\code{cap\_\allowbreak{}complete\_\allowbreak{}ev.\allowbreak{}txt}, \code{cap\_\allowbreak{}montecarlo.\allowbreak{}txt}, ...). \code{montecarlo} cannot be wrapped (defined next to its caller in simc.o);
+its outputs are recorded at the next wrapped call. Captures exist for H(e,e'p) (P4.F1, \code{event\_\allowbreak{}capture/\allowbreak{}\{norad,\allowbreak{}rad,\allowbreak{}phsp,\ phsp\_\allowbreak{}tries\}}), D/A(e,e'p) (P8.F1), the pion collimator/\allowbreak{}decay calls (P6.F2), pion, kaon, Delta, SIDIS, rho, SOS/HRS, calo
+and the target field (\code{reference/\allowbreak{}runs/\allowbreak{}p15f2\_\allowbreak{}poltar\_\allowbreak{}cap}). Files > 5 MB are \code{.\allowbreak{}txt.\allowbreak{}xz}.
+
+Replays (tests/\allowbreak{}l1/\allowbreak{}test\_\allowbreak{}l1\_\allowbreak{}driver.\allowbreak{}cpp,\allowbreak{} test\_\allowbreak{}l1\_\allowbreak{}simcrun.\allowbreak{}cpp and the per-reaction test files):
+
+\begin{itemize}
+\item \textbf{per routine} (\code{l1\_\allowbreak{}replay\_\allowbreak{}event\_\allowbreak{}capture\_\allowbreak{}*}): every captured call of generate / complete\_\allowbreak{}ev / ... re-evaluated
+from its recorded inputs;
+\item \textbf{montecarlo} (\code{l1\_\allowbreak{}montecarlo\_\allowbreak{}replay\_\allowbreak{}*}): \code{MonteCarlo::\allowbreak{}run}\simcidx{Classes and interfaces!MonteCarlo@\code{MonteCarlo}} on every captured try, with the captured montecarlo
+random numbers;
+\item \textbf{full run} (\code{l1\_\allowbreak{}simcrun\_\allowbreak{}replay\_\allowbreak{}*}): \code{SimcRun}\simcidx{Classes and interfaces!SimcRun@\code{SimcRun}} with \code{set\allowbreak{}Random(\allowbreak{}Scripted\allowbreak{}Random)} fed with the whole captured stream,
+\code{-{}-{}fortran-{}compat}\simcidx{Command-line options!fortran-compat@\code{-{}-{}fortran-{}compat}}: tree, per-try bookkeeping,\allowbreak{} normalisation,\allowbreak{} \code{.\allowbreak{}hist/\allowbreak{}.\allowbreak{}geni/\allowbreak{}.\allowbreak{}gen} must equal the Fortran.
+\end{itemize}
+\section{\texorpdfstring{RANLUX full-run identity}{RANLUX full-run identity}}\label{translation_report-02u5fvalidation:24-ranlux-full-run-identity}
+With the bit-for-bit RANLUX port (\code{"rng":\ \{"type":\ "ranlux"\}}, seeded from the \code{.\allowbreak{}inp} random\_\allowbreak{}seed like simc.f:107) and
+\code{-{}-{}fortran-{}compat}\simcidx{Command-line options!fortran-compat@\code{-{}-{}fortran-{}compat}}, a SIMC++ run reproduces a Fortran run without any capture. \code{tests/\allowbreak{}l1/\allowbreak{}ranlux\_\allowbreak{}fullrun.\allowbreak{}sh\ <simc++>\ <simc\_\allowbreak{}root\_\allowbreak{}identity>\ <ref\_\allowbreak{}run\_\allowbreak{}dir>\ <run>\ <workdir>} runs it and requires: \code{.\allowbreak{}hist} identical except the BEGIN/END time
+lines, \code{.\allowbreak{}geni} and \code{.\allowbreak{}gen} identical, the \code{h10} tree bitwise identical (\code{simc\_\allowbreak{}root\_\allowbreak{}identity}); then the corrected mode
+must run and its \code{.\allowbreak{}geni} must agree with its own summary JSON. CTests \code{l1\_\allowbreak{}simcrun\_\allowbreak{}ranlux\_\allowbreak{}*}.
+
+The shipped-input suite (P15.2) applies the same to every Fortran reference of the shipped \code{infiles/} and of P15.F1:
+\code{validation/\allowbreak{}scripts/\allowbreak{}p15\_\allowbreak{}shipped\_\allowbreak{}regression.\allowbreak{}sh} (one CTest \code{regression\_\allowbreak{}shipped\_\allowbreak{}<folder>} per \code{reference/\allowbreak{}runs/\allowbreak{}shipped\_\allowbreak{}*}
+and \code{p15f1\_\allowbreak{}*} folder, labels \code{regression\_\allowbreak{}shipped;slow}), plus \code{tests/\allowbreak{}fortran\_\allowbreak{}diff/\allowbreak{}cli\_\allowbreak{}shipped\_\allowbreak{}inputs.\allowbreak{}sh} for the inputs
+the Fortran itself does not run as shipped (legacy dotted names → the same STOP, spect\_mode = 2, rho on A = 4, ...).
+Policy (D-058): when an L2 comparison in compat mode flags something, the first check is a RANLUX same-seed run;
+bitwise identity proves the flag is a fluctuation.
+
+\section{\texorpdfstring{simc\_\allowbreak{}compare (L2)}{simc\_\allowbreak{}compare (L2)}}\label{translation_report-02u5fvalidation:25-simcu5fcompare-l2}
+\code{validation/} is its own CMake project (\code{simc\_\allowbreak{}compare}, \code{simc\_\allowbreak{}mode\_\allowbreak{}diff}); full documentation in
+validation/\allowbreak{}README.md\footnote{\code{validation/\allowbreak{}README.\allowbreak{}md}}. Sources: simc\_\allowbreak{}compare.\allowbreak{}cpp (CLI, loading, exit status),
+CompareCommon.\{h,\allowbreak{}cpp\} (config, tree, records, normalisation),\allowbreak{} CompareRunLevel.\allowbreak{}cpp,\allowbreak{} CompareTreeLevel.\allowbreak{}cpp,\allowbreak{}
+CompareReport.\allowbreak{}cpp (verdict, summary.\allowbreak{}txt/\allowbreak{}json,\allowbreak{} PDF), RunSummary.\{h,\allowbreak{}cpp\} (reads summary JSON or \code{.\allowbreak{}hist/\allowbreak{}.\allowbreak{}geni}), Stats.
+
+\begin{simcplain}[basicstyle=\ttfamily\tiny]
+simc_compare --a <run A> --b <run B> --out DIR [--config CFG.json] [--mode-a compat|corrected] [--mode-b ...]
+             [--skip v1,v2] [--nbins N] [--prefer-hist] [--no-pdf] [--expect PASS|FAIL|IDENTICAL]
+\end{simcplain}
+A run is a \code{.\allowbreak{}summary.\allowbreak{}json}, a Fortran \code{.\allowbreak{}hist} (+ \code{.\allowbreak{}geni}, \code{.\allowbreak{}root}), a \code{.\allowbreak{}root} or a directory.
+
+\begin{itemize}
+\item \textbf{Run level}: acceptance Ncontribute/\allowbreak{}Ntried (two-proportion z), Nco\_\allowbreak{}no\_\allowbreak{}rad\_\allowbreak{}prot fraction, every stop counter
+(binomial pull) and a 2×K homogeneity χ² per spectrometer,\allowbreak{} the weighted yield per tried event (variance of the mean of
+the N per-try weights), \code{wtcontr}, \code{AVERAGE.\allowbreak{}sigcc}, \code{normfac} (info), and deterministic scalars (sigcc\_\allowbreak{}central,\allowbreak{}
+charge, targetfac, luminosity, genvol, Ngen: equal within the print precision of the \code{.\allowbreak{}hist}, else a gross failure).
+\item \textbf{Tree level}, per common branch: \code{chi2\_\allowbreak{}abs} (weighted histograms normalised per tried event: shape and
+normalisation),\allowbreak{} \code{chi2\_\allowbreak{}ww} (Gagunashvili weighted/\allowbreak{}weighted),\allowbreak{} \code{chi2\_\allowbreak{}uu} (unweighted),\allowbreak{} \code{ks\_\allowbreak{}w} (unbinned weighted KS
+with effective sizes). Non-finite entries are counted and excluded; constant branches are compared as constants.
+\item \textbf{Verdict} (D-011): N counted tests, F with p < α = 0.01; PASS iff P(X ≥ F | Binomial(N, α)) ≥ 1e-3 and no gross
+failure (no deterministic mismatch, no p < 1e-5). The tests are correlated, so the count is approximate.
+\item \textbf{wtcontr sigma (D-053)}: \code{.\allowbreak{}hist} wtcontr sums only the \code{pass\_\allowbreak{}cuts} events (simc.\allowbreak{}f:\allowbreak{}229-241,\allowbreak{} 311-313), so its
+relative error is that of the \textbf{pass\_cuts subset} of the tree, not of the whole tree yield (which underestimated the
+sigma, e.g. SIDIS 0.415 instead of 0.58). The tool rebuilds the window from the printed SPedge and slop\%MC; the
+hadron delta maximum depends on the mode: SPedge\%\allowbreak{}e\%\allowbreak{}delta\%\allowbreak{}max for Fortran references and compat runs (D-006), the
+hadron limit for corrected runs. The mode comes from \code{run.\allowbreak{}fortran\_\allowbreak{}compat} in the summary JSON (D-054), else from
+\code{-{}-{}mode-{}a/\allowbreak{}-{}-{}mode-{}b}; a \code{.\allowbreak{}hist} is compat. A warning is printed when the subset does not reproduce the run's wtcontr
+within 0.2 \% (wrong mode).
+\item Expected outcomes: compat vs Fortran PASS; corrected vs Fortran may FAIL exactly on the quantities a correction
+changes (listed per reaction in FORTRAN\_\allowbreak{}DIFFERENCES.md §7-17). There is no option to skip run-level quantities yet
+(P15.X).
+\end{itemize}
+The L2 scripts of each phase are in \code{validation/\allowbreak{}scripts/} (\code{p10\_\allowbreak{}kaon\_\allowbreak{}l2.\allowbreak{}sh}, \code{p11\_\allowbreak{}delta\_\allowbreak{}l2.\allowbreak{}sh}, \code{p12\_\allowbreak{}sidis\_\allowbreak{}l2.\allowbreak{}sh},
+\code{p13\_\allowbreak{}rho\_\allowbreak{}l2.\allowbreak{}sh}, \code{p14\_\allowbreak{}*\_\allowbreak{}l2.\allowbreak{}sh}, \code{p15\_\allowbreak{}spect\_\allowbreak{}mode\_\allowbreak{}l2.\allowbreak{}sh}, \code{p15b\_\allowbreak{}field\_\allowbreak{}l2.\allowbreak{}sh}, \code{p154\_\allowbreak{}l2.\allowbreak{}sh}); their outputs are in
+\code{SIMC++\_\allowbreak{}Project/\allowbreak{}simc\_\allowbreak{}runs/\allowbreak{}<run\_\allowbreak{}id>\allowbreak{}/} and \code{reference/\allowbreak{}comparisons/}.
+
+\section{\texorpdfstring{Regression baselines (C++ vs C++)}{Regression baselines (C++ vs C++)}}\label{translation_report-02u5fvalidation:26-regression-baselines-c-vs-c}
+\begin{itemize}
+\item \code{tests/\allowbreak{}regression/\allowbreak{}output\_\allowbreak{}identity.\allowbreak{}sh\ SIMCPP\ ROOT\_\allowbreak{}IDENTITY\ INPUT\ SEED\ RUN\_\allowbreak{}NAME\ BASELINE\_\allowbreak{}DIR\ WORK\_\allowbreak{}DIR\ [args]} runs
+\code{simc++\ INPUT\ -{}-{}seed\ SEED\ -{}-{}run-{}name\ RUN\_\allowbreak{}NAME\ -{}o\ WORK\_\allowbreak{}DIR\ -{}-{}quiet\ [args]} and requires every output to equal the
+baseline: \code{.\allowbreak{}root} trees and histograms bitwise (\code{simc\_\allowbreak{}root\_\allowbreak{}identity}, ROOT dates ignored), \code{.\allowbreak{}hist\ .\allowbreak{}geni\ .\allowbreak{}gen\ .\allowbreak{}summary.\allowbreak{}txt\ .\allowbreak{}summary.\allowbreak{}json} text-identical apart from time stamps, the same set of files. Families: H(e,e'p)
+rad/\allowbreak{}norad/\allowbreak{}phsp,\allowbreak{} D/Fe-56 (e,e'p), pion, kaon, Delta, SIDIS, rho, calorimeter,\allowbreak{} each in compat (\code{regression\_\allowbreak{}identity\_\allowbreak{}*})
+and corrected (\code{regression\_\allowbreak{}corrected\_\allowbreak{}*}) mode; baselines in \code{SIMC++\_\allowbreak{}Project/\allowbreak{}baselines/\allowbreak{}<prefix>\allowbreak{}\_\allowbreak{}<family>\allowbreak{}\_\allowbreak{}s4242/},
+prefix \code{SIMC\_\allowbreak{}*\_\allowbreak{}BASELINE\_\allowbreak{}COMMIT} (currently \code{55cf7a0\_\allowbreak{}glibc243}).
+\item \code{validation/\allowbreak{}scripts/\allowbreak{}regen\_\allowbreak{}baselines.\allowbreak{}sh\ [-{}-{}commit\ REV]\ [-{}-{}tag\ TAG]\ [-{}-{}only\ SUBSTR]} builds REV in a clean worktree and
+writes \textbf{new} folders \code{<rev>\allowbreak{}\_\allowbreak{}<tag>\allowbreak{}\_\allowbreak{}<suffix>\allowbreak{}/} (never overwrites) with README.txt (command, toolchain line) and MD5SUMS.
+Then update the \code{*\_\allowbreak{}COMMIT} cache defaults in tests/\allowbreak{}regression/\allowbreak{}CMakeLists.\allowbreak{}txt. Regenerate only when an output change is
+intended (a correction, a new summary key) or after a toolchain update (D-044).
+\item \code{validation/\allowbreak{}scripts/\allowbreak{}compare\_\allowbreak{}baseline\_\allowbreak{}sets.\allowbreak{}sh\ <simc\_\allowbreak{}root\_\allowbreak{}identity>\ <baselines\ dir>\ <new\ prefix>\ <map\ file>} proves that
+a regenerated set differs from the previous one only by allowed added summary keys (map file:
+\code{validation/\allowbreak{}scripts/\allowbreak{}p151\_\allowbreak{}baseline\_\allowbreak{}map.\allowbreak{}txt}).
+\item \code{validation/\allowbreak{}scripts/\allowbreak{}p153\_\allowbreak{}golden.\allowbreak{}sh\ make|\allowbreak{}check}: a golden set of 20 inputs (every reaction family, every arm type, the
+target field) in both modes plus one \code{simc\_\allowbreak{}compare}; \code{check} compares two sets file by file (326 files). Use it
+before/\allowbreak{}after any refactor or optimisation that should change nothing (P15.3, P15.4).
+\end{itemize}
+\section{\texorpdfstring{Adding a new Fortran reference, end to end}{Adding a new Fortran reference, end to end}}\label{translation_report-02u5fvalidation:27-adding-a-new-fortran-reference-end-to-end}
+\begin{enumerate}
+\item \textbf{Specify} what is needed and ask the director, who asks the fortran-reference agent: the routine (file:\allowbreak{}lines),\allowbreak{} the
+input grid (columns, units, ranges incl. edge cases), the COMMON state to set (or the \code{.\allowbreak{}inp} that sets it), the
+output columns, whether random numbers are involved (fixed-RNG table or capture), and for a run: the \code{.\allowbreak{}inp}
+parameters, seed, ngen, A and B runs for L2. Never fabricate a reference with the C++ itself.
+\item The fortran-reference agent writes the driver and grid in the harness, regenerates byte-reproducibly,\allowbreak{} publishes
+\code{reference/\allowbreak{}functions/\allowbreak{}<routine>\allowbreak{}/} (README.txt with every COMMON field read) or \code{reference/\allowbreak{}runs/\allowbreak{}<tag>\allowbreak{}/}, and a report
+\code{reference/\allowbreak{}P<phase>\allowbreak{}.\allowbreak{}F<n>\allowbreak{}\_\allowbreak{}report.\allowbreak{}md} with its findings.
+\item \textbf{C++ test}: an adapter in the module's \code{tests/\allowbreak{}l1/\allowbreak{}test\_\allowbreak{}l1\_\allowbreak{}<module>\allowbreak{}.\allowbreak{}cpp} with the L1 runner, a CTest in
+\code{tests/\allowbreak{}l1/\allowbreak{}<module>\allowbreak{}.\allowbreak{}cmake} with \code{SKIP\_\allowbreak{}RETURN\_\allowbreak{}CODE\ 77} and the tolerance; for runs a RANLUX full-run test
+(\code{ranlux\_\allowbreak{}fullrun.\allowbreak{}sh}) or a regression\_\allowbreak{}shipped folder; for L2 a script in \code{validation/\allowbreak{}scripts/}.
+\item \textbf{Evidence}: the run folder (\code{SIMC++\_\allowbreak{}Project/\allowbreak{}tools/\allowbreak{}run\_\allowbreak{}simc.\allowbreak{}sh\ .\allowbreak{}.\allowbreak{}.\ -{}-{}label\ <task>} or \code{tools/\allowbreak{}check\_\allowbreak{}all.\allowbreak{}sh}), the metrics, and a line in
+VALIDATION\_\allowbreak{}LEDGER.md (by the director). Findings go to DECISIONS.md and FORTRAN\_\allowbreak{}DIFFERENCES.md (chapter 5); the catalogue of chapter 6 is regenerated from it.
+\end{enumerate}

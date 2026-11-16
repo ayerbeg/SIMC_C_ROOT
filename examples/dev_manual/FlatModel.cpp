@@ -1,5 +1,5 @@
 // examples/dev_manual/FlatModel.cpp — the IPhysicsModel example of the developer manual (task P15.D1,
-// docs/manual/developer/04_extending.md). "example_flat": a constant cross section, JSON {"type": "example_flat",
+// docs/manual/markdown/developer/04_extending.md). "example_flat": a constant cross section, JSON {"type": "example_flat",
 // "value": 2.5}. The manual quotes this file verbatim; tests/docs checks that the quotes match.
 #include <string>
 

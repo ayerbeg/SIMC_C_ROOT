@@ -36,7 +36,7 @@ to **REAL(16)** (binary128), which has visible consequences:
 * **REAL(16) actual arguments passed to real*8 dummies** (an ABI bug of the Fortran source: the callee reads the
   first 8 bytes of the 16-byte value) give garbage values: the HRS transport lengths and the 45° VDC rotation
   (D-061 F1/F1e: zd = −3.13e232, rotation 0°), the kaon `fint` arguments (D-043), the Delta `sig_blok` arguments
-  (D-048 F3). These are class-a bugs: corrected by default, reproduced in `--fortran-compat` (the garbage bit patterns
+  (D-048 F3). These are Category A bugs: corrected by default, reproduced in `--fortran-compat` (the garbage bit patterns
   are computed exactly, e.g. `McHrs::transpLength`).
 * **real*4 (float)** where the Fortran declares it: CERNLIB `lfit` (sums in double from float inputs, results rounded
   to float, optics/Lfit.h) and the HMS/SHMS/SOS/HRS drift-chamber arrays fed to it, so the focal-plane values are

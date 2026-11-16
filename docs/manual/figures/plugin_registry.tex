@@ -1,6 +1,11 @@
-% docs/latex/figures/plugin_registry.tex — stage interfaces, the plug-in registry (SIMC_REGISTER) and how a plug-in
+% docs/manual/figures/plugin_registry.tex - TikZ figure of the SIMC++ documentation: stage interfaces, the plug-in registry (SIMC_REGISTER) and how a plug-in
 % is linked in (in tree: OBJECT library; out of tree: find_package(SIMC)), task P15.D5.
 % Names: include/simc/core/Registry.h, include/simc/stages/*.h, examples/out_of_tree_plugin.
+%   Compile alone (tools/build_docs_pdf.py does it for every figure): with TEXINPUTS=docs/common/latex//: run
+%   xelatex <name>.tex -> <name>.pdf (preview.sty crops the page to the picture); the books include that PDF.
+%   Packages: tikz, xcolor, fontspec, preview (simcfig.sty, simcfonts.sty); fonts TeX Gyre Pagella, TeX Gyre Heros,
+%   DejaVu Sans Mono. After a change, re-export the PNG of the Markdown edition (build_docs_pdf.py --png) and
+%   commit both.
 \documentclass{article}
 \usepackage{simcfonts,simcfig}
 \usepackage[active,tightpage]{preview}

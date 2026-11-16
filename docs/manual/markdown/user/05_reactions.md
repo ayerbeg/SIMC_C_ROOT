@@ -140,4 +140,4 @@ To measure the acceptance of one spectrometer, or to throw events at a spectrome
 `spect_mode` ([6.4](06_spectrometers.md#64-spect_mode-switching-the-spectrometer-monte-carlo-off)).
 
 (How each reaction behaves in the legacy-compatible mode, and what the default mode corrects, is listed in
-`docs/translation/user_differences.md`.)
+`docs/translation/markdown/user_differences.md`.)

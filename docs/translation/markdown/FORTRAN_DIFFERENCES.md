@@ -4,11 +4,39 @@ Status: task P7.5 (decisions D-031 and D-032, 2026-10-04); D/A(e,e'p) items adde
 and decay-in-flight items added in P6.4 (D-037); pion items in P9 (D-038); kaon items in P10 (D-043); Delta items in P11 (D-048); SIDIS cross-section items in P12.1 (D-051 Fn = the P12.F1 findings; `P12.1 Qn` = further quirks of the port); rho items in P13.1/P13.2 (D-057 Fn = the P13.F1 findings, reference/P13.F1_report.md; D-056 maps the provisional P13.1 R ids). This file lists every known place where SIMC++ behaves
 differently from the Fortran SIMC (`simc_gfortran`), or where it keeps a Fortran behaviour that looks odd. Each item
 names the Fortran file and line, the C++ behaviour, the effect on outputs, and the test that covers it. The decisions
-(D-xxx) are in `project_control/DECISIONS.md`. The [translation report](translation/index.md) presents all items in one uniform table
-([catalogue](translation/06_catalogue.md), generated from §2-§6 of this file: edit here, then run
+(D-xxx) are in `project_control/DECISIONS.md`. The [translation report](index.md) presents all items in one uniform table
+([catalogue](06_catalogue.md), generated from §2-§6 of this file: edit here, then run
 `docs/translation/tools/gen_catalogue.py`). `run-archive:<label>` names a run folder of the SIMC++ project's run archive (the `simc_runs/` directory next to the source tree, where `tools/check_all.sh` and the run script write `<timestamp>_<label>/` folders); `reference/...` is relative to the Fortran reference data `$SIMC_REFERENCE`. The Fortran reports (`reference/P*_report.md`) give the details.
 
-> **Delta region (`doing_delta`, H/D/A(e,e'p)π): the event weight contains NO cross section** (D-048 F4, class b, kept in
+## How to update an entry (this is a living list)
+
+The project goes on after the translation: a finding may be fixed, re-classified, or found to be wrong. This file is
+the single source; the catalogue (chapter 6 of the translation report), its dashboard page in the PDF and the
+`fortran_diff` tests follow it. Keep it current as follows.
+
+* **Categories.** Each finding is in exactly one Category, which is the section it sits in: Category A (§2, clear
+  Fortran bug, corrected by default), Category A-NP (the `### Category A-NP` table at the end of §2, clear bug in a path
+  not ported yet), Category C (§3), Category B (§4), Category D (§5), Category DEV (§6). The generator
+  `docs/translation/tools/gen_catalogue.py` reads the Category from the section heading prefix (`## 2.`,
+  `### Category A-NP`, `## 3.` ... `## 6.`): do not renumber or rename these headings without updating its `SECTIONS`
+  table, and keep the column headers of each table (the generator selects columns by their header words).
+* **Re-classifying** (e.g. a Category B question answered by an expert as a real bug): move the row to the table of
+  the new Category, fill that table's columns (e.g. a Category A row needs the C++ default and a test), keep the id
+  (`D-xxx Fn`) and add the decision that re-classified it to the id cell or the text (`..., re-classified D-0yy`).
+  Update the marker in the code (`FORTRAN-DIFF-CANDIDATE` → `FORTRAN-BUG`, ...; see the translation report §5.3).
+* **Fixed in SIMC++ later** (a Category A-NP path ported, a Category B or D behaviour changed by decision): do not
+  delete the row. Move it to the Category that describes the current behaviour (usually A: corrected by default,
+  Fortran kept with `--fortran-compat`) and say in the row when and by which task/decision it changed.
+* **Found wrong** (not a difference after all): delete the row, and name the decision that withdrew it in the commit
+  message; the cross-check of the catalogue (§6.4) then lists the id as "without an entry of their own".
+* **After every change:** run `python3 -I docs/translation/tools/gen_catalogue.py` (rewrites
+  `docs/translation/markdown/06_catalogue.md`), then re-convert the catalogue chapter of the LaTeX edition with
+  `python3 -I tools/md2latex.py --source-root . --book translation_report --write-sources --chapter 06_catalogue.md`
+  (it overwrites `docs/translation/latex/chapters/06_catalogue.tex`, which is generated anyway), and run
+  `ctest -L docs` (the test `docs_translation` fails while the catalogue is out of date). The dashboard of the PDF is
+  rebuilt from the catalogue at every PDF build.
+
+> **Delta region (`doing_delta`, H/D/A(e,e'p)π): the event weight contains NO cross section** (D-048 F4, Category B, kept in
 > both modes). physics_delta.f:132 returns `peedelta = 1.0*jacobian*(gtpr*fac)`; the line with the model cross section
 > (l.130) is commented out ("Need new xsec model.", event.f:1512). The Fortran (and SIMC++) Delta weight is phase space ×
 > virtual-photon flux × the dt dφ_cm → dΩ_lab jacobian of the proton. Yields, `.hist` wtcontr and the `Weight` column of a
@@ -34,18 +62,18 @@ names the Fortran file and line, the C++ behaviour, the effect on outputs, and t
   and is marked `// FORTRAN-OPEN(D-031 flag 1)`.
 * **Faithful but odd behaviour** that is not a bug (precision, formats, guards, dead code) is marked `// FORTRAN-QUIRK`.
 
-Classes used below:
+Categories used below:
 
-| class | meaning | default (corrected) mode | `fortran_compat` |
+| Category | meaning | default (corrected) mode | `fortran_compat` |
 |---|---|---|---|
-| a | clear Fortran bug | corrected | Fortran |
-| a-np | clear Fortran bug in a code path that is not ported yet | note only; fix when the path is ported | — |
-| b | ambiguous, maybe intended | Fortran | Fortran |
-| c | open question with the user (acceptance mode) | Fortran | Fortran |
-| d | faithful Fortran behaviour, not a bug (documented) | Fortran | Fortran |
-| dev | deliberate design deviation of SIMC++ (not about a Fortran bug) | SIMC++ | SIMC++ |
+| A | clear Fortran bug | corrected | Fortran |
+| A-NP | clear Fortran bug in a code path that is not ported yet | note only; fix when the path is ported | — |
+| B | ambiguous, maybe intended | Fortran | Fortran |
+| C | open question with the user (acceptance mode) | Fortran | Fortran |
+| D | faithful Fortran behaviour, not a bug (documented) | Fortran | Fortran |
+| DEV | deliberate design deviation of SIMC++ (not about a Fortran bug) | SIMC++ | SIMC++ |
 
-## 2. Class a: clear Fortran bugs, corrected by default
+## 2. Category A: clear Fortran bugs, corrected by default
 
 Effects are for the validation runs at seed 4242: P1.2 (`eep_h_elastic_{norad,rad}_A`, `acc_phsp_hms_shms_A`) and
 P7.F1 (K2–K4). §6 has the L2 numbers.
@@ -91,13 +119,13 @@ P7.F1 (K2–K4). §6 has the L2 numbers.
 | D-037 F7 decay drift | shared/project.f:113 | `tmpdrift = z_drift - z_decay/sqrt(1+dxdzs**2+dydzs**2)` with the slopes AFTER the decay: the track ends at z_drift + z_decay(1/√(1+s_old²) − 1/√(1+s_new²)) | the z already covered uses the parent slopes; the track ends at z_drift | decays in `project` (doing_decay, pions/kaons): positions, pathlen and downstream apertures of the decay product. project_decay table: max \|Δx\|,\|Δy\| 17 cm, \|Δpath\| 26 cm (synthetic edge rows), 0.016 cm / 0.28 cm in the real capture steps. Captures (replay of every recorded call): HMS 141 of 3932 pion calls change pathlen (max 0.28 cm), 43 accepted events change their recon (max 0.0014 % δ, 2.4e-5 xptar, 0.0013 cm ytar); SHMS 104 of 3912 (max 0.13 cm), 28 accepted (max 0.010 % δ); no acceptance decision changed. | `fortran_diff_D037_F7_project_decay_drift` |
 | D-037 F9 decay non-π/K | shared/project.f:87-91, transp.f:160-165, 253-258; dbase.f:1147 | the decay of a particle that is neither a pion nor a kaon executes a bare `stop` (exit 0, no output); doing_decay is not tied to the reaction, so e.g. H(e,e'p) with doing_decay = 1 stops at the first proton decay | the set-up rejects doing_decay with a hadron that is not π/K (`std::invalid_argument`, exit status 2, "… is neither a pion nor a kaon …"); project/transp never check a non-π/K particle for decay (no random number). Compat: `simc::FortranStop`, exit 3 | configurations with doing_decay and a proton/ρ/π0 hadron only; none of the reference inputs. | `fortran_diff_D037_F9_decay_non_pi_k`, `cli_decay_non_pik` |
 | D-043 F1 fint ABI | physics_kaon.f:262, 375, 492 (`real*4 fint`) vs cern/fint.f:10 (implicit REAL = REAL(8) under -fdefault-real-8, returned as binary128 with -ff2c) | the REAL*4 callers read the low 32 bits of the binary128 result: every fint value is +0.0, so eekeek/eekeeks give sigma_eep = 0 (ntuple column `saghai` = 0 for every event) and phspwght (dead code) 10000 | the value fint computes, rounded to REAL*4 as the declaration intends (`kaon::SaghaiOptions::fint_value`) | ntuple column `saghai` (ntup%sigcm1) of every kaon run; the weight uses sig_factorized and is unchanged. L1: eekeek/eekeeks/phspwght/peek `_fintabi` tables bitwise (1151 of 1244 eekeek rows non-zero) | `fortran_diff_D043_kaon_model`, `l1_*_fintabi` |
-| D-043 F2 sigma0 file | dbase.f:662-677 with saghai_sigma0.dat | line 1 of the file is a truncated fragment, so every 4-line record is read one line off: zsrff1..zsiff3 = the 5-value kinematics line, zsrff4..zsiff6 = the true ff1..ff3, the true ff4..ff6 are lost | the fragment is skipped and each record is read from its own lines (`kaon::SaghaiTables::load(dir, true)`); the 18 stray records at the start of the file (s = 2.898 in the slots of s = 2.851, Q2 = 0) are kept where the file puts them and reported (class b below) | `saghai` column of Sigma0/Sigma-/coherent runs only (masked by F1 in the Fortran). 22800 of 22800 corrected ff1..3 values equal the compat ff4..6 | `fortran_diff_D043_kaon_model` |
+| D-043 F2 sigma0 file | dbase.f:662-677 with saghai_sigma0.dat | line 1 of the file is a truncated fragment, so every 4-line record is read one line off: zsrff1..zsiff3 = the 5-value kinematics line, zsrff4..zsiff6 = the true ff1..ff3, the true ff4..ff6 are lost | the fragment is skipped and each record is read from its own lines (`kaon::SaghaiTables::load(dir, true)`); the 18 stray records at the start of the file (s = 2.898 in the slots of s = 2.851, Q2 = 0) are kept where the file puts them and reported (Category B below) | `saghai` column of Sigma0/Sigma-/coherent runs only (masked by F1 in the Fortran). 22800 of 22800 corrected ff1..3 values equal the compat ff4..6 | `fortran_diff_D043_kaon_model` |
 | D-043 F3 s grid | physics_kaon.f:288-294 | eekeek interpolates on s nodes 2.6 + 0.3(i-1): nodes 9/10 = 5.0/5.3 GeV², but the 9th and 10th blocks read from saghai_proton.dat are s = 5.1/5.4 | nodes 9/10 = 5.1/5.4 (`SaghaiOptions::proton_grid_fixed`) | `saghai` column for s > 4.7 GeV² (W > 2.17 GeV) of K+Lambda runs: 465 of 1244 eekeek table rows, none with s ≤ 4.7 | `fortran_diff_D043_kaon_model` |
 | D-043 F5 survival p | physics_kaon.f:160-162 | the survival probability of a kaon whose decay is not simulated uses beta*gamma of the CENTRAL momentum spec%p%P; p_kaon = spec%p%P(1+delta/100) is computed and unused (against the comment l.145-146) | beta*gamma of p_kaon (`PeekConfig::survival_p_kaon`) | EVENT WEIGHTS (and the `decdist` column = survival probability) of decay-OFF kaon runs; §10 has the L2 effect | `fortran_diff_D043_kaon_model` (1407 of 1428 decay-OFF peek rows change) |
 | D-043 F6 zaero | physics_kaon.f:149-159 | no zaero branch for hadron_arm 5 (SHMS): the SAVEd value of an earlier call is used (0 in a SIMC run, −82.8/−183 after an arm 2/3/4 call); the path correction `zaero*(1+dx²+dy²)` lacks the square root | zaero = 0 for every arm without an aerogel distance, `zaero*sqrt(1+dx²+dy²)` (`PeekConfig::survival_path_fixed`) | none for HMS/SHMS runs (zaero = 0 in both modes); 60 order-dependent SHMS rows of the peek table | `fortran_diff_D043_kaon_model` |
 | D-048 F1 Delta D/A STOP | dbase.f:779-788 (D-018) | the (e,e'p)π announcement tests `doing_deutpi` / `doing_hepi` (pion flags, never set for doing_delta): every D or A Delta run STOPs with `I don't have ANY idea what (e,e'p)pi we're doing!!!` (exit 0) | tests `doing_deutdelta` / `doing_hedelta`: D(e,e'p)π and A(e,e'p)π run (`SetupBuilder`) | D/A Delta inputs only. The D/A branches of event.f (generate l.336-371, complete_ev l.646-656, 949-971) and init.f (l.349-358) then run for the first time: **no Fortran reference exists for them**; they are validated by self-consistency only (energy-momentum balance of every event, `fortran_diff_D048_F1_delta_DA_stop`: D, He-3, C-12). | `fortran_diff_D048_F1_delta_DA_stop` |
 | D-048 F1 Delta D/A data | dbase.f:563-565, 594 | the momentum distribution (deut.dat, he3.dat, ...) and the Benhar spectral function (generate_em, `Emval(numEm)`) are read for `doing_deutpi/hepi/deutkaon/hekaon` only, not for `doing_deutdelta/hedelta`, although generate and limits_init use them for the Delta (unreachable in the Fortran because of the STOP above) | the delta flags load the same files as the pion (corrected mode only) | D/A Delta runs only (they exist in corrected mode only) | same |
-| D-048 F2 Delta tail 1 | radc.f:288-293 | the incident-electron tail limits are set for doing_heavy, hyd_elast, deuterium and `doing_pion .or. doing_kaon .or. doing_rho .or. doing_semi`, not for doing_delta: Egamma_min(1) = Egamma_max(1) = 0, basicrad returns weight 0, and EVERY try with ntail = 1 fails (frac(1) = 0.43-0.46 of the tries at the P11.F1 kinematics) | doing_delta uses CASE 4 (Egamma_min(1) = 0, Egamma_max(1) = gen%sumEgen%max − vertex%e%E): init.f:455-463 sets gen%sumEgen for doing_delta with the same "generated ELECTRON energy" branch as for the pion (`RadcRun::delta_tail1_case4`) | EVENT RATES of rad Delta runs: Ntried and wtcontr. §11 has the L2 effect. With tail 1 radiating, generate_rad calls complete_ev again (radc.f:322), which draws a new root choice (class b below). | `fortran_diff_D048_F2_delta_tail1_egamma` |
+| D-048 F2 Delta tail 1 | radc.f:288-293 | the incident-electron tail limits are set for doing_heavy, hyd_elast, deuterium and `doing_pion .or. doing_kaon .or. doing_rho .or. doing_semi`, not for doing_delta: Egamma_min(1) = Egamma_max(1) = 0, basicrad returns weight 0, and EVERY try with ntail = 1 fails (frac(1) = 0.43-0.46 of the tries at the P11.F1 kinematics) | doing_delta uses CASE 4 (Egamma_min(1) = 0, Egamma_max(1) = gen%sumEgen%max − vertex%e%E): init.f:455-463 sets gen%sumEgen for doing_delta with the same "generated ELECTRON energy" branch as for the pion (`RadcRun::delta_tail1_case4`) | EVENT RATES of rad Delta runs: Ntried and wtcontr. §11 has the L2 effect. With tail 1 radiating, generate_rad calls complete_ev again (radc.f:322), which draws a new root choice (Category B below). | `fortran_diff_D048_F2_delta_tail1_egamma` |
 | D-048 F3 sig_blok args | physics_delta.f:99-100 | `sig_blok(thetacm,phicm,main%t/1.d6,vertex%q2/1.d6,s/1.d6,...)`: under -fdefault-real-8 `1.d6` is REAL(16), so binary128 temporaries are passed to the REAL*8 dummies and sig_blok reads their low 8 bytes: ntup%sigcm (column `sigcm`) is meaningless (0 in ~65 %, negative in ~19 %, NaN/Inf in ~0.4 % of the events) | the doubles t, Q², s [GeV²] are passed (`delta::DeltaConfig::sigblok_binary128_quirk = false`): `sigcm` = the Blok π fit at the proton's CM angles (still not a Δ model, see F4) | ntuple column `sigcm` of Delta runs only; the weight is unchanged (F4). peedelta table: 3069 of 3077 rows change, 14 non-finite compat values become finite | `fortran_diff_D048_F3_delta_sigblok_args`, `l1_peedelta` |
 | D-048 F6 Delta warning | dbase.f:184-186 | quote typo: `'WARNING: Delta cross section model",` + continuation `" only set up for proton target!'` is ONE string, printed with `",`, 79 blanks and `"` | the sentence without the quote debris | log text of D/A Delta runs | `fortran_diff_D048_F6_delta_warning_text` |
 | D-048 F9 CENTRAL.sigcc | simc.f:1236-1290 (as D-038 F5) | the central peedelta sees main0%epsilon = t = phi_pq = 0 | main0 gets the central kinematics (`PionProduction::prepareCentral`, inherited by `DeltaProduction`) | `.hist` CENTRAL.sigcc of Delta runs only: D1 rad 0.227051E+01 → 0.167557E+02 (×7.38) | `fortran_diff_D048_F9_central_sigcc_delta` |
@@ -121,12 +149,12 @@ P7.F1 (K2–K4). §6 has the L2 numbers.
 | D-057 F15 rho .hist title | simc.f:720-725 | the .hist header says 'I am not set up for anything else yet!' for D and ³He rho runs, which run | ` ****--------  D(e,e'rho)  --------****` / `A(e,e'rho)` (`RunReport`) | .hist header of D/³He rho runs | `fortran_diff_D057_F15_F18_rho` |
 | D-057 F18 rho P-arm report | simc.f:259-261, 283-285, 316-317, 324-325; event.f:22-24 | the .geni/.gen P-arm histograms, the .hist 'Hadron arm' resolution sums and the 'Limiting VERTEX P arm' ranges use vertex%p, which for doing_rho is the RHO with its lab theta/phi in the slope fields (rho_h_k1_rad: Ave.Error yptar −1580.9 mr, limits 589…2335 mr) | the decay pion orig%p (`GeneratedHadronArm`, corrected mode) | .geni, .gen (and gen.root) P-arm distributions, .hist resolution lines and limits; no weight | `fortran_diff_D057_F15_F18_rho` |
 
-### Class a-np: clear bugs in paths that are not ported yet (fix when porting)
+### Category A-NP: clear bugs in paths that are not ported yet (fix when porting)
 
 | id | Fortran | bug | C++ now | to do |
 |---|---|---|---|---|
 
-## 3. Class c: acceptance mode, open with the user (D-031 flag 1)
+## 3. Category C: acceptance mode, open with the user (D-031 flag 1)
 
 | id | Fortran | behaviour (kept) | effect | marker |
 |---|---|---|---|---|
@@ -134,7 +162,7 @@ P7.F1 (K2–K4). §6 has the L2 numbers.
 | D-009 radiation in phsp | dbase.f:227-228 | only `rad_flag` is zeroed; `using_rad` stays on: radiative tails are generated in acceptance mode | P1.2 phsp Egamma up to 241.9 MeV | `FORTRAN-OPEN` in SetupBuilder.cpp |
 | D-028 F1 target mass | dbase.f:227-233 vs 293-295; init.f:411-413; radc.f:297 | phsp clears `doing_eep` before the masses are set, so `Mtar_struck = 0` and `Egamma_tot_max` is one proton mass too low | P1.2 phsp Egamma_max 241.858 instead of 1180.130 MeV; at 6.4 GeV (acc_phsp_K2) negative → 0 events | `FORTRAN-OPEN` in SetupBuilder.cpp |
 
-## 4. Class b: ambiguous, Fortran behaviour kept (questions for the user and an expert)
+## 4. Category B: ambiguous, Fortran behaviour kept (questions for the user and an expert)
 
 | id | Fortran | behaviour (kept) | question | effect |
 |---|---|---|---|---|
@@ -208,7 +236,7 @@ P7.F1 (K2–K4). §6 has the L2 numbers.
 | D-061 F3 SOS/HRS recon fry | simc.f:1349-1355, 1472, 1738 | mc_sos (and mc_hrs*) receive the raster `fry` (−rastery, 0 without correct_raster) as the recon vertical position; mc_hms/mc_shms receive xtar_init (the true x at z = 0) | intended difference (SOS/HRS matrices fitted with the raster), or a leftover? | SOS ytar/delta recon with an extended beam spot |
 | D-061 F6 HRS aerogel | physics_kaon.f:155-157, semi_physics.f:617-619 | the survival weight of HRS kaons uses zaero = −183 cm ("aero at 130cm, last project=313(S2)"), but mc_hrs*_hut ends the pathlength at the calorimeter back (432.3 cm; 432.3 − 183 = 249.3 ≠ 130) | which distance is intended? | HRS kaon / SIDIS-kaon weights without decay (only visible with D-061 F1 corrected) |
 
-## 5. Class d: faithful Fortran behaviour, not a bug (kept, `FORTRAN-QUIRK`)
+## 5. Category D: faithful Fortran behaviour, not a bug (kept, `FORTRAN-QUIRK`)
 
 | id | Fortran | behaviour | why kept |
 |---|---|---|---|
@@ -224,7 +252,7 @@ P7.F1 (K2–K4). §6 has the L2 numbers.
 | D-062 G4 π0 FP | simc.f:1599-1603 | FP%p (ntuple *fp of the hadron arm) = the last photon that hit (mc_calo writes x_fp only on success); RECON%p = SP%p (no π0 reconstruction); xcal/ycal_gamma = −1e10 for a missed photon | faithful (`driver::PizeroCalorimeter`) |
 | D-062 G6/G7 mc_calo | simc.f:1756; calo/mc_calo.f | dead test `abs(spec%p%phi-pi/2) .eq. 10.` (zhadron unused); mc_calo ignores ms_flag, wcs_flag, resmult, frx, fry, th_spec, spect_side (no smearing, no resolution factor: ntup%resfac stays 0 / the stale tmpfact for the electron arm); mc_calo_recon is never called | faithful; mc_calo_recon ported as a library function for its L1 table |
 | D-062 G9/G10 | infiles/nps_*.inp; calo/, pizero_decay.f | shipped NPS inputs have no random_seed and nps_sidis sets doing_pion and doing_semi (SIDIS wins); SIDIS π0 CENTRAL.sigcc = 0 (z = 1.0003); no REAL(16) argument literals in the calorimeter/π0 code | documented |
-| D-065 S1 off-arm columns | simc.f:1612-1618, 1806-1812 | with spect_mode 1/−1/−2 the switched-off arm gets RECON delta/yptar/xptar = SP, no aperture test, and its FP (`*xfp *xpfp *yfp *ypfp`) and recon `*ytar` columns stay 0.0 in every event; its .geni counters are 0 | faithful in both modes; docs/OUTPUT_FORMAT.md §1 |
+| D-065 S1 off-arm columns | simc.f:1612-1618, 1806-1812 | with spect_mode 1/−1/−2 the switched-off arm gets RECON delta/yptar/xptar = SP, no aperture test, and its FP (`*xfp *xpfp *yfp *ypfp`) and recon `*ytar` columns stay 0.0 in every event; its .geni counters are 0 | faithful in both modes; docs/manual/markdown/reference/OUTPUT_FORMAT.md §1 |
 | D-065 S2 spect_mode values | dbase.f:531-532, 949-950 | any spect_mode other than 1/−1/−2 means "both arms on", unchecked | faithful; the corrected mode logs a WARNING for values outside {0, 1, −1, −2} (SetupBuilder, `cli_shipped_inputs`) |
 | D-065 S3 slop | init.f:159-200 | the MC slop is added to the generation window only for arms whose MC is on (genvol 0.0195475 vs 0.0224744 for eep_h_elastic_rad_A) | faithful |
 | D-065 W1-W3 shipped inputs | simc_gfortran/infiles | 18 of the 32 shipped main inputs use legacy `.` names: CTP ignores them (registered as dummy ints) and the run STOPs `bad targ.can value` (dbase.f:461); 3 more run with 20 ignored names from a legacy extra file; temp.inp = mc_neg_h_z37_ptbin.inp; fpi12_deltapp STOPs (D-038 F1) | same STOP / same run; simc++ additionally lists the ignored names and points to convert_inputfile.sh (§16) |
@@ -255,7 +283,7 @@ P7.F1 (K2–K4). §6 has the L2 numbers.
 | D-033 F6 logsf | sf_lookup.f:184 | the variable is called `logsf` but the Em interpolation is linear (no log is taken); SF < 1e-20 (also negative extrapolations, and one negative node of benharsf_4.dat) is set to 0 | the coded algorithm |
 | D-033 F8 krel | event.f:977 | `ntup%krel` is written from the SAVEd local krel, never assigned on the (e,e'p) branches (0) | not an output of (e,e'p) |
 | D-038 F11 krel | event.f:961-977 | pion: `ntup%krel` = the SAVEd local krel, set only for D/A quasifree production; 0 for H and coherent production (not an ntuple column of the pion layout) | not an output |
-| D-038 F16 STOP status | dbase.f (all STOPs) | every STOP exits with status 0 | SIMC++ exits 3 (`FortranStop`) or 2 (rejected input), class dev D-005 |
+| D-038 F16 STOP status | dbase.f (all STOPs) | every STOP exits with status 0 | SIMC++ exits 3 (`FortranStop`) or 2 (rejected input), Category DEV D-005 |
 | D-033 F8/F9 Benhar limits | init.f:335, dbase.f:592-621 | with use_benhar_sf, theory_init is not called: E_Fermi = 0 (VERTEXedge%Em%min = 0) and VERTEXedge%Pm%max = 790 MeV/c for every file (He-3/He-4 tables go to 976.8); the neutron columns of benharsf_4/12/56/197 normalise like the proton ones | definitions of the input files |
 | D-033 F12 D warning | event.f:588-593 | the "two solutions" warning of D(e,e'p) is printed only for ntried ≤ 5000 (`IReaction::beginTry`) | message only |
 | D-033 doing_deuterium | init.f:889 | theory_init overwrites doing_deuterium = (nrhoPm = 1 and E_Fermi < 1) from the file contents | definition |
@@ -275,7 +303,7 @@ P7.F1 (K2–K4). §6 has the L2 numbers.
 | P6.4 1.d-27 | hms/pion_coll_absorb.f:76, 82 | `sigA*1.d-27`: a DOUBLE PRECISION literal promoted to real*16 by -fdefault-real-8, so the product is formed in quad precision (objdump: __multf3) with the quad value of 1e-27; SIMC++ does the same (`__float128`); the double product differs by 1 ulp in 7 of 788 table rows | bitwise numerics |
 | D-037 F10 save_coll | mc_hms.f:216, mc_shms.f:517 | `save_Hcollsuccess/save_Scollsuccess = 1.5` on a collimator stop, never reset or read (dead COMMON /save_coll/); mirrored as `McHms/McShms::saveCollSuccess()` for the L1 tables only | no effect |
 | D-037 F12 thick_temp | mc_hms_coll.f:79-96, mc_shms_coll.f:81-98 | `thick_temp` is SAVEd and set only on a hit step (`thick = thick_temp` is read on every step, used only on hit steps); kept as a member | no effect |
-| D-037 F6 | shared/transp.f:158 | (already class a, D-006 kaon decay) now covered bitwise by transp_decay_hms/shms (55/103 rows of the Mk case) | — |
+| D-037 F6 | shared/transp.f:158 | (already Category A, D-006 kaon decay) now covered bitwise by transp_decay_hms/shms (55/103 rows of the Mk case) | — |
 | D-037 F13/F14 | gauss1.f, call_ranlux.f; CTP | real*16 return ABI of grnd/gauss1 (harness only); CTP float inputs (D-018) | — |
 | D-043 F4 binary128 | physics_kaon.o | DOUBLE COMPLEX z1a..z8a, ur, ui, dble() and the literal 1.d+06 are kind 16 under -fdefault-real-8: the Saghai amplitude sums run in binary128 (`__float128`, glibc `hypotf128` for abs), px(2) = q22/1.d+06 is rounded quad → float; cern/fint.f computes in REAL(8) (implicit typing), not in single precision as CERNLIB | bitwise numerics (L1 eekeek/eekeeks `_fintabi` bitwise) |
 | D-043 F14 krel | event.f:961-977 | as D-038 F11: ntup%krel never set on the H/coherent kaon branch | not an output |
@@ -305,7 +333,7 @@ P7.F1 (K2–K4). §6 has the L2 numbers.
 | D-057 diag222 | rho_physics.f:252, 262, 293, 390 | the diagnostics (R < 0, sigt < 0, gtpr ≤ 0, 'crazy sigma_rho') go to unit 222 (fort.222; none written in the L2 runs) | kept in the model (`RhoModel::diagnostics()`, printed with 'rho (fort.222):' when verbose); no fort.222 file |
 | D-057 literals | rho_physics.f:280, 384 | 1.d+06 and 1.d3 are REAL(16) under -fdefault-real-8: sig219/1.d+06 and davesig/1.d3 are binary128 divisions | `__float128` divisions (bitwise numerics) |
 
-## 6. Deliberate design deviations (class dev)
+## 6. Deliberate design deviations (Category DEV)
 
 | id | Fortran | SIMC++ |
 |---|---|---|
@@ -622,13 +650,13 @@ text-identical, h10 tree bitwise (`simc_root_identity`). Script validation/scrip
 run-archive:P15.2_shipped_identity (28 folders) and run-archive:P15.2_shipped_identity_other
 (11 folders, build 0fb5da0).
 
-* **spect_mode** (D-065 S1-S3, class d). SIMC++ reproduces the Fortran exactly: for a switched-off arm no aperture test, RECON
-  delta/yptar/xptar = SP, FP and recon z left 0.0 (docs/OUTPUT_FORMAT.md §1), .geni counters 0, no slop on its generation
+* **spect_mode** (D-065 S1-S3, Category D). SIMC++ reproduces the Fortran exactly: for a switched-off arm no aperture test, RECON
+  delta/yptar/xptar = SP, FP and recon z left 0.0 (docs/manual/markdown/reference/OUTPUT_FORMAT.md §1), .geni counters 0, no slop on its generation
   window. Identity: p15f1_eep_sm1_A (1), p15f1_eep_smm1_A (−1), p15f1_eep_smm2_A (−2), p15f1_phsp_sm1_A (1 + doing_phsp),
   p15f1_pion_sm1_A (1, π+ H) all IDENTICAL. Only addition: the corrected mode logs `WARNING (simc++): spect_mode = N is not
   one of 0, 1, -1, -2 ...` for other values and runs with both arms on as the Fortran (`cli_shipped_inputs`: spect_mode 2 gives
   the same tree and .hist as 0 in both modes).
-* **π0 with the HMS/SHMS as hadron arm** (D-065 P1, class b, §4): the π0 is transported through the spectrometer as a charged
+* **π0 with the HMS/SHMS as hadron arm** (D-065 P1, Category B, §4): the π0 is transported through the spectrometer as a charged
   particle, RECON%p = SP%p (D-063). Identity: p15f1_pi0_shms_A (2.09e6 tries), p15f1_pi0_hms_A (1.98e6), the capture
   p15f1_pi0_shms_cap: IDENTICAL. With doing_decay = 1 the Fortran (and `--fortran-compat`) STOP at the first decay test
   ('cannot decay particle with mass=  134.98'); the corrected mode runs and never decays the π0 in flight (D-037 F9
@@ -656,7 +684,7 @@ run-archive:P15.2_shipped_identity (28 folders) and run-archive:P15.2_shipped_id
 |---|---|---|---|---|
 | eep_hydrogen_q8 | runs | 0 | runs | shipped_eep_hydrogen_q8: IDENTICAL |
 | fpi12_test | runs | 0 | runs | shipped_fpi12_test: IDENTICAL |
-| fpi12_deltapp | STOP `Can't do Delta+ production from neutron for pi0` (dbase.f:823-826) | 0 | compat: same STOP; corrected: runs (D-038 F1, class a) | none possible |
+| fpi12_deltapp | STOP `Can't do Delta+ production from neutron for pi0` (dbase.f:823-826) | 0 | compat: same STOP; corrected: runs (D-038 F1, Category A) | none possible |
 | mc_neg_h_z37_ptbin, temp (byte-identical) | runs | 0 | runs | shipped_mc_neg_h_z37_ptbin: IDENTICAL |
 | nps_excl_pi0_test, nps_excl_pi0_ld2_{proton,neutron}_test, nps_delta_pi0_test, nps_sidis_pi0_test | runs | 0 | runs | nps_* (5): IDENTICAL |
 | poltar_exclusivepion_example | runs (using_tgt_field) | 0 | runs (P15.2b; until then REFUSED) | shipped_poltar_exclusivepion_example: IDENTICAL (§17) |
@@ -712,13 +740,13 @@ regression baseline test passes unchanged in check_all).
 | p15f2_poltar_pi0 | doing_pizero, 2 γ (T13, T14 active) | 42015 | 73 | IDENTICAL |
 | p15f2_poltar_bphi0 | targ_Bphi = 0 (T1 active, e-arm error branch) | 41170 | 61 | IDENTICAL |
 
-* **Class a corrections** (default mode; `--fortran-compat` keeps the Fortran; tests in both modes): T1 opposite-side
+* **Category A corrections** (default mode; `--fortran-compat` keeps the Fortran; tests in both modes): T1 opposite-side
   test (`fortran_diff_D067_T1_field_opposite_side`: targ_Bphi = 0 gives the error branch for both arms instead of 92.7°
   for the p arm), T2 p-arm sign (`fortran_diff_D067_T2_field_parm_sign`: bangle5 p arm +7.7° instead of −7.7°), T14
   ntuple columns of π0/rho with the field (`fortran_diff_D067_T14_field_ntuple_columns`). None of them acts on the
   shipped example (targ_Bphi = 270 = the e-arm φ, targ_Bangle 80° > θ, no π0).
-* **Kept in both modes (class b, §4):** T4 signed step limit (2.5 % of the SHMS events of the example rejected), T5
-  convergence test, T6 factor 90/E, T13 π0 bent as ±1 charge, T15 polarization vector. Documented (class d, §5): T3,
+* **Kept in both modes (Category B, §4):** T4 signed step limit (2.5 % of the SHMS events of the example rejected), T5
+  convergence test, T6 factor 90/E, T13 π0 bent as ±1 charge, T15 polarization vector. Documented (Category D, §5): T3,
   T7-T12, T16, T17 (calorimeter arms with the field STOP).
 * **L2** (seed 4242, mt64, 50000 events, validation/scripts/p15b_field_l2.sh, run-archive:P15.2b_L2_*,
   vs the Fortran shipped_poltar_exclusivepion_example): compat **PASS** 4/304 (statistical, incl. pmoop and radphot, which also fail in the corrected run;

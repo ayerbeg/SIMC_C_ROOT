@@ -1,4 +1,10 @@
-% docs/latex/front/user_reading.tex — PDF-only: how to read the user manual (task P15.D5).
+% docs/manual/latex/front/user_reading.tex - front matter of the user manual (PDF only): how to read this book.
+% Hand-written LaTeX (no Markdown counterpart); \input by the main .tex of the book.
+%   Compile: cmake --build <build> --target pdf, or python3 -I tools/build_docs_pdf.py --source-root . --build-dir DIR
+%   (figures, then xelatex passes + makeindex -s docs/common/latex/simcpp.ist); by hand see docs/README.md.
+%   XeLaTeX; class docs/common/latex/simcpp.cls (TeX Live packages listed there); fonts TeX Gyre Pagella,
+%   TeX Gyre Heros, DejaVu Sans Mono. The figures are built first from docs/{manual,translation}/figures/*.tex
+%   (preview.sty) into PDFs.
 \section*{How to read this book}
 The manual is in four parts. \textbf{Getting started} (chapters~\ref{user_manual-01u5fintroduction}
 to~\ref{user_manual-03u5fquicku5fstart}) is enough to install SIMC++ and make a first run. \textbf{Configuring a

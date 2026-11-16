@@ -1,0 +1,125 @@
+% docs/manual/latex/user/03_quick_start.tex - chapter of the LaTeX edition of the book "user_manual" (SIMC++ documentation).
+%   Converted once from docs/manual/markdown/user/03_quick_start.md by tools/md2latex.py; from then on THIS FILE is the source of the
+%   LaTeX edition and may be edited by hand. Re-running tools/md2latex.py --write-sources for this
+%   chapter OVERWRITES the hand edits (see docs/README.md).
+%   Compile: cmake --build <build> --target pdf, or tools/build_docs_pdf.py (figures, xelatex passes,
+%   makeindex with docs/common/latex/simcpp.ist); by hand, see docs/README.md. XeLaTeX, class
+%   docs/common/latex/simcpp.cls (packages: fontspec, tikz, xcolor, hyperref, listings, longtable, booktabs,
+%   titlesec, titletoc, fancyhdr, makeidx, preview, ...); fonts TeX Gyre Pagella, TeX Gyre Heros, DejaVu Sans
+%   Mono. The figures are built first from docs/{manual,translation}/figures/*.tex (preview.sty) into PDFs.
+\chapter{\texorpdfstring{Quick start}{Quick start}}\label{user_manual-03u5fquicku5fstart}
+\simcabstract{The commands below were run as shown on the commit of this manual. The full transcript is in
+\hyperref[user_manual-VERIFIEDu5fEXAMPLES]{VERIFIED\_\allowbreak{}EXAMPLES.md}. They assume the environment of
+\hyperref[user_manual-02u5finstallation:21-directory-layout-used-in-this-manual]{2.1} and:}
+\begin{simcshell}[basicstyle=\ttfamily\tiny]
+export EX=$SIMCPP_PREFIX/share/simc/docs/manual/markdown/user/examples    # the example inputs of this manual
+\end{simcshell}
+\begin{simctip}
+without installing, use \code{\$SIMCPP\_\allowbreak{}BUILD/\allowbreak{}bin/\allowbreak{}simc++} and \code{EX=\allowbreak{}\$SIMCPP\_\allowbreak{}SRC/\allowbreak{}docs/\allowbreak{}manual/\allowbreak{}markdown/\allowbreak{}user/\allowbreak{}examples}.
+\end{simctip}
+\section{\texorpdfstring{Run an input file}{Run an input file}}\label{user_manual-03u5fquicku5fstart:31-run-an-input-file}
+\code{examples/\allowbreak{}h\_\allowbreak{}elastic\_\allowbreak{}rad.\allowbreak{}inp}\footnote{\code{docs/\allowbreak{}manual/\allowbreak{}markdown/\allowbreak{}user/\allowbreak{}examples/\allowbreak{}h\_\allowbreak{}elastic\_\allowbreak{}rad.\allowbreak{}inp}} is H(e,e'p) at Ebeam = 10.6 GeV with the SHMS on the electron
+and the HMS on the proton, radiative corrections on, \code{random\_\allowbreak{}seed\ =\ 12345}, 200000 events requested. For a quick look, ask
+for 5000:
+
+\begin{simcshell}[basicstyle=\ttfamily\tiny]
+$ simc++ $EX/h_elastic_rad.inp -o out --ngen 5000 > out.log; echo "exit status $?"
+exit status 0
+$ grep -E "fortran_compat|random seed" out.log
+ Use random seed = 12345
+ SIMC++: fortran_compat = false (clear legacy-SIMC bugs corrected, docs/translation/markdown/06_catalogue.md)
+\end{simcshell}
+The log shows the set-up messages and progress lines ("Generating Event ... successes so far - Monitor: ...") and ends
+with \code{Come\ back\ soon!}. A run takes about 16 µs per try on one core for this input; here
+102995 tries gave 5000 accepted events (\hyperref[user_manual-09u5fperformance]{chapter 9}).
+
+\section{\texorpdfstring{What it writes}{What it writes}}\label{user_manual-03u5fquicku5fstart:32-what-it-writes}
+\begin{simcshell}[basicstyle=\ttfamily\footnotesize]
+$ ls out
+h_elastic_rad.gen
+h_elastic_rad.geni
+h_elastic_rad.gen.root
+h_elastic_rad.hist
+h_elastic_rad.root
+h_elastic_rad.summary.json
+h_elastic_rad.summary.txt
+\end{simcshell}
+\begin{simctable}{small}{2}{>{\raggedright\arraybackslash}p{\dimexpr 0.174\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.779\linewidth-2\tabcolsep\relax}}
+%
+\toprule\rowcolor{simchead}\simcth{file} & \simcth{content} \\\midrule\endfirsthead
+\multicolumn{2}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{file} & \simcth{content} \\\midrule\endhead
+\midrule\multicolumn{2}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+\code{.\allowbreak{}hist} & the run report: inputs, central event, normalisation (\code{wtcontr}, \code{normfac}, luminosity, \code{genvol}), limits \\
+\code{.\allowbreak{}geni} & the spectrometer stop counters (where the tries were lost) \\
+\code{.\allowbreak{}gen} & diagnostic histograms (text); \code{.\allowbreak{}gen.\allowbreak{}root} the same as ROOT TH1D \\
+\code{.\allowbreak{}root} & the event tree \code{h10}, one entry per accepted event (written when \code{Nntu\ >\ 0}) \\
+\code{.\allowbreak{}summary.\allowbreak{}json}, \code{.\allowbreak{}summary.\allowbreak{}txt} & the run summary in machine-readable form (the input of \code{simc\_\allowbreak{}compare}) \\
+\end{simctable}
+The normalisation is in the \code{.\allowbreak{}hist}:
+
+\begin{simcshell}[basicstyle=\ttfamily\footnotesize]
+$ grep -E "^ *(Ngen|Ntried|Ncontribute)|wtcontr|normfac" out/h_elastic_rad.hist
+            Ngen (request) =       5000
+            Ntried         =     102995
+            Ncontribute    =       5000
+               MeV: wtcontr=   0.20906661E+03
+                   normfac =     0.407176E+06
+\end{simcshell}
+\hyperref[user_manual-07u5foutputs]{Chapter 7} explains every output and every branch.
+
+\section{\texorpdfstring{Look at the tree in ROOT}{Look at the tree in ROOT}}\label{user_manual-03u5fquicku5fstart:33-look-at-the-tree-in-root}
+The \code{Weight} branch is the event weight. \code{Weight} × normfac / nevent is the yield of one event for the
+simulated charge (nevent = Ncontribute when ngen > 0) (\hyperref[user_manual-07u5foutputs:711-weights-and-normalisation]{7.1.1}). A small macro:
+
+\begin{simccode}[basicstyle=\ttfamily\tiny,style=simccpp]
+// peek_h10.C: open a SIMC++ tree, print its size and the weighted Em distribution
+void peek_h10(const char* file = "out/h_elastic_rad.root") {
+  TFile f(file);
+  TTree* t = (TTree*)f.Get("h10");
+  std::cout << t->GetEntries() << " events, " << t->GetListOfBranches()->GetEntries() << " branches" << std::endl;
+  t->Scan("hsdelta:ssdelta:W:Em:Weight", "", "", 5);
+  TH1D h("h", "E_{m} (weighted);E_{m} [GeV]", 100, -0.02, 0.2);
+  t->Project("h", "Em", "Weight");
+  std::cout << "sum of weights in [-0.02, 0.2] GeV: " << h.Integral() << ", mean Em " << h.GetMean() << " GeV" << std::endl;
+}
+\end{simccode}
+\begin{simcshell}[basicstyle=\ttfamily\footnotesize]
+$ root -l -b -q peek_h10.C
+Processing peek_h10.C...
+5000 events, 46 branches
+************************************************************************
+*    Row   *   hsdelta *   ssdelta *         W *        Em *    Weight *
+************************************************************************
+*        0 * 6.8000464 * -2.967325 * 1.0069015 * 0.0488890 * 0.0002927 *
+*        1 * 2.4381718 * -0.939918 * 0.9532427 * 0.0063532 * 0.0004068 *
+*        2 * -2.744465 * -9.402965 * 1.4675965 * 0.8642277 * 0.0004998 *
+*        3 * -1.449645 * 0.4658077 * 0.9453506 * 0.0016173 * 0.0005580 *
+*        4 * 0.9987937 * -1.216251 * 0.9978361 * 0.0712616 * 0.0004664 *
+************************************************************************
+sum of weights in [-0.02, 0.2] GeV: 2.24626, mean Em 0.0176472 GeV
+\end{simcshell}
+Here the electron is in the SHMS (\code{electron\_\allowbreak{}arm\ =\ 5}, a beam-left spectrometer),\allowbreak{} so \code{hs*} holds the proton (HMS) and \code{ss*}
+the electron (\hyperref[user_manual-07u5foutputs:712-arm-prefixes-hs-and-ss]{7.1.2}). Event 2 has radiated: W = 1.47 GeV, Em = 0.86 GeV.
+
+\section{\texorpdfstring{The same run from JSON}{The same run from JSON}}\label{user_manual-03u5fquicku5fstart:34-the-same-run-from-json}
+\begin{simcshell}[basicstyle=\ttfamily\tiny]
+$ inp2json -o run.json $EX/h_elastic_rad.inp
+$ simc++ run.json -o out_json --ngen 5000 > out_json.log && diff <(sed 2,3d out/h_elastic_rad.hist) <(sed 2,3d out_json/run.hist) && echo ".hist identical (apart from the time lines)"
+.hist identical (apart from the time lines)
+$ simc_root_identity out/h_elastic_rad.root out_json/run.root
+  h10                      TTree  5000 entries x 46 leaves: identical
+out/h_elastic_rad.root vs out_json/run.root: IDENTICAL
+\end{simcshell}
+(The output names follow the input file name, here \code{run}; use \code{-{}-{}run-{}name}\simcidx{Command-line options!run-name@\code{-{}-{}run-{}name}} or \code{"run":\ \{"name":\ .\allowbreak{}.\allowbreak{}.\allowbreak{}\}} to change them.)
+Edit \code{run.\allowbreak{}json} to change parameters, add a \code{pipeline} section to change plug-ins, or add \code{"run":\ \{"fortran\_\allowbreak{}compat":\ true\}} for the legacy-compatible mode (\hyperref[user_manual-04u5finputs]{chapter 4}).
+
+The same run is also shipped as a ready JSON configuration,\allowbreak{} \code{\$SIMCPP\_\allowbreak{}PREFIX/\allowbreak{}share/\allowbreak{}simc/\allowbreak{}data/\allowbreak{}config/\allowbreak{}h\_\allowbreak{}elastic\_\allowbreak{}rad.\allowbreak{}json}, with the
+plug-in choice written out; \code{simc++\ \$SIMCPP\_\allowbreak{}PREFIX/\allowbreak{}share/\allowbreak{}simc/\allowbreak{}data/\allowbreak{}config/\allowbreak{}h\_\allowbreak{}elastic\_\allowbreak{}rad.\allowbreak{}json\ -{}o\ out\_\allowbreak{}cfg\ -{}-{}ngen\ 5000} runs it.
+
+\section{\texorpdfstring{Next steps}{Next steps}}\label{user_manual-03u5fquicku5fstart:35-next-steps}
+\begin{itemize}
+\item More events, faster: \code{-{}-{}threads\ N}\simcidx{Command-line options!threads@\code{-{}-{}threads}} (\hyperref[user_manual-08u5frunningu5fandu5freproducibility]{chapter 8}, \hyperref[user_manual-09u5fperformance]{chapter 9}).
+\item Reproduce results of the legacy SIMC exactly: \hyperref[user_manual-08u5frunningu5fandu5freproducibility:84-reproducing-legacy-simc-results-exactly]{8.4}.
+\item An old input stops with \code{bad\ targ.\allowbreak{}can\ value}: \hyperref[user_manual-04u5finputs:413-old--names]{4.1.3}.
+\end{itemize}

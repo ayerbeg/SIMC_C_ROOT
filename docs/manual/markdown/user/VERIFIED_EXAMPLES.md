@@ -16,7 +16,7 @@ Release build installed with `cmake --install`.
 export ROOTSYS=~/opt/root LD_LIBRARY_PATH=$ROOTSYS/lib
 export SIMCPP_SRC=~/src/simcpp SIMCPP_BUILD=~/build/simcpp SIMCPP_PREFIX=~/opt/simcpp
 export SIMC_FORTRAN=~/src/simc_gfortran SIMC_REFERENCE=~/simc_reference
-export EX=$SIMCPP_PREFIX/share/simc/docs/manual/user/examples
+export EX=$SIMCPP_PREFIX/share/simc/docs/manual/markdown/user/examples
 export PATH=$SIMCPP_PREFIX/bin:$ROOTSYS/bin:/usr/bin:/bin
 ```
 
@@ -25,7 +25,7 @@ commands of chapter 2 were run with this layout without compiler warnings. The f
 `tools/check_all.sh` on the final commit. The `ctest -L docs` run at the end was made before this file existed, so the
 link test then reported only the not-yet-existing `VERIFIED_EXAMPLES.md` links, and `docs_no_machine_paths` reported
 files of other documents that were still being edited. The `$SIMC_FORTRAN` and `$SIMC_REFERENCE` commands (chapter 8.4
-and `docs/translation/user_comparing_with_fortran.md`) need the optional legacy data.
+and `docs/translation/markdown/user_comparing_with_fortran.md`) need the optional legacy data.
 
 ```
 $ simc++ --help
@@ -57,7 +57,7 @@ h_elastic_rad.summary.txt
 
 $ grep -E "fortran_compat|random seed" out.log
  Use random seed = 12345
- SIMC++: fortran_compat = false (clear legacy-SIMC bugs corrected, docs/translation/06_catalogue.md)
+ SIMC++: fortran_compat = false (clear legacy-SIMC bugs corrected, docs/translation/markdown/06_catalogue.md)
 
 $ grep -E "^ *(Ngen|Ntried|Ncontribute)|wtcontr|normfac" out/h_elastic_rad.hist
             Ngen (request) =       5000
@@ -96,7 +96,7 @@ $ inp2json -o run.json $EX/h_elastic_rad.inp && head -c 300 run.json; echo
 {
   "_source": {
     "files": [
-      "~/opt/simcpp/share/simc/docs/manual/user/examples/h_elastic_rad.inp"
+      "~/opt/simcpp/share/simc/docs/manual/markdown/user/examples/h_elastic_rad.inp"
     ],
     "generator": "inp2json (SIMC++ P1.3)",
     "not_registered": {},
@@ -115,7 +115,7 @@ h_elastic_rad.gen
 h_elastic_rad.geni
 h_elastic_rad.gen.root
 
-$ $SIMCPP_BUILD/bin/simc++ $SIMCPP_SRC/docs/manual/user/examples/h_elastic_rad.inp -o out_readme --ngen 5000 > /dev/null; echo "exit status $?"
+$ $SIMCPP_BUILD/bin/simc++ $SIMCPP_SRC/docs/manual/markdown/user/examples/h_elastic_rad.inp -o out_readme --ngen 5000 > /dev/null; echo "exit status $?"
 exit status 0
 
 $ simc++ run.json -o out_t4 --ngen 5000 --threads 4 > out_t4.log; echo "exit status $?"; grep -E "Ntried|Ncontribute" out_t4/run.hist

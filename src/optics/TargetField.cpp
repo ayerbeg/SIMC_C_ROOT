@@ -206,7 +206,7 @@ void TargetField::trackToPlane(Vec& u, double E, double dl, double a, double b, 
 
     // track through the intersection plane
     int steps = 0;
-    // FORTRAN-QUIRK(D-067 T4, class b): the signed dist0 (negative for the -sin(theta) arms: 100 iterations)
+    // FORTRAN-QUIRK(D-067 T4, Category B): the signed dist0 (negative for the -sin(theta) arms: 100 iterations)
     const int max_steps_raw = fint(std::fmax(dist0, 10. * dl) / dl);
     const long long max_steps = static_cast<long long>(max_steps_raw) * 10;   // (INTEGER*4 product; wraps only for INT_MIN)
     const int max_steps32 = static_cast<int>(static_cast<unsigned int>(max_steps & 0xffffffffLL));
@@ -279,7 +279,7 @@ void TargetField::trackToTgt(double& delta, double& y, double& dx, double& dy, d
 
     int n = 0;
     double delx = 1.;
-    // FORTRAN-QUIRK(D-067 T5, class b): delx is the distance at the START of the iteration
+    // FORTRAN-QUIRK(D-067 T5, Category B): delx is the distance at the START of the iteration
     while ((delx > .0001) && (n < 10) && ok) {
         delx = std::fabs(-fry - vT[0]);
         // track to the z=0 plane to find a correction for the x-offset

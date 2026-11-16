@@ -5,9 +5,9 @@
 #   Central.cpp       : simc.f:calculate_central (P7.2)
 #   RunReport*.cpp    : simc.f normalisation (l.360-432), report (.hist), .geni text, summary sections (P7.2; split P15.3)
 #   FortranWriter.cpp : gfortran formatted-output emulation for the .hist/.geni text
-#   Pipeline.cpp      : the JSON plug-in choice per stage (docs/DRIVER.md)
+#   Pipeline.cpp      : the JSON plug-in choice per stage (docs/manual/markdown/reference/DRIVER.md)
 #   SimcRun.cpp       : the main loop (simc.f l.1-623)
-#   SimcRunParallel.cpp : the parallel event loop (--threads N; not Fortran; P15.4, docs/PERFORMANCE.md)
+#   SimcRunParallel.cpp : the parallel event loop (--threads N; not Fortran; P15.4, docs/manual/markdown/reference/PERFORMANCE.md)
 # Consumers must also link simcfw_hms, simcfw_shms, simcfw_sos (OBJECT libraries: their registrations), simcfw_optics,
 # simcfw_material and simcfw_setup — or simply ${SIMC_DRIVER_LIBS} (everything a full run needs).
 add_library(simcfw_driver STATIC

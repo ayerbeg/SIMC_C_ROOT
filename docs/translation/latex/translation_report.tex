@@ -1,9 +1,43 @@
-% docs/latex/translation_report.tex — LaTeX skeleton of the book "translation_report" (task P15.D5).
-% The text is generated from the Markdown sources by tools/md2latex.py into translation_report_meta.tex / translation_report_body.tex (build
-% directory); the design is docs/latex/simcpp.cls; parts and chapters: docs/latex/books.json.
-% Build: cmake --build <build> --target pdf   (or tools/build_docs_pdf.py --build-dir <dir>)
+% docs/translation/latex/translation_report.tex - main file of the LaTeX edition of the book "translation_report" (SIMC++ documentation).
+%   Compile: cmake --build <build> --target pdf, or tools/build_docs_pdf.py (figures, xelatex passes,
+%   makeindex with docs/common/latex/simcpp.ist); by hand, see docs/README.md. XeLaTeX, class
+%   docs/common/latex/simcpp.cls (packages: fontspec, tikz, xcolor, hyperref, listings, longtable, booktabs,
+%   titlesec, titletoc, fancyhdr, makeidx, preview, ...); fonts TeX Gyre Pagella, TeX Gyre Heros, DejaVu Sans
+%   Mono. The figures are built first from docs/{manual,translation}/figures/*.tex (preview.sty) into PDFs.
+%   Structure (parts, chapter order) is edited HERE; docs/common/latex/books.json only drives
+%   tools/md2latex.py when chapters are re-converted from the Markdown.
 \documentclass{simcpp}
-\input{translation_report_meta}
+\simcsetmeta{From SIMC to SIMC++}
+  {Translation and validation report: the Fortran SIMC rewritten in C++}
+  {\simcbuildversion}{\simcbuilddate}{SIMC++ documentation}
 \begin{document}
-\input{translation_report_body}
+\simcfrontmatter
+\input{chapters/index}
+\input{front/translation_reading}
+\input{conventions}
+% the dashboard page is data (catalogue and routine-map totals): written at build time by
+% tools/md2latex.py --generated (tools/build_docs_pdf.py does it), never edited by hand
+\InputIfFileExists{translation_report_dashboard.tex}{}{\simcnodashboard}
+\simcmainmatter
+
+\simcpart{Method}
+  {How the translation was organised and how it was proved against the Fortran.}
+\input{chapters/01_methodology}
+\input{chapters/02_validation}
+
+\simcpart{The mapping}
+  {Which C++ code replaces which Fortran routine, the numerical rules for bitwise identity, and the switch that restores the Fortran behaviour.}
+\input{chapters/03_routine_map}
+\input{chapters/04_numerics}
+\input{chapters/05_compat}
+
+\simcpart{Findings}
+  {Every Fortran bug, quirk and deliberate deviation found during the translation.}
+\input{chapters/06_catalogue}
+
+\simcappendix
+\input{chapters/fortran_routine_map}
+\input{chapters/user_comparing_with_fortran}
+\input{chapters/user_differences}
+\simcbackmatter
 \end{document}

@@ -5,10 +5,10 @@ The commands below were run as shown on the commit of this manual. The full tran
 [2.1](02_installation.md#21-directory-layout-used-in-this-manual) and:
 
 ```bash
-export EX=$SIMCPP_PREFIX/share/simc/docs/manual/user/examples    # the example inputs of this manual
+export EX=$SIMCPP_PREFIX/share/simc/docs/manual/markdown/user/examples    # the example inputs of this manual
 ```
 
-> **Tip:** without installing, use `$SIMCPP_BUILD/bin/simc++` and `EX=$SIMCPP_SRC/docs/manual/user/examples`.
+> **Tip:** without installing, use `$SIMCPP_BUILD/bin/simc++` and `EX=$SIMCPP_SRC/docs/manual/markdown/user/examples`.
 
 ## 3.1 Run an input file
 
@@ -21,7 +21,7 @@ $ simc++ $EX/h_elastic_rad.inp -o out --ngen 5000 > out.log; echo "exit status $
 exit status 0
 $ grep -E "fortran_compat|random seed" out.log
  Use random seed = 12345
- SIMC++: fortran_compat = false (clear legacy-SIMC bugs corrected, docs/translation/06_catalogue.md)
+ SIMC++: fortran_compat = false (clear legacy-SIMC bugs corrected, docs/translation/markdown/06_catalogue.md)
 ```
 
 The log shows the set-up messages and progress lines ("Generating Event ... successes so far - Monitor: ...") and ends

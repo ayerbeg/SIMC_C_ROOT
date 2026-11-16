@@ -1,0 +1,72 @@
+% docs/translation/latex/chapters/index.tex - chapter of the LaTeX edition of the book "translation_report" (SIMC++ documentation).
+%   Converted once from docs/translation/markdown/index.md by tools/md2latex.py; from then on THIS FILE is the source of the
+%   LaTeX edition and may be edited by hand. Re-running tools/md2latex.py --write-sources for this
+%   chapter OVERWRITES the hand edits (see docs/README.md).
+%   Compile: cmake --build <build> --target pdf, or tools/build_docs_pdf.py (figures, xelatex passes,
+%   makeindex with docs/common/latex/simcpp.ist); by hand, see docs/README.md. XeLaTeX, class
+%   docs/common/latex/simcpp.cls (packages: fontspec, tikz, xcolor, hyperref, listings, longtable, booktabs,
+%   titlesec, titletoc, fancyhdr, makeidx, preview, ...); fonts TeX Gyre Pagella, TeX Gyre Heros, DejaVu Sans
+%   Mono. The figures are built first from docs/{manual,translation}/figures/*.tex (preview.sty) into PDFs.
+\chapter*{About this report}\addcontentsline{toc}{chapter}{About this report}\markboth{About this report}{About this report}\label{translation_report-index}
+SIMC++ is a C++20 / ROOT 6 translation of the Hall C Monte Carlo SIMC (Fortran, \code{simc\_\allowbreak{}gfortran}). This report collects
+everything about the relation between the two programs: how the translation was organised and proved, which C++ code
+replaces which Fortran routine, the numerical rules that make the results bit-for-bit identical, the switch that
+restores the exact Fortran behaviour, and the catalogue of every Fortran bug and quirk found on the way.
+
+The SIMC++ framework itself (architecture,\allowbreak{} interfaces, extending) is described in the
+developer manual\footnote{SIMC++ Developer Manual, ``SIMC++ developer manual'' (\code{docs/\allowbreak{}manual/\allowbreak{}markdown/\allowbreak{}developer/\allowbreak{}index.\allowbreak{}md})}; running it in the user manual\footnote{SIMC++ User Manual, ``SIMC++ user manual'' (\code{docs/\allowbreak{}manual/\allowbreak{}markdown/\allowbreak{}user/\allowbreak{}index.\allowbreak{}md})}.
+
+\section*{\texorpdfstring{Chapters}{Chapters}}\addcontentsline{toc}{section}{\texorpdfstring{Chapters}{Chapters}}\label{translation_report-index:chapters}
+\begin{enumerate}
+\item \hyperref[translation_report-01u5fmethodology]{Methodology}: the Fortran SIMC in one page, how SIMC++ maps it, the design principles taken from
+the decisions (D-001, D-002, D-007, D-026, D-031, D-032, D-044), how each subsystem was translated, the phases.
+\item \hyperref[translation_report-02u5fvalidation]{Validation framework}: the Fortran L1 harness and its tables, the C++ L1 runners, captures and
+replays, RANLUX full-run identity, the shipped-input suite, \code{simc\_\allowbreak{}compare} (L2) and the wtcontr sigma (D-053),
+regression baselines, how to add a new Fortran reference end to end.
+\item \hyperref[translation_report-03u5froutineu5fmap]{Fortran → C++ routine map}: conventions and the curated map by subsystem, COMMON blocks; the
+generated table of all 172 routines is \hyperref[translation_report-fortranu5froutineu5fmap]{fortran\_\allowbreak{}routine\_\allowbreak{}map.\allowbreak{}md}.
+\item \hyperref[translation_report-04u5fnumerics]{Numerical conventions for bitwise fidelity}: units, double / real*4 / REAL(16), powers, operand
+order and NaN signs, Fortran intrinsics, libm and toolchain dependence, random-number order.
+\item \hyperref[translation_report-05u5fcompat]{The Fortran compatibility layer}: classes and markers, how \code{-{}-{}fortran-{}compat}\simcidx{Command-line options!fortran-compat@\code{-{}-{}fortran-{}compat}} reaches the code, how to
+add a correction.
+\item \hyperref[translation_report-06u5fcatalogue]{Catalogue of Fortran bugs, quirks and deviations} (generated from
+FORTRAN\_\allowbreak{}DIFFERENCES.md\footnote{From SIMC to SIMC++, ``Differences between SIMC++ and the Fortran SIMC'' (\code{docs/\allowbreak{}translation/\allowbreak{}markdown/\allowbreak{}FORTRAN\_\allowbreak{}DIFFERENCES.\allowbreak{}md})}): every item with its id, Fortran file:line, class, effect and
+what SIMC++ does in each mode; the expert list; the cross-check with the decisions.
+\end{enumerate}
+User-oriented chapters (maintained with the user manual):
+
+\begin{itemize}
+\item \hyperref[translation_report-useru5fcomparingu5fwithu5ffortran]{Comparing SIMC++ with the Fortran}
+\item \hyperref[translation_report-useru5fdifferences]{Differences from the Fortran, for users}
+\end{itemize}
+\section*{\texorpdfstring{Sources and tools}{Sources and tools}}\addcontentsline{toc}{section}{\texorpdfstring{Sources and tools}{Sources and tools}}\label{translation_report-index:sources-and-tools}
+Paths: \code{\$SIMC\_\allowbreak{}FORTRAN} and \code{\$SIMC\_\allowbreak{}REFERENCE} are the Fortran tree and the Fortran reference data (e.g.
+\code{\textasciitilde{}/\allowbreak{}src/\allowbreak{}simc\_\allowbreak{}gfortran}, \code{\textasciitilde{}/\allowbreak{}simc\_\allowbreak{}reference}; developer manual, chapter 2); \code{reference/\allowbreak{}.\allowbreak{}.\allowbreak{}.} in this report is relative to
+\code{\$SIMC\_\allowbreak{}REFERENCE}; \code{run-{}archive:\allowbreak{}<label>} is a run folder of the project's run archive (\code{simc\_\allowbreak{}runs/\allowbreak{}<timestamp>\allowbreak{}\_\allowbreak{}<label>\allowbreak{}/},
+written by \code{tools/\allowbreak{}check\_\allowbreak{}all.\allowbreak{}sh} and the run script); \code{project\_\allowbreak{}control/} and \code{fortran\_\allowbreak{}harness/} are directories of the
+project next to the source tree and the reference data.
+
+\begin{simctable}{small}{2}{>{\raggedright\arraybackslash}p{\dimexpr 0.354\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.599\linewidth-2\tabcolsep\relax}}
+%
+\toprule\rowcolor{simchead}\simcth{what} & \simcth{where} \\\midrule\endfirsthead
+\multicolumn{2}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{what} & \simcth{where} \\\midrule\endhead
+\midrule\multicolumn{2}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+Fortran source (read-only) & \code{\$SIMC\_\allowbreak{}FORTRAN} (e.g. \code{\textasciitilde{}/\allowbreak{}src/\allowbreak{}simc\_\allowbreak{}gfortran}) \\
+Fortran references (tables, captures, runs, findings reports, toolchain) & \code{\$SIMC\_\allowbreak{}REFERENCE} (e.g. \code{\textasciitilde{}/\allowbreak{}simc\_\allowbreak{}reference}: \code{functions/\allowbreak{}README.\allowbreak{}md}, \code{runs/}, \code{P*.\allowbreak{}F*\_\allowbreak{}report.\allowbreak{}md}, \code{TOOLCHAIN.\allowbreak{}txt}) \\
+Fortran L1 harness & \code{fortran\_\allowbreak{}harness/} of the project (README.md) \\
+decisions, plan, evidence & \code{project\_\allowbreak{}control/\allowbreak{}\{DECISIONS.\allowbreak{}md,\ PLAN.\allowbreak{}md,\ VALIDATION\_\allowbreak{}LEDGER.\allowbreak{}md\}} of the project \\
+the differences,\allowbreak{} per item and per reaction & FORTRAN\_\allowbreak{}DIFFERENCES.md\footnotemark{} \\
+generators & \code{docs/\allowbreak{}translation/\allowbreak{}tools/\allowbreak{}gen\_\allowbreak{}fortran\_\allowbreak{}map.\allowbreak{}py} (routine map), \code{gen\_\allowbreak{}catalogue.\allowbreak{}py} (catalogue) \\
+\end{simctable}
+\addtocounter{footnote}{-1}
+\stepcounter{footnote}\footnotetext{From SIMC to SIMC++, ``Differences between SIMC++ and the Fortran SIMC'' (\code{docs/\allowbreak{}translation/\allowbreak{}markdown/\allowbreak{}FORTRAN\_\allowbreak{}DIFFERENCES.\allowbreak{}md})}
+Re-run both generators after a port or a new finding:
+
+\begin{simcshell}[basicstyle=\ttfamily\footnotesize]
+python3 -I docs/translation/tools/gen_fortran_map.py
+python3 -I docs/translation/tools/gen_catalogue.py
+\end{simcshell}
+The CTest \code{docs\_\allowbreak{}translation} checks that no Fortran routine is left without a C++ citation or a reason, that the
+catalogue is up to date with FORTRAN\_\allowbreak{}DIFFERENCES.md,\allowbreak{} and that the verbatim code quotes match the code.
+

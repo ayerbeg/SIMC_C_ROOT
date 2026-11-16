@@ -1,6 +1,6 @@
 # Extending SIMC++ with plug-ins
 
-Status: P7.4 (2026-10-01), updated in P8.2 (reaction-owned weight, spectral functions), P15.3/P15.4 (package, threads) and P15.D1 (compiled examples, stale notes). The step-by-step recipes are in the developer manual, [chapter 4](manual/developer/04_extending.md). This page shows how to add a spectrometer, reaction, physics model, target or output
+Status: P7.4 (2026-10-01), updated in P8.2 (reaction-owned weight, spectral functions), P15.3/P15.4 (package, threads) and P15.D1 (compiled examples, stale notes). The step-by-step recipes are in the developer manual, [chapter 4](../developer/04_extending.md). This page shows how to add a spectrometer, reaction, physics model, target or output
 sink without touching the driver. The worked example is `examples/ideal_box/`, a complete ISpectrometer plug-in
 with its test. Read [ARCHITECTURE.md](ARCHITECTURE.md) first for the layers and the per-event data flow.
 

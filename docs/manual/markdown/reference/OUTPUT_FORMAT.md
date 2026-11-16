@@ -243,7 +243,7 @@ columns.
 
 ## 2. Run summary JSON (RunSummarySink, hist2json)
 
-- Schema: [`docs/summary.schema.json`](summary.schema.json), JSON Schema draft-07, `schema = "simc_run_summary"`,
+- Schema: [`docs/manual/markdown/reference/summary.schema.json`](summary.schema.json), JSON Schema draft-07, `schema = "simc_run_summary"`,
   `schema_version = 1`.
 - The layout is the one read by the P1.5 comparison tool (validation/README.md, validation/compare/RunSummary.cpp).
 - `run.producer` is `"simc++"` for the C++ and `"hist2json (Fortran .hist/.geni)"` for Fortran-derived files.
@@ -299,7 +299,7 @@ These names are shared with the P1.5 reader. `trials` and `successes` are always
 | hrsr, hrsl | trials, slit_hor, slit_vert, Q1_…, Q2_…, D1_in, D1_out, Q3_…, hut, dc1, dc2, s1, s2, cal, successes | rSTOP_*, lSTOP_* |
 | calo | trials, slit_hor, slit_vert, successes | caloSTOP_* |
 
-Fortran `.geni` label bugs (simc.f; docs/FORTRAN_DIFFERENCES.md D-011):
+Fortran `.geni` label bugs (simc.f; docs/translation/markdown/FORTRAN_DIFFERENCES.md D-011):
 - **l.519-520**: the SHMS "Q3 … mid" column prints `shmsSTOP_q2_mid`. It is stored as `q2_mid_dup`; the C++ summary also
   writes `q2_mid_dup = q2_mid` so that both sides carry it (for simc_compare). The C++ `.geni` prints `q3_mid` in that column
   by default and `q2_mid` with `--fortran-compat`.

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 project(SIMC_CPP VERSION 2.0 LANGUAGES CXX)
 
-# SIMC++ (translation branch): docs/ARCHITECTURE.md, docs/DRIVER.md.
+# SIMC++ (translation branch): docs/manual/markdown/reference/ARCHITECTURE.md, docs/manual/markdown/reference/DRIVER.md.
 # The pre-translation ("legacy") code and its SIMC_BUILD_LEGACY option were removed in P7.2; they are in git history.
 
 set(CMAKE_CXX_STANDARD 20)
@@ -32,7 +32,7 @@ if(NOT nlohmann_json_FOUND)
 endif()
 
 # ============================================================================
-# New framework (translation branch, docs/ARCHITECTURE.md). ROOT-free core.
+# New framework (translation branch, docs/manual/markdown/reference/ARCHITECTURE.md). ROOT-free core.
 # ============================================================================
 
 # Validation data (optional; D-073: no machine-specific defaults). Empty = not available: the tests that need them are
@@ -128,7 +128,7 @@ add_subdirectory(src/radiation)           # IRadiator "simc_rad": radc.f, brem.f
 add_subdirectory(src/reactions)           # IBeam "standard", IReaction "hydrogen_elastic"/"phase_space": event.f (P4.1)
 add_subdirectory(src/driver)              # simc.f: montecarlo (P7.1), main loop + normalisation (P7.2)
 
-# Example plug-ins (docs/EXTENDING.md): built as OBJECT libraries and linked into simc++ so that they can be selected
+# Example plug-ins (docs/manual/markdown/reference/EXTENDING.md): built as OBJECT libraries and linked into simc++ so that they can be selected
 # from the JSON pipeline. Each example adds its target to SIMC_EXAMPLE_PLUGINS.
 option(SIMC_BUILD_EXAMPLES "Build the example plug-ins (examples/) into simc++" ON)
 set(SIMC_EXAMPLE_PLUGINS "")
@@ -153,7 +153,7 @@ add_subdirectory(tests/regression)     # C++ baselines: output_identity.sh print
 add_subdirectory(tests/user_manual)    # P15.D2: user-manual checks (parameter reference complete, Markdown links), label "docs"
 add_subdirectory(tests/developer_manual)   # P15.D1: developer-manual checks (header coverage, verbatim snippets, links), label "docs"
 add_subdirectory(docs/doxygen)             # P15.D3: Doxygen API reference: target `doc`, tests docs_doc_coverage / docs_doxygen (label "docs")
-add_subdirectory(docs/latex)               # P15.D5: PDF manuals: target `pdf`, test docs_pdf_build (label "docs")
+add_subdirectory(docs/common/latex)        # P15.D5/D6: PDF manuals from the committed LaTeX editions: target `pdf`, test docs_pdf_build (label "docs")
 
 # ============================================================================
 # Installation
@@ -163,14 +163,14 @@ add_subdirectory(docs/latex)               # P15.D5: PDF manuals: target `pdf`, 
 # The default data directory (include/simc/core/DataPath.h; P15.4, D-069): env SIMC_DATA_DIR, else for a program built
 # with find_package(SIMC) the package's share/simc/data (cmake/SimcInstalledDataRoot.cpp, an interface source added by
 # SIMCConfig.cmake), else for an installed program <exe>/../share/simc/data, else the source tree (in-tree builds).
-# --data-dir and the "matrix_dir"/"data_dir" JSON keys of the stages still override it (docs/EXTENDING.md).
+# --data-dir and the "matrix_dir"/"data_dir" JSON keys of the stages still override it (docs/manual/markdown/reference/EXTENDING.md).
 install(TARGETS simcpp inp2json hist2json simc_root_identity RUNTIME DESTINATION bin)
 
 # P15.3: the CMake package SIMC (find_package(SIMC)). SIMC::simc is an INTERFACE target that links every library of a
 # complete run (${SIMC_DRIVER_LIBS}); the OBJECT libraries are installed as object files (lib/simc/objects), so a
 # consumer gets every SIMC_REGISTER registration (built-in reactions, spectrometers, sinks) without whole-archive flags.
 # Its own plug-ins are linked into its own executable, which can call simc::driver::CommandLineMain (the simc++ command
-# line, include/simc/driver/CommandLine.h); see examples/out_of_tree_plugin and docs/EXTENDING.md.
+# line, include/simc/driver/CommandLine.h); see examples/out_of_tree_plugin and docs/manual/markdown/reference/EXTENDING.md.
 add_library(simc INTERFACE)
 target_link_libraries(simc INTERFACE ${SIMC_DRIVER_LIBS})
 # The objects of an OBJECT library are linked only into targets that link it DIRECTLY; through the INTERFACE target

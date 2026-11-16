@@ -1,0 +1,78 @@
+% docs/manual/latex/developer/06_standards.tex - chapter of the LaTeX edition of the book "developer_manual" (SIMC++ documentation).
+%   Converted once from docs/manual/markdown/developer/06_standards.md by tools/md2latex.py; from then on THIS FILE is the source of the
+%   LaTeX edition and may be edited by hand. Re-running tools/md2latex.py --write-sources for this
+%   chapter OVERWRITES the hand edits (see docs/README.md).
+%   Compile: cmake --build <build> --target pdf, or tools/build_docs_pdf.py (figures, xelatex passes,
+%   makeindex with docs/common/latex/simcpp.ist); by hand, see docs/README.md. XeLaTeX, class
+%   docs/common/latex/simcpp.cls (packages: fontspec, tikz, xcolor, hyperref, listings, longtable, booktabs,
+%   titlesec, titletoc, fancyhdr, makeidx, preview, ...); fonts TeX Gyre Pagella, TeX Gyre Heros, DejaVu Sans
+%   Mono. The figures are built first from docs/{manual,translation}/figures/*.tex (preview.sty) into PDFs.
+\chapter{\texorpdfstring{Coding standards, commits, technical debt}{Coding standards, commits, technical debt}}\label{developer_manual-06u5fstandards}
+\section{\texorpdfstring{Coding standards}{Coding standards}}\label{developer_manual-06u5fstandards:61-coding-standards}
+\begin{itemize}
+\item \textbf{C++20}, \code{-{}Wall\ -{}Wextra\ -{}pedantic}, zero warnings. 4-space indentation,\allowbreak{} lines up to 120 characters, \code{\#ifndef\ SIMC\_\allowbreak{}<PATH>\allowbreak{}\_\allowbreak{}H} include guards, the file path as the first comment line of every file.
+\item \textbf{Namespaces} \code{simc} and one sub-namespace per module (\code{simc::\allowbreak{}driver}, \code{simc::\allowbreak{}optics}, \code{simc::\allowbreak{}radiation}, ...).
+Classes \code{PascalCase}, functions and members \code{camelCase}, private members with a trailing \code{\_}. Physics quantities keep
+their established short names (\code{main.\allowbreak{}SP.\allowbreak{}p.\allowbreak{}delta}, \code{targ.\allowbreak{}Eloss}), so that code and documents use the same words.
+\item \textbf{Ownership}: \code{std::\allowbreak{}unique\_\allowbreak{}ptr} for stages, value types for events and settings, references for collaborators that
+outlive the user, raw pointers only for optional non-owning collaborators (\code{StageContext}\simcidx{Classes and interfaces!StageContext@\code{StageContext}}). RAII for files.
+\item \textbf{No global mutable state} (chapter 4 §4.7). Constants are \code{constexpr} (\code{SimcConstants.\allowbreak{}h}, \code{Units.\allowbreak{}h}).
+\item \textbf{Errors}: \code{FortranStop}\simcidx{Classes and interfaces!FortranStop@\code{FortranStop}}, \code{NotPorted}\simcidx{Classes and interfaces!NotPorted@\code{NotPorted}}, \code{std::\allowbreak{}invalid\_\allowbreak{}argument} (configuration),\allowbreak{} \code{std::\allowbreak{}logic\_\allowbreak{}error} (misuse); never
+\code{exit(\allowbreak{})} in library code.
+\item \textbf{Kernels}: keep the operation order and the random-number order of a kernel exactly; do not "modernise" a kernel
+expression, refactor around it and prove that nothing changed with the golden set (\code{validation/\allowbreak{}scripts/\allowbreak{}p153\_\allowbreak{}golden.\allowbreak{}sh})
+and the replay tests. The numerical rules (no \code{std::\allowbreak{}pow(\allowbreak{}x,\ 2)}, which the unit test \code{lint\_\allowbreak{}no\_\allowbreak{}pow\_\allowbreak{}square} enforces;
+\code{optics::\allowbreak{}powi} for integer powers; quad precision where required), the origin comments and the markers for
+behaviour that differs between the two modes are described in the translation report\footnote{From SIMC to SIMC++, ``SIMC Fortran → SIMC++ translation report'' (\code{docs/\allowbreak{}translation/\allowbreak{}markdown/\allowbreak{}index.\allowbreak{}md})},
+chapters 3-5.
+\item \textbf{Interfaces} carry physics: return values instead of output arguments, \code{std::\allowbreak{}optional} for "written or not",
+0-based arrays (with a comment where a kernel keeps another convention).
+\item \textbf{Tests} for every change: a driver run for a new plug-in, a test on fixed inputs for a new kernel, a both-mode test
+for a new \code{fortran\_\allowbreak{}compat} behaviour, an identity check for a refactor, the docs tests for new public headers.
+\item \textbf{Units}: internal units in all interfaces; the unit in a \code{/\allowbreak{}/\allowbreak{}/} comment on every member that has one.
+\end{itemize}
+\section{\texorpdfstring{Commits and working rules}{Commits and working rules}}\label{developer_manual-06u5fstandards:62-commits-and-working-rules}
+\begin{itemize}
+\item Branch \code{translation} of \code{SIMC++\_\allowbreak{}Claude}. Never force-push, never rewrite history, never discard changes you did not
+make. Several agents may work in the same worktree: \code{git\ add\ <your\ paths>} only, never \code{git\ add\ -{}A}.
+\item Commit message: \code{[P<phase>\allowbreak{}.\allowbreak{}<task>\allowbreak{}]\ (\allowbreak{}<n>\allowbreak{})\ <what>} (n = the commit number within the task), with the attribution lines
+required by the session at the end. Commit early and often.
+\item At the end of a task: \code{tools/\allowbreak{}check\_\allowbreak{}all.\allowbreak{}sh\ -{}-{}commit\ <hash>\ -{}-{}label\ <task>} (chapter 2 §2.6) and quote its
+\code{simc\_\allowbreak{}runs/\allowbreak{}index.\allowbreak{}tsv} line in the report.
+\item Reference data (\code{\$SIMC\_\allowbreak{}REFERENCE}) and the directory of shipped inputs are read-only; new references
+are produced by the reference process described in the translation report.
+\item Do not delete run folders in \code{SIMC++\_\allowbreak{}Project/\allowbreak{}simc\_\allowbreak{}runs/} or baselines; only reproducible build output and git-tracked
+files may be removed.
+\item Decisions are recorded in \code{project\_\allowbreak{}control/\allowbreak{}DECISIONS.\allowbreak{}md} (append-only),\allowbreak{} evidence in \code{VALIDATION\_\allowbreak{}LEDGER.\allowbreak{}md}.
+\end{itemize}
+\section{\texorpdfstring{Known technical debt}{Known technical debt}}\label{developer_manual-06u5fstandards:63-known-technical-debt}
+\begin{itemize}
+\item \code{simc\_\allowbreak{}compare} cannot skip run-level quantities (\code{-{}-{}skip} acts on tree variables only): a \code{-{}-{}skip-{}run} option is
+proposed for comparisons where a known mode difference changes a run-level number.
+\item \code{BuildRunSetup} has reaction-specific branches; it is split by responsibility (src/setup: SetupReaction,\allowbreak{} SetupTheory,\allowbreak{}
+SetupLimits),\allowbreak{} not per plug-in, so a new reaction that needs new set-up quantities edits src/setup.
+\item The arm codes still drive logic outside the spectrometer plug-ins (target-window materials in \code{hallc\_\allowbreak{}cryo}, \code{.\allowbreak{}geni}
+blocks, default plug-in choice).
+\item Plug-ins are linked, not loaded at run time: an out-of-tree plug-in needs its own executable.
+\item The workers of \code{-{}-{}threads\ N}\simcidx{Command-line options!threads@\code{-{}-{}threads}} are built sequentially (0.1-0.3 s each); \code{tgamma} remains the largest single cost of
+radiative runs (PERFORMANCE.md §4).
+\item \code{random\_\allowbreak{}state\_\allowbreak{}file}\simcidx{Parameters!random_state_file@\code{random\_state\_file}} of the \code{.\allowbreak{}inp} is ignored (with a NOTE); the \code{ranlux} rng accepts a 25-integer state in JSON.
+\item \code{SIMC\_\allowbreak{}REFERENCE\_\allowbreak{}DIR}, \code{SIMC\_\allowbreak{}FORTRAN\_\allowbreak{}DIR} and \code{SIMC\_\allowbreak{}BASELINE\_\allowbreak{}DIR} default to absolute paths of the development machine;
+on another machine set them at configure time (the tests that need them are skipped otherwise). After moving an
+installation set \code{SIMC\_\allowbreak{}DATA\_\allowbreak{}DIR} or reinstall (chapter 3 §3.8).
+\item 48 untracked old baseline folders (767 MB) in \code{SIMC++\_\allowbreak{}Project/\allowbreak{}baselines} are not referenced by any test (to be
+decided by the user).
+\end{itemize}
+Open physics questions about the original program's behaviour (the expert list, the acceptance mode, the Delta weight)
+are listed in the translation report\footnote{From SIMC to SIMC++, ``6. Catalogue of Fortran bugs, quirks and deviations (generated)'' (\code{docs/\allowbreak{}translation/\allowbreak{}markdown/\allowbreak{}06\_\allowbreak{}catalogue.\allowbreak{}md})}.
+
+\section{\texorpdfstring{Known loose ends}{Known loose ends}}\label{developer_manual-06u5fstandards:64-known-loose-ends}
+\begin{itemize}
+\item The stale code texts noted while writing this manual (outdated "not ported" comments and messages, an old data-directory
+name) were corrected; runtime messages now speak of "legacy SIMC behaviour".
+\item Doxygen documentation of \code{include/} is partial (core and the stage interfaces); the coverage test \code{docs\_\allowbreak{}doc\_\allowbreak{}coverage}
+is disabled until it is completed.
+\item \code{src/\allowbreak{}physics/\allowbreak{}rho/\allowbreak{}Rho\allowbreak{}Model.\allowbreak{}cpp}: \code{kNotPortedTag} / \code{is\allowbreak{}Not\allowbreak{}Ported\allowbreak{}Problem} are dead code.
+\item \code{simc\_\allowbreak{}compare} cannot exclude run-level quantities (a \code{-{}-{}skip-{}run} option would help when comparing corrected runs).
+\item \code{inp2json} writes a \code{"generator"} string with an old version tag.
+\end{itemize}

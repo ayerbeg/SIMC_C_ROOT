@@ -2,7 +2,7 @@
 // The "run_summary" output sink: at the end of the run it writes <run>.summary.json (the machine-readable content of
 // the Fortran .hist and .geni: counters, normalisation, averages, stop counters, settings; built by SummaryJson.cpp)
 // and a plain-text rendering <run>.summary.txt. simc_compare reads the JSON to compare a C++ run with a Fortran one.
-// Fortran: simc.f:report (l.644-1142) and .geni (l.462-532); see docs/OUTPUT_FORMAT.md.
+// Fortran: simc.f:report (l.644-1142) and .geni (l.462-532); see docs/manual/markdown/reference/OUTPUT_FORMAT.md.
 #include "simc/output/RunSummarySink.h"
 
 #include <fstream>

@@ -1,5 +1,10 @@
-% docs/latex/figures/validation_ladder.tex — the validation ladder of the translation (docs/translation/02_validation.md):
+% docs/translation/figures/validation_ladder.tex - TikZ figure of the SIMC++ documentation: the validation ladder of the translation (docs/translation/markdown/02_validation.md):
 % L1 tables -> captures and replays -> RANLUX full-run identity -> L2 statistics; identity regressions. Task P15.D5.
+%   Compile alone (tools/build_docs_pdf.py does it for every figure): with TEXINPUTS=docs/common/latex//: run
+%   xelatex <name>.tex -> <name>.pdf (preview.sty crops the page to the picture); the books include that PDF.
+%   Packages: tikz, xcolor, fontspec, preview (simcfig.sty, simcfonts.sty); fonts TeX Gyre Pagella, TeX Gyre Heros,
+%   DejaVu Sans Mono. After a change, re-export the PNG of the Markdown edition (build_docs_pdf.py --png) and
+%   commit both.
 \documentclass{article}
 \usepackage{simcfonts,simcfig}
 \usepackage[active,tightpage]{preview}

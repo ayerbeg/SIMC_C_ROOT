@@ -10,9 +10,9 @@ A run writes into the output directory (`-o DIR`, default `.`), with `<run>` = t
 | `<run>.geni` | `fortran_hist` | spectrometer stop counters |
 | `<run>.gen` | `fortran_hist` | diagnostic histograms (text) |
 | `<run>.gen.root` | `gen_hist` | the same histograms as ROOT TH1D |
-| `<run>.summary.json`, `.summary.txt` | `run_summary` | run summary (schema `docs/summary.schema.json`) |
+| `<run>.summary.json`, `.summary.txt` | `run_summary` | run summary (schema `docs/manual/markdown/reference/summary.schema.json`) |
 
-`ngen = 0` writes nothing. The detailed reference of every value is `docs/OUTPUT_FORMAT.md`.
+`ngen = 0` writes nothing. The detailed reference of every value is `docs/manual/markdown/reference/OUTPUT_FORMAT.md`.
 
 ## 7.1 The event tree `h10`
 
@@ -138,7 +138,7 @@ tables. Lines 2-3 are the BEGIN/END times; everything else depends only on the i
 
 * `.geni`: for each spectrometer used, the number of trials and where they were stopped (slits, magnet entrances,
   middles and exits, hut, chambers, scintillators, calorimeter), and the successes. Counter keys per spectrometer are
-  listed in `docs/OUTPUT_FORMAT.md` §2. With `using_HMScoll`/`using_SHMScoll` a `Collimator stops (pi/mu)` line is added.
+  listed in `docs/manual/markdown/reference/OUTPUT_FORMAT.md` §2. With `using_HMScoll`/`using_SHMScoll` a `Collimator stops (pi/mu)` line is added.
 * `.gen`: diagnostic histograms (50 bins) of delta, yptar, xptar of both arms, Em and Pm: `geni` (all tries,
   vertex), `gen` (accepted, vertex) and `recon` (accepted, reconstructed, weighted). `.gen.root` has the same histograms
   as TH1D named `<set>_<arm>_<var>` (for example `gen_e_delta`, `recon_Em`), filled with the `.gen` binning (no
@@ -146,7 +146,7 @@ tables. Lines 2-3 are the BEGIN/END times; everything else depends only on the i
 
 ## 7.4 Run summary (`.summary.json`, `.summary.txt`)
 
-A JSON document (`"schema": "simc_run_summary"`, version 1, `docs/summary.schema.json`) with the run identification, the
+A JSON document (`"schema": "simc_run_summary"`, version 1, `docs/manual/markdown/reference/summary.schema.json`) with the run identification, the
 counters, the normalisation, all FLAGS, the stop counters, the kinematics, the central event, the limits and the tree
 location. `.summary.txt` is the same in readable form. the comparison tool `simc_compare` reads it;
 `hist2json` converts a `.hist`/`.geni` into the same format. A threaded run adds `"run": {"threads": N}`.

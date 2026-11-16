@@ -494,11 +494,11 @@ int replay(const std::string& capdir, const std::string& rundir, const std::stri
         ok = ok && bad == 0;
     }
 
-    // ---- the summary JSON against docs/summary.schema.json
+    // ---- the summary JSON against docs/manual/markdown/reference/summary.schema.json
     {
         Json sum, schema;
         std::ifstream(outdir + "/" + run + ".summary.json") >> sum;
-        std::ifstream(std::string(SIMC_SOURCE_DIR) + "/docs/summary.schema.json") >> schema;
+        std::ifstream(std::string(SIMC_SOURCE_DIR) + "/docs/manual/markdown/reference/summary.schema.json") >> schema;
         const auto errs = ValidateAgainstSchema(sum, schema);
         for (std::size_t i = 0; i < errs.size() && i < 5; ++i) std::printf("    schema: %s\n", errs[i].c_str());
         std::printf("  %-58s %zu violations\n", (run + ".summary.json vs summary.schema.json").c_str(), errs.size());

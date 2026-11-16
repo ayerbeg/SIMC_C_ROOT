@@ -2,18 +2,18 @@
 
 Policy (D-031): **clear Fortran bugs are corrected by default**; the run option `fortran_compat` restores the exact
 Fortran behaviour so that the bitwise tests (L1 tables, captures, RANLUX full runs, the compat regression baselines) can
-still prove the translation. The complete list of differences is [FORTRAN_DIFFERENCES.md](../FORTRAN_DIFFERENCES.md).
+still prove the translation. The complete list of differences is [FORTRAN_DIFFERENCES.md](FORTRAN_DIFFERENCES.md).
 
-## 5.1 Classes and markers
+## 5.1 Categories and markers
 
-| class | meaning | default mode | `--fortran-compat` | marker in the code |
+| Category | meaning | default mode | `--fortran-compat` | marker in the code |
 |---|---|---|---|---|
-| a | clear Fortran bug | corrected | Fortran | `// FORTRAN-BUG(D-xxx): original Fortran <file:line>: <code>; corrected because <reason>` |
-| a-np | clear bug in a path that is not ported | note only | — | (none left at P15.D1) |
-| b | ambiguous, maybe intended (the "expert list") | Fortran | Fortran | `// FORTRAN-DIFF-CANDIDATE(D-xxx): ... Question: ...` |
-| c | open question with the user (acceptance mode, D-009/D-028) | Fortran | Fortran | `// FORTRAN-OPEN(D-031 flag 1)` |
-| d | faithful odd behaviour, not a bug (precision, formats, dead code, guards) | Fortran | Fortran | `// FORTRAN-QUIRK(...)` |
-| dev | deliberate design deviation of SIMC++ (JSON input, exit codes, no `.bin`, arm code 6 refused, ...) | SIMC++ | SIMC++ | FORTRAN_DIFFERENCES.md §6 |
+| A | clear Fortran bug | corrected | Fortran | `// FORTRAN-BUG(D-xxx): original Fortran <file:line>: <code>; corrected because <reason>` |
+| A-NP | clear bug in a path that is not ported | note only | — | (none left at P15.D1) |
+| B | ambiguous, maybe intended (the "expert list") | Fortran | Fortran | `// FORTRAN-DIFF-CANDIDATE(D-xxx): ... Question: ...` |
+| C | open question with the user (acceptance mode, D-009/D-028) | Fortran | Fortran | `// FORTRAN-OPEN(D-031 flag 1)` |
+| D | faithful odd behaviour, not a bug (precision, formats, dead code, guards) | Fortran | Fortran | `// FORTRAN-QUIRK(...)` |
+| DEV | deliberate design deviation of SIMC++ (JSON input, exit codes, no `.bin`, arm code 6 refused, ...) | SIMC++ | SIMC++ | FORTRAN_DIFFERENCES.md §6 |
 
 Who decides: findings come from the Fortran reports (`reference/P*.F*_report.md`) or from the C++ reading; the director
 classifies them in a decision (`D-0xx`: e.g. D-057 for rho, D-061 SOS/HRS, D-067 target field).
@@ -48,11 +48,11 @@ src/material, src/optics (2), src/radiation (2), src/reactions (+ pion, rho, sid
 pion, kaon, delta, sidis, rho}, src/spectrometers/{hms, shms, sos, hrs, calo}. `grep -rn fortran_compat src include`
 lists them.
 
-![The two behaviour modes: what each class of finding does by default and with --fortran-compat, and how the switch reaches the code](../figures/compat_switch.png)
+![The two behaviour modes: what each Category of finding does by default and with --fortran-compat, and how the switch reaches the code](../figures/compat_switch.png)
 
-## 5.3 Adding a correction (class a)
+## 5.3 Adding a correction (Category A)
 
-1. **Decision.** The finding must have a D-number and class a (DECISIONS.md). Note the Fortran file:line, what the
+1. **Decision.** The finding must have a D-number and Category A (DECISIONS.md). Note the Fortran file:line, what the
    Fortran does, what the correction does, and whether the correction changes the number of random draws (D-058).
 2. **Code.** Keep the Fortran path and add the corrected one behind the flag the kernel already receives (or pass the
    flag through its config struct / setter; never read a global):
@@ -78,7 +78,7 @@ lists them.
    (tests/l1, `ranlux_fullrun.sh`).
 4. **The L1 / replay tests keep running in compat** (they pass `fortran_compat = true` or `--fortran-compat`); check
    that they still pass bitwise.
-5. **FORTRAN_DIFFERENCES.md row** in §2 (class a): `| id | Fortran file:line | original behaviour | C++ default |
+5. **FORTRAN_DIFFERENCES.md row** in §2 (Category A): `| id | Fortran file:line | original behaviour | C++ default |
    effect (outputs, size, configurations) | test |`, plus the measured effect in the per-reaction L2 section when the
    correction changes distributions (an L2 run in both modes, `simc_compare` corrected vs Fortran).
 6. **Baselines.** A correction changes the corrected-mode regression baselines (`regression_corrected_*` and the
@@ -88,9 +88,9 @@ lists them.
 
 ## 5.4 Ambiguous cases, quirks and the acceptance mode
 
-* Class b: keep the Fortran in both modes, write `FORTRAN-DIFF-CANDIDATE(D-xxx)` with the question, add a §4 row in
+* Category B: keep the Fortran in both modes, write `FORTRAN-DIFF-CANDIDATE(D-xxx)` with the question, add a §4 row in
   FORTRAN_DIFFERENCES.md. These items form the expert list (P15.X) for the user and a physicist.
-* Class d: keep, write `FORTRAN-QUIRK(...)` with the reason (e.g. `FORTRAN-QUIRK(D-012 F2)`), add a §5 row when it
+* Category D: keep, write `FORTRAN-QUIRK(...)` with the reason (e.g. `FORTRAN-QUIRK(D-012 F2)`), add a §5 row when it
   can surprise a user.
-* Class c: the acceptance mode (`doing_phsp`, D-009/D-028) stays Fortran with `FORTRAN-OPEN(D-031 flag 1)` until the
+* Category C: the acceptance mode (`doing_phsp`, D-009/D-028) stays Fortran with `FORTRAN-OPEN(D-031 flag 1)` until the
   user answers.

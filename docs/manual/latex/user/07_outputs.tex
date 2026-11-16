@@ -1,0 +1,183 @@
+% docs/manual/latex/user/07_outputs.tex - chapter of the LaTeX edition of the book "user_manual" (SIMC++ documentation).
+%   Converted once from docs/manual/markdown/user/07_outputs.md by tools/md2latex.py; from then on THIS FILE is the source of the
+%   LaTeX edition and may be edited by hand. Re-running tools/md2latex.py --write-sources for this
+%   chapter OVERWRITES the hand edits (see docs/README.md).
+%   Compile: cmake --build <build> --target pdf, or tools/build_docs_pdf.py (figures, xelatex passes,
+%   makeindex with docs/common/latex/simcpp.ist); by hand, see docs/README.md. XeLaTeX, class
+%   docs/common/latex/simcpp.cls (packages: fontspec, tikz, xcolor, hyperref, listings, longtable, booktabs,
+%   titlesec, titletoc, fancyhdr, makeidx, preview, ...); fonts TeX Gyre Pagella, TeX Gyre Heros, DejaVu Sans
+%   Mono. The figures are built first from docs/{manual,translation}/figures/*.tex (preview.sty) into PDFs.
+\chapter{\texorpdfstring{Outputs}{Outputs}}\label{user_manual-07u5foutputs}
+\simcabstract{A run writes into the output directory (\code{-{}o\ DIR}, default \code{.}), with \code{<run>} = the input file name without its extension
+(or \code{-{}-{}run-{}name}\simcidx{Command-line options!run-name@\code{-{}-{}run-{}name}}):}
+\begin{simctable}{small}{3}{>{\raggedright\arraybackslash}p{\dimexpr 0.250\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.209\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.473\linewidth-2\tabcolsep\relax}}
+%
+\toprule\rowcolor{simchead}\simcth{file} & \simcth{written by (sink)} & \simcth{content} \\\midrule\endfirsthead
+\multicolumn{3}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{file} & \simcth{written by (sink)} & \simcth{content} \\\midrule\endhead
+\midrule\multicolumn{3}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+\code{<run>\allowbreak{}.\allowbreak{}root} & \code{root\_\allowbreak{}tree} & tree \code{h10}, one entry per accepted event; only if \code{Nntu\ >\ 0} \\
+\code{<run>\allowbreak{}.\allowbreak{}hist} & \code{fortran\_\allowbreak{}hist} & the run report \\
+\code{<run>\allowbreak{}.\allowbreak{}geni} & \code{fortran\_\allowbreak{}hist} & spectrometer stop counters \\
+\code{<run>\allowbreak{}.\allowbreak{}gen} & \code{fortran\_\allowbreak{}hist} & diagnostic histograms (text) \\
+\code{<run>\allowbreak{}.\allowbreak{}gen.\allowbreak{}root} & \code{gen\_\allowbreak{}hist} & the same histograms as ROOT TH1D \\
+\code{<run>\allowbreak{}.\allowbreak{}summary.\allowbreak{}json}, \code{.\allowbreak{}summary.\allowbreak{}txt} & \code{run\_\allowbreak{}summary} & run summary (schema \code{docs/\allowbreak{}manual/\allowbreak{}markdown/\allowbreak{}reference/\allowbreak{}summary.\allowbreak{}schema.\allowbreak{}json}) \\
+\end{simctable}
+\code{ngen\ =\ 0} writes nothing. The detailed reference of every value is \code{docs/\allowbreak{}manual/\allowbreak{}markdown/\allowbreak{}reference/\allowbreak{}OUTPUT\_\allowbreak{}FORMAT.\allowbreak{}md}.
+
+\section{\texorpdfstring{The event tree \code{h10}}{The event tree h10}}\label{user_manual-07u5foutputs:71-the-event-tree-h10}
+\begin{itemize}
+\item One entry per \textbf{accepted} event.
+\item Every branch is a \code{Float\_\allowbreak{}t} (computed in double precision, stored as float). The branch names and order are those of
+the classic SIMC ntuple, so existing analysis scripts work unchanged.
+\item The layout depends on the reaction (\code{NtupleColumnsFor}):
+\end{itemize}
+\begin{simctable}{small}{3}{>{\raggedright\arraybackslash}p{\dimexpr 0.584\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.136\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.212\linewidth-2\tabcolsep\relax}}
+%
+\toprule\rowcolor{simchead}\simcth{run} & \simcth{columns} & \simcth{section} \\\midrule\endfirsthead
+\multicolumn{3}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{run} & \simcth{columns} & \simcth{section} \\\midrule\endhead
+\midrule\multicolumn{3}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+H/\allowbreak{}D/\allowbreak{}A(e,\allowbreak{}e'p) and \hyperref[param:doingu5fphsp]{\code{doing\_\allowbreak{}phsp}}\simcidx{Parameters!doing_phsp@\code{doing\_phsp}} & 46 & \hyperref[user_manual-07u5foutputs:713-eep-layout-46-columns]{7.1.3} \\
+pion (\hyperref[param:doingu5fpion]{\code{doing\_\allowbreak{}pion}}\simcidx{Parameters!doing_pion@\code{doing\_pion}}), Delta (\hyperref[param:doingu5fdelta]{\code{doing\_\allowbreak{}delta}}\simcidx{Parameters!doing_delta@\code{doing\_delta}}) & 53; π0: 65 & \hyperref[user_manual-07u5foutputs:714-pion-kaon-and-delta-layouts]{7.1.4} \\
+kaon (\hyperref[param:doingu5fkaon]{\code{doing\_\allowbreak{}kaon}}\simcidx{Parameters!doing_kaon@\code{doing\_kaon}}) & 55 & \hyperref[user_manual-07u5foutputs:714-pion-kaon-and-delta-layouts]{7.1.4} \\
+SIDIS (\hyperref[param:doingu5fsemi]{\code{doing\_\allowbreak{}semi}}\simcidx{Parameters!doing_semi@\code{doing\_semi}}) & 56; π0: 68 & \hyperref[user_manual-07u5foutputs:715-sidis-layout-56-columns]{7.1.5} \\
+rho (\hyperref[param:doingu5frho]{\code{doing\_\allowbreak{}rho}}\simcidx{Parameters!doing_rho@\code{doing\_rho}}) & 59 & \hyperref[user_manual-07u5foutputs:716-rho-layout-59-columns]{7.1.6} \\
+any of the above except (e,e'p), with \hyperref[param:usingu5ftgtu5ffield]{\code{using\_\allowbreak{}tgt\_\allowbreak{}field}}\simcidx{Parameters!using_tgt_field@\code{using\_tgt\_field}} & + 8 & \hyperref[user_manual-07u5foutputs:717-polarized-target-columns-usingu5ftgtu5ffield]{7.1.7} \\
+\end{simctable}
+\subsection{\texorpdfstring{Weights and normalisation}{Weights and normalisation}}\label{user_manual-07u5foutputs:711-weights-and-normalisation}
+\begin{itemize}
+\item \code{Weight} is the event weight computed for each event: the cross section of the event times the generation
+weight (radiative weight, jacobians, spectral-function or survival factors, depending on the reaction).
+\item The yield of one event for the simulated charge \hyperref[param:EXPERu25charge]{\code{EXPER\%\allowbreak{}charge}}\simcidx{Parameters!EXPER.charge@\code{EXPER\%charge}} is \code{Weight\ ×\ normfac\ /\ nevent}. \code{normfac} is printed in
+the \code{.\allowbreak{}hist} and the summary, and \code{nevent} = Ncontribute when ngen > 0, Ntried when ngen < 0.
+\code{normfac\ =\ luminosity\ ×\ genvol\ /\ Ntried\ ×\ nevent}, and 1 for \hyperref[param:doingu5fphsp]{\code{doing\_\allowbreak{}phsp}}\simcidx{Parameters!doing_phsp@\code{doing\_phsp}}.
+\item The \code{.\allowbreak{}hist} \code{wtcontr} is the sum of these yields over the accepted events that pass the \code{SPedge} window
+(pass\_\allowbreak{}cuts): the expected number of counts.
+\item \code{sigcc} / \code{siglab} is the cross section of the event (units in the tables below).
+\end{itemize}
+\subsection{\texorpdfstring{Arm prefixes \code{hs*} and \code{ss*}}{Arm prefixes hs* and ss*}}\label{user_manual-07u5foutputs:712-arm-prefixes-hs-and-ss}
+As in results\_\allowbreak{}write.\allowbreak{}f,\allowbreak{} \code{hs*} is the spectrometer on the beam \textbf{right} and \code{ss*} the one on the \textbf{left}:
+
+\begin{itemize}
+\item \hyperref[param:electronu5farm]{\code{electron\_\allowbreak{}arm}}\simcidx{Parameters!electron_arm@\code{electron\_arm}} = 1, 3, 7 (HMS, HRS-R, calorimeter HMS side): \code{hs*} = electron, \code{ss*} = hadron;
+\item \hyperref[param:electronu5farm]{\code{electron\_\allowbreak{}arm}}\simcidx{Parameters!electron_arm@\code{electron\_arm}} = 2, 4, 5, 8 (SOS, HRS-L, SHMS, calorimeter SHMS side): \code{hs*} = hadron, \code{ss*} = electron.
+\end{itemize}
+Slopes (\code{*yptar}, \code{*xptar}, \code{*xpfp}, \code{*ypfp}) are in radians (dx/dz); deltas are in \%.
+
+\subsection{\texorpdfstring{(e,e'p) layout (46 columns)}{(e,e'p) layout (46 columns)}}\label{user_manual-07u5foutputs:713-eep-layout-46-columns}
+\begin{simctable}{small}{4}{>{\raggedright\arraybackslash}p{\dimexpr 0.073\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.247\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.443\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.148\linewidth-2\tabcolsep\relax}}
+\caption{(e,e'p) layout (46 columns)}\\%
+\toprule\rowcolor{simchead}\simcth{\#} & \simcth{branches} & \simcth{content} & \simcth{units} \\\midrule\endfirsthead
+\multicolumn{4}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{\#} & \simcth{branches} & \simcth{content} & \simcth{units} \\\midrule\endhead
+\midrule\multicolumn{4}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+1-4 & \code{hsdelta\ hsyptar\ hsxptar\ hsytar} & right arm, reconstructed & \%, rad, rad, cm \\
+5-8 & \code{hsxfp\ hsxpfp\ hsyfp\ hsypfp} & right arm focal plane & cm, rad, cm, rad \\
+9-12 & \code{hsdeltai\ hsyptari\ hsxptari\ hsytari} & right arm, generated (at the vertex, before the spectrometer) & \%, rad, rad, cm \\
+13-24 & \code{ssdelta\ .\allowbreak{}.\allowbreak{}.\ ssytari} & the same for the left arm &  \\
+25-29 & \code{q\ nu\ Q2\ W\ epsilon} & reconstructed kinematics & GeV/c, GeV, GeV², GeV, — \\
+30-31 & \code{Em\ Pm} & missing energy and momentum & GeV, GeV/c \\
+32-33 & \code{thetapq\ phipq} & angles of the proton w.r.t. q & rad \\
+34 & \code{corrsing} & e' momentum minus the elastic value & GeV \\
+35-37 & \code{Pmx\ Pmy\ Pmz} & missing-momentum components ("Heepcheck" frame) & GeV/c \\
+38-40 & \code{PmPar\ PmPer\ PmOop} & missing momentum parallel, perpendicular,\allowbreak{} out of plane & GeV/c \\
+41 & \code{fry} & −(raster vertical position) & cm \\
+42 & \code{radphot} & radiated photon energy & GeV \\
+43 & \code{sigcc} & cross section (µb/sr for H, µb/MeV/sr² for D/A) &  \\
+44 & \code{Weight} & event weight &  \\
+45-46 & \code{theta\_\allowbreak{}e\ theta\_\allowbreak{}p} & reconstructed scattering angles & rad \\
+\end{simctable}
+\subsection{\texorpdfstring{Pion, kaon and Delta layouts}{Pion, kaon and Delta layouts}}\label{user_manual-07u5foutputs:714-pion-kaon-and-delta-layouts}
+Columns 1-33 as above, then:
+
+\begin{simctable}{small}{4}{>{\raggedright\arraybackslash}p{\dimexpr 0.073\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.227\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.430\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.181\linewidth-2\tabcolsep\relax}}
+\caption{Pion, kaon and Delta layouts}\\%
+\toprule\rowcolor{simchead}\simcth{\#} & \simcth{branch} & \simcth{content} & \simcth{units} \\\midrule\endfirsthead
+\multicolumn{4}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{\#} & \simcth{branch} & \simcth{content} & \simcth{units} \\\midrule\endhead
+\midrule\multicolumn{4}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+34 & \code{missmass} & missing mass (on the struck nucleon) & GeV \\
+35 & \code{mmnuc} & missing mass on the nucleus & GeV \\
+36 & \code{phad} & hadron momentum & GeV/c \\
+37 & \code{t} & −t (SIMC sign), reconstructed & GeV² \\
+38-40 & \code{pmpar\ pmper\ pmoop} & missing-momentum components & GeV/c \\
+41 & \code{fry} & −(raster vertical position) & cm \\
+42 & \code{radphot} & radiated photon energy & GeV \\
+43 & \code{pfermi} & Fermi momentum along q (signed) & GeV/c \\
+44 & \code{siglab} & lab cross section & µb/MeV/sr² \\
+45 & \code{sigcm} & CM cross section & model units \\
+46 & \code{Weight} & event weight &  \\
+47 & \code{decdist} & decay distance (cm); for kaons with decay OFF the survival probability &  \\
+48 & \code{Mhadron} & mass of the detected particle (μ or π after a decay) & MeV \\
+49 & \code{pdotqhat} & Fermi momentum · q̂ & GeV/c \\
+50-53 & \code{Q2i\ Wi\ ti\ phipqi} & vertex (generated) Q², W, t, φpq & GeV², GeV, GeV², rad \\
+54-65 & \code{xcal\_\allowbreak{}gamma1\ ycal\_\allowbreak{}gamma1\ Egamma1\ Pgamma1x\ Pgamma1y\ Pgamma1z} and the same for photon 2 & π0 runs only: photon positions on the calorimeter (cm; −1e10 = missed, 0 with HMS/SHMS) and lab photon energy and momentum (MeV) &  \\
+\end{simctable}
+Kaon runs add 54 \code{saghai} (Saghai-model cross section) and 55 \code{factor}
+(factorized model, = \code{sigcm}). Delta runs use the 53 pion columns: \code{missmass} is the missing pion mass, \code{phad} the proton
+momentum, \code{siglab} and \code{Weight} contain \textbf{no cross section} (\hyperref[user_manual-05u5freactions:55-eepu3c0-in-the-delta-region-doingu5fdelta]{5.5}),
+and \code{decdist}, \code{Mhadron} are 0 and Mp.
+
+\subsection{\texorpdfstring{SIDIS layout (56 columns)}{SIDIS layout (56 columns)}}\label{user_manual-07u5foutputs:715-sidis-layout-56-columns}
+Columns 1-33 as (e,e'p), then: 34 \code{missmass} (GeV), 35 \code{ppi} (hadron momentum, GeV/c), 36 \code{t} (GeV²), 37 \code{fry}, 38
+\code{radphot}, 39 \code{siglab} (µb/\allowbreak{}MeV²/\allowbreak{}sr²),\allowbreak{} 40 \code{sigcent} (always 0), 41 \code{Weight}, 42 \code{decdist} (cm, or the survival probability
+with decay OFF), 43 \code{Mhadron} (MeV), 44-45 \code{z\ zi}, 46-47 \code{pt2\ pt2i} (GeV²), 48-49 \code{xbj\ xbji}, 50 \code{thqi} (rad), 51 \code{sighad}
+(GeV\textsuperscript{−}²),\allowbreak{} 52 \code{jacobian}, 53 \code{centjac} (always 0), 54 \code{pfermi} (GeV/c), 55 \code{xfermi}, 56 \code{phipqi} (rad). π0 SIDIS appends the 12 photon columns (57-68). The \code{i}
+suffix means vertex (generated) values.
+
+\subsection{\texorpdfstring{Rho layout (59 columns)}{Rho layout (59 columns)}}\label{user_manual-07u5foutputs:716-rho-layout-59-columns}
+The 56 SIDIS columns with the rho meanings, then 57 \code{Mrho} (Breit-Wigner ρ mass of the event, MeV), 58 \code{Thrho} (decay
+angle in the ρ rest frame w.r.t. the lab z axis, rad) and 59 \code{mmnuc} (GeV). The hadron-arm columns describe the detected
+decay pion; \code{t} is the pion t; \code{siglab} (µb/MeV/sr) is the ρ cross section; \code{sigcent}, \code{zi}, \code{pt2i}, \code{xfermi} are 0.
+
+\subsection{\texorpdfstring{Polarized-target columns (\code{using\_\allowbreak{}tgt\_\allowbreak{}field})}{Polarized-target columns (using\_\allowbreak{}tgt\_\allowbreak{}field)}}\label{user_manual-07u5foutputs:717-polarized-target-columns-usingu5ftgtu5ffield}
+Eight columns follow \code{phipqi} (pion/\allowbreak{}kaon/\allowbreak{}Delta: 54-61; SIDIS/rho: 57-64), in radians: \code{th\_\allowbreak{}tarq} (angle between q and the
+polarization,\allowbreak{} NaN when \code{targ\_\allowbreak{}pol\ =\ 0}), \code{phitarq}, \code{beta}, \code{phis} (Sivers angle φpq − φtarg), \code{phic} (Collins angle φpq
+
+\begin{itemize}
+\item φtarg), and the vertex values \code{betai}, \code{phisi}, \code{phici}. The kaon columns \code{saghai}/\code{factor} and the rho columns
+\code{Mrho}/\code{Thrho}/\code{mmnuc} move after them. The shipped polarized-target pion example has 61 columns.
+\end{itemize}
+\subsection{\texorpdfstring{Values that are not measurements}{Values that are not measurements}}\label{user_manual-07u5foutputs:718-values-that-are-not-measurements}
+\begin{itemize}
+\item With an arm switched off (\hyperref[param:spectu5fmode]{\code{spect\_\allowbreak{}mode}}\simcidx{Parameters!spect_mode@\code{spect\_mode}} ≠ 0), that arm's focal-plane columns and \code{*ytar} are 0.0 in every event
+(\hyperref[user_manual-06u5fspectrometers:64-spectu5fmode-switching-the-spectrometer-monte-carlo-off]{6.4}).
+\item Other constant or NaN columns: \hyperref[user_manual-10u5ffaq:nan-or-constant-columns-in-the-tree]{10}.
+\end{itemize}
+\section{\texorpdfstring{\code{.\allowbreak{}hist}}{.hist}}\label{user_manual-07u5foutputs:72-hist}
+The \code{.\allowbreak{}hist} is the run report, in the classic SIMC layout: the run title and
+time stamps, the FLAGS block, the kinematics, the target, the central event and its cross section (\code{CENTRAL.\allowbreak{}sigcc}), the
+radiative settings, the event counters (\code{Ngen\ (\allowbreak{}request)}, \code{Ntried}, \code{Ncontribute}, \code{Nco\_\allowbreak{}no\_\allowbreak{}rad\_\allowbreak{}prot}), the
+normalisation (\code{wtcontr}, \code{AVERAGE.\allowbreak{}sigcc}, \code{charge}, \code{targetfac}, luminosity, \code{genvol}, \code{normfac}), the resolutions
+(RECON SUMMARY), the input spectrometer limits (printed \textbf{after} the slop widening) and the limit
+tables. Lines 2-3 are the BEGIN/END times; everything else depends only on the input, the seed and the mode.
+
+\section{\texorpdfstring{\code{.\allowbreak{}geni}, \code{.\allowbreak{}gen} and \code{.\allowbreak{}gen.\allowbreak{}root}}{.geni, .gen and .gen.root}}\label{user_manual-07u5foutputs:73-geni-gen-and-genroot}
+\begin{itemize}
+\item \code{.\allowbreak{}geni}: for each spectrometer used, the number of trials and where they were stopped (slits, magnet entrances,
+middles and exits, hut, chambers, scintillators,\allowbreak{} calorimeter),\allowbreak{} and the successes. Counter keys per spectrometer are
+listed in \code{docs/\allowbreak{}manual/\allowbreak{}markdown/\allowbreak{}reference/\allowbreak{}OUTPUT\_\allowbreak{}FORMAT.\allowbreak{}md} §2. With \hyperref[param:usingu5fHMScoll]{\code{using\_\allowbreak{}HMScoll}}\simcidx{Parameters!using_HMScoll@\code{using\_HMScoll}}/\hyperref[param:usingu5fSHMScoll]{\code{using\_\allowbreak{}SHMScoll}}\simcidx{Parameters!using_SHMScoll@\code{using\_SHMScoll}} a \code{Collimator\ stops\ (\allowbreak{}pi/\allowbreak{}mu)} line is added.
+\item \code{.\allowbreak{}gen}: diagnostic histograms (50 bins) of delta, yptar, xptar of both arms, Em and Pm: \code{geni} (all tries,
+vertex), \code{gen} (accepted, vertex) and \code{recon} (accepted, reconstructed,\allowbreak{} weighted). \code{.\allowbreak{}gen.\allowbreak{}root} has the same histograms
+as TH1D named \code{<set>\allowbreak{}\_\allowbreak{}<arm>\allowbreak{}\_\allowbreak{}<var>} (for example \code{gen\_\allowbreak{}e\_\allowbreak{}delta}, \code{recon\_\allowbreak{}Em}), filled with the \code{.\allowbreak{}gen} binning (no
+under/\allowbreak{}overflow). \code{gen} and \code{geni} use −xptar and \code{recon} uses +xptar, and \code{gen\_\allowbreak{}Pm} is never filled.
+\end{itemize}
+\section{\texorpdfstring{Run summary (\code{.\allowbreak{}summary.\allowbreak{}json}, \code{.\allowbreak{}summary.\allowbreak{}txt})}{Run summary (.summary.\allowbreak{}json,\allowbreak{} .summary.\allowbreak{}txt)}}\label{user_manual-07u5foutputs:74-run-summary-summaryjson-summarytxt}
+A JSON document (\code{"schema":\ "simc\_\allowbreak{}run\_\allowbreak{}summary"}, version 1, \code{docs/\allowbreak{}manual/\allowbreak{}markdown/\allowbreak{}reference/\allowbreak{}summary.\allowbreak{}schema.\allowbreak{}json}) with the run identification,\allowbreak{} the
+counters, the normalisation,\allowbreak{} all FLAGS, the stop counters, the kinematics, the central event, the limits and the tree
+location. \code{.\allowbreak{}summary.\allowbreak{}txt} is the same in readable form. the comparison tool \code{simc\_\allowbreak{}compare} reads it;
+\code{hist2json} converts a \code{.\allowbreak{}hist}/\code{.\allowbreak{}geni} into the same format. A threaded run adds \code{"run":\ \{"threads":\ N\}}.
+
+\section{\texorpdfstring{Exit status}{Exit status}}\label{user_manual-07u5foutputs:75-exit-status}
+\begin{simctable}{small}{2}{l>{\raggedright\arraybackslash}p{\dimexpr 0.869\linewidth-2\tabcolsep\relax}}
+%
+\toprule\rowcolor{simchead}\simcth{status} & \simcth{meaning} \\\midrule\endfirsthead
+\multicolumn{2}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{status} & \simcth{meaning} \\\midrule\endhead
+\midrule\multicolumn{2}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+0 & success \\
+1 & usage error (unknown option, missing input file, bad \code{-{}-{}threads}\simcidx{Command-line options!threads@\code{-{}-{}threads}} value) \\
+2 & input or configuration error: unreadable file, rejected value (arm code 6, π0 from the neutron on H, rho on A ≥ 4, decay of a non-π/K hadron, \code{-{}-{}threads}\simcidx{Command-line options!threads@\code{-{}-{}threads}} with \code{-{}-{}fortran-{}compat}\simcidx{Command-line options!fortran-compat@\code{-{}-{}fortran-{}compat}} or RANLUX, ...) \\
+3 & run error: a set-up check stopped the run (the message says \code{STOP\ during\ setup\ .\allowbreak{}.\allowbreak{}.}), a missing data file, an I/O error \\
+\end{simctable}

@@ -62,7 +62,7 @@ ROOT or libtbb (for example `/usr/local/lib`) ([2.2](02_installation.md#22-requi
 | `Weight`, `siglab` without cross section | Delta runs | no Delta model ([5.5](05_reactions.md#55-eepπ-in-the-delta-region-doing_delta)) |
 
 With `--fortran-compat` a few more columns carry the legacy program's NaN or meaningless values (`pfermi`, Delta `sigcm`,
-kaon `saghai`; see `docs/translation/user_differences.md`).
+kaon `saghai`; see `docs/translation/markdown/user_differences.md`).
 
 `simc_compare` counts and excludes non-finite entries.
 
@@ -89,5 +89,5 @@ They are printed **after** widening by the spectrometer slop.
 
 ## Can I use my own spectrometer, reaction or cross section?
 
-Yes: every stage is a plug-in. See the developer manual (`docs/manual/developer/`) and `docs/EXTENDING.md`; the
+Yes: every stage is a plug-in. See the developer manual (`docs/manual/markdown/developer/`) and `docs/manual/markdown/reference/EXTENDING.md`; the
 `examples/ideal_box` and `examples/out_of_tree_plugin` directories are complete examples.

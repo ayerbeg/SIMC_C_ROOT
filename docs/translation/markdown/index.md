@@ -6,7 +6,7 @@ replaces which Fortran routine, the numerical rules that make the results bit-fo
 restores the exact Fortran behaviour, and the catalogue of every Fortran bug and quirk found on the way.
 
 The SIMC++ framework itself (architecture, interfaces, extending) is described in the
-[developer manual](../manual/developer/index.md); running it in the [user manual](../manual/user/index.md).
+[developer manual](../../manual/markdown/developer/index.md); running it in the [user manual](../../manual/markdown/user/index.md).
 
 ## Chapters
 
@@ -22,7 +22,7 @@ The SIMC++ framework itself (architecture, interfaces, extending) is described i
 5. [The Fortran compatibility layer](05_compat.md): classes and markers, how `--fortran-compat` reaches the code, how to
    add a correction.
 6. [Catalogue of Fortran bugs, quirks and deviations](06_catalogue.md) (generated from
-   [FORTRAN_DIFFERENCES.md](../FORTRAN_DIFFERENCES.md)): every item with its id, Fortran file:line, class, effect and
+   [FORTRAN_DIFFERENCES.md](FORTRAN_DIFFERENCES.md)): every item with its id, Fortran file:line, class, effect and
    what SIMC++ does in each mode; the expert list; the cross-check with the decisions.
 
 User-oriented chapters (maintained with the user manual):
@@ -44,7 +44,7 @@ project next to the source tree and the reference data.
 | Fortran references (tables, captures, runs, findings reports, toolchain) | `$SIMC_REFERENCE` (e.g. `~/simc_reference`: `functions/README.md`, `runs/`, `P*.F*_report.md`, `TOOLCHAIN.txt`) |
 | Fortran L1 harness | `fortran_harness/` of the project (README.md) |
 | decisions, plan, evidence | `project_control/{DECISIONS.md, PLAN.md, VALIDATION_LEDGER.md}` of the project |
-| the differences, per item and per reaction | [FORTRAN_DIFFERENCES.md](../FORTRAN_DIFFERENCES.md) |
+| the differences, per item and per reaction | [FORTRAN_DIFFERENCES.md](FORTRAN_DIFFERENCES.md) |
 | generators | `docs/translation/tools/gen_fortran_map.py` (routine map), `gen_catalogue.py` (catalogue) |
 
 Re-run both generators after a port or a new finding:

@@ -1,5 +1,10 @@
-% docs/latex/front/conventions.tex — PDF-only front matter shared by the three books (task P15.D5): how the books are
-% typeset. The chapter text itself comes from the Markdown sources (tools/md2latex.py).
+% docs/common/latex/conventions.tex - front matter shared by the three books (PDF only): how the books are typeset.
+% Hand-written LaTeX (no Markdown counterpart); \input by the main .tex of each book.
+%   Compile: cmake --build <build> --target pdf, or python3 -I tools/build_docs_pdf.py --source-root . --build-dir DIR
+%   (figures, then xelatex passes + makeindex -s docs/common/latex/simcpp.ist); by hand see docs/README.md.
+%   XeLaTeX; class docs/common/latex/simcpp.cls (TeX Live packages listed there); fonts TeX Gyre Pagella,
+%   TeX Gyre Heros, DejaVu Sans Mono. The figures are built first from docs/{manual,translation}/figures/*.tex
+%   (preview.sty) into PDFs.
 \chapter*{Conventions}\addcontentsline{toc}{chapter}{Conventions}\markboth{Conventions}{}\label{conventions}
 \simcabstract{How to read the typography, the boxes and the paths of this book.}
 
@@ -47,7 +52,7 @@ the source tree.
 \code{\$SIMCPP\_PREFIX} & the installation prefix (\code{bin/}, \code{lib/}, \code{include/}, \code{share/simc/data})\\
 \code{\$SIMC\_FORTRAN} & optional: the legacy Fortran SIMC, used only by validation tests\\
 \code{\$SIMC\_REFERENCE} & optional: reference runs and tables of the legacy program, used only by validation tests\\
-\code{\$EX} & the example inputs of the user manual (\code{\$SIMCPP\_PREFIX/share/simc/docs/manual/user/examples})\\
+\code{\$EX} & the example inputs of the user manual (\code{\$SIMCPP\_PREFIX/share/simc/docs/manual/markdown/user/examples})\\
 \end{simctable}
 
 \section*{Units}

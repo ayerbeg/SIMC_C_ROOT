@@ -1,5 +1,10 @@
-% docs/latex/figures/run_flow.tex — a run from the inputs to the outputs (driver::SimcRun), task P15.D5.
+% docs/manual/figures/run_flow.tex - TikZ figure of the SIMC++ documentation: a run from the inputs to the outputs (driver::SimcRun), task P15.D5.
 % Names checked against include/simc/driver/SimcRun.h, Pipeline.h, setup/SetupBuilder.h and the registered sinks.
+%   Compile alone (tools/build_docs_pdf.py does it for every figure): with TEXINPUTS=docs/common/latex//: run
+%   xelatex <name>.tex -> <name>.pdf (preview.sty crops the page to the picture); the books include that PDF.
+%   Packages: tikz, xcolor, fontspec, preview (simcfig.sty, simcfonts.sty); fonts TeX Gyre Pagella, TeX Gyre Heros,
+%   DejaVu Sans Mono. After a change, re-export the PNG of the Markdown edition (build_docs_pdf.py --png) and
+%   commit both.
 \documentclass{article}
 \usepackage{simcfonts,simcfig}
 \usepackage[active,tightpage]{preview}

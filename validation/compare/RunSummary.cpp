@@ -147,7 +147,7 @@ bool isInteger(const std::string& t) {
 }
 
 // ---------------------------------------------------------------------------
-// JSON helpers: tolerant key lookup (the schema of docs/summary.schema.json is
+// JSON helpers: tolerant key lookup (the schema of docs/manual/markdown/reference/summary.schema.json is
 // written by src/output/SummaryJson.cpp; aliases keep this reader working if names differ slightly).
 // ---------------------------------------------------------------------------
 const json* findKey(const json& j, const std::vector<std::string>& aliases, int depth = 3) {

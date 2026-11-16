@@ -1,12 +1,12 @@
-# tests/fortran_diff — task P7.5 (D-031, D-032): the documented differences with the Fortran (docs/FORTRAN_DIFFERENCES.md).
-# For every corrected clear Fortran bug (class a) one test shows BOTH behaviours: fortran_compat = true gives the
+# tests/fortran_diff — task P7.5 (D-031, D-032): the documented differences with the Fortran (docs/translation/markdown/FORTRAN_DIFFERENCES.md).
+# For every corrected clear Fortran bug (Category A) one test shows BOTH behaviours: fortran_compat = true gives the
 # Fortran result, the default (corrected) gives the corrected one. Label "fortran_diff" (+ "unit"/"cli").
 add_executable(test_fortran_differences test_fortran_differences.cpp ${CMAKE_SOURCE_DIR}/tests/l1/L1Runner.cpp)
 target_include_directories(test_fortran_differences PRIVATE ${CMAKE_SOURCE_DIR}/tests/l1)
 target_link_libraries(test_fortran_differences PRIVATE ${SIMC_DRIVER_LIBS})
 target_compile_definitions(test_fortran_differences PRIVATE SIMC_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 
-# One CTest per item id (the ids of docs/FORTRAN_DIFFERENCES.md); the test program takes the id as argument.
+# One CTest per item id (the ids of docs/translation/markdown/FORTRAN_DIFFERENCES.md); the test program takes the id as argument.
 set(SIMC_FORTRAN_DIFF_ITEMS
     D006_pass_cuts
     D006_kaon_decay_mass

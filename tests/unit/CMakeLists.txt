@@ -49,16 +49,16 @@ add_executable(test_hist2json test_hist2json.cpp)
 target_link_libraries(test_hist2json PRIVATE simcfw)
 
 add_test(NAME output_sinks COMMAND test_output_sinks
-         ${_runs}/eep_h_elastic_rad_A/eep_h_elastic_rad_A.root ${CMAKE_SOURCE_DIR}/docs/summary.schema.json)
+         ${_runs}/eep_h_elastic_rad_A/eep_h_elastic_rad_A.root ${CMAKE_SOURCE_DIR}/docs/manual/markdown/reference/summary.schema.json)
 set(_hist_runs eep_h_elastic_norad_A eep_h_elastic_norad_B eep_h_elastic_rad_A eep_h_elastic_rad_B
                acc_phsp_hms_shms_A acc_phsp_hms_shms_B)
 foreach(r ${_hist_runs})
-    add_test(NAME hist2json_${r} COMMAND test_hist2json ${_runs}/${r}/${r}.hist ${CMAKE_SOURCE_DIR}/docs/summary.schema.json)
+    add_test(NAME hist2json_${r} COMMAND test_hist2json ${_runs}/${r}/${r}.hist ${CMAKE_SOURCE_DIR}/docs/manual/markdown/reference/summary.schema.json)
 endforeach()
 add_test(NAME hist2json_eep_h_test_pctnames COMMAND test_hist2json
-         ${_runs}/eep_h_test_pctnames/eep_h_test_pctnames.hist ${CMAKE_SOURCE_DIR}/docs/summary.schema.json)
+         ${_runs}/eep_h_test_pctnames/eep_h_test_pctnames.hist ${CMAKE_SOURCE_DIR}/docs/manual/markdown/reference/summary.schema.json)
 add_test(NAME hist2json_hms_shms_validation COMMAND test_hist2json
-         ${_runs}/hms_shms_validation/test_hms_shms_validation.hist ${CMAKE_SOURCE_DIR}/docs/summary.schema.json)
+         ${_runs}/hms_shms_validation/test_hms_shms_validation.hist ${CMAKE_SOURCE_DIR}/docs/manual/markdown/reference/summary.schema.json)
 set_tests_properties(output_sinks hist2json_eep_h_test_pctnames hist2json_hms_shms_validation PROPERTIES SKIP_RETURN_CODE 77)
 foreach(r ${_hist_runs})
     set_tests_properties(hist2json_${r} PROPERTIES SKIP_RETURN_CODE 77)

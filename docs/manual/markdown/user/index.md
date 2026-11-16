@@ -18,9 +18,9 @@ How to install and run SIMC++. No knowledge of the legacy Fortran SIMC is needed
 | [Example inputs](examples/) | `h_elastic_rad.inp` (chapter 3), `legacy_names.inp` (chapter 4.1.3) |
 | [Verified examples](VERIFIED_EXAMPLES.md) | transcript of every command of this manual, as run on the stated commit |
 
-Reference documents: `docs/INP_JSON_MAPPING.md` (the `.inp` → JSON table), `docs/OUTPUT_FORMAT.md` (every output value),
-`docs/DRIVER.md`, `docs/PERFORMANCE.md`. Comparison with the legacy Fortran SIMC and the list of differences:
+Reference documents: `docs/manual/markdown/reference/INP_JSON_MAPPING.md` (the `.inp` → JSON table), `docs/manual/markdown/reference/OUTPUT_FORMAT.md` (every output value),
+`docs/manual/markdown/reference/DRIVER.md`, `docs/manual/markdown/reference/PERFORMANCE.md`. Comparison with the legacy Fortran SIMC and the list of differences:
 `docs/translation/`.
 
-Conventions: commands are shown as typed in a shell with `$SIMCPP_PREFIX/bin` on the `PATH` (directory layout: [2.1](02_installation.md#21-directory-layout-used-in-this-manual)). `$EX` is the directory of the example inputs (`$SIMCPP_PREFIX/share/simc/docs/manual/user/examples`).
+Conventions: commands are shown as typed in a shell with `$SIMCPP_PREFIX/bin` on the `PATH` (directory layout: [2.1](02_installation.md#21-directory-layout-used-in-this-manual)). `$EX` is the directory of the example inputs (`$SIMCPP_PREFIX/share/simc/docs/manual/markdown/user/examples`).
 `$SIMC_REFERENCE` (the project's reference runs of the legacy program) is needed only for the example of chapter 8.4.

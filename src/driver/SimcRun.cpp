@@ -116,7 +116,7 @@ void SimcRun::initialise() {
     setup_.output_dir = opt_.output_dir;
     log(" Use random seed = " + std::to_string(params_.random_seed));
     log(setup_.fortran_compat ? " SIMC++: fortran_compat = true (exact Fortran behaviour, known Fortran bugs kept)"
-                              : " SIMC++: fortran_compat = false (clear legacy-SIMC bugs corrected, docs/translation/06_catalogue.md)");
+                              : " SIMC++: fortran_compat = false (clear legacy-SIMC bugs corrected, docs/translation/markdown/06_catalogue.md)");
     if (!params_.random_state_file.empty() && params_.random_state_file.find_first_not_of(' ') != std::string::npos)
         log(" NOTE: random_state_file '" + params_.random_state_file +
             "' is not used by SIMC++ (the RANLUX state is not portable; D-002)");

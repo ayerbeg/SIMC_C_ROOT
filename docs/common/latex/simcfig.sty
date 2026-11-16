@@ -1,5 +1,11 @@
-% docs/latex/simcfig.sty — the SIMC++ palette (from the logo docs/figures/simcpp_logo.png) and the TikZ styles shared
-% by the books (simcpp.cls) and the figures (docs/latex/figures/*.tex) (task P15.D5).
+% docs/common/latex/simcfig.sty - the SIMC++ palette (from the logo docs/common/figures/simcpp_logo.png) and the
+% TikZ styles shared by the books (simcpp.cls) and the figures (docs/{manual,translation}/figures/*.tex).
+% by the books (simcpp.cls) and the figures (docs/{manual,translation}/figures/*.tex)
+%   Compile: cmake --build <build> --target pdf, or python3 -I tools/build_docs_pdf.py --source-root . --build-dir DIR
+%   (figures, then xelatex passes + makeindex -s docs/common/latex/simcpp.ist); by hand see docs/README.md.
+%   XeLaTeX; class docs/common/latex/simcpp.cls (TeX Live packages listed there); fonts TeX Gyre Pagella,
+%   TeX Gyre Heros, DejaVu Sans Mono. The figures are built first from docs/{manual,translation}/figures/*.tex
+%   (preview.sty) into PDFs.
 \NeedsTeXFormat{LaTeX2e}
 \ProvidesPackage{simcfig}[2026/11/16 SIMC++ palette and TikZ styles]
 \RequirePackage{xcolor}

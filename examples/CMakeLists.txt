@@ -1,4 +1,4 @@
-# examples/ — example plug-ins (docs/EXTENDING.md). Each one is an OBJECT library (so that its SIMC_REGISTER line is
+# examples/ — example plug-ins (docs/manual/markdown/reference/EXTENDING.md). Each one is an OBJECT library (so that its SIMC_REGISTER line is
 # linked) appended to SIMC_EXAMPLE_PLUGINS, which simc++ links.
 
 # ISpectrometer "ideal_box": perfect resolution, rectangular acceptance (examples/ideal_box/IdealBoxSpectrometer.cpp)
@@ -33,7 +33,7 @@ add_test(NAME package_out_of_tree_plugin
                  ${ROOT_DIR})
 set_tests_properties(package_out_of_tree_plugin PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 900 LABELS "examples;package")
 
-# P15.D1: the example plug-ins quoted by the developer manual (docs/manual/developer/04_extending.md): IPhysicsModel
+# P15.D1: the example plug-ins quoted by the developer manual (docs/manual/markdown/developer/04_extending.md): IPhysicsModel
 # "example_flat" and IOutputSink + IParallelSink "example_count". NOT linked into simc++ (only into their test), so the
 # simc++ registry is unchanged. Test: one-thread and two-thread runs through the complete driver (label "examples").
 add_library(simcfw_example_dev_manual OBJECT dev_manual/FlatModel.cpp dev_manual/CountSink.cpp)

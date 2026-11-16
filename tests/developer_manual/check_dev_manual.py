@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""check_dev_manual.py - checks of the developer manual docs/manual/developer/ (task P15.D1).
+"""check_dev_manual.py - checks of the developer manual docs/manual/markdown/developer/ (task P15.D1).
 
 usage: check_dev_manual.py SOURCE_DIR [developer|translation]
 
-developer (default), docs/manual/developer/:
-1. header coverage: every header under include/simc/ is named (as `simc/<path>.h`) somewhere in docs/manual/developer/*.md;
+developer (default), docs/manual/markdown/developer/:
+1. header coverage: every header under include/simc/ is named (as `simc/<path>.h`) somewhere in docs/manual/markdown/developer/*.md;
 2. stage interfaces: every class declared in include/simc/stages/*.h is named in 03_architecture.md;
 3. verbatim snippets (below).
-translation, docs/translation/ (the translation report):
+translation, docs/translation/markdown/ (the translation report):
 3. verbatim snippets: every fenced code block preceded by `<!-- from: <path> -->` must appear in <path> (relative to
    SOURCE_DIR) as a contiguous sequence of lines (leading/trailing whitespace of each line ignored);
 4. the generated Fortran map (fortran_routine_map.md) has no routine with status "not cited";
-5. the generated catalogue (06_catalogue.md) is up to date with docs/FORTRAN_DIFFERENCES.md (sections 6.1-6.3 are
+5. the generated catalogue (06_catalogue.md) is up to date with docs/translation/markdown/FORTRAN_DIFFERENCES.md (sections 6.1-6.3 are
    regenerated with tools/gen_catalogue.py and compared; 6.4 depends on project_control/DECISIONS.md and is not compared).
 Exit 0 if everything holds, 1 otherwise (each problem printed), 2 usage.
 """
@@ -27,7 +27,8 @@ def main():
         return 2
     src = sys.argv[1]
     mode = sys.argv[2] if len(sys.argv) == 3 else "developer"
-    man = os.path.join(src, "docs", "manual", "developer") if mode == "developer" else os.path.join(src, "docs", "translation")
+    man = os.path.join(src, "docs", "manual", "markdown", "developer") if mode == "developer" else \
+        os.path.join(src, "docs", "translation", "markdown")
     texts = {p: open(p, encoding="utf-8").read() for p in sorted(glob.glob(os.path.join(man, "*.md")))}
     alltext = "\n".join(texts.values())
     problems = []
@@ -112,7 +113,7 @@ def check_translation(src, man, problems):
     cat = os.path.join(man, "06_catalogue.md")
     with tempfile.TemporaryDirectory() as tmp:
         out = os.path.join(tmp, "cat.md")
-        r = subprocess.run([sys.executable, "-I", os.path.join(man, "tools", "gen_catalogue.py"), "--out", out],
+        r = subprocess.run([sys.executable, "-I", os.path.join(src, "docs", "translation", "tools", "gen_catalogue.py"), "--out", out],
                            capture_output=True, text=True)
         if r.returncode != 0 or not os.path.exists(out):
             problems.append("gen_catalogue.py failed: " + r.stderr.strip()[-300:])
@@ -121,7 +122,7 @@ def check_translation(src, man, problems):
         else:
             cut = lambda t: t.split("## 6.4")[0]
             if cut(open(out, encoding="utf-8").read()) != cut(open(cat, encoding="utf-8").read()):
-                problems.append("06_catalogue.md is out of date with docs/FORTRAN_DIFFERENCES.md: run "
+                problems.append("06_catalogue.md is out of date with docs/translation/markdown/FORTRAN_DIFFERENCES.md: run "
                                 "python3 -I docs/translation/tools/gen_catalogue.py")
             else:
                 print("catalogue: up to date")

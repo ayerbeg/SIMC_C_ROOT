@@ -1,7 +1,12 @@
-% docs/latex/simcfonts.sty — typefaces of the SIMC++ books and figures (task P15.D5). XeLaTeX + fontspec.
+% docs/common/latex/simcfonts.sty - typefaces of the SIMC++ books and figures. XeLaTeX + fontspec.
 %   body: TeX Gyre Pagella (Palatino design; Latin, Greek and the arrows/relations used in the manuals);
 %   headings, tables, figures: TeX Gyre Heros; code: DejaVu Sans Mono (complete Greek, arrows, superscripts),
 %   else Inconsolata, else Latin Modern Mono. The TeX Gyre fonts are part of TeX Live (found by file name).
+%   Compile: cmake --build <build> --target pdf, or python3 -I tools/build_docs_pdf.py --source-root . --build-dir DIR
+%   (figures, then xelatex passes + makeindex -s docs/common/latex/simcpp.ist); by hand see docs/README.md.
+%   XeLaTeX; class docs/common/latex/simcpp.cls (TeX Live packages listed there); fonts TeX Gyre Pagella,
+%   TeX Gyre Heros, DejaVu Sans Mono. The figures are built first from docs/{manual,translation}/figures/*.tex
+%   (preview.sty) into PDFs.
 \NeedsTeXFormat{LaTeX2e}
 \ProvidesPackage{simcfonts}[2026/11/16 SIMC++ typefaces]
 \RequirePackage{fontspec}

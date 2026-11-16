@@ -1,0 +1,166 @@
+% docs/manual/latex/user/02_installation.tex - chapter of the LaTeX edition of the book "user_manual" (SIMC++ documentation).
+%   Converted once from docs/manual/markdown/user/02_installation.md by tools/md2latex.py; from then on THIS FILE is the source of the
+%   LaTeX edition and may be edited by hand. Re-running tools/md2latex.py --write-sources for this
+%   chapter OVERWRITES the hand edits (see docs/README.md).
+%   Compile: cmake --build <build> --target pdf, or tools/build_docs_pdf.py (figures, xelatex passes,
+%   makeindex with docs/common/latex/simcpp.ist); by hand, see docs/README.md. XeLaTeX, class
+%   docs/common/latex/simcpp.cls (packages: fontspec, tikz, xcolor, hyperref, listings, longtable, booktabs,
+%   titlesec, titletoc, fancyhdr, makeidx, preview, ...); fonts TeX Gyre Pagella, TeX Gyre Heros, DejaVu Sans
+%   Mono. The figures are built first from docs/{manual,translation}/figures/*.tex (preview.sty) into PDFs.
+\chapter{\texorpdfstring{Installation}{Installation}}\label{user_manual-02u5finstallation}
+\simcabstract{\textbf{SIMC++ is self-contained.} You do not need the Fortran SIMC, CERNLIB or any Fortran compiler to build, install or run it.
+The model tables, optics maps and spectral functions it needs are part of SIMC++ (\code{data/}). The Fortran code and its
+reference runs are used only by optional validation tests, which are skipped when those files are absent
+(\hyperref[user_manual-02u5finstallation:26-running-the-tests]{2.6}).}
+\section{\texorpdfstring{Directory layout used in this manual}{Directory layout used in this manual}}\label{user_manual-02u5finstallation:21-directory-layout-used-in-this-manual}
+All commands of this manual use these locations (adapt them to your machine):
+
+\begin{simctable}{small}{3}{>{\raggedright\arraybackslash}p{\dimexpr 0.209\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.228\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.495\linewidth-2\tabcolsep\relax}}
+%
+\toprule\rowcolor{simchead}\simcth{variable} & \simcth{example} & \simcth{content} \\\midrule\endfirsthead
+\multicolumn{3}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{variable} & \simcth{example} & \simcth{content} \\\midrule\endhead
+\midrule\multicolumn{3}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+\code{\$SIMCPP\_\allowbreak{}SRC} & \code{\textasciitilde{}/\allowbreak{}src/\allowbreak{}simcpp} & the git checkout of SIMC++ (the source tree) \\
+\code{\$SIMCPP\_\allowbreak{}BUILD} & \code{\textasciitilde{}/\allowbreak{}build/\allowbreak{}simcpp} & the CMake build directory \\
+\code{\$SIMCPP\_\allowbreak{}PREFIX} & \code{\textasciitilde{}/\allowbreak{}opt/\allowbreak{}simcpp} & the installation prefix (\code{bin/}, \code{lib/}, \code{include/}, \code{share/\allowbreak{}simc/\allowbreak{}data}) \\
+\code{\$SIMC\_\allowbreak{}FORTRAN} & \code{\textasciitilde{}/\allowbreak{}src/\allowbreak{}simc\_\allowbreak{}gfortran} & optional: the legacy Fortran SIMC, only for the validation tests \\
+\code{\$SIMC\_\allowbreak{}REFERENCE} & \code{\textasciitilde{}/\allowbreak{}simc\_\allowbreak{}reference} & optional: reference runs and tables of the legacy program, only for validation \\
+\code{\$ROOTSYS} & \code{\textasciitilde{}/\allowbreak{}opt/\allowbreak{}root} & the ROOT 6.40 installation \\
+\end{simctable}
+\begin{simcshell}[basicstyle=\ttfamily\footnotesize]
+export SIMCPP_SRC=~/src/simcpp SIMCPP_BUILD=~/build/simcpp SIMCPP_PREFIX=~/opt/simcpp
+export ROOTSYS=~/opt/root LD_LIBRARY_PATH=$ROOTSYS/lib
+export PATH=$SIMCPP_PREFIX/bin:$ROOTSYS/bin:$PATH
+\end{simcshell}
+\section{\texorpdfstring{Requirements}{Requirements}}\label{user_manual-02u5finstallation:22-requirements}
+\begin{simctable}{small}{3}{>{\raggedright\arraybackslash}p{\dimexpr 0.154\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.393\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.385\linewidth-2\tabcolsep\relax}}
+%
+\toprule\rowcolor{simchead}\simcth{item} & \simcth{version} & \simcth{note} \\\midrule\endfirsthead
+\multicolumn{3}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{item} & \simcth{version} & \simcth{note} \\\midrule\endhead
+\midrule\multicolumn{3}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+C++ compiler & C++20 (GCC 16.2 and clang 22 are used by the project; both build without warnings with \code{-{}Wall\ -{}Wextra\ -{}pedantic}) &  \\
+CMake & ≥ 3.15 &  \\
+ROOT & ≥ 6.40, built with C++20; components Core, Tree, Hist, RIO (the comparison tool also needs Gpad, Graf, MathCore) & the project uses ROOT 6.40.04 \\
+nlohmann/\allowbreak{}json & ≥ 3.9 & downloaded automatically (FetchContent,\allowbreak{} v3.11.2) when it is not installed; this needs network access at configure time \\
+Python 3 & any recent & only for the \code{docs} tests; they are not registered without Python \\
+\end{simctable}
+Runtime library path: \code{LD\_\allowbreak{}LIBRARY\_\allowbreak{}PATH} must contain the \code{lib} directory of the ROOT that SIMC++ was built with, and no
+directory with another ROOT or another \code{libtbb.\allowbreak{}so} (an older ROOT in \code{/\allowbreak{}usr/\allowbreak{}local/\allowbreak{}lib}, for example, breaks ROOT 6.40).
+
+\section{\texorpdfstring{Building}{Building}}\label{user_manual-02u5finstallation:23-building}
+\begin{simcshell}[basicstyle=\ttfamily\scriptsize]
+cmake -S $SIMCPP_SRC -B $SIMCPP_BUILD -DCMAKE_PREFIX_PATH=$ROOTSYS -DCMAKE_BUILD_TYPE=Release
+cmake --build $SIMCPP_BUILD -j8
+\end{simcshell}
+The programs are in \code{\$SIMCPP\_\allowbreak{}BUILD/\allowbreak{}bin/}:
+
+\begin{simctable}{small}{2}{>{\raggedright\arraybackslash}p{\dimexpr 0.234\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.719\linewidth-2\tabcolsep\relax}}
+%
+\toprule\rowcolor{simchead}\simcth{program} & \simcth{purpose} \\\midrule\endfirsthead
+\multicolumn{2}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{program} & \simcth{purpose} \\\midrule\endhead
+\midrule\multicolumn{2}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+\code{simc++} & the Monte Carlo \\
+\code{inp2json} & converts a \code{.\allowbreak{}inp} input (and its \hyperref[param:extrau5fdbaseu5ffile]{\code{extra\_\allowbreak{}dbase\_\allowbreak{}file}}\simcidx{Parameters!extra_dbase_file@\code{extra\_dbase\_file}}) into a SIMC++ JSON configuration (\hyperref[user_manual-04u5finputs:42-the-json-format]{4.2}) \\
+\code{hist2json} & converts a \code{.\allowbreak{}hist} + \code{.\allowbreak{}geni} report into the run-summary JSON format \\
+\code{simc\_\allowbreak{}root\_\allowbreak{}identity} & compares two output ROOT files entry by entry and branch by branch (bitwise) \\
+\end{simctable}
+CMake options:
+
+\begin{simctable}{footnotesize}{3}{>{\raggedright\arraybackslash}p{\dimexpr 0.218\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.219\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.501\linewidth-2\tabcolsep\relax}}
+%
+\toprule\rowcolor{simchead}\simcth{option} & \simcth{default} & \simcth{meaning} \\\midrule\endfirsthead
+\multicolumn{3}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{option} & \simcth{default} & \simcth{meaning} \\\midrule\endhead
+\midrule\multicolumn{3}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+\code{CMAKE\_\allowbreak{}BUILD\_\allowbreak{}TYPE} & (none) & use \code{Release} (\code{-{}O3}). Do \textbf{not} add \code{-{}march=\allowbreak{}native} or \code{-{}ffast-{}math}: they change the floating-point results and the exact-reproduction tests then fail \\
+\code{SIMC\_\allowbreak{}BUILD\_\allowbreak{}EXAMPLES} & \code{ON} & build the example plug-ins (\code{ideal\_\allowbreak{}box}) into \code{simc++} \\
+\code{SIMC\_\allowbreak{}REFERENCE\_\allowbreak{}DIR}, \code{SIMC\_\allowbreak{}FORTRAN\_\allowbreak{}DIR}, \code{SIMC\_\allowbreak{}BASELINE\_\allowbreak{}DIR} & the environment variables \code{SIMC\_\allowbreak{}REFERENCE}, \code{SIMC\_\allowbreak{}FORTRAN}, \code{SIMC\_\allowbreak{}BASELINES}, else empty & \textbf{validation tests only}: the legacy reference data, the legacy source tree and the regression baselines. Not needed otherwise; when empty, the tests that need them are skipped (\hyperref[user_manual-02u5finstallation:26-running-the-tests]{2.6}) \\
+\end{simctable}
+The statistical comparison tool \code{simc\_\allowbreak{}compare} is a separate, optional CMake project in \code{validation/} (see
+\code{docs/\allowbreak{}translation/\allowbreak{}markdown/\allowbreak{}user\_\allowbreak{}comparing\_\allowbreak{}with\_\allowbreak{}fortran.\allowbreak{}md}).
+
+\section{\texorpdfstring{Installing}{Installing}}\label{user_manual-02u5finstallation:24-installing}
+\begin{simcshell}[basicstyle=\ttfamily\footnotesize]
+cmake --install $SIMCPP_BUILD --prefix $SIMCPP_PREFIX
+\end{simcshell}
+This installs:
+
+\begin{itemize}
+\item \code{\$SIMCPP\_\allowbreak{}PREFIX/\allowbreak{}bin/} with the four programs;
+\item \code{\$SIMCPP\_\allowbreak{}PREFIX/\allowbreak{}share/\allowbreak{}simc/\allowbreak{}data/} with the data files (optics maps, spectral functions, pion/\allowbreak{}kaon/\allowbreak{}SIDIS model tables, the
+target-field map, example configurations; each directory has an \code{MD5SUMS} file);
+\item \code{\$SIMCPP\_\allowbreak{}PREFIX/\allowbreak{}share/\allowbreak{}simc/\allowbreak{}docs/} (this manual and its example inputs in \code{docs/\allowbreak{}manual/\allowbreak{}markdown/\allowbreak{}user/\allowbreak{}examples/}),
+\code{\$SIMCPP\_\allowbreak{}PREFIX/\allowbreak{}share/\allowbreak{}simc/\allowbreak{}examples/} and \code{\$SIMCPP\_\allowbreak{}PREFIX/\allowbreak{}share/\allowbreak{}simc/\allowbreak{}README.\allowbreak{}md};
+\item the headers, libraries and the CMake package \code{SIMC} (\code{find\_\allowbreak{}package(\allowbreak{}SIMC)}), needed only to write your own plug-ins
+(developer manual).
+\end{itemize}
+With \code{\$SIMCPP\_\allowbreak{}PREFIX/\allowbreak{}bin} on the \code{PATH} the commands of this manual can be typed as \code{simc++\ .\allowbreak{}.\allowbreak{}.}. Without installing, use
+\code{\$SIMCPP\_\allowbreak{}BUILD/\allowbreak{}bin/\allowbreak{}simc++}; both find their data automatically (\hyperref[user_manual-02u5finstallation:25-where-the-data-files-are-found]{2.5}).
+
+\begin{figure}[htbp]
+\simcfigure{source_layout}
+\caption[The source tree and the installed layout]{The source tree and the installed layout: cmake -{}-build compiles the code, cmake -{}-install puts programs, libraries, headers, data and documentation under the prefix}\label{fig:sourceu5flayout}
+\end{figure}
+\section{\texorpdfstring{Where the data files are found}{Where the data files are found}}\label{user_manual-02u5finstallation:25-where-the-data-files-are-found}
+\code{simc++} reads its tables from one data directory, the first of these that applies (\code{include/\allowbreak{}simc/\allowbreak{}core/\allowbreak{}Data\allowbreak{}Path.\allowbreak{}h}):
+
+\begin{enumerate}
+\item the environment variable \code{SIMC\_\allowbreak{}DATA\_\allowbreak{}DIR}, if it is set and not empty;
+\item for a program built against the installed CMake package (\code{find\_\allowbreak{}package(\allowbreak{}SIMC)}): that package's
+\code{<prefix>\allowbreak{}/\allowbreak{}share/\allowbreak{}simc/\allowbreak{}data};
+\item for an installed program (\code{<prefix>\allowbreak{}/\allowbreak{}bin/\allowbreak{}simc++}): \code{<prefix>\allowbreak{}/\allowbreak{}share/\allowbreak{}simc/\allowbreak{}data}, if it exists;
+\item the source tree the program was built from (\code{<source>\allowbreak{}/\allowbreak{}data}), for in-tree builds and the tests.
+\end{enumerate}
+\code{simc++\ -{}-{}print-{}data-{}dir} prints the directory it will use and exits:
+
+\begin{simcshell}[basicstyle=\ttfamily\footnotesize]
+$ simc++ --print-data-dir
+~/opt/simcpp/share/simc/data
+$ SIMC_DATA_DIR=/data/simc simc++ --print-data-dir
+/data/simc
+\end{simcshell}
+Two more ways to choose data files:
+
+\begin{itemize}
+\item \code{-{}-{}data-{}dir\ DIR}\simcidx{Command-line options!data-dir@\code{-{}-{}data-{}dir}}: the directory of the spectral-function files of D/A(e,e'p), and the first place where a target-field
+map (\hyperref[param:tgtu5ffieldu5ffile]{\code{tgt\_\allowbreak{}field\_\allowbreak{}file}}\simcidx{Parameters!tgt_field_file@\code{tgt\_field\_file}}) is looked for (then the current directory, then the data directory's \code{field/});
+\item the JSON keys \code{"data\_\allowbreak{}dir"} (pion, kaon and SIDIS models) and \code{"matrix\_\allowbreak{}dir"} (spectrometers) of a pipeline stage
+(\hyperref[user_manual-04u5finputs:43-the-pipeline-section-choosing-plug-ins]{4.3}).
+\end{itemize}
+\begin{simcnote}
+a missing data file stops the run at start-up, not in the middle of a run.
+\end{simcnote}
+\section{\texorpdfstring{Running the tests}{Running the tests}}\label{user_manual-02u5finstallation:26-running-the-tests}
+\begin{simcshell}[basicstyle=\ttfamily\footnotesize]
+cd $SIMCPP_BUILD
+ctest -L docs                  # the user-manual checks (seconds)
+ctest -L unit -j8              # the unit tests (no external data needed)
+ctest -j8                      # everything
+\end{simcshell}
+\begin{simctable}{small}{3}{>{\raggedright\arraybackslash}p{\dimexpr 0.191\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.506\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.235\linewidth-2\tabcolsep\relax}}
+\caption{Running the tests}\\%
+\toprule\rowcolor{simchead}\simcth{label} & \simcth{what it tests} & \simcth{needs the validation data} \\\midrule\endfirsthead
+\multicolumn{3}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{label} & \simcth{what it tests} & \simcth{needs the validation data} \\\midrule\endhead
+\midrule\multicolumn{3}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+\code{unit} & unit tests of the components & partly (many compare with reference tables) \\
+\code{docs} & this manual: every input parameter and command-line option is documented, every link resolves & no \\
+\code{examples}, \code{package} & the example plug-in; the installed CMake package used by an external project & yes (they run reference inputs) \\
+\code{l1}, \code{replay} & each physics routine and complete runs against the original code's outputs & yes \\
+\code{fortran\_\allowbreak{}diff} & each documented difference with the original code, in both modes & partly \\
+\code{cli} & the command line (input formats, rejected inputs) & partly \\
+\code{regression}, \code{threads} & outputs of standard runs unchanged from the stored baselines; \code{-{}-{}threads}\simcidx{Command-line options!threads@\code{-{}-{}threads}} reproducibility & yes \\
+\code{regression\_\allowbreak{}shipped}, \code{slow} & complete runs of the example inputs, identical to the original program's outputs (long) & yes \\
+\end{simctable}
+Tests whose reference data, legacy source tree or baselines are missing report "Skipped", never "Failed": a build
+configured without them runs the remaining tests (component self-tests, checksums of the shipped data files, the \code{docs}
+tests) and skips the rest. To run the validation tests, export \code{SIMC\_\allowbreak{}REFERENCE}, \code{SIMC\_\allowbreak{}FORTRAN} and \code{SIMC\_\allowbreak{}BASELINES} before
+configuring (or pass the \code{-{}D} options of \hyperref[user_manual-02u5finstallation:23-building]{2.3}).
+
+The project script \code{tools/\allowbreak{}check\_\allowbreak{}all.\allowbreak{}sh\ [-{}-{}commit\ REV]\ [-{}-{}label\ NAME]} makes a clean build of SIMC++ and of the comparison
+tool (with \code{ROOTSYS}, \code{SIMC\_\allowbreak{}REFERENCE}, \code{SIMC\_\allowbreak{}FORTRAN}, \code{SIMC\_\allowbreak{}BASELINES} from the environment),\allowbreak{} runs both test suites and logs the result in a run folder (about 75 minutes, most of it in the
+\code{slow} tests).
+

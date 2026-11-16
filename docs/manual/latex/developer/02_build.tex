@@ -1,0 +1,178 @@
+% docs/manual/latex/developer/02_build.tex - chapter of the LaTeX edition of the book "developer_manual" (SIMC++ documentation).
+%   Converted once from docs/manual/markdown/developer/02_build.md by tools/md2latex.py; from then on THIS FILE is the source of the
+%   LaTeX edition and may be edited by hand. Re-running tools/md2latex.py --write-sources for this
+%   chapter OVERWRITES the hand edits (see docs/README.md).
+%   Compile: cmake --build <build> --target pdf, or tools/build_docs_pdf.py (figures, xelatex passes,
+%   makeindex with docs/common/latex/simcpp.ist); by hand, see docs/README.md. XeLaTeX, class
+%   docs/common/latex/simcpp.cls (packages: fontspec, tikz, xcolor, hyperref, listings, longtable, booktabs,
+%   titlesec, titletoc, fancyhdr, makeidx, preview, ...); fonts TeX Gyre Pagella, TeX Gyre Heros, DejaVu Sans
+%   Mono. The figures are built first from docs/{manual,translation}/figures/*.tex (preview.sty) into PDFs.
+\chapter{\texorpdfstring{Build system}{Build system}}\label{developer_manual-02u5fbuild}
+\section{\texorpdfstring{Requirements and a build}{Requirements and a build}}\label{developer_manual-02u5fbuild:21-requirements-and-a-build}
+C++20 compiler (gcc 16.2.1 on the reference machine), CMake ≥ 3.15 (≥ 3.29 for the toolchain hint of the L1 tests),
+ROOT ≥ 6.40 (components Core, Tree, Hist, RIO), nlohmann/\allowbreak{}json ≥ 3.9 (fetched with FetchContent v3.11.2 when not
+installed), Threads, Python 3 (only for the \code{docs} tests), \code{xz} (for the compressed captures of the replay tests).
+
+The manuals use this layout (the same as the user manual's installation chapter):
+
+\begin{simctable}{small}{3}{>{\raggedright\arraybackslash}p{\dimexpr 0.209\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.230\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.493\linewidth-2\tabcolsep\relax}}
+%
+\toprule\rowcolor{simchead}\simcth{variable} & \simcth{example} & \simcth{content} \\\midrule\endfirsthead
+\multicolumn{3}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{variable} & \simcth{example} & \simcth{content} \\\midrule\endhead
+\midrule\multicolumn{3}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+\code{\$SIMCPP\_\allowbreak{}SRC} & \code{\textasciitilde{}/\allowbreak{}src/\allowbreak{}simcpp} & the SIMC++ source tree \\
+\code{\$SIMCPP\_\allowbreak{}BUILD} & \code{\textasciitilde{}/\allowbreak{}build/\allowbreak{}simcpp} & a build directory \\
+\code{\$SIMCPP\_\allowbreak{}PREFIX} & \code{\textasciitilde{}/\allowbreak{}opt/\allowbreak{}simcpp} & an installation (\code{bin/}, \code{lib/}, \code{include/}, \code{share/\allowbreak{}simc/\allowbreak{}data}) \\
+\code{\$SIMC\_\allowbreak{}FORTRAN} & \code{\textasciitilde{}/\allowbreak{}src/\allowbreak{}simc\_\allowbreak{}gfortran} & the Fortran SIMC tree (optional, validation only: its \code{infiles/} are test inputs) \\
+\code{\$SIMC\_\allowbreak{}REFERENCE} & \code{\textasciitilde{}/\allowbreak{}simc\_\allowbreak{}reference} & the Fortran reference data (optional, validation only) \\
+\code{\$SIMC\_\allowbreak{}BASELINES} & \code{\textasciitilde{}/\allowbreak{}simc\_\allowbreak{}baselines} & the C++ regression baselines (optional, validation only) \\
+\end{simctable}
+\begin{simcshell}[basicstyle=\ttfamily\scriptsize]
+export LD_LIBRARY_PATH=$ROOTSYS/lib          # the ROOT 6.40 install; no other ROOT or libtbb in the path
+cmake -S $SIMCPP_SRC -B $SIMCPP_BUILD -DCMAKE_PREFIX_PATH=$ROOTSYS -DCMAKE_BUILD_TYPE=Release
+cmake --build $SIMCPP_BUILD -j8
+ctest --test-dir $SIMCPP_BUILD -j8 --output-on-failure -LE slow    # everything except the long tests
+\end{simcshell}
+Without the validation data every test that needs it is skipped (exit 77, "Skipped"); with them, add
+\code{-{}DSIMC\_\allowbreak{}REFERENCE\_\allowbreak{}DIR=\allowbreak{}\$SIMC\_\allowbreak{}REFERENCE\ -{}DSIMC\_\allowbreak{}FORTRAN\_\allowbreak{}DIR=\allowbreak{}\$SIMC\_\allowbreak{}FORTRAN\ -{}DSIMC\_\allowbreak{}BASELINE\_\allowbreak{}DIR=\allowbreak{}\$SIMC\_\allowbreak{}BASELINES} (or export
+\code{SIMC\_\allowbreak{}REFERENCE}, \code{SIMC\_\allowbreak{}FORTRAN}, \code{SIMC\_\allowbreak{}BASELINES} before the first configure: they are the defaults).
+
+Flags: \code{-{}Wall\ -{}Wextra\ -{}pedantic} everywhere (the build has 0 warnings; keep it so), Release \code{-{}O3\ -{}DNDEBUG}. \textbf{Do not
+add \code{-{}march=\allowbreak{}native}, \code{-{}ffast-{}math} or \code{-{}ffp-{}contract=\allowbreak{}fast}}: FMA contraction and value-unsafe optimisations change the
+floating-point results and break every bitwise reference test (the numerical rules are in the
+translation report\footnote{From SIMC to SIMC++, ``4. Numerical conventions'' (\code{docs/\allowbreak{}translation/\allowbreak{}markdown/\allowbreak{}04\_\allowbreak{}numerics.\allowbreak{}md})}).
+
+The comparison tool \code{simc\_\allowbreak{}compare} is a separate CMake project in \code{validation/} (its own build directory and CTest
+suite; the statistics are documented in validation/\allowbreak{}README.md\footnote{\code{validation/\allowbreak{}README.\allowbreak{}md}}).
+
+\section{\texorpdfstring{Layout and targets}{Layout and targets}}\label{developer_manual-02u5fbuild:22-layout-and-targets}
+The top-level \code{CMakeLists.\allowbreak{}txt} defines the ROOT-free core library and the tools, then adds one \code{CMakeLists.\allowbreak{}txt} per
+module (so that parallel tasks never edit the same file):
+
+\begin{simctable}{small}{4}{>{\raggedright\arraybackslash}p{\dimexpr 0.219\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.147\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.224\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.322\linewidth-2\tabcolsep\relax}}
+\caption{Layout and targets}\\%
+\toprule\rowcolor{simchead}\simcth{target} & \simcth{type} & \simcth{sources} & \simcth{content} \\\midrule\endfirsthead
+\multicolumn{4}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{target} & \simcth{type} & \simcth{sources} & \simcth{content} \\\midrule\endhead
+\midrule\multicolumn{4}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+\code{simcfw} & STATIC & src/core, src/input, src/\allowbreak{}output/\allowbreak{}\{NtupleLayout,\allowbreak{}SummaryJson\} & parameters, RunSetup, SpectrometerId,\allowbreak{} DataPath, \code{.\allowbreak{}inp} reader, ntuple layout, summary JSON (ROOT-free) \\
+\code{simcfw\_\allowbreak{}random} & STATIC & src/\allowbreak{}core/\allowbreak{}random & \code{Mt64Random}\simcidx{Classes and interfaces!Mt64Random@\code{Mt64Random}} ("mt64"), \code{RanluxRandom}\simcidx{Classes and interfaces!RanluxRandom@\code{RanluxRandom}} ("ranlux"), \code{ScriptedRandom}\simcidx{Classes and interfaces!ScriptedRandom@\code{ScriptedRandom}}, \code{Gauss1} \\
+\code{simcfw\_\allowbreak{}root} & OBJECT & src/\allowbreak{}output/\allowbreak{}\{RootTreeSink,\allowbreak{}RunSummarySink,\allowbreak{}GenHistSink\} & sinks \code{root\_\allowbreak{}tree}, \code{run\_\allowbreak{}summary}, \code{gen\_\allowbreak{}hist} \\
+\code{simcfw\_\allowbreak{}physics} & OBJECT & src/\allowbreak{}physics/\allowbreak{}\{proton,\allowbreak{}nuclear\} & models \code{sigep}, \code{deforest*}; spectral functions \code{theory}, \code{benhar} \\
+\code{simcfw\_\allowbreak{}material} & OBJECT & src/\allowbreak{}material & target \code{hallc\_\allowbreak{}cryo}, material \code{simc\_\allowbreak{}material} \\
+\code{simcfw\_\allowbreak{}kinematics}, \code{simcfw\_\allowbreak{}setup} & STATIC & src/setup & \code{loren}, angles; \code{BuildRunSetup} (run set-up) \\
+\code{simcfw\_\allowbreak{}optics} & STATIC & src/optics & COSY engine, forward chains, \code{lfit}, target field \\
+\code{simcfw\_\allowbreak{}hms}, \code{\_\allowbreak{}shms}, \code{\_\allowbreak{}sos}, \code{\_\allowbreak{}hrs}, \code{\_\allowbreak{}calo} & OBJECT & src/\allowbreak{}spectrometers/\allowbreak{}* & the spectrometer plug-ins and kernels \\
+\code{simcfw\_\allowbreak{}pion}, \code{\_\allowbreak{}kaon}, \code{\_\allowbreak{}delta}, \code{\_\allowbreak{}sidis}, \code{\_\allowbreak{}rho} & OBJECT & src/\allowbreak{}physics/\allowbreak{}* & cross sections and their \code{IPhysicsModel}\simcidx{Classes and interfaces!IPhysicsModel@\code{IPhysicsModel}} plug-ins \\
+\code{simcfw\_\allowbreak{}radiation} & OBJECT & src/\allowbreak{}radiation & \code{simc\_\allowbreak{}rad} and the radiation kernel \\
+\code{simcfw\_\allowbreak{}reactions}, \code{simcfw\_\allowbreak{}reactions\_\allowbreak{}\{pion,\allowbreak{}kaon,\allowbreak{}delta,\allowbreak{}sidis,\allowbreak{}rho\}} & OBJECT & src/\allowbreak{}reactions & beam \code{standard}, the reactions, \code{EventChain} kernels \\
+\code{simcfw\_\allowbreak{}driver} & STATIC & src/driver & \code{SimcRun}\simcidx{Classes and interfaces!SimcRun@\code{SimcRun}}, \code{MonteCarlo}\simcidx{Classes and interfaces!MonteCarlo@\code{MonteCarlo}}, report, pipeline, command line \\
+\code{simcfw\_\allowbreak{}driver\_\allowbreak{}sinks} & OBJECT & src/\allowbreak{}driver/\allowbreak{}ReportSink.\allowbreak{}cpp & sink \code{fortran\_\allowbreak{}hist} \\
+\code{simcpp} (output name \code{simc++}) & executable & tools/\allowbreak{}simc\_\allowbreak{}main.\allowbreak{}cpp & \code{return\ simc::\allowbreak{}driver::\allowbreak{}Command\allowbreak{}Line\allowbreak{}Main(\allowbreak{}argc,\ argv);} \\
+\code{inp2json}, \code{hist2json} & executables & tools/ & \code{.\allowbreak{}inp} → JSON; \code{.\allowbreak{}hist} text report → summary JSON \\
+\code{simc\_\allowbreak{}root\_\allowbreak{}identity} & executable & tests/\allowbreak{}regression/\allowbreak{}root\_\allowbreak{}identity.\allowbreak{}cpp & bitwise comparison of trees/\allowbreak{}histograms (ignores ROOT dates) \\
+\code{simc} / \code{SIMC::\allowbreak{}simc} & INTERFACE & — & everything a complete run links (the installed package's target) \\
+\end{simctable}
+\code{SIMC\_\allowbreak{}DRIVER\_\allowbreak{}LIBS} (a cache variable set in src/\allowbreak{}driver/\allowbreak{}CMakeLists.\allowbreak{}txt) lists every library of a complete run. A test or
+a program that runs the driver links \code{\$\{SIMC\_\allowbreak{}DRIVER\_\allowbreak{}LIBS\}}.
+
+\section{\texorpdfstring{OBJECT libraries and registration}{OBJECT libraries and registration}}\label{developer_manual-02u5fbuild:23-object-libraries-and-registration}
+Plug-ins register themselves by name during static initialisation (\code{SIMC\_\allowbreak{}REGISTER}\simcidx{SIMC_REGISTER@\code{SIMC\_REGISTER}}, core/\allowbreak{}Registry.\allowbreak{}h,\allowbreak{} chapter 3). The
+linker drops an object file of a static archive that nothing references, so \textbf{every library that contains a
+\code{SIMC\_\allowbreak{}REGISTER}\simcidx{SIMC_REGISTER@\code{SIMC\_REGISTER}} line is an OBJECT library} and is linked directly by the executable. The exception is
+\code{simcfw\_\allowbreak{}random} (STATIC): \code{Simc\allowbreak{}Run::\allowbreak{}initialise}\simcidx{Classes and interfaces!SimcRun@\code{SimcRun}} constructs \code{Mt64Random}\simcidx{Classes and interfaces!Mt64Random@\code{Mt64Random}} / \code{RanluxRandom}\simcidx{Classes and interfaces!RanluxRandom@\code{RanluxRandom}} directly when the registry
+does not contain them, which pulls their object files (and so their registrations) in (SimcRun.\allowbreak{}cpp l.127-139).
+
+The objects of an OBJECT library reach only targets that link it \emph{directly}. The INTERFACE target \code{simc} therefore
+passes them explicitly as \code{INTERFACE\_\allowbreak{}SOURCES} (\code{\$<TARGET\_\allowbreak{}OBJECTS:\allowbreak{}.\allowbreak{}.\allowbreak{}.\allowbreak{}>}), in the build tree and in the installed package
+(top-level CMakeLists.\allowbreak{}txt,\allowbreak{} "Installation"). This is what lets an out-of-tree executable that links \code{SIMC::\allowbreak{}simc} get
+every built-in stage without whole-archive flags.
+
+A new module: add \code{src/\allowbreak{}<module>\allowbreak{}/\allowbreak{}CMake\allowbreak{}Lists.\allowbreak{}txt} with an OBJECT library if it registers plug-ins (STATIC otherwise),
+\code{add\_\allowbreak{}subdirectory} it in the top-level file, and append it to \code{SIMC\_\allowbreak{}DRIVER\_\allowbreak{}LIBS} (chapter 4).
+
+\section{\texorpdfstring{Options and cache variables}{Options and cache variables}}\label{developer_manual-02u5fbuild:24-options-and-cache-variables}
+\begin{simctable}{small}{3}{>{\raggedright\arraybackslash}p{\dimexpr 0.241\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.252\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.439\linewidth-2\tabcolsep\relax}}
+%
+\toprule\rowcolor{simchead}\simcth{variable} & \simcth{default} & \simcth{meaning} \\\midrule\endfirsthead
+\multicolumn{3}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{variable} & \simcth{default} & \simcth{meaning} \\\midrule\endhead
+\midrule\multicolumn{3}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+\code{SIMC\_\allowbreak{}BUILD\_\allowbreak{}EXAMPLES} & ON & build \code{examples/} and link the example plug-ins (\code{ideal\_\allowbreak{}box}) into \code{simc++} \\
+\code{SIMC\_\allowbreak{}REFERENCE\_\allowbreak{}DIR} & env \code{SIMC\_\allowbreak{}REFERENCE}, else empty & reference data of the reference tests; empty or absent: those tests are skipped (exit 77) \\
+\code{SIMC\_\allowbreak{}FORTRAN\_\allowbreak{}DIR} & env \code{SIMC\_\allowbreak{}FORTRAN}, else empty & directory whose \code{infiles/} provide the shipped test inputs (read-only); empty: skipped \\
+\code{SIMC\_\allowbreak{}BASELINE\_\allowbreak{}DIR} & env \code{SIMC\_\allowbreak{}BASELINES}, else empty & C++ regression baselines; empty: skipped \\
+\code{SIMC\_\allowbreak{}*\_\allowbreak{}BASELINE\_\allowbreak{}COMMIT} & \code{55cf7a0\_\allowbreak{}glibc243} & the baseline folder prefix per family (tests/\allowbreak{}regression/\allowbreak{}CMakeLists.\allowbreak{}txt) \\
+\end{simctable}
+\code{src/\allowbreak{}core/\allowbreak{}Data\allowbreak{}Path.\allowbreak{}cpp} is compiled with \code{SIMC\_\allowbreak{}SOURCE\_\allowbreak{}DATA\_\allowbreak{}ROOT=\allowbreak{}<source>\allowbreak{}/\allowbreak{}data}, the last fallback of the data directory
+(chapter 3 §3.8).
+
+\section{\texorpdfstring{Tests and CTest labels}{Tests and CTest labels}}\label{developer_manual-02u5fbuild:25-tests-and-ctest-labels}
+Tests are grouped by directory and labelled:
+
+\begin{simctable}{small}{4}{>{\raggedright\arraybackslash}p{\dimexpr 0.148\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.190\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.459\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.114\linewidth-2\tabcolsep\relax}}
+\caption{Tests and CTest labels}\\%
+\toprule\rowcolor{simchead}\simcth{label} & \simcth{where} & \simcth{what} & \simcth{count at P15.D1} \\\midrule\endfirsthead
+\multicolumn{4}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{label} & \simcth{where} & \simcth{what} & \simcth{count at P15.D1} \\\midrule\endhead
+\midrule\multicolumn{4}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+\code{unit} & tests/unit, tests/\allowbreak{}fortran\_\allowbreak{}diff & parameters, \code{.\allowbreak{}inp} reader, sinks, summary/\allowbreak{}hist2json,\allowbreak{} stage headers and registry, \code{lint\_\allowbreak{}no\_\allowbreak{}pow\_\allowbreak{}square} & 75 \\
+\code{l1} & tests/l1 & routine-level reference tables (bitwise or a stated tolerance), replays, full-run identity tests & 282 \\
+\code{replay} & tests/l1 & subset of \code{l1}: the complete MonteCarlo / SimcRun driven by a recorded random stream (\code{ScriptedRandom}\simcidx{Classes and interfaces!ScriptedRandom@\code{ScriptedRandom}}; names with \code{\_\allowbreak{}replay\_}) & 53 \\
+\code{cli} & tests/l1, tests/\allowbreak{}fortran\_\allowbreak{}diff,\allowbreak{} examples & the \code{simc++} command line (.inp vs JSON, refusals, \code{-{}-{}pipeline}\simcidx{Command-line options!pipeline@\code{-{}-{}pipeline}}) & 10 \\
+\code{fortran\_\allowbreak{}diff} & tests/\allowbreak{}fortran\_\allowbreak{}diff & one test per behaviour that differs between the default and the \code{fortran\_\allowbreak{}compat} mode, both modes; input refusals & 47 \\
+\code{regression} & tests/\allowbreak{}regression & before/\allowbreak{}after output identity against the C++ baselines (both modes, every family) & 30 \\
+\code{regression\_\allowbreak{}shipped} & tests/\allowbreak{}regression & full-run identity of \code{simc++} (\code{ranlux}, \code{-{}-{}fortran-{}compat}\simcidx{Command-line options!fortran-compat@\code{-{}-{}fortran-{}compat}}) against the reference run of every shipped input (also \code{slow}) & 41 \\
+\code{threads} & tests/\allowbreak{}regression & \code{-{}-{}threads\ N}\simcidx{Command-line options!threads@\code{-{}-{}threads}} reproducibility,\allowbreak{} \code{-{}-{}threads\ 1}\simcidx{Command-line options!threads@\code{-{}-{}threads}} = sequential, refusals & 4 \\
+\code{examples} & examples & the example plug-ins through the complete driver & 5 \\
+\code{package} & examples & install into a temporary prefix, out-of-tree plug-in build with \code{find\_\allowbreak{}package(\allowbreak{}SIMC)}, run & 1 \\
+\code{slow} & several & long tests (distributions,\allowbreak{} shipped suite) & 53 \\
+\code{docs} & tests/\allowbreak{}user\_\allowbreak{}manual,\allowbreak{} tests/\allowbreak{}developer\_\allowbreak{}manual & the manuals: parameter reference, header coverage, verbatim snippets, Markdown links & 4 \\
+\end{simctable}
+\code{ctest\ -{}L\ l1}, \code{ctest\ -{}LE\ slow}, \code{ctest\ -{}R\ replay\_\allowbreak{}pion} select subsets. Tests return 77 (\code{SKIP\_\allowbreak{}RETURN\_\allowbreak{}CODE}) when
+their reference input is missing. The L1 and fortran\_\allowbreak{}diff tests run through \code{tests/\allowbreak{}toolchain\_\allowbreak{}guard.\allowbreak{}sh}
+(\code{CMAKE\_\allowbreak{}TEST\_\allowbreak{}LAUNCHER}): on a failure it prints the toolchain of the references (\code{reference/\allowbreak{}TOOLCHAIN.\allowbreak{}txt}) next to
+the current one, because a libm update changes bits. What each reference test proves is described in the
+translation report\footnote{From SIMC to SIMC++, ``2. Validation framework'' (\code{docs/\allowbreak{}translation/\allowbreak{}markdown/\allowbreak{}02\_\allowbreak{}validation.\allowbreak{}md})}.
+
+The \code{simc\_\allowbreak{}compare} project has its own suite (\code{cmake\ -{}S\ validation\ -{}B\ vbuild\ \&\&\ cmake\ -{}-{}build\ vbuild\ \&\&\ ctest\ -{}-{}test-{}dir\ vbuild}): A-vs-A, reference-vs-reference,\allowbreak{} sensitivity (rad vs norad, shifted \code{hsdelta}), JSON vs \code{.\allowbreak{}hist},
+empty trees, NaN entries, the wtcontr subset and mode detection.
+
+\section{\texorpdfstring{\code{tools/\allowbreak{}check\_\allowbreak{}all.\allowbreak{}sh}}{tools/\allowbreak{}check\_\allowbreak{}all.\allowbreak{}sh}}\label{developer_manual-02u5fbuild:26-toolschecku5fallsh}
+The acceptance check of every change: a clean build of everything plus both test suites, logged.
+
+\begin{simcshell}[basicstyle=\ttfamily\scriptsize]
+TMPDIR=<large scratch dir> ROOTSYS=<ROOT install> tools/check_all.sh --commit <hash> --label <task>
+\end{simcshell}
+\begin{itemize}
+\item Paths: ROOT from \code{\$ROOTSYS} (else \code{root-{}config\ -{}-{}prefix}); the validation data from the environment variables
+\code{SIMC\_\allowbreak{}REFERENCE}, \code{SIMC\_\allowbreak{}FORTRAN}, \code{SIMC\_\allowbreak{}BASELINES}, or, for those not set, from the untracked file \code{check\_\allowbreak{}all.\allowbreak{}env} in
+the project directory (the parent of the source tree; shell syntax, one \code{NAME=\allowbreak{}path} per line). Nothing machine-specific
+is committed. Without the data check\_all still runs, with those tests skipped; \code{git.\allowbreak{}txt} records which data were used.
+\item \code{-{}-{}commit\ REV} builds a clean detached worktree of REV (use it whenever other agents have uncommitted work).
+\item It takes the same lock as \code{run\_\allowbreak{}simc.\allowbreak{}sh} (\code{simc\_\allowbreak{}runs/\allowbreak{}.\allowbreak{}lock}), so runs are serialised; check \code{ps} first.
+\item It writes \code{SIMC++\_\allowbreak{}Project/\allowbreak{}simc\_\allowbreak{}runs/\allowbreak{}<timestamp>\allowbreak{}\_\allowbreak{}check\_\allowbreak{}<label>\allowbreak{}/} (summary.\allowbreak{}md,\allowbreak{} git.txt with the toolchain
+fingerprint,\allowbreak{} build.log, tests.log, val\_\allowbreak{}build.\allowbreak{}log,\allowbreak{} val\_\allowbreak{}tests.\allowbreak{}log),\allowbreak{} removes the build trees, and appends one line to
+\code{simc\_\allowbreak{}runs/\allowbreak{}index.\allowbreak{}tsv}: \code{run\_\allowbreak{}id\ overall\ build\ run\ tests\ seconds\ config} (\code{build} and \code{tests} are
+\code{<main>\allowbreak{}/\allowbreak{}<validation>} exit codes; config \code{check\_\allowbreak{}all@<commit>}). The exit code is 0 only if both builds and both
+suites pass. It runs every test including \code{slow} (about one hour with all validation data).
+\item Use a \code{TMPDIR} on a large disk (the worktree and the build trees are created there).
+\end{itemize}
+\section{\texorpdfstring{The installed package}{The installed package}}\label{developer_manual-02u5fbuild:27-the-installed-package}
+\begin{simcshell}[basicstyle=\ttfamily\footnotesize]
+cmake --install build --prefix $HOME/simc
+\end{simcshell}
+installs \code{bin/} (\code{simc++}, \code{inp2json}, \code{hist2json}, \code{simc\_\allowbreak{}root\_\allowbreak{}identity}), \code{include/\allowbreak{}simc} (the public headers,
+\textbf{without} the \code{kernel/} directories),\allowbreak{} \code{lib/\allowbreak{}simc} (static libraries) and \code{lib/\allowbreak{}simc/\allowbreak{}objects} (the objects of the
+OBJECT libraries), \code{lib/\allowbreak{}cmake/\allowbreak{}SIMC} (\code{SIMCConfig.\allowbreak{}cmake}, \code{SIMCConfig\allowbreak{}Version.\allowbreak{}cmake}, \code{SIMCTargets.\allowbreak{}cmake}),
+\code{share/\allowbreak{}simc/\allowbreak{}data} (COSY maps, tables, spectral functions, field map), \code{share/\allowbreak{}simc/\allowbreak{}docs}, \code{share/\allowbreak{}simc/\allowbreak{}examples}, and
+\code{share/\allowbreak{}simc/\allowbreak{}cmake/\allowbreak{}Simc\allowbreak{}Installed\allowbreak{}Data\allowbreak{}Root.\allowbreak{}cpp}.
+
+\code{find\_\allowbreak{}package(\allowbreak{}SIMC\ 2.\allowbreak{}0)} (version compatibility \code{SameMajorVersion}) finds ROOT 6.40, nlohmann\_\allowbreak{}json and Threads, and
+provides \code{SIMC::\allowbreak{}simc} and \code{SIMC\_\allowbreak{}DATA\_\allowbreak{}DIR}. \code{SIMCConfig.\allowbreak{}cmake} adds the interface source \code{Simc\allowbreak{}Installed\allowbreak{}Data\allowbreak{}Root.\allowbreak{}cpp}
+to \code{SIMC::\allowbreak{}simc}, compiled into the consumer with \code{SIMC\_\allowbreak{}INSTALLED\_\allowbreak{}DATA\_\allowbreak{}DIR=\allowbreak{}<prefix>\allowbreak{}/\allowbreak{}share/\allowbreak{}simc/\allowbreak{}data}: it registers the
+package's data directory at start-up (\code{simc::\allowbreak{}detail::\allowbreak{}Set\allowbreak{}Installed\allowbreak{}Data\allowbreak{}Root}), so a consumer program finds the installed
+data without \code{-{}-{}data-{}dir}\simcidx{Command-line options!data-dir@\code{-{}-{}data-{}dir}}. The CTest \code{package\_\allowbreak{}out\_\allowbreak{}of\_\allowbreak{}tree\_\allowbreak{}plugin}
+(\code{examples/\allowbreak{}out\_\allowbreak{}of\_\allowbreak{}tree\_\allowbreak{}plugin/\allowbreak{}package\_\allowbreak{}check.\allowbreak{}sh}) proves the whole chain on every \code{check\_\allowbreak{}all}.
+

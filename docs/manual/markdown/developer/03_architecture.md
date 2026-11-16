@@ -1,7 +1,7 @@
 # 3. Architecture and data flow
 
-The short reference is [ARCHITECTURE.md](../../ARCHITECTURE.md) (layers, stage table, wiring); the stage contracts with
-code are in [EXTENDING.md](../../EXTENDING.md). This chapter explains how the pieces work together and ends with a
+The short reference is [ARCHITECTURE.md](../reference/ARCHITECTURE.md) (layers, stage table, wiring); the stage contracts with
+code are in [EXTENDING.md](../reference/EXTENDING.md). This chapter explains how the pieces work together and ends with a
 reference of every public header.
 
 ## 3.1 Layers
@@ -73,7 +73,7 @@ run.finish();                                  // normalisation and outputs
 
 `RunOptions` (run name, output directory, data directory, ngen/seed overrides, log stream, `quiet_stages`,
 `fortran_compat`, `threads`) come from the command line (`driver::CommandLineMain`, CommandLine.cpp; options in
-[DRIVER.md](../../DRIVER.md)). `setRandom(unique_ptr<IRandom>)` replaces the pipeline rng (tests use a
+[DRIVER.md](../reference/DRIVER.md)). `setRandom(unique_ptr<IRandom>)` replaces the pipeline rng (tests use a
 `ScriptedRandom`), `addSink(unique_ptr<IOutputSink>)` adds a sink created in code.
 
 **`initialise()`**, in this order:
@@ -241,8 +241,8 @@ option `fortran_compat` (`simc++ --fortran-compat`, JSON `"run": {"fortran_compa
 behaviour exactly; it is used by the reference tests. It is set once (`RunOptions` → `SetupOptions` →
 `RunSetup::fortran_compat`), every stage reads it from `StageContext::setup`, kernels receive it explicitly (argument,
 config struct or setter); there is no global. It forbids `--threads N > 1`. The list of what it changes, and how to add
-a correction, is in the translation report ([chapter 5](../../translation/05_compat.md) and the
-[catalogue](../../translation/06_catalogue.md)).
+a correction, is in the translation report ([chapter 5](../../../translation/markdown/05_compat.md) and the
+[catalogue](../../../translation/markdown/06_catalogue.md)).
 
 **Errors** (core/Errors.h): `simc::Error` (base, `std::runtime_error`), `simc::FortranStop` (a fatal condition of the
 original program, reported with its message), `simc::NotPorted` (an unsupported feature). Misuse is `std::logic_error`, a
@@ -327,7 +327,7 @@ private header of a module, not installed.
 | `simc/output/NtupleLayout.h` | the ntuple column layout per reaction |
 | `simc/output/GenHistSink.h` | sink `gen_hist`: H%geni/H%gen/H%RECON as `.gen.root` |
 | `simc/output/RunSummarySink.h` | sink `run_summary`: `.summary.json/.txt` |
-| `simc/output/SummaryJson.h` | the summary JSON builder/reader (`docs/summary.schema.json`) |
+| `simc/output/SummaryJson.h` | the summary JSON builder/reader (`docs/manual/markdown/reference/summary.schema.json`) |
 | `simc/setup/SetupBuilder.h` | `BuildRunSetup`, `SetupOptions` (the run set-up) |
 | `simc/setup/KinematicsUtils.h` | Lorentz boost (`loren`), `PhysicsAngles`, `SpectrometerAngles` |
 

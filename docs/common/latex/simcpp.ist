@@ -1,4 +1,5 @@
-% docs/latex/simcpp.ist — makeindex style of the SIMC++ books (task P15.D5)
+% docs/common/latex/simcpp.ist - makeindex style of the SIMC++ books (used as makeindex -s simcpp.ist <book>.idx
+% between the first and second xelatex pass; tools/build_docs_pdf.py does it).
 headings_flag 0
 heading_prefix "\\simcindexgroup{"
 heading_suffix "}\n"

@@ -12,7 +12,7 @@ simc++ <file.inp | file.json> [-o OUTDIR] [--seed N] [--ngen N] [--pipeline over
        [--fortran-compat] [--threads N] [--print-data-dir]
 ```
 
-* `--threads N` (P15.4, docs/PERFORMANCE.md): the event loop on N threads, each with its own stages and its own mt64
+* `--threads N` (P15.4, docs/manual/markdown/reference/PERFORMANCE.md): the event loop on N threads, each with its own stages and its own mt64
   stream (`seed_seq(seed, worker)`); the outputs are the deterministic merge of the workers (a given seed and N always
   give the same files; they are statistically equivalent to, not bitwise equal to, the one-thread run). Also
   `"pipeline": {"threads": N}`; the option wins. Refused (exit 2) with `--fortran-compat` and with an rng other than
@@ -32,7 +32,7 @@ simc++ <file.inp | file.json> [-o OUTDIR] [--seed N] [--ngen N] [--pipeline over
 | file | content | Fortran |
 |---|---|---|
 | `<run>.root` | tree `h10`, 46 Float_t branches, successes only (only if `Nntu > 0`) | `worksim/<run>.bin` → `make_root_tree` |
-| `<run>.summary.json`, `.summary.txt` | run summary (docs/OUTPUT_FORMAT.md §2, schema-valid) | `.hist` + `.geni` |
+| `<run>.summary.json`, `.summary.txt` | run summary (docs/manual/markdown/reference/OUTPUT_FORMAT.md §2, schema-valid) | `.hist` + `.geni` |
 | `<run>.gen.root` | the diagnostic histograms as TH1D | `.gen` |
 | `<run>.hist`, `<run>.geni`, `<run>.gen` | the Fortran text reports, same gfortran layout | `outfiles/` |
 
@@ -134,4 +134,4 @@ spectrometer arm (HMS, SOS, HRS-R/L, SHMS, calorimeter 7/8 with pi0 -> 2 gamma) 
 
 * `random_state_file` (the RANLUX state file is not read; a RANLUX state can be given as `pipeline.rng.state`);
 * input combinations that the Fortran itself cannot run (they are refused at set-up with a message, e.g. (e,e'rho)
-  with A >= 4 or `doing_rho` together with another reaction flag; see docs/translation/06_catalogue.md).
+  with A >= 4 or `doing_rho` together with another reaction flag; see docs/translation/markdown/06_catalogue.md).

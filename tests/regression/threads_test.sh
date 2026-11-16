@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# tests/regression/threads_test.sh — the parallel event loop (task P15.4, docs/PERFORMANCE.md).
+# tests/regression/threads_test.sh — the parallel event loop (task P15.4, docs/manual/markdown/reference/PERFORMANCE.md).
 #   repro  <simc++> <simc_root_identity> <inp> <workdir> <N> <ngen>
 #          two runs with the same (seed 4242, --threads N) must give identical outputs (.hist/.geni/.gen/summary without
 #          the time stamps, the .root trees and histograms through simc_root_identity); the log must report N threads and

@@ -1,9 +1,45 @@
-% docs/latex/user_manual.tex — LaTeX skeleton of the book "user_manual" (task P15.D5).
-% The text is generated from the Markdown sources by tools/md2latex.py into user_manual_meta.tex / user_manual_body.tex (build
-% directory); the design is docs/latex/simcpp.cls; parts and chapters: docs/latex/books.json.
-% Build: cmake --build <build> --target pdf   (or tools/build_docs_pdf.py --build-dir <dir>)
+% docs/manual/latex/user_manual.tex - main file of the LaTeX edition of the book "user_manual" (SIMC++ documentation).
+%   Compile: cmake --build <build> --target pdf, or tools/build_docs_pdf.py (figures, xelatex passes,
+%   makeindex with docs/common/latex/simcpp.ist); by hand, see docs/README.md. XeLaTeX, class
+%   docs/common/latex/simcpp.cls (packages: fontspec, tikz, xcolor, hyperref, listings, longtable, booktabs,
+%   titlesec, titletoc, fancyhdr, makeidx, preview, ...); fonts TeX Gyre Pagella, TeX Gyre Heros, DejaVu Sans
+%   Mono. The figures are built first from docs/{manual,translation}/figures/*.tex (preview.sty) into PDFs.
+%   Structure (parts, chapter order) is edited HERE; docs/common/latex/books.json only drives
+%   tools/md2latex.py when chapters are re-converted from the Markdown.
 \documentclass{simcpp}
-\input{user_manual_meta}
+\simcsetmeta{SIMC++ User Manual}
+  {Installing, configuring and running the Monte Carlo simulation of electron-scattering experiments with magnetic spectrometers}
+  {\simcbuildversion}{\simcbuilddate}{SIMC++ documentation}
 \begin{document}
-\input{user_manual_body}
+\simcfrontmatter
+\input{user/index}
+\input{front/user_reading}
+\input{conventions}
+\simcmainmatter
+
+\simcpart{Getting started}
+  {What SIMC++ simulates, how to build and install it, and a first run from an example input.}
+\input{user/01_introduction}
+\input{user/02_installation}
+\input{user/03_quick_start}
+
+\simcpart{Configuring a simulation}
+  {The input files, every input parameter, the reactions and the spectrometers.}
+\input{user/04_inputs}
+\input{user/05_reactions}
+\input{user/06_spectrometers}
+
+\simcpart{Results and reproducibility}
+  {What a run writes, how to reproduce a run exactly, and how to make runs faster.}
+\input{user/07_outputs}
+\input{user/08_running_and_reproducibility}
+\input{user/09_performance}
+
+\simcpart{Help}
+  {Common messages and problems, and what to do about them.}
+\input{user/10_faq}
+
+\simcappendix
+\input{user/VERIFIED_EXAMPLES}
+\simcbackmatter
 \end{document}

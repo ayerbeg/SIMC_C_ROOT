@@ -62,7 +62,7 @@ CMake options:
 | `SIMC_REFERENCE_DIR`, `SIMC_FORTRAN_DIR`, `SIMC_BASELINE_DIR` | the environment variables `SIMC_REFERENCE`, `SIMC_FORTRAN`, `SIMC_BASELINES`, else empty | **validation tests only**: the legacy reference data, the legacy source tree and the regression baselines. Not needed otherwise; when empty, the tests that need them are skipped ([2.6](#26-running-the-tests)) |
 
 The statistical comparison tool `simc_compare` is a separate, optional CMake project in `validation/` (see
-`docs/translation/user_comparing_with_fortran.md`).
+`docs/translation/markdown/user_comparing_with_fortran.md`).
 
 ## 2.4 Installing
 
@@ -75,7 +75,7 @@ This installs:
 * `$SIMCPP_PREFIX/bin/` with the four programs;
 * `$SIMCPP_PREFIX/share/simc/data/` with the data files (optics maps, spectral functions, pion/kaon/SIDIS model tables, the
   target-field map, example configurations; each directory has an `MD5SUMS` file);
-* `$SIMCPP_PREFIX/share/simc/docs/` (this manual and its example inputs in `docs/manual/user/examples/`),
+* `$SIMCPP_PREFIX/share/simc/docs/` (this manual and its example inputs in `docs/manual/markdown/user/examples/`),
   `$SIMCPP_PREFIX/share/simc/examples/` and `$SIMCPP_PREFIX/share/simc/README.md`;
 * the headers, libraries and the CMake package `SIMC` (`find_package(SIMC)`), needed only to write your own plug-ins
   (developer manual).

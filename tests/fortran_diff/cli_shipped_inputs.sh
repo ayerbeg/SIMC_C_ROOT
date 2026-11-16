@@ -8,7 +8,7 @@
 #      20 ignored names; simc++ runs too (exit 0) and warns loudly with the 20 names (short runs here; the full-run
 #      identity is in the regression_shipped tests).
 #   3. fpi12_deltapp (H(e,e'pi-)Delta++): --fortran-compat STOPs as the Fortran (dbase.f:823-826, `Can't do Delta+
-#      production from neutron for pi0`); the corrected mode runs it (D-038 F1, class a).
+#      production from neutron for pi0`); the corrected mode runs it (D-038 F1, Category A).
 #   4. spect_mode = 2 (not 0/1/-1/-2): the Fortran runs with both arms on, no message (dbase.f:531-532). simc++ runs
 #      (exit 0); the corrected mode prints a warning, --fortran-compat does not; and the outputs equal those of
 #      spect_mode = 0 (same seed).
@@ -100,7 +100,7 @@ if [[ -f $SRC ]]; then
             && echo "ok   rho A=4 ($mode): refused at start-up (D-057 F16)"
     done
 else echo "note: $SRC missing, rho part skipped"; fi
-# 6. pi0 with the SHMS as hadron arm (D-065 P1, class b) and doing_decay = 1: the Fortran transports the pi0 itself with
+# 6. pi0 with the SHMS as hadron arm (D-065 P1, Category B) and doing_decay = 1: the Fortran transports the pi0 itself with
 #    decay_flag = doing_decay and STOPs at the first decay test (project.f:87-91, as D-062 G1); --fortran-compat does the
 #    same; the corrected mode runs (a pi0 is never decayed in flight, D-037 F9 decaysInFlight; the photons of pizero_decay
 #    are not tracked by HMS/SHMS).

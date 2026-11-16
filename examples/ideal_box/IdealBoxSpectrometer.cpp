@@ -1,4 +1,4 @@
-// examples/ideal_box/IdealBoxSpectrometer.cpp — an example ISpectrometer plug-in (task P7.4, docs/EXTENDING.md).
+// examples/ideal_box/IdealBoxSpectrometer.cpp — an example ISpectrometer plug-in (task P7.4, docs/manual/markdown/reference/EXTENDING.md).
 //
 // "ideal_box": a spectrometer with PERFECT resolution and a rectangular acceptance in (delta, xptar, yptar) at the
 // target. A track is accepted if
