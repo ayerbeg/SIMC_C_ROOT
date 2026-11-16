@@ -1,10 +1,14 @@
-// include/simc/input/EffectiveValues.h
-//
-// Table of the values the Fortran actually uses after dbase.f has converted the raw
-// .inp values (units, convert_to_logical, forced settings). It covers the per-variable
-// rules of dbase.f:dbase_read and the two input-only rules of init.f:radc_init.
-// It does NOT include quantities derived from several inputs at run time (edges and
-// slops of limits_init, target_init averages, central event...) — those belong to RunSetup.
+/**
+ * @file
+ * @ingroup input
+ * @brief simc::EffectiveValues: the values the Fortran actually uses after the dbase.f/init.f input conversions.
+ *
+ * Table of the values the Fortran actually uses after dbase.f has converted the raw
+ * .inp values (units, convert_to_logical, forced settings). It covers the per-variable
+ * rules of dbase.f:dbase_read and the two input-only rules of init.f:radc_init.
+ * It does NOT include quantities derived from several inputs at run time (edges and
+ * slops of limits_init, target_init averages, central event...) — those belong to RunSetup.
+ */
 #ifndef SIMC_INPUT_EFFECTIVEVALUES_H
 #define SIMC_INPUT_EFFECTIVEVALUES_H
 
@@ -15,6 +19,10 @@
 
 namespace simc {
 
+/// @addtogroup input
+/// @{
+
+/// One row of the effective-values table.
 struct EffectiveRow {
     std::string name;       ///< Fortran name
     std::string raw;        ///< value as read from the input (input units)
@@ -23,10 +31,17 @@ struct EffectiveRow {
     std::string rule;       ///< Fortran rule applied (file:line), empty if none
 };
 
+/// @brief Build the effective-values table of the input parameters.
+/// @param p the run parameters as read.
+/// @return one row per converted variable, in input order.
 std::vector<EffectiveRow> EffectiveValues(const SimcParameters& p);
 
 /// Fixed-width text rendering of the table.
+/// @param rows the table rows.
+/// @return the table as text (one line per row, with a header).
 std::string FormatEffectiveTable(const std::vector<EffectiveRow>& rows);
+
+/// @}
 
 }  // namespace simc
 
