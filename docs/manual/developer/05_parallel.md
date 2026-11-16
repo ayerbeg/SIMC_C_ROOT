@@ -46,11 +46,14 @@ process-wide mutable state is the Registry (read-only after static initialisatio
 thread) and the `NtupleLayout` column lists (guarded by a mutex). ROOT: per-worker `TFile`/`TTree`/`TH1D` without
 directory, `ROOT::EnableThreadSafety()` called in `makeWorkerSink`. Stage warnings go to
 `std::cout` from each worker and may interleave (`--quiet` silences them). ThreadSanitizer (clang, `-fsanitize=thread`)
-runs of six representative inputs report no race (P15.4). A new stage with a `static` mutable cache breaks this
-(chapter 4 §4.7).
+runs of six representative inputs report no race (P15.4).
+
+> **Warning:** a new stage with a `static` mutable cache breaks this (chapter 4 §4.7).
 
 **Cost**: each worker builds its stages (0.1-0.3 s, mostly the pion MAID tables) and holds its own tables (pion: about
 +15 MB per worker).
+
+![The parallel event loop: the master builds N workers with their own stages and random streams, the workers run independently, and the results are merged in a fixed order](../../figures/parallel_mode.png)
 
 ## 5.2 Single-thread hot spots
 

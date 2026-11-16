@@ -12,6 +12,8 @@ commit, metrics, tolerance, verdict).
 | L2 | is the run statistically the same (the acceptance test, D-002)? | `reference/runs/<tag>_A`, `_B` | `simc_compare` |
 | identity | did a refactor change any output? | — | `regression_*`, `p153_golden.sh` |
 
+![The validation ladder: single routines on fixed inputs, the whole event chain on the random numbers of the original program, complete runs identical bit for bit, and complete runs compared statistically](../figures/validation_ladder.png)
+
 ## 2.1 The Fortran L1 harness and the tables
 
 the Fortran L1 harness `fortran_harness/` (a sibling of the reference data; README.md there; conventions in `reference/functions/README.md`) links the

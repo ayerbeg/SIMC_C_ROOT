@@ -153,6 +153,7 @@ add_subdirectory(tests/regression)     # C++ baselines: output_identity.sh print
 add_subdirectory(tests/user_manual)    # P15.D2: user-manual checks (parameter reference complete, Markdown links), label "docs"
 add_subdirectory(tests/developer_manual)   # P15.D1: developer-manual checks (header coverage, verbatim snippets, links), label "docs"
 add_subdirectory(docs/doxygen)             # P15.D3: Doxygen API reference: target `doc`, tests docs_doc_coverage / docs_doxygen (label "docs")
+add_subdirectory(docs/latex)               # P15.D5: PDF manuals: target `pdf`, test docs_pdf_build (label "docs")
 
 # ============================================================================
 # Installation

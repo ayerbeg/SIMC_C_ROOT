@@ -1,1 +1,8 @@
-% placeholder
+% docs/latex/front/translation_reading.tex — PDF-only: how to read the translation report (task P15.D5).
+\section*{How to read this report}
+The page \hyperref[dashboard]{\emph{The translation at a glance}} summarises the numbers. \textbf{Method} explains
+how the Fortran program was translated and how each piece was proved against it, from single routines to complete
+runs. \textbf{The mapping} is the reference for maintainers: which C++ code replaces which Fortran routine, the
+numerical rules that give bit-for-bit identical results, and the switch \code{-{}-fortran-compat}. \textbf{Findings}
+is the catalogue of every Fortran bug, quirk and deviation, with what SIMC++ does in each mode. The appendices hold the
+generated table of all Fortran routines and the two user guides about the differences.

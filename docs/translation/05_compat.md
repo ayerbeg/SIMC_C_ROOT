@@ -16,8 +16,9 @@ still prove the translation. The complete list of differences is [FORTRAN_DIFFER
 | dev | deliberate design deviation of SIMC++ (JSON input, exit codes, no `.bin`, arm code 6 refused, ...) | SIMC++ | SIMC++ | FORTRAN_DIFFERENCES.md §6 |
 
 Who decides: findings come from the Fortran reports (`reference/P*.F*_report.md`) or from the C++ reading; the director
-classifies them in a decision (`D-0xx`: e.g. D-057 for rho, D-061 SOS/HRS, D-067 target field). An agent that suspects
-a bug keeps the Fortran behaviour and reports it; it does not correct on its own.
+classifies them in a decision (`D-0xx`: e.g. D-057 for rho, D-061 SOS/HRS, D-067 target field).
+
+> **Note:** an agent that suspects a bug keeps the Fortran behaviour and reports it; it does not correct on its own.
 
 ## 5.2 How the switch reaches the code
 
@@ -46,6 +47,8 @@ Where the switches live (files that read the flag): src/setup (5 files), src/dri
 src/material, src/optics (2), src/radiation (2), src/reactions (+ pion, rho, sidis), src/physics/{proton, nuclear,
 pion, kaon, delta, sidis, rho}, src/spectrometers/{hms, shms, sos, hrs, calo}. `grep -rn fortran_compat src include`
 lists them.
+
+![The two behaviour modes: what each class of finding does by default and with --fortran-compat, and how the switch reaches the code](../figures/compat_switch.png)
 
 ## 5.3 Adding a correction (class a)
 

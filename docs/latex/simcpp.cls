@@ -41,7 +41,7 @@
 
 % ---- inline elements ------------------------------------------------------------------------------------------------
 \DeclareRobustCommand\code[1]{\leavevmode{\ttfamily\hyphenchar\font=-1\color{simcblue!70!simcnavy}#1}}
-\newcommand\simcth[1]{{\sffamily\bfseries\color{white}#1}}
+\newcommand\simcth[1]{{\sffamily\bfseries\color{white}\renewcommand\code[1]{{\ttfamily\bfseries##1}}#1}}
 \newcommand\simccontinued{\sffamily\scriptsize\color{simcgray}(continued)}
 \newcommand\simccontinues{\sffamily\scriptsize\color{simcgray}continued on the next page}
 \newcommand\simcrule{\par\noindent{\color{simcrule}\rule{\linewidth}{0.5pt}}\par}
@@ -65,9 +65,9 @@
   {\color{simcnavy}\fontsize{25}{30}\selectfont\bfseries\RaggedRight}
   [{\vspace{5pt}\color{simcblue}\titlerule[1.4pt]}]
 \titlespacing*{\chapter}{0pt}{-6mm}{8mm}
-\titleformat{\section}{\normalfont\sffamily\Large\bfseries\color{simcnavy}}
+\titleformat{\section}{\normalfont\sffamily\Large\bfseries\color{simcnavy}\RaggedRight}
   {\color{simcblue}\thesection}{0.75em}{}
-\titleformat{\subsection}{\normalfont\sffamily\large\bfseries\color{simcnavy}}
+\titleformat{\subsection}{\normalfont\sffamily\large\bfseries\color{simcnavy}\RaggedRight}
   {\color{simcblue}\thesubsection}{0.7em}{}
 \titleformat{\subsubsection}{\normalfont\sffamily\normalsize\bfseries\color{simcnavy}}
   {\color{simcblue}\thesubsubsection}{0.6em}{}
@@ -157,9 +157,10 @@
   \frontmatter\pagestyle{simcmain}%
   \simctitlepage\simccolophon
   \pdfbookmark[0]{Contents}{simc-toc}%
+  \begingroup\hypersetup{linkcolor=simcnavy}%
   \tableofcontents\clearpage
   \listoffigures\clearpage
-  \listoftables\clearpage}
+  \listoftables\clearpage\endgroup}
 \newcommand\simcmainmatter{\mainmatter\pagestyle{simcmain}}
 \newcommand\simcpart[2]{%
   \clearpage\thispagestyle{empty}%
@@ -253,7 +254,7 @@
           fill=#1!6, font=\normalsize] (b) at (3pt,0)
       {{\sffamily\bfseries\color{#1}#3}\par\smallskip #4\par};
     \fill[#1] ([xshift=-3pt]b.north west) rectangle (b.south west);
-    \node[circle, fill=#1, text=white, font=\sffamily\bfseries\footnotesize, inner sep=0pt, minimum size=5.2mm]
+    \node[overlay, circle, fill=#1, text=white, font=\sffamily\bfseries\footnotesize, inner sep=0pt, minimum size=5.2mm]
       at ([xshift=-1.5pt,yshift=-3.6mm]b.north west) {#2};
   \end{tikzpicture}\par\addvspace{6pt}}
 \NewEnviron{simcnote}{\simccallout{simcblue}{i}{Note}{\BODY}}
@@ -329,14 +330,14 @@
   \simcdashtile{#1}{findings catalogued (bugs, quirks, deviations)}{simcred}\hfill
   \simcdashtile{#5}{validation levels against the Fortran}{simcgreen}\par}
 \newenvironment{simcdashbars}{\par\medskip\noindent\begin{tikzpicture}[x=1mm,y=1mm]}{\end{tikzpicture}\par}
-% \simcdashbar{index}{class}{meaning}{count}{fraction of the largest}
-\newcommand\simcdashbar[5]{%
+% \simcdashbar{index}{class}{meaning}{count}{fraction of the largest}{colour}
+\newcommand\simcdashbar[6]{%
   \node[anchor=east, font=\sffamily\bfseries\small, text=simcnavy] at (12,-#1*7) {#2};
   \node[anchor=west, font=\sffamily\scriptsize, text=simcgray, text width=58mm] at (14,-#1*7) {#3};
   \fill[simcblue!15] (75,-#1*7-2.3) rectangle (155,-#1*7+2.3);
-  \fill[\ifnum#1=0 simcred\else simcblue\fi] (75,-#1*7-2.3) rectangle ({75+80*#5},-#1*7+2.3);
+  \fill[#6] (75,-#1*7-2.3) rectangle ({75+80*#5},-#1*7+2.3);
   \node[anchor=west, font=\sffamily\bfseries\small, text=simcnavy] at ({75+80*#5+1},-#1*7) {#4};}
-\newenvironment{simcdashlevels}{\par\medskip\noindent\begingroup\small\renewcommand\arraystretch{1.3}%
+\newenvironment{simcdashlevels}{\par\medskip\noindent\begingroup\small\setlength{\parskip}{0pt}\renewcommand\arraystretch{1.3}%
   \rowcolors{2}{white}{simczebra}%
   \begin{longtable}{@{}>{\sffamily\bfseries\color{simcblue}}p{0.24\linewidth}>{\RaggedRight\arraybackslash}p{0.72\linewidth}@{}}
   \toprule\rowcolor{simchead}\simcth{level} & \simcth{the question it answers}\\\midrule\endhead

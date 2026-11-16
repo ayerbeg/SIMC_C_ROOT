@@ -57,6 +57,8 @@ model from the reaction and target, arms from `electron_arm`/`hadron_arm` throug
 `root_tree` (only if `Nntu > 0`), `run_summary`, `gen_hist`, `fortran_hist`, rng `mt64`). `apply(json)` merges the JSON
 `pipeline` section (unknown keys throw). `simc++ --print-pipeline` prints the resolved pipeline.
 
+![Plug-ins: an implementation of a stage interface registers a name with SIMC_REGISTER, the run creates it by name from the JSON pipeline; plug-ins are linked in, in tree or out of tree](../../figures/plugin_registry.png)
+
 ## 3.3 The driver: SimcRun
 
 `driver::SimcRun` (SimcRun.h/.cpp) is one complete run:
@@ -131,6 +133,8 @@ energy-loss correction through `tripThruTarget`); then the **electron arm** the 
 state (`IReaction::finalTargetState`), `MakeRunSummary`, then for every sink `endRun(summary)` and, if it implements
 `IReportSink`, `writeReport(setup, report)`. With `ngen = 0` nothing is written.
 
+![One try of the event loop (SimcRun::step): the order of the stage calls, the failure path, and the bookkeeping](../../figures/event_try.png)
+
 ## 3.4 Event structures and the stale-value semantics
 
 All in core/Event.h, in the internal units (MeV, MeV/c, cm, rad, delta in %, slopes):
@@ -147,9 +151,11 @@ All in core/Event.h, in the internal units (MeV, MeV/c, cm, rad, delta in %, slo
 **One `EventState` lives for the whole run and is handed to every stage on every try.** Several stages write only parts
 of these structures (`orig` is not written when the radiation fails; the arm transport returns early on a failed arm and
 leaves `main.SP/RECON/FP` from an earlier try; ...), and those values reach outputs (pass_cuts and the histograms of
-failed tries). This is defined behaviour, not an accident: never "clean up" by re-creating the event per try;
-`SimcRun::resetForTry` resets exactly the fields listed above. State that belongs to one stage (radiation state,
-spectrometer counters, values kept between calls) lives inside the stage objects.
+failed tries). State that belongs to one stage (radiation state, spectrometer counters, values kept between calls)
+lives inside the stage objects.
+
+> **Warning:** this is defined behaviour, not an accident: never "clean up" by re-creating the event per try;
+> `SimcRun::resetForTry` resets exactly the fields listed above.
 
 `RunSetup` (core/RunSetup.h) holds everything derived once before the loop: the raw `params` (input units), `flags`
 (`ReactionFlags`: doing_*), the target (`TargetInfo`), spectrometer settings and offsets, cuts (`SPedge`,
@@ -210,6 +216,8 @@ Per interface: header, call points, contract. Built-in plug-ins are listed in AR
   **`driver::IReportSink`** (driver/ReportSink.h: `writeReport(setup, RunReport)`, called after `endRun`; used by
   `fortran_hist` for `.hist/.geni/.gen`) and **`IParallelSink`** (stages/IParallelSink.h: `makeWorkerSink(k, n)`,
   `mergeWorkerSink(worker)`; required for `--threads N > 1`, chapter 5).
+
+![One spectrometer arm: from the target through the slit or collimator, the magnetic elements and the detector hut to the reconstructed track; a track that leaves an aperture stops and is counted](../../figures/spectrometer_arm.png)
 
 ## 3.6 The weight and the normalisation
 

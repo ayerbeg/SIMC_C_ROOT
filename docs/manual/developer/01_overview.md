@@ -35,6 +35,8 @@ the numerical rules for bitwise fidelity and the catalogue of every Fortran bug 
 * **Validation** is part of the build: unit tests, routine-level reference tables, full-run identity tests, regression
   baselines and a statistical comparison tool (chapter 2 §2.5; methodology in the translation report).
 
+![A run of SIMC++: the inputs are read into SimcParameters and RunSetup, the pipeline creates the stages by name, the event loop calls them once per try, and finish() normalises and writes the outputs through the sinks](../../figures/run_flow.png)
+
 ## 1.3 Design principles
 
 1. **Everything is a plug-in** chosen by name from the JSON pipeline; a plug-in has exactly the possibilities of a
@@ -65,3 +67,5 @@ validation/               simc_compare (own CMake project) and scripts
 data/                     model tables, optics maps, spectral functions, field map
 docs/                     reference documents, manual/user, manual/developer, translation
 ```
+
+![The source tree and the installed layout: cmake --build compiles the code, cmake --install puts programs, libraries, headers, data and documentation under the prefix](../../figures/source_layout.png)

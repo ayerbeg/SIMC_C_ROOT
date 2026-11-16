@@ -39,6 +39,8 @@ stop counters ([7.3](07_outputs.md#73-geni-gen-and-genroot)).
 Collimators: `using_HMScoll` / `using_SHMScoll` step pions and muons through the HMS / SHMS collimator (absorption, energy
 loss, scattering). The `.geni` then has a `Collimator stops (pi/mu)` line, and each slit counter counts a ray at most once.
 
+![One spectrometer arm: from the target through the slit or collimator, the magnetic elements and the detector hut to the reconstructed track; a track that leaves an aperture stops and is counted](../../figures/spectrometer_arm.png)
+
 ## 6.3 The calorimeter arms 7 and 8
 
 The calorimeter arm (`calo`) is a straight drift to a calorimeter face at `drift_to_cal` cm from the target, with the

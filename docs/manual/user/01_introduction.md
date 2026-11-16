@@ -24,6 +24,8 @@ accepted event, text reports and a JSON run summary ([chapter 7](07_outputs.md))
 (SIMC++ is a translation of the Fortran SIMC, `simc_gfortran`. The Fortran code is not needed to build or run it. How the
 translation was validated is described in `docs/translation/`.)
 
+![A run of SIMC++: the inputs are read into SimcParameters and RunSetup, the pipeline creates the stages by name, the event loop calls them once per try, and finish() normalises and writes the outputs through the sinks](../../figures/run_flow.png)
+
 ## 1.2 What it simulates
 
 | reaction (input flags) | targets | chapter |
@@ -56,6 +58,8 @@ Every physics routine was checked number for number against the original code, a
 inputs distributed with SIMC reproduce the original output files exactly in the legacy-compatible mode. Default-mode runs
 agree statistically, except where a known bug of the original is corrected. The test suite keeps this true for every
 change ([2.6](02_installation.md#26-running-the-tests)); the evidence is in `docs/translation/`.
+
+![The validation ladder: single routines on fixed inputs, the whole event chain on the random numbers of the original program, complete runs identical bit for bit, and complete runs compared statistically](../../figures/validation_ladder.png)
 
 ## 1.5 Limitations
 

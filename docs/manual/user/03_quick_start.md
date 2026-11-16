@@ -8,7 +8,7 @@ The commands below were run as shown on the commit of this manual. The full tran
 export EX=$SIMCPP_PREFIX/share/simc/docs/manual/user/examples    # the example inputs of this manual
 ```
 
-Without installing, use `$SIMCPP_BUILD/bin/simc++` and `EX=$SIMCPP_SRC/docs/manual/user/examples`.
+> **Tip:** without installing, use `$SIMCPP_BUILD/bin/simc++` and `EX=$SIMCPP_SRC/docs/manual/user/examples`.
 
 ## 3.1 Run an input file
 

@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/figures/simcpp_logo.png" alt="SIMC++ logo" width="440"></p>
+
 # SIMC++
 
 SIMC++ is a C++20 / ROOT 6 translation of SIMC, the Hall C coincidence Monte Carlo (Fortran, `simc_gfortran`). It reads
@@ -12,6 +14,10 @@ restores the exact Fortran behaviour, and with the RANLUX generator SIMC++ then 
   reactions, spectrometers, outputs, run modes and reproducibility, performance, FAQ.
 * **[Developer manual](docs/manual/developer/index.md)**: architecture, Fortran → C++ map, numerical conventions, validation
   framework, extending SIMC++.
+
+Printable editions: `cmake --build $SIMCPP_BUILD --target pdf` (needs XeLaTeX) writes the user manual, the developer
+manual and the translation report as PDF books into `$SIMCPP_BUILD/docs/`, generated from these Markdown files
+(`docs/latex/`, `tools/md2latex.py`).
 
 Translation and validation (comparison with the Fortran SIMC, every difference): `docs/translation/`, with the user
 guides [docs/translation/user_comparing_with_fortran.md](docs/translation/user_comparing_with_fortran.md) and

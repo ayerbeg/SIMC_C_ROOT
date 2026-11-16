@@ -35,9 +35,11 @@ included:
 In a JSON input: `"run": {"fortran_compat": true}`. The log says which mode is active
 (` SIMC++: fortran_compat = true (exact Fortran behaviour, known Fortran bugs kept)`).
 
-What each correction changes in the results, and which run types are affected, is listed in
-`docs/translation/user_differences.md`; how to compare SIMC++ with legacy SIMC runs statistically is in
-`docs/translation/user_comparing_with_fortran.md`.
+> **Legacy SIMC:** what each correction changes in the results, and which run types are affected, is listed in
+> `docs/translation/user_differences.md`; how to compare SIMC++ with legacy SIMC runs statistically is in
+> `docs/translation/user_comparing_with_fortran.md`.
+
+![The two behaviour modes: what each class of finding does by default and with --fortran-compat, and how the switch reaches the code](../../figures/compat_switch.png)
 
 ## 8.4 Reproducing legacy SIMC results exactly
 
@@ -94,8 +96,9 @@ $ simc++ run.json -o out_t4b --ngen 5000 --threads 4 > /dev/null && simc_root_id
 out_t4/run.root vs out_t4b/run.root: IDENTICAL
 ```
 
-**Why not with `--fortran-compat` or RANLUX:** the exact reproduction of a legacy run needs one random stream consumed in the
-legacy order, and N threads use N streams. Both combinations are refused before the run starts (exit status 2):
+> **Warning:** `--threads N > 1` does not work with `--fortran-compat` or RANLUX: the exact reproduction of a legacy
+> run needs one random stream consumed in the legacy order, and N threads use N streams. Both combinations are refused
+> before the run starts (exit status 2):
 
 ```
 $ simc++ run.json -o out_compat --ngen 5000 --threads 4 --fortran-compat
@@ -103,6 +106,8 @@ simc++: --threads 4 (more than one event-loop thread) cannot be used with --fort
 ```
 
 Statistical comparisons of 8-thread and one-thread runs agree (`docs/PERFORMANCE.md` §3).
+
+![The parallel event loop: the master builds N workers with their own stages and random streams, the workers run independently, and the results are merged in a fixed order](../../figures/parallel_mode.png)
 
 ## 8.6 Other run options
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """build_docs_pdf.py - build the PDF editions of the SIMC++ books (task P15.D5).
 
-usage: build_docs_pdf.py --source-root DIR --build-dir DIR [--book NAME ...] [--png] [--figures-only]
+usage: build_docs_pdf.py --source-root DIR --build-dir DIR [--pdf-dir DIR] [--book NAME ...] [--png] [--figures-only]
 
 Steps (all products under --build-dir, normally <cmake build>/docs):
   1. every TikZ figure docs/latex/figures/<name>.tex is compiled alone (xelatex) into figures/<name>.pdf;
@@ -9,7 +9,7 @@ Steps (all products under --build-dir, normally <cmake build>/docs):
      (this writes into the source tree: run it by hand after changing a figure and commit the PNGs);
   2. tools/md2latex.py converts the Markdown chapters into <book>_body.tex / <book>_meta.tex (books.json);
   3. xelatex, makeindex (docs/latex/simcpp.ist), xelatex, xelatex (until no "Rerun" request, at most 5 passes) for
-     docs/latex/<book>.tex; the PDF is copied to <build-dir>/<output>.pdf (books.json "output").
+     docs/latex/<book>.tex; the PDF is copied to <pdf-dir>/<output>.pdf (books.json "output"; default --build-dir).
 Fails (exit 1) on a converter error, a LaTeX error, an undefined reference or citation, or a missing figure;
 exit 77 if xelatex is not installed (CTest SKIP). Overfull boxes are counted and reported, not fatal.
 """
@@ -57,6 +57,7 @@ def main(argv):
     ap = argparse.ArgumentParser()
     ap.add_argument('--source-root', required=True)
     ap.add_argument('--build-dir', required=True)
+    ap.add_argument('--pdf-dir', help='where the final PDFs are copied (default: --build-dir)')
     ap.add_argument('--book', action='append')
     ap.add_argument('--png', action='store_true', help='also export the figures to docs/figures/*.png')
     ap.add_argument('--figures-only', action='store_true')
@@ -141,7 +142,8 @@ def main(argv):
             failures.append(f'{n}: ' + '; '.join(sorted(set(errs))[:20]) + (' ...' if len(set(errs)) > 20 else ''))
         if rerun:
             failures.append(f'{n}: references still changing after 5 passes')
-        out = os.path.join(bdir, books[n]['output'] + '.pdf')
+        os.makedirs(a.pdf_dir or bdir, exist_ok=True)
+        out = os.path.join(os.path.abspath(a.pdf_dir or bdir), books[n]['output'] + '.pdf')
         shutil.copyfile(os.path.join(bdir, job + '.pdf'), out)
         pages = '?'
         info = shutil.which('pdfinfo')

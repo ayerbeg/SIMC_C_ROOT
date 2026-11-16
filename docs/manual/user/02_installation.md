@@ -83,6 +83,8 @@ This installs:
 With `$SIMCPP_PREFIX/bin` on the `PATH` the commands of this manual can be typed as `simc++ ...`. Without installing, use
 `$SIMCPP_BUILD/bin/simc++`; both find their data automatically ([2.5](#25-where-the-data-files-are-found)).
 
+![The source tree and the installed layout: cmake --build compiles the code, cmake --install puts programs, libraries, headers, data and documentation under the prefix](../../figures/source_layout.png)
+
 ## 2.5 Where the data files are found
 
 `simc++` reads its tables from one data directory, the first of these that applies (`include/simc/core/DataPath.h`):
@@ -109,7 +111,7 @@ Two more ways to choose data files:
 * the JSON keys `"data_dir"` (pion, kaon and SIDIS models) and `"matrix_dir"` (spectrometers) of a pipeline stage
   ([4.3](04_inputs.md#43-the-pipeline-section-choosing-plug-ins)).
 
-A missing data file stops the run at start-up, not in the middle of a run.
+> **Note:** a missing data file stops the run at start-up, not in the middle of a run.
 
 ## 2.6 Running the tests
 

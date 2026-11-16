@@ -85,6 +85,9 @@ def esc_text(s):
         else:
             out.append(c)
     r = ''.join(out)
+    # long tokens (12+ characters: paths, routine lists, file names) may break after / _ . : (no hyphen is added)
+    r = re.sub(r'\S{12,}', lambda m: re.sub(r'(/|\\_|\\%|,|(?<=[a-z])\.(?=[A-Za-z])|:(?=\w))', r'\1\\allowbreak{}',
+                                            m.group(0)), r)
     r = r.replace('--', '-{}-').replace('--', '-{}-')      # no en/em-dash ligatures from ASCII hyphens
     r = r.replace('``', '`{}`').replace("''", "'{}'")
     return r
@@ -102,8 +105,10 @@ def esc_code(s, breaks=True):
             out.append(r'-{}')
         else:
             out.append(c)
-        if breaks and c in '/._:,(=|>' and i + 1 < len(s) and s[i + 1] not in ' :':
+        if breaks and c in '/._:,(=|>%' and i + 1 < len(s) and s[i + 1] not in ' :':
             out.append(r'\allowbreak{}')
+        elif breaks and len(s) >= 18 and c.islower() and i + 1 < len(s) and s[i + 1].isupper():
+            out.append(r'\allowbreak{}')     # camelCase identifiers
     return ''.join(out)
 
 
@@ -337,6 +342,7 @@ class Book:
         self.params = {}            # parameter name -> label (only the book with the reference)
         self.cur = None
         self.fig_count = 0
+        self.table_notes = []
 
     # -- set-up ------------------------------------------------------------------------------------------------------
     def collect(self):
@@ -535,9 +541,13 @@ class Book:
         note = r'\code{%s}' % esc_code(rel)
         if where:
             heading = heading_anchors(path)[1].get(anchor) if anchor else first_heading(path)
-            note = r'%s, ``%s'' (%s)' % (esc_text(where), self.inline(heading or '', ln, 'caption'), note)
+            note = "%s, ``%s'' (%s)" % (esc_text(where), self.inline(heading or '', ln, 'caption'), note)
         if ctx in ('caption',):
             return inner
+        if ctx == 'table':
+            # \footnote inside a longtable cell can loop forever with \rowcolors: mark here, text after the table
+            self.table_notes.append(note)
+            return r'%s\footnotemark{}' % inner
         return r'%s\footnote{%s}' % (inner, note)
 
     def image(self, alt, target, ln, inline=False):
@@ -596,7 +606,9 @@ class Book:
             self.errors.append(f'{self.cur}:{b.line}: unknown code block language "{lang}"')
             env = 'simcplain'
         if env is None:
-            env = 'simcplain'
+            # an untyped block that starts with a "$ " prompt is a terminal session (commands and their output)
+            first = next((l for l in b.text if l.strip()), '')
+            env = 'simcshell' if first.startswith('$ ') else 'simcplain'
         style = {'cpp': 'simccpp', 'c++': 'simccpp', 'cmake': 'simccmake', 'json': 'simcjson'}.get(lang, '')
         opts = ['basicstyle=\\ttfamily\\%s' % {'normal': 'footnotesize', 'small': 'scriptsize', 'tiny': 'tiny'}[size]]
         if style:
@@ -641,23 +653,37 @@ class Book:
         lengths = [[len(plain(c)) for c in [b.header[j]] + [r[j] for r in rows]] for j in range(ncol)]
         natural = [max(max(len(p) for p in re.split(r'<br>', c) or ['']) if c else 0
                        for c in [plain(b.header[j])] + [r[j] for r in rows]) for j in range(ncol)]
-        natural = [max(4, x + 1) for x in natural]
-        words = [min(16, max([len(w) for c in [b.header[j]] + [r[j] for r in rows]
-                              for w in re.split(r'[\s/_.,:]+', plain(c))] or [3])) + 1 for j in range(ncol)]
+        natural = [max(6, int(x * 1.1) + 2) for x in natural]
+        words = [max(int(max([unbreakable(c) for c in [r[j] for r in rows]] or [3]) * 1.15),
+                     int(max([len(w) for w in plain(b.header[j]).split()] or [3]) * 1.4) + 1) + 1
+                 for j in range(ncol)]
         total = [sum(l) for l in lengths]
         avg = sum(sum(l) / len(l) for l in lengths)
-        landscape = ncol >= 7 or avg > 260
-        size = 'footnotesize' if (landscape or ncol >= 5 or avg > 120) else 'small'
-        avail = {('footnotesize', True): 205, ('footnotesize', False): 118, ('small', False): 102}[(size, landscape)]
-        avail -= 2 * ncol      # column separation
+        # layout: the first that fits the unbreakable pieces of every column
+        layouts = [('small', False, 95), ('footnotesize', False, 106), ('footnotesize', True, 160),
+                   ('scriptsize', True, 185)]
+        if ncol >= 5 or avg > 120:
+            layouts = layouts[1:]
+        if ncol >= 7 or avg > 260:
+            layouts = layouts[2:]
+        for size, landscape, avail in layouts:
+            avail -= 2 * ncol      # column separation
+            if sum(min(natural[j], words[j]) for j in range(ncol)) <= avail:
+                break
         widths = allocate(natural, total, words, avail)
         scale = 1.0 if landscape else 1.0
-        fracs = [w / (avail + 2 * ncol) * scale for w in widths]
-        colspec = ''.join(r'>{\%s\arraybackslash}p{\dimexpr %.3f\linewidth-2\tabcolsep\relax}'
-                          % ({'r': 'raggedleft', 'c': 'centering'}.get(b.aligns[j] if j < len(b.aligns) else 'l',
-                                                                     'raggedright'), fracs[j])
+        fracs = [w / (avail + 2 * ncol) * scale * 0.995 for w in widths]
+        # columns of short cells (numbers, flags) keep their natural width: l / r / c columns
+        short = [max([len(plain(c)) for c in [r[j] for r in rows]] or [0]) <= 4 and len(plain(b.header[j])) <= 6
+                 for j in range(ncol)]
+        colspec = ''.join(({'r': 'r', 'c': 'c'}.get(b.aligns[j] if j < len(b.aligns) else 'l', 'l') if short[j] else
+                           r'>{\%s\arraybackslash}p{\dimexpr %.3f\linewidth-2\tabcolsep\relax}'
+                           % ({'r': 'raggedleft', 'c': 'centering'}.get(b.aligns[j] if j < len(b.aligns) else 'l',
+                                                                      'raggedright'), fracs[j]))
                           for j in range(ncol))
+        self.table_notes = []
         head = ' & '.join(r'\simcth{%s}' % self.inline(h, b.line, 'table') for h in b.header) + r' \\'
+        notes_in_head = len(self.table_notes)
         caption = ''
         if len(rows) >= 8 and self.last_heading:
             caption = r'\caption{%s}' % self.last_heading + r'\\'
@@ -674,6 +700,12 @@ class Book:
         t.append(r'\bottomrule\endlastfoot')
         t.extend(body)
         t.append(r'\end{simctable}')
+        if notes_in_head:
+            self.errors.append(f'{self.cur}:{b.line}: links to other documents in a table header are not supported')
+        if self.table_notes:
+            t.append(r'\addtocounter{footnote}{-%d}' % len(self.table_notes))
+            for note in self.table_notes:
+                t.append(r'\stepcounter{footnote}\footnotetext{%s}' % note)
         s = '\n'.join(t) + '\n'
         if landscape:
             s = '\\begin{landscape}\n' + s + '\\end{landscape}\n'
@@ -682,12 +714,16 @@ class Book:
     def param_table(self, b, out):
         out.append('\\begin{simcparams}\n')
         for ln, cells in b.rows:
+            self.table_notes = []
             name = plain(cells[0]).strip()
             label = self.params.get(name) or 'param:' + label_safe(name)
             out.append(r'\simcparam{%s}{%s}{%s}{%s}{%s}{%s}{%s}' % (
                 esc_code(name), label, self.inline(cells[1], ln, 'table'), self.inline(cells[2], ln, 'table'),
                 self.inline(cells[4], ln, 'table'), self.inline(cells[3], ln, 'table'),
                 idx_key(name) + '@' + r'\code{' + esc_index(esc_code(name, False)) + '}') + '\n')
+            if self.table_notes:
+                out.append(r'\addtocounter{footnote}{-%d}' % len(self.table_notes))
+                out.extend(r'\stepcounter{footnote}\footnotetext{%s}' % n + '\n' for n in self.table_notes)
         out.append('\\end{simcparams}\n')
 
     # -- headings ----------------------------------------------------------------------------------------------------
@@ -898,33 +934,56 @@ def first_heading(path):
     return ''
 
 
+def wlen(tok):
+    """Width of a token in average characters: capitals and digits are wider."""
+    return len(tok) + 0.35 * sum(1 for c in tok if c.isupper() or c.isdigit())
+
+
+def unbreakable(cell):
+    """Length of the longest piece of a cell that cannot be broken (esc_text breaks tokens of 12+ characters)."""
+    best = 0
+    for tok in re.split(r'\s+|<br>', plain(cell)):
+        if len(tok) >= 12:
+            tok = re.sub(r'([a-z])(?=[A-Z])', r'\1 ', tok)          # camelCase breaks (esc_code)
+            best = max([best] + [wlen(p) for p in re.split(r'[/_.:%,(=| ]', tok)])
+        else:
+            best = max(best, wlen(tok))
+    return min(int(best + 0.999), 24)
+
+
 def allocate(natural, total, words, avail):
-    """Column widths (characters): natural widths if they fit, else water-filling weighted by the content."""
+    """Column widths (characters): the natural widths if they fit; otherwise every column gets at least its longest
+    unbreakable piece, and the rest of the width is shared in proportion to the amount of text, capped at the natural
+    width (water filling)."""
     n = len(natural)
     if sum(natural) <= avail:
         return list(natural)
-    widths = [None] * n
-    remaining = avail
-    free = list(range(n))
-    while True:
-        weight = sum(total[j] for j in free) or 1
-        changed = False
-        for j in list(free):
-            share = remaining * total[j] / weight
-            if natural[j] <= share:
-                widths[j] = natural[j]
-                remaining -= natural[j]
-                free.remove(j)
-                changed = True
-        if not changed:
+    mins = [min(natural[j], words[j]) for j in range(n)]
+    if sum(mins) >= avail:
+        # too narrow: keep the small columns (numbers, short codes) and shrink the others
+        small = [j for j in range(n) if mins[j] <= 8]
+        rest = avail - sum(mins[j] for j in small)
+        big = sum(mins[j] for j in range(n) if j not in small) or 1
+        return [mins[j] if j in small else mins[j] * rest / big for j in range(n)]
+    widths = list(mins)
+    extra = avail - sum(mins)
+    active = [j for j in range(n) if natural[j] > widths[j]]
+    while extra > 1e-6 and active:
+        weight = sum(total[j] for j in active) or 1
+        capped = []
+        for j in active:
+            add = extra * total[j] / weight
+            if widths[j] + add >= natural[j]:
+                capped.append(j)
+        if not capped:
+            for j in active:
+                widths[j] += extra * total[j] / weight
+            extra = 0
             break
-    weight = sum(total[j] for j in free) or 1
-    for j in free:
-        widths[j] = max(words[j], min(natural[j], remaining * total[j] / weight), 6)
-    # keep the sum within the available width
-    s = sum(widths)
-    if s > avail:
-        widths = [w * avail / s for w in widths]
+        for j in capped:
+            extra -= natural[j] - widths[j]
+            widths[j] = natural[j]
+            active.remove(j)
     return widths
 
 
@@ -1009,18 +1068,20 @@ def dashboard(root, figdir, errors):
     bars = []
     for k, (c, meaning, cnt) in enumerate(classes):
         short = meaning.split(':')[0]
-        bars.append(r'\simcdashbar{%d}{%s}{%s}{%d}{%.4f}' % (k, esc_text(c), esc_text(short), cnt, cnt / mx))
+        colour = {'a': 'simcred', 'dev': 'simcgreen'}.get(c, 'simcblue')
+        bars.append(r'\simcdashbar{%d}{%s}{%s}{%d}{%.4f}{%s}' % (k, esc_text(c), esc_text(short), cnt, cnt / mx,
+                                                                 colour))
     lv = [r'\simcdashlevel{%s}{%s}' % (esc_text(plain(cells[0])), esc_text(plain(cells[1]))) for cells in levels]
     ladder = os.path.join(figdir, 'validation_ladder.pdf').replace('\\', '/')
     return ('\\chapter*{The translation at a glance}\\addcontentsline{toc}{chapter}{The translation at a glance}'
             '\\markboth{The translation at a glance}{}\\label{dashboard}\n'
             '\\simcabstract{The numbers of this page are read from the report itself when the book is built: the class '
-            'table of the catalogue (chapter~\\ref{translation_report-06_catalogue}), the totals of the generated routine '
-            'map (appendix~\\ref{translation_report-fortran_routine_map}) and the levels of the validation framework '
-            '(chapter~\\ref{translation_report-02_validation}).}\n'
+            'table of the catalogue (chapter~\\ref{translation_report-06u5fcatalogue}), the totals of the generated routine '
+            'map (appendix~\\ref{translation_report-fortranu5froutineu5fmap}) and the levels of the validation framework '
+            '(chapter~\\ref{translation_report-02u5fvalidation}).}\n'
             '\\simcdashtiles{%d}{%s}{%s}{%s}{%d}\n'
             '\\section*{Findings by class}\n\\begin{simcdashbars}\n%s\n\\end{simcdashbars}\n'
-            '\\section*{The validation ladder}\n\\begin{center}\\includegraphics[width=0.92\\linewidth]{%s}\\end{center}\n'
+            '\\section*{The validation ladder}\n\\begin{center}\\includegraphics[width=0.8\\linewidth]{%s}\\end{center}\n'
             '\\begin{simcdashlevels}\n%s\n\\end{simcdashlevels}\n\\clearpage\n'
             % (total, m.group(1), m.group(2), m.group(3), len(levels), '\n'.join(bars), ladder, '\n'.join(lv)))
 

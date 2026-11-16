@@ -1,1 +1,59 @@
-% placeholder
+% docs/latex/front/conventions.tex — PDF-only front matter shared by the three books (task P15.D5): how the books are
+% typeset. The chapter text itself comes from the Markdown sources (tools/md2latex.py).
+\chapter*{Conventions}\addcontentsline{toc}{chapter}{Conventions}\markboth{Conventions}{}\label{conventions}
+\simcabstract{How to read the typography, the boxes and the paths of this book.}
+
+\section*{Typefaces}
+Body text is set in a serif face; headings, tables and figures in a sans-serif face. Everything that is typed or read
+by a program is set in a monospaced face and coloured: file names (\code{data/matrices}), input parameters
+(\code{doing\_pion}), command-line options (\code{-{}-threads}), classes and functions (\code{SimcRun::step}). In the
+user manual an input parameter is a link to its entry in the parameter reference. Links inside the book are blue;
+a reference to a document outside the book is given in a footnote with its path in the repository.
+
+\section*{Boxes}
+Command lines are shown in a shaded box with a blue bar; they are typed in a shell:
+\begin{simcshell}[basicstyle=\ttfamily\footnotesize]
+simc++ $EX/h_elastic_rad.inp -o out --threads 4
+\end{simcshell}
+Source code and configuration files (C++, JSON, CMake) are framed by thin rules and coloured:
+\begin{simccode}[basicstyle=\ttfamily\footnotesize, style=simcjson]
+{"pipeline": {"rng": {"type": "ranlux"}}}
+\end{simccode}
+Program output, file contents and text diagrams have a light grey frame. A long line continues on the next line
+after the sign \textcolor{simcblue}{$\hookrightarrow$}; a block copied from a source file names that file above it.
+
+\begin{simcnote}
+A note adds information that helps to understand the text.
+\end{simcnote}
+\begin{simctip}
+A tip shows a shorter or better way to do something.
+\end{simctip}
+\begin{simcwarning}
+A warning points at a mistake that is easy to make and costly.
+\end{simcwarning}
+\begin{simclegacy}
+A ``Legacy SIMC'' box explains a behaviour inherited from the Fortran SIMC.
+\end{simclegacy}
+
+\section*{Paths}
+The commands use these locations; adapt them to your machine. Relative paths such as \code{src/driver} are relative to
+the source tree.
+
+\begin{simctable}{small}{2}{>{\raggedright\arraybackslash}p{0.25\linewidth}>{\raggedright\arraybackslash}p{0.71\linewidth}}
+\toprule\rowcolor{simchead}\simcth{variable} & \simcth{meaning}\\\midrule\endhead
+\bottomrule\endlastfoot
+\code{\$SIMCPP\_SRC} & the git checkout of SIMC++ (the source tree)\\
+\code{\$SIMCPP\_BUILD} & the CMake build directory\\
+\code{\$SIMCPP\_PREFIX} & the installation prefix (\code{bin/}, \code{lib/}, \code{include/}, \code{share/simc/data})\\
+\code{\$SIMC\_FORTRAN} & optional: the legacy Fortran SIMC, used only by validation tests\\
+\code{\$SIMC\_REFERENCE} & optional: reference runs and tables of the legacy program, used only by validation tests\\
+\code{\$EX} & the example inputs of the user manual (\code{\$SIMCPP\_PREFIX/share/simc/docs/manual/user/examples})\\
+\end{simctable}
+
+\section*{Units}
+Unless stated otherwise: energies and momenta in MeV and MeV/c, lengths in cm, angles in rad (inputs in degrees
+where the input says so), \code{delta} in percent, slopes as dx/dz and dy/dz.
+
+\section*{Index}
+The index at the end lists the input parameters, the command-line options and the classes and interfaces of
+SIMC++ under their own headings, with the pages where they are described or used.
