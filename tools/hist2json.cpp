@@ -1,7 +1,7 @@
 // tools/hist2json.cpp
 //
 // Convert a Fortran SIMC .hist (+ .geni) into the run-summary JSON
-// (docs/summary.schema.json), so the comparison tool reads both codes in one format.
+// (docs/manual/markdown/reference/summary.schema.json), so the comparison tool reads both codes in one format.
 //
 // Usage: hist2json run.hist [run.geni] [-o out.json] [--text out.txt] [--run NAME] [-q]
 //   The .geni defaults to the .hist path with the extension replaced; it is optional.
