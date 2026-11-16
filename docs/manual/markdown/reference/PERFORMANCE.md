@@ -137,7 +137,7 @@ F/N = statistical failures (p < 0.01) / tests. Every gross failure against the F
 the default (corrected) mode, present identically in the one-thread run (FORTRAN_DIFFERENCES.md: §9 pion, §12 SIDIS,
 §13 rho); `--threads` cannot run in the compat mode, so the threaded runs are compared in the corrected mode. The
 one-thread runs (t1) of pion and SIDIS are bitwise identical (`.hist`, tree) to the accepted P9.2 / P12.2 corrected L2
-runs of the same seed. Runs: run-archive:P15.4_L2_<case>_t{1,8}/ (compare_vs_A/, compare_vs_t1/).
+runs of the same seed. Runs: run-archive:P15.4_L2_\<case\>_t{1,8}/ (compare_vs_A/, compare_vs_t1/).
 
 ThreadSanitizer (clang 22, `-fsanitize=thread`): `--threads 4` runs of eep, pion dec1, SIDIS, rho, calo pi0 and the
 polarized-target field input report no data race.

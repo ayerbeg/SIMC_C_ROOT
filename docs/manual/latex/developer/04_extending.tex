@@ -162,6 +162,7 @@ The structure, from \code{include/\allowbreak{}simc/\allowbreak{}reactions/\allo
 \begin{simccode}[basicstyle=\ttfamily\footnotesize,style=simccpp]
 class HydrogenElastic : public EepReactionBase {
 public:
+    /// @param name registry name ("hydrogen_elastic" or "phase_space").
     explicit HydrogenElastic(std::string name = "hydrogen_elastic");
 
     void init(const StageContext& ctx) override;

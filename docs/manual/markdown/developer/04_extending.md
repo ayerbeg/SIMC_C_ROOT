@@ -160,6 +160,7 @@ A reaction is the largest plug-in: it owns the generation, the vertex completion
    ```cpp
    class HydrogenElastic : public EepReactionBase {
    public:
+       /// @param name registry name ("hydrogen_elastic" or "phase_space").
        explicit HydrogenElastic(std::string name = "hydrogen_elastic");
 
        void init(const StageContext& ctx) override;

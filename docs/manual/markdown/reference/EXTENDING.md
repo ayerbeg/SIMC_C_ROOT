@@ -68,7 +68,7 @@ int main(int argc, char** argv) { return simc::driver::CommandLineMain(argc, arg
 ```
 
 Only the installed public headers are available (include/simc without the kernel/ directories). A program linked with
-`SIMC::simc` finds the installed data (`${SIMC_DATA_DIR}` = <prefix>/share/simc/data) by default (D-069/D-070,
+`SIMC::simc` finds the installed data (`${SIMC_DATA_DIR}` = \<prefix\>/share/simc/data) by default (D-069/D-070,
 `include/simc/core/DataPath.h`); the environment variable `SIMC_DATA_DIR`, `--data-dir` and the `matrix_dir`/`data_dir` JSON
 keys override it.
 

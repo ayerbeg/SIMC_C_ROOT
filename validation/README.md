@@ -194,7 +194,7 @@ needs is shown below. Examples converted from the Fortran references are in
   `wtcontr = wtcontribute/nevent` (simc.f:920), luminosity in ub^-1 and GeV^2.
 * Accepted aliases: `Ntried`, `ncontribute_no_rad_proton`, `central_sigcc`, `average_sigcc`,
   `charge`, `luminosity`, `seed`, `stop_counters`, `root_file`, `tree_file`.
-* `stops.<spec>` is lower-case (`hms sos hrsr hrsl shms calo`). Its counter keys follow the
+* `stops.{spec}` is lower-case (`hms sos hrsr hrsl shms calo`). Its counter keys follow the
   mapping above. The keys `trials` and `successes` are required for the partition test.
 * A relative `tree.file` is resolved relative to the JSON file.
 * If `producer` contains "fortran" or "hist2json", values are assumed to carry the .hist print
