@@ -81,9 +81,15 @@ They were built from the commit that added them. When the sources change, rebuil
 `doc_pdf`, below) and commit the new copies. The Doxygen HTML reference is not committed: build it with
 `cmake --build <build> --target doc` and open `<build>/docs/doxygen/html/index.html`.
 
-`doc_pdf` (Doxygen 1.16 LaTeX) needs these TeX Live packages besides a standard installation: xltabular, tabularray,
-ltablex, ninecolors, hanging, adjustbox, collectbox, stackengine, listofitems, tocloft, newunicodechar, etoc
-(Fedora: `sudo dnf install texlive-<name>` for each).
+`doc_pdf` (Doxygen 1.16 LaTeX) needs 12 TeX Live packages beyond a standard installation. On Fedora:
+
+```bash
+sudo dnf install texlive-xltabular texlive-tabularray texlive-ltablex texlive-ninecolors \
+                 texlive-hanging texlive-adjustbox texlive-collectbox texlive-stackengine \
+                 texlive-listofitems texlive-tocloft texlive-newunicodechar texlive-etoc
+```
+
+On Debian/Ubuntu they are in `texlive-latex-extra`: `sudo apt install texlive-latex-extra`.
 
 ## Building the PDF books
 
