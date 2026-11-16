@@ -66,6 +66,25 @@ Without `--chapter` every chapter of the book is rewritten; `--skeleton` also re
 `translation/latex/chapters/06_catalogue.tex` mirrors a generated Markdown file and is always re-converted after
 `gen_catalogue.py` (see the top of `translation/markdown/FORTRAN_DIFFERENCES.md`).
 
+## Ready-made PDFs
+
+Release copies of the four PDFs are committed so they can be read without building anything:
+
+| PDF | path |
+|---|---|
+| User Manual | `docs/manual/pdf/SIMCpp_User_Manual.pdf` |
+| Developer Manual | `docs/manual/pdf/SIMCpp_Developer_Manual.pdf` |
+| Translation Report | `docs/translation/pdf/SIMC_Fortran_to_SIMCpp_Translation_Report.pdf` |
+| API Reference (Doxygen) | `docs/doxygen/pdf/SIMCpp_API_Reference.pdf` |
+
+They were built from the commit that added them. When the sources change, rebuild them (targets `pdf` and
+`doc_pdf`, below) and commit the new copies. The Doxygen HTML reference is not committed: build it with
+`cmake --build <build> --target doc` and open `<build>/docs/doxygen/html/index.html`.
+
+`doc_pdf` (Doxygen 1.16 LaTeX) needs these TeX Live packages besides a standard installation: xltabular, tabularray,
+ltablex, ninecolors, hanging, adjustbox, collectbox, stackengine, listofitems, tocloft, newunicodechar, etoc
+(Fedora: `sudo dnf install texlive-<name>` for each).
+
 ## Building the PDF books
 
 ```bash
