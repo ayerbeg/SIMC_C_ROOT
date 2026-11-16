@@ -1,20 +1,24 @@
-// include/simc/physics/nuclear/SpectralFunctions.h
-//
-// ISpectralFunction plug-ins (task P8.1), components of the D(e,e'p) / A(e,e'p) reaction plug-ins:
-//
-//   "theory"  TheorySpectralFunction: the init.f theory files (h2.theory for D, c12/fe56/au197.theory for A > 2), read
-//             at start-up by BuildRunSetup (init.f:theory_init -> RunSetup::theory); weight = event.f:complete_main
-//             l.1402-1430 (nuclear::TheorySfWeight).
-//   "benhar"  BenharSpectralFunction: a Benhar table (benharsf_*.dat, use_benhar_sf = 1), read in init() by
-//             sf_lookup_init (nuclear::SfTable::load); weight = targ%Z * transparency * sf_lookup_diff(Em, Pm)
-//             (event.f:1399-1401).
-//
-// JSON (the "spectral_function" object of the reaction config; every key optional):
-//   {"type": "theory" | "benhar", "file": "<file in the data directory>", "transparency": <Benhar only>}
-// The file defaults to the Fortran choice from the target A (RunSetup::sf; a warning is printed when the Fortran
-// falls back to the C-12 file for an A without its own file, D-033 F1). For "theory" the setup has already read the
-// file (it also fixes the VERTEXedge limits), so a "file" given here must be the same one: SimcRun passes it to the
-// setup (SetupOptions::sf_file) before the reaction is built.
+/**
+ * @file
+ * @ingroup physics
+ * @brief ISpectralFunction plug-ins "theory" and "benhar" of the D(e,e'p) / A(e,e'p) reactions.
+ *
+ * ISpectralFunction plug-ins (task P8.1), components of the D(e,e'p) / A(e,e'p) reaction plug-ins:
+ *
+ *   "theory"  TheorySpectralFunction: the init.f theory files (h2.theory for D, c12/fe56/au197.theory for A > 2), read
+ *             at start-up by BuildRunSetup (init.f:theory_init -> RunSetup::theory); weight = event.f:complete_main
+ *             l.1402-1430 (nuclear::TheorySfWeight).
+ *   "benhar"  BenharSpectralFunction: a Benhar table (benharsf_*.dat, use_benhar_sf = 1), read in init() by
+ *             sf_lookup_init (nuclear::SfTable::load); weight = targ%Z * transparency * sf_lookup_diff(Em, Pm)
+ *             (event.f:1399-1401).
+ *
+ * JSON (the "spectral_function" object of the reaction config; every key optional):
+ *   {"type": "theory" | "benhar", "file": "<file in the data directory>", "transparency": <Benhar only>}
+ * The file defaults to the Fortran choice from the target A (RunSetup::sf; a warning is printed when the Fortran
+ * falls back to the C-12 file for an A without its own file, D-033 F1). For "theory" the setup has already read the
+ * file (it also fixes the VERTEXedge limits), so a "file" given here must be the same one: SimcRun passes it to the
+ * setup (SetupOptions::sf_file) before the reaction is built.
+ */
 #ifndef SIMC_PHYSICS_NUCLEAR_SPECTRALFUNCTIONS_H
 #define SIMC_PHYSICS_NUCLEAR_SPECTRALFUNCTIONS_H
 
@@ -28,7 +32,12 @@
 namespace simc {
 namespace nuclear {
 
+/// @addtogroup physics
+/// @{
+
 /// "theory": event.f:complete_main l.1402-1430 on RunSetup::theory (init.f:theory_init).
+///
+/// Reads the theory tables of the RunSetup (not owned). Not thread-safe.
 class TheorySpectralFunction : public ISpectralFunction {
 public:
     std::string name() const override { return "theory"; }
@@ -44,6 +53,8 @@ private:
 };
 
 /// "benhar": event.f:1399-1401, sf_lookup.f (the table and its SAVEd state live in this object).
+///
+/// Owns its table. Not thread-safe.
 class BenharSpectralFunction : public ISpectralFunction {
 public:
     std::string name() const override { return "benhar"; }
@@ -53,8 +64,11 @@ public:
     std::string file() const override { return file_; }
 
     /// The sf_lookup kernel (L1 tests).
+    /// @return the table.
     SfTable& table() { return table_; }
+    /// @return the nuclear transparency applied to the weight.
     double transparency() const { return transparency_; }
+    /// @param os the stream (not owned), or nullptr.
     void setLog(std::ostream* os) { log_ = os; }
 
 private:
@@ -64,8 +78,11 @@ private:
     std::ostream* log_;
 
 public:
+    /// Creates the plug-in (log on std::cout).
     BenharSpectralFunction();
 };
+
+/// @}
 
 }  // namespace nuclear
 }  // namespace simc
