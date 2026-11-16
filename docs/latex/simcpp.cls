@@ -198,11 +198,14 @@
 % ---- index ---------------------------------------------------------------------------------------------------------
 \renewenvironment{theindex}{%
   \chapter*{Index}\markboth{Index}{}%
-  {\small\color{simcgray}Parameters, command-line options and classes are grouped under their own headings.
-   Page numbers point to the definition or to a mention.\par}\medskip
+  {\small\color{simcgray}Input parameters, command-line options and classes are grouped under their own headings.
+   The page numbers point to the definition or to a mention; in the user manual the definition of a parameter is
+   its entry in the parameter reference.\par}\medskip
   \small\setlength{\parskip}{0pt}\setlength{\columnsep}{8mm}%
   \begin{multicols}{2}\raggedright
-  \let\item\@idxitem}{\end{multicols}}
+  \def\item{\par\addvspace{7pt}\hangindent 40pt\sffamily\bfseries\color{simcblue}}%
+  \def\subitem{\par\hangindent 40pt\hspace*{12pt}\normalfont\color{simcnavy}}%
+  \def\subsubitem{\par\hangindent 40pt\hspace*{24pt}\normalfont\color{simcnavy}}}{\end{multicols}}
 \RequirePackage{multicol}
 \newcommand\simcindexgroup[1]{\par\addvspace{8pt}{\sffamily\bfseries\color{simcblue}#1}\par\nopagebreak\smallskip}
 
@@ -302,19 +305,21 @@
 \newcommand\simccodesize[1]{\ifstrequal{#1}{normal}{\footnotesize}{\ifstrequal{#1}{small}{\scriptsize}{\tiny}}}
 
 % ---- parameter reference --------------------------------------------------------------------------------------------
-\newenvironment{simcparams}{%
-  \par\addvspace{4pt}%
-  \begin{list}{}{\setlength{\labelwidth}{43mm}\setlength{\labelsep}{4mm}%
-    \setlength{\leftmargin}{\labelwidth+\labelsep}\setlength{\itemsep}{3pt}\setlength{\parsep}{1pt}%
-    \setlength{\topsep}{2pt}\renewcommand\makelabel[1]{##1\hfil}}}
-  {\end{list}\par}
+% one entry per parameter: name (and the metadata on the right), then the description; md2latex writes the entries
+\newenvironment{simcparams}{\par\addvspace{2pt}\begingroup\setlength{\parskip}{0pt}}{\par\endgroup\addvspace{4pt}}
 % \simcparam{name}{label}{units}{default}{used by}{meaning}{index key}
 \newcommand\simcparam[7]{%
-  \item[{\parbox[t]{\labelwidth}{\RaggedRight\phantomsection\label{#2}\index{Parameters!#7}%
-     {\ttfamily\bfseries\small\color{simcnavy}#1}\\[1pt]
-     {\sffamily\scriptsize\color{simcgray}#3\ifstrempty{#4}{}{\quad default\enspace\textbf{#4}}}}}]%
-  {\small #6}\ifstrempty{#5}{}{\enspace{\sffamily\scriptsize\color{simcblue}\mbox{used by}\enspace#5}}%
-  \par\vspace{1pt}{\color{simcrule}\rule{\linewidth}{0.3pt}}}
+  \par\addvspace{5pt}\needspacebox{3\baselineskip}\noindent
+  \phantomsection\label{#2}\simcidx{Parameters!#7}%
+  {\ttfamily\bfseries\small\color{simcnavy}#1}\hfill
+  {\sffamily\scriptsize\color{simcgray}#3\ifstrempty{#4}{}{\enspace\textbullet\enspace default \textbf{#4}}%
+   \ifstrempty{#5}{}{\enspace\textbullet\enspace used by \textcolor{simcblue}{#5}}}\par\nopagebreak
+  \vspace{1pt}{\leftskip=1.2em\small #6\par}\vspace{3pt}%
+  {\color{simcrule}\rule{\linewidth}{0.3pt}}\par}
+\newcommand\needspacebox[1]{\penalty-100\vskip 0pt plus #1\penalty-200\vskip 0pt plus -#1}
+% every index entry goes through one macro, so that the same entry is written identically from any context
+\newcommand\simcidx[1]{\index{#1}}
+\newcommand\simcindextop[1]{\par\addvspace{6pt}{\sffamily\bfseries\color{simcblue}#1}}
 
 % ---- translation report: the dashboard page -----------------------------------------------------------------------
 \newcommand\simcdashtile[3]{% value, label, colour

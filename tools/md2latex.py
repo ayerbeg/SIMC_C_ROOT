@@ -401,7 +401,7 @@ class Book:
                     i = k
                     continue
                 code = s[k:j].replace('\n', ' ')
-                if ctx == 'table':
+                if ctx in ('table', 'thead'):
                     code = code.replace('\\|', '|')
                 if len(code) > 1 and code[0] == ' ' and code[-1] == ' ' and code.strip():
                     code = code[1:-1]
@@ -437,7 +437,7 @@ class Book:
                 m = re.match(r'<br\s*/?>', s[i:])
                 if m:
                     flush()
-                    out.append(r'\newline{}' if ctx == 'table' else r'\\' if ctx == 'text' else ' ')
+                    out.append(r'\newline{}' if ctx in ('table', 'thead') else r'\\' if ctx == 'text' else ' ')
                     i += m.end()
                     continue
                 m = re.match(r'</?[A-Za-z][A-Za-z0-9-]*(\s[^>]*)?/?>', s[i:])
@@ -479,28 +479,28 @@ class Book:
     def code_span(self, code, ctx):
         """Inline code; parameters, command-line options and classes get index entries (and parameters a link)."""
         tex = r'\code{%s}' % esc_code(code)
-        if ctx in ('heading', 'caption', 'bookmark'):
+        if ctx in ('heading', 'caption', 'bookmark', 'thead'):
             return tex
         idx = ''
         key = code.strip()
         if key in self.params:
-            idx = r'\index{Parameters!%s@\code{%s}}' % (idx_key(key), esc_index(esc_code(key, False)))
+            idx = r'\simcidx{Parameters!%s@\code{%s}}' % (idx_key(key), esc_index(esc_code(key, False)))
             if self.params[key]:
                 tex = r'\hyperref[%s]{%s}' % (self.params[key], tex)
         else:
             mo = re.match(r'^(--[a-z][a-z0-9-]*)(?:[ =].*)?$', key)
             if mo and mo.group(1) in OPTIONS:
                 o = mo.group(1)
-                idx = r'\index{Command-line options!%s@\code{%s}}' % (esc_index(o[2:]), esc_index(esc_code(o, False)))
+                idx = r'\simcidx{Command-line options!%s@\code{%s}}' % (esc_index(o[2:]), esc_index(esc_code(o, False)))
             else:
                 mc = re.match(r'^(?:simc::)?(?:[a-z]+::)?([A-Z][A-Za-z0-9]+)(?:::\w+(?:\(\))?|\(\))?$', key)
                 if mc and mc.group(1) in CLASSES:
                     k = mc.group(1)
-                    idx = r'\index{Classes and interfaces!%s@\code{%s}}' % (k, k)
+                    idx = r'\simcidx{Classes and interfaces!%s@\code{%s}}' % (k, k)
                 else:
                     mr = re.match(r'^SIMC_REGISTER$', key)
                     if mr:
-                        idx = r'\index{SIMC_REGISTER@\code{SIMC\_REGISTER}}'
+                        idx = r'\simcidx{SIMC_REGISTER@\code{SIMC\_REGISTER}}'
         return tex + idx
 
     def link(self, text, target, ln, ctx):
@@ -544,7 +544,7 @@ class Book:
             note = "%s, ``%s'' (%s)" % (esc_text(where), self.inline(heading or '', ln, 'caption'), note)
         if ctx in ('caption',):
             return inner
-        if ctx == 'table':
+        if ctx in ('table', 'thead'):
             # \footnote inside a longtable cell can loop forever with \rowcolors: mark here, text after the table
             self.table_notes.append(note)
             return r'%s\footnotemark{}' % inner
@@ -682,7 +682,7 @@ class Book:
                                                                       'raggedright'), fracs[j]))
                           for j in range(ncol))
         self.table_notes = []
-        head = ' & '.join(r'\simcth{%s}' % self.inline(h, b.line, 'table') for h in b.header) + r' \\'
+        head = ' & '.join(r'\simcth{%s}' % self.inline(h, b.line, 'thead') for h in b.header) + r' \\'
         notes_in_head = len(self.table_notes)
         caption = ''
         if len(rows) >= 8 and self.last_heading:

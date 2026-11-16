@@ -1,5 +1,5 @@
 % docs/latex/simcpp.ist — makeindex style of the SIMC++ books (task P15.D5)
-headings_flag 1
+headings_flag 0
 heading_prefix "\\simcindexgroup{"
 heading_suffix "}\n"
 symhead_positive "Symbols"

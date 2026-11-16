@@ -37,7 +37,7 @@
   \foreach \x in {gen, rad, mc, main}
     \draw[simc/fail] (\x.east) -- (\x.east -| side);
   \draw[simc/fail] (gen.east -| side) -- (cuts.east -| side) -- (cuts.east);
-  \node[simc/note, text=simcred, anchor=west, text width=30mm] at ([xshift=1mm,yshift=-4mm]side |- main.south) {a failed step: no success,\\continue with the cuts};
+  \node[simc/note, text=simcred, anchor=south west, text width=34mm] at ([xshift=-1mm,yshift=1mm]side |- gen.north) {dashed: a failed step; no success,\\continue with the cuts};
   % annotations
   \node[n, right=14mm of beam.north east, anchor=north west] (a1) {\textbf{IRandom}: every random number is drawn
     inside the stages, in a fixed order; a run is fully determined by its random stream};
