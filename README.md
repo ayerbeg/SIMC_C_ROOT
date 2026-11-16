@@ -75,15 +75,23 @@ data/                 COSY maps, model tables, spectral functions, field map, ex
 docs/                 manual/ (user, developer, reference), translation/, doxygen/, common/ (LaTeX style, logo); docs/README.md
 ```
 
+## Credits and disclaimer
+
+SIMC++ is a translation of SIMC, the Hall C Monte Carlo written in Fortran (`simc_gfortran`). The physics models,
+algorithms, spectrometer models and data tables it implements were developed over many years by many collaborators of
+Jefferson Lab and the Hall C (and Hall A) collaborations; the credit for them belongs to the authors of SIMC. SIMC++
+re-implements their work in C++ and documents the differences found during the translation; it is not an official
+Jefferson Lab product. Results should be checked as for any simulation code.
+
+C++ translation: Carlos.
+
 ## License
 
-MIT License.
-
-Original Fortran SIMC by the Hall C collaboration.
-C++ port by Carlos.
+No license has been chosen yet. Because SIMC++ is derived from the Fortran SIMC, its licensing has to follow the terms
+of the original code, which will be clarified with its maintainers.
 
 ## Acknowledgments
 
-- Hall C collaboration for the original Fortran SIMC
-- Jefferson Lab for detector specifications and test data
-- ROOT team for the framework
+- The Hall C collaboration and all contributors to the original Fortran SIMC
+- Jefferson Lab for the detector specifications and test data
+- The ROOT team for the framework
