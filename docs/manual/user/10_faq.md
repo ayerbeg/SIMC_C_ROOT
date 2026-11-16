@@ -6,7 +6,7 @@ The input uses old `.` names (`targ.A`, `spec.e.P`, ...). They are ignored, so t
 Convert the file and its `extra_dbase_file` ([4.1.3](04_inputs.md#413-old--names)). The warning above the STOP lists the ignored names.
 For a liquid target (Z < 2.4), `targ%can` must be 1, 2 or 3.
 
-## `simc++: Fortran STOP during the setup: STOP ...` (exit 3)
+## `simc++: STOP during setup (legacy SIMC behaviour): STOP ...` (exit 3)
 
 The set-up checks the inputs (the messages are those of the classic SIMC). Common ones:
 

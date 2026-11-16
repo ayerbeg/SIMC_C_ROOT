@@ -59,17 +59,12 @@
 Open physics questions about the original program's behaviour (the expert list, the acceptance mode, the Delta weight)
 are listed in the [translation report](../../translation/06_catalogue.md).
 
-## 6.4 Inconsistencies noted while writing this manual (P15.D1)
+## 6.4 Known loose ends
 
-Texts in the code that no longer match the behaviour (no numerical effect; to be fixed in a code task):
-
-* include/simc/driver/Pipeline.h header comment: "other reactions are not ported yet (NotPorted)" and "rng mt64 (the
-  RANLUX sequence is not reproduced)": every reaction exists and `ranlux` exists.
-* include/simc/driver/SimcRun.h `RunOptions::data_dir` comment names `SIMC_SPECTRAL_DATA_DIR`, replaced by
-  `DataDir("spectral")`.
-* src/driver/SimcRun.cpp l.121-122: the `NotPorted` message for an empty reaction type says "only H/D/A(e,e'p) and
-  doing_phsp; P9+".
-* src/reactions/HydrogenElastic.cpp `init`: the message "only H(e,e'p) (doing_hyd_elast) and doing_phsp are ported" for
-  pion/kaon/... flags (those reactions are other plug-ins now).
-* include/simc/reactions/EventChain.h: `assembleWeight` "Throws NotPorted for the reactions whose cross-section branch is
-  not ported (pion, kaon, Delta, rho, SIDIS)": those reactions assemble their own weight and never call it.
+* The stale code texts noted while writing this manual (outdated "not ported" comments and messages, an old data-directory
+  name) were corrected; runtime messages now speak of "legacy SIMC behaviour".
+* Doxygen documentation of `include/` is partial (core and the stage interfaces); the coverage test `docs_doc_coverage`
+  is disabled until it is completed.
+* `src/physics/rho/RhoModel.cpp`: `kNotPortedTag` / `isNotPortedProblem` are dead code.
+* `simc_compare` cannot exclude run-level quantities (a `--skip-run` option would help when comparing corrected runs).
+* `inp2json` writes a `"generator"` string with an old version tag.

@@ -22,12 +22,12 @@
 // Defaults() reproduces the Fortran choices from the run flags (dbase.f / event.f / simc.f dispatch):
 //   reaction    doing_phsp -> "phase_space", doing_hyd_elast -> "hydrogen_elastic" (D-009: H + phsp is phase_space,
 //               which runs the elastic kinematics with sigcc = 1), doing_deuterium -> "deuterium_eep", doing_heavy ->
-//               "nucleus_eep" (P8.2); other reactions are not ported yet (NotPorted).
+//               "nucleus_eep"; doing_pion/kaon/delta/semi/rho -> the matching meson reaction (see MonteCarlo/SimcRun).
 //   physics     "sigep" for H(e,e'p) (event.f:1451), "deforest" for D/A(e,e'p) (event.f:1455)
 //   radiator    "simc_rad" (radc_init_ev runs for every event even with using_rad = 0, event.f:1045)
 //   spectrometers  from electron_arm / hadron_arm (MonteCarlo::DefaultArm)
 //   sinks       root_tree (only if Nntu > 0, simc.f:69), run_summary, gen_hist, fortran_hist (.hist/.geni text)
-//   rng         "mt64" seeded with random_seed (D-002: the RANLUX sequence is not reproduced)
+//   rng         "mt64" seeded with random_seed; "ranlux" (bit-for-bit legacy SIMC sequence) on request
 #ifndef SIMC_DRIVER_PIPELINE_H
 #define SIMC_DRIVER_PIPELINE_H
 

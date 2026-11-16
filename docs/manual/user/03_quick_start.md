@@ -21,7 +21,7 @@ $ simc++ $EX/h_elastic_rad.inp -o out --ngen 5000 > out.log; echo "exit status $
 exit status 0
 $ grep -E "fortran_compat|random seed" out.log
  Use random seed = 12345
- SIMC++: fortran_compat = false (clear Fortran bugs corrected, docs/FORTRAN_DIFFERENCES.md)
+ SIMC++: fortran_compat = false (clear legacy-SIMC bugs corrected, docs/translation/06_catalogue.md)
 ```
 
 The log shows the set-up messages and progress lines ("Generating Event ... successes so far - Monitor: ...") and ends

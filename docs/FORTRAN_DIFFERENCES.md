@@ -675,9 +675,9 @@ run-archive:P15.2_shipped_identity (28 folders) and run-archive:P15.2_shipped_id
 | test_pion_d, test_pion_he | STOP | 46 | same | shipped_test_pion_{d,he}_pct: IDENTICAL |
 | test_pion_h | STOP | 46 | same | p14f1_pion_sos_A: IDENTICAL (disk evidence, 498 s) |
 
-  For a legacy input simc++ prints `simc++: WARNING: 46 input variable(s) are not SIMC variables and are IGNORED, as by the
-  Fortran ...` with the names and the convert_inputfile.sh hint, then the Fortran STOP text (`simc++: Fortran STOP during the
-  setup: STOP bad targ.can value`) and a note that the ignored names are the likely cause. Exit status: 3 (simc::FortranStop;
+  For a legacy input simc++ prints `simc++: WARNING: 46 input variable(s) are not SIMC variables and are IGNORED (legacy
+  SIMC behaviour; ...` with the names and the convert_inputfile.sh hint, then the STOP text (`simc++: STOP during setup
+  (legacy SIMC behaviour): STOP bad targ.can value`) and a note that the ignored names are the likely cause. Exit status: 3 (simc::FortranStop;
   the Fortran exits 0 after a STOP, see §6). Totals: 39 Fortran reference folders run, 37 IDENTICAL, 2 REFUSED (NotPorted);
   since P15.2b the 2 refused ones are IDENTICAL too (§17).
 

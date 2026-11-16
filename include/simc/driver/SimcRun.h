@@ -49,7 +49,7 @@ struct RunOptions {
     std::string run_name{"simc"};   ///< Fortran `base`: output file stem
     std::string output_dir{"."};    ///< Fortran outfiles/ and worksim/
     std::string data_dir;           ///< Fortran working-directory data files (h2.theory, benharsf_*.dat, ...);
-                                    ///< "" = data/spectral of the source tree (SIMC_SPECTRAL_DATA_DIR)
+                                    ///< "" = the default data directory (simc::DataRoot(): SIMC_DATA_DIR, installed prefix, or source tree)
     bool override_ngen{false};
     long ngen{0};
     bool override_seed{false};

@@ -54,11 +54,11 @@ which usually makes it stop. SIMC++ lists the ignored names. With the example [e
 ```
 $ simc++ $EX/legacy_names.inp -o legacy > legacy.log 2> legacy.err; echo "exit status $?"; cat legacy.err
 exit status 3
-simc++: WARNING: 46 input variable(s) are not SIMC variables and are IGNORED, as by the Fortran (their defaults are used):
+simc++: WARNING: 46 input variable(s) are not SIMC variables and are IGNORED (legacy SIMC behaviour; their defaults are used):
   EXPER.charge, spec.e.P, spec.e.theta, spec.p.P, spec.p.theta, targ.A
   ...
   Legacy '.' names (targ.A, spec.e.P, ...) must be converted to '%' names with simc_gfortran/infiles/convert_inputfile.sh.
-simc++: Fortran STOP during the setup: STOP bad targ.can value
+simc++: STOP during setup (legacy SIMC behaviour): STOP bad targ.can value
 simc++: note: the input has 46 ignored variable(s) (listed above), so their defaults were used — the likely cause of this STOP. ...
 ```
 
@@ -186,7 +186,7 @@ spectrometer object, so they share one set of stop counters.
 | a WARNING when `pt_b_param` or `sigc_*` are set | these SIDIS inputs are read and ignored |
 | a WARNING for `spect_mode` outside {0, 1, −1, −2} | any other value means "both arms on" ([6.4](06_spectrometers.md#64-spect_mode-switching-the-spectrometer-monte-carlo-off)) |
 | `simc++: input error: ...` (exit 2) | a rejected input, for example arm code 6 |
-| `simc++: Fortran STOP ...` (exit 3) | an input check of the set-up failed (the message comes from the original code; [10](10_faq.md#simc-fortran-stop-during-the-setup-stop--exit-3) lists the common ones) |
+| `simc++: STOP during setup ...` (exit 3) | an input check of the set-up failed (the message comes from the original code; [10](10_faq.md#simc-stop-during-setup-legacy-simc-behaviour-stop--exit-3) lists the common ones) |
 
 ## 4.5 Units and conventions
 

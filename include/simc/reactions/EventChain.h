@@ -38,7 +38,7 @@ struct MainContext {
 /// Fortran: event.f:complete_main (l.1432-1563) after main%SF_weight has been set by the reaction (l.1397-1430):
 /// returns false if SF_weight <= 0 and not force_sigcc (l.1436); main%sigcc/sigcc_recon (phsp: 1; H, D, A(e,e'p):
 /// the model), the Coulomb factor (l.1533-1535), main%weight (l.1557-1560, tgtweight = `tgtweight`).
-/// Throws NotPorted for the reactions whose cross-section branch is not ported (pion, kaon, Delta, rho, SIDIS).
+/// Not used by the meson reactions (pion, kaon, Delta, rho, SIDIS), which assemble their weights themselves.
 bool assembleWeight(bool force_sigcc, MainEvent& main, const Event& vertex, const Event& vertex0, const Event& recon,
                     IPhysicsModel& model, const MainContext& ctx, double tgtweight = 1.0);
 

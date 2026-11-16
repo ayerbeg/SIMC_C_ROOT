@@ -158,6 +158,6 @@ location. `.summary.txt` is the same in readable form. the comparison tool `simc
 | 0 | success |
 | 1 | usage error (unknown option, missing input file, bad `--threads` value) |
 | 2 | input or configuration error: unreadable file, rejected value (arm code 6, π0 from the neutron on H, rho on A ≥ 4, decay of a non-π/K hadron, `--threads` with `--fortran-compat` or RANLUX, ...) |
-| 3 | run error: a set-up check stopped the run (the message says `Fortran STOP ...`), a missing data file, an I/O error |
+| 3 | run error: a set-up check stopped the run (the message says `STOP during setup ...`), a missing data file, an I/O error |
 
 

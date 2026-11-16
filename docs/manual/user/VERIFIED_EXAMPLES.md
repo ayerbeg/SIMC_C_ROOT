@@ -4,6 +4,8 @@ Every command shown in this manual was run as recorded below. Code and manual te
 `translation`); this transcript file was added in the next commit. Toolchain: GCC 16.2.1, ROOT 6.40.04, glibc 2.43,
 Release build installed with `cmake --install`.
 
+**Later wording change.** Three diagnostic messages were reworded afterwards ("Fortran STOP during the setup" → "STOP during setup (legacy SIMC behaviour)", "IGNORED, as by the Fortran" → "IGNORED (legacy SIMC behaviour; ...)", and the corrected-mode banner). Those lines below show the current wording; they were re-run on the final commit. No result changed.
+
 **Paths.** The outputs are real, but the machine-specific paths of the run were rewritten into the layout of
 [2.1](02_installation.md#21-directory-layout-used-in-this-manual): `~/src/simcpp` ($SIMCPP_SRC), `~/build/simcpp`
 ($SIMCPP_BUILD), `~/build/simcpp-validation` (the comparison tool's build), `~/opt/simcpp` ($SIMCPP_PREFIX),
@@ -55,7 +57,7 @@ h_elastic_rad.summary.txt
 
 $ grep -E "fortran_compat|random seed" out.log
  Use random seed = 12345
- SIMC++: fortran_compat = false (clear Fortran bugs corrected, docs/FORTRAN_DIFFERENCES.md)
+ SIMC++: fortran_compat = false (clear legacy-SIMC bugs corrected, docs/translation/06_catalogue.md)
 
 $ grep -E "^ *(Ngen|Ntried|Ncontribute)|wtcontr|normfac" out/h_elastic_rad.hist
             Ngen (request) =       5000
@@ -146,7 +148,7 @@ $ simc++ run.json -o out_ideal --ngen 200 --pipeline $SIMCPP_PREFIX/share/simc/e
 
 $ simc++ $EX/legacy_names.inp -o legacy > legacy.log 2> legacy.err; echo "exit status $?"; cat legacy.err
 exit status 3
-simc++: WARNING: 46 input variable(s) are not SIMC variables and are IGNORED, as by the Fortran (their defaults are used):
+simc++: WARNING: 46 input variable(s) are not SIMC variables and are IGNORED (legacy SIMC behaviour; their defaults are used):
   EXPER.charge, spec.e.P, spec.e.theta, spec.p.P, spec.p.theta, targ.A
   targ.Z, targ.mass_amu, targ.mrec_amu, targ.rho, targ.thick, targ.angle
   targ.abundancy, targ.can, SPedge.e.delta.min, SPedge.e.delta.max, SPedge.e.yptar.min, SPedge.e.yptar.max
@@ -156,7 +158,7 @@ simc++: WARNING: 46 input variable(s) are not SIMC variables and are IGNORED, as
   spec.e.offset.z, spec.e.offset.xptar, spec.e.offset.yptar, spec.p.offset.x, spec.p.offset.y, spec.p.offset.z
   spec.p.offset.xptar, spec.p.offset.yptar, cuts.Em.min, cuts.Em.max
   Legacy '.' names (targ.A, spec.e.P, ...) must be converted to '%' names with simc_gfortran/infiles/convert_inputfile.sh.
-simc++: Fortran STOP during the setup: STOP bad targ.can value
+simc++: STOP during setup (legacy SIMC behaviour): STOP bad targ.can value
 simc++: note: the input has 46 ignored variable(s) (listed above), so their defaults were used — the likely cause of this STOP. Convert legacy '.' names with simc_gfortran/infiles/convert_inputfile.sh.
 
 $ sed -E ':a; s/^(\s*(targ|spec|SPedge|gen|cuts|EXPER)[A-Za-z_%]*)\./\1%/; ta' $EX/legacy_names.inp > converted.inp
