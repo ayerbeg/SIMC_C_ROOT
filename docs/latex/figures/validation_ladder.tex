@@ -1,0 +1,42 @@
+% docs/latex/figures/validation_ladder.tex — the validation ladder of the translation (docs/translation/02_validation.md):
+% L1 tables -> captures and replays -> RANLUX full-run identity -> L2 statistics; identity regressions. Task P15.D5.
+\documentclass{article}
+\usepackage{simcfonts,simcfig}
+\usepackage[active,tightpage]{preview}
+\PreviewEnvironment{tikzpicture}
+\setlength\PreviewBorder{3pt}
+\begin{document}
+\begin{tikzpicture}[
+    rung/.style={simc/base, anchor=south west, minimum height=15mm, text width=#1, align=left,
+      font=\sffamily\scriptsize, inner sep=5pt, rounded corners=2pt},
+    hd/.style={font=\sffamily\bfseries\small, text=white},
+    cmp/.style={font=\sffamily\scriptsize, text=white!85!simcblue}]
+  % rungs: x offset grows, colour darkens
+  \node[rung=38mm, fill=simcblue!30, text=simcnavy] (l1) at (0,0)
+    {\textbf{\small L1 tables}\\one routine on fixed inputs\\Fortran harness $\to$ \texttt{reference/functions}\\
+     bitwise or 1e-12 relative};
+  \node[rung=38mm, fill=simcblue!55, text=white] (l2) at (3.7,1.75)
+    {\textbf{\small captures and replays}\\the whole chain on the Fortran's own random numbers
+     (\texttt{ScriptedRandom})};
+  \node[rung=38mm, fill=simcblue, text=white] (l3) at (7.4,3.5)
+    {\textbf{\small RANLUX full runs}\\same seed, \texttt{-{}-fortran-compat}: \texttt{.hist}, \texttt{.geni},
+     \texttt{.gen} and the tree identical to the Fortran run};
+  \node[rung=38mm, fill=simcnavy, text=white] (l4) at (11.1,5.25)
+    {\textbf{\small L2 statistics}\\\texttt{simc\_compare}: pulls, $\chi^2$, KS against independent Fortran
+     runs; the acceptance test};
+  % the steps of the ladder
+  \draw[simcgray, line width=1pt] (0,0) -- (15.25,0);
+  \foreach \a/\b in {l1/l2,l2/l3,l3/l4}
+    \draw[simcgray!60, line width=0.8pt] (\a.north east) -- (\b.south east |- \a.north east);
+  % scope labels
+  \node[simc/note, anchor=north west, text width=36mm] at (0,-0.15) {routine};
+  \node[simc/note, anchor=north west, text width=36mm] at (3.7,-0.15) {event chain, per try};
+  \node[simc/note, anchor=north west, text width=36mm] at (7.4,-0.15) {complete run, bit for bit};
+  \node[simc/note, anchor=north west, text width=36mm] at (11.1,-0.15) {complete run, statistically};
+  \draw[simc/arrow, draw=simcgray] (0,-0.75) -- (15.25,-0.75) node[pos=1, anchor=north east, simc/note] {more of the program in each test};
+  % identity
+  \node[simc/ok, anchor=north west, text width=62mm, align=left, font=\sffamily\scriptsize] at (0,5.4)
+    {\textbf{identity regressions} (C++ against C++)\\a refactor or an optimisation may not change a bit of any
+     output: \texttt{regression\_*}, golden set};
+\end{tikzpicture}
+\end{document}

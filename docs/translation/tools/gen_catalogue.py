@@ -47,6 +47,10 @@ def split_row(line):
             cur += "\\|"
             i += 2
             continue
+        if c == "|" and tick:
+            cur += "\\|"   # GitHub tables need the escape even inside a code span (P15.D5)
+            i += 1
+            continue
         if c == "|" and not tick:
             cells.append(cur.strip())
             cur = ""

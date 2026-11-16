@@ -1,0 +1,51 @@
+% docs/latex/figures/event_try.tex — one try of the event loop (SimcRun::step), task P15.D5.
+% Order of calls as in src/driver/SimcRun.cpp (step), reactions/EventChain.h (generateEvent), driver/MonteCarlo.h.
+\documentclass{article}
+\usepackage{simcfonts,simcfig}
+\usepackage[active,tightpage]{preview}
+\PreviewEnvironment{tikzpicture}
+\setlength\PreviewBorder{3pt}
+\begin{document}
+\begin{tikzpicture}[node distance=5.5mm,
+    s/.style={simc/box, text width=58mm, align=left, font=\sffamily\footnotesize},
+    st/.style={simc/stage, text width=58mm, align=left, font=\sffamily\footnotesize},
+    n/.style={simc/note, text width=62mm, font=\sffamily\scriptsize},
+    num/.style={circle, fill=simcblue, text=white, font=\sffamily\bfseries\scriptsize, inner sep=0pt, minimum size=4.6mm}]
+  \node[s] (reset) {\textbf{resetForTry()}\quad\texttt{++ntried}};
+  \node[st, below=of reset] (beam) {\textbf{IBeam::generate}\\beam energy, raster, vertex
+    (\texttt{ITarget::generateZ}), incoming energy loss};
+  \node[st, below=of beam] (gen) {\textbf{IReaction::generate}\\reaction variables; \texttt{completeEv}
+    (\texttt{tripThruTarget}, \texttt{IRadiator::initEvent})};
+  \node[st, below=of gen] (rad) {\textbf{IRadiator::radiate}\\radiation weight; may lower Ein and call
+    \texttt{completeEv} again; writes \texttt{orig}};
+  \node[st, below=of rad, fill=simcblue!16] (mc) {\textbf{MonteCarlo::run}\\hadron arm, then electron arm:
+    \texttt{ISpectrometer::transport} (Monte Carlo + reconstruction)};
+  \node[st, below=of mc] (recon) {\textbf{IReaction::completeRecon}\\reconstructed kinematics};
+  \node[st, below=of recon] (main) {\textbf{IReaction::completeMain}\\weight
+    (\texttt{IPhysicsModel::sigccMain}, jacobian, \texttt{gen\_weight})};
+  \node[s, below=of main] (cuts) {\textbf{PassCuts(setup, recon)}\\acceptance window; \texttt{hard\_cuts}: required};
+  \node[s, below=of cuts, draw=simcgreen, fill=simcgreen!8] (fill) {\textbf{IOutputSink::fill}\quad every sink, \emph{every} try};
+  \node[s, below=of fill] (count) {\textbf{bookkeeping}\\ncontribute, npasscuts, wtcontribute, resolution sums;
+    \texttt{nevent} +1};
+  \foreach \a/\b in {reset/beam, beam/gen, gen/rad, rad/mc, mc/recon, recon/main, main/cuts, cuts/fill, fill/count}
+    \draw[simc/flow] (\a) -- (\b);
+  % numbers
+  \foreach \x [count=\k] in {reset, beam, gen, rad, mc, recon, main, cuts, fill, count}
+    \node[num] at ([xshift=-4mm]\x.west) {\k};
+  % failures
+  \coordinate (side) at ([xshift=9mm]mc.east);
+  \foreach \x in {gen, rad, mc, main}
+    \draw[simc/fail] (\x.east) -- (\x.east -| side);
+  \draw[simc/fail] (gen.east -| side) -- (cuts.east -| side) -- (cuts.east);
+  \node[simc/note, text=simcred, anchor=west, text width=30mm] at ([xshift=1mm,yshift=-4mm]side |- main.south) {a failed step: no success,\\continue with the cuts};
+  % annotations
+  \node[n, right=14mm of beam.north east, anchor=north west] (a1) {\textbf{IRandom}: every random number is drawn
+    inside the stages, in a fixed order; a run is fully determined by its random stream};
+  \node[n, right=14mm of mc.north east, anchor=north west] (a2) {stops in an aperture are counted per arm
+    (\texttt{stopCounters()} $\to$ \texttt{.geni}, summary)};
+  \node[n, right=14mm of cuts.north east, anchor=north west] (a3) {histograms of failed tries are filled too:
+    the event structures keep the values of earlier tries where a stage did not write them (stale-value semantics)};
+  \node[n, right=14mm of count.north east, anchor=north west] (a4) {\texttt{done()} when \texttt{nevent} $\geq$
+    $|$\texttt{ngen}$|$; ngen $<$ 0 counts tries};
+\end{tikzpicture}
+\end{document}

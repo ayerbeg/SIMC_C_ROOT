@@ -1,0 +1,54 @@
+% docs/latex/figures/plugin_registry.tex — stage interfaces, the plug-in registry (SIMC_REGISTER) and how a plug-in
+% is linked in (in tree: OBJECT library; out of tree: find_package(SIMC)), task P15.D5.
+% Names: include/simc/core/Registry.h, include/simc/stages/*.h, examples/out_of_tree_plugin.
+\documentclass{article}
+\usepackage{simcfonts,simcfig}
+\usepackage[active,tightpage]{preview}
+\PreviewEnvironment{tikzpicture}
+\setlength\PreviewBorder{3pt}
+\begin{document}
+\begin{tikzpicture}[node distance=5mm,
+    c/.style={simc/box, text width=52mm, align=left, font=\footnotesize},
+    reg/.style={draw=simcblue, fill=white, font=\ttfamily\scriptsize, text=simcnavy, minimum height=5mm,
+      text width=38mm, align=left, inner sep=2pt}]
+  % ---------------- 1. the plug-in source
+  \node[simc/title, anchor=west] at (0,0.6) {1\quad a plug-in};
+  \node[c, anchor=north west, font=\ttfamily\scriptsize] (code) at (0,0) {%
+    \textcolor{simcgray}{// MyModel.cpp}\\
+    class MyModel : public\\
+    \quad simc::\textbf{IPhysicsModel} \{ \ldots \};\\[3pt]
+    \textcolor{simcblue}{\textbf{SIMC\_REGISTER}}(\\
+    \quad simc::IPhysicsModel,\\
+    \quad "my\_model", MyModel)};
+  \node[simc/note, below=1mm of code.south west, anchor=north west, text width=52mm]
+    {interfaces in \texttt{include/simc/stages/}: IRandom, ITarget, IMaterialModel, IBeam, IReaction, IPhysicsModel,
+     ISpectralFunction, IRadiator, ISpectrometer, IOutputSink};
+  % ---------------- 2. the registry
+  \node[simc/title, anchor=west] at (6.6,0.6) {2\quad the registry};
+  \node[font=\sffamily\bfseries\footnotesize, text=white, fill=simcnavy, text width=38mm, inner sep=3pt, anchor=north west]
+    (rh) at (6.9,0) {Registry<IPhysicsModel>};
+  \node[reg, below=0pt of rh] (r1) {"deforest"\hfill factory};
+  \node[reg, below=0pt of r1] (r2) {"sigep"\hfill factory};
+  \node[reg, below=0pt of r2] (r3) {"pion", "kaon", \ldots\hfill factory};
+  \node[reg, below=0pt of r3, fill=simcblue!12] (r4) {"my\_model"\hfill factory};
+  \node[simc/note, below=1mm of r4.south west, anchor=north west, text width=40mm]
+    {one name $\to$ factory map per interface,\\filled before main(); duplicate names throw};
+  \draw[simc/flow] (code.east |- r4) -- (r4.west) node[midway, above, simc/note] {at start-up};
+  % ---------------- 3. selection and life cycle
+  \node[simc/title, anchor=west] at (12.0,0.6) {3\quad chosen by name in the run};
+  \node[c, anchor=north west, text width=46mm, font=\ttfamily\scriptsize] (json) at (12.0,0)
+    {\textcolor{simcgray}{"pipeline": \{}\\\quad "physics": \{"type": \textbf{"my\_model"},\\\quad\quad "scale": 2.0\}\\\textcolor{simcgray}{\}}};
+  \node[simc/stage, below=5mm of json, text width=46mm, font=\ttfamily\scriptsize, align=left] (life)
+    {Registry<I>::create("my\_model")\\configure(json, params)\\init(StageContext)\\per-event calls};
+  \draw[simc/arrow] (json) -- (life);
+  \draw[simc/arrow] (r4.east) -- ++(4mm,0) |- (life.west);
+  % ---------------- linking
+  \node[simc/title, anchor=west] at (0,-4.1) {Linking: a plug-in is \emph{linked} into the executable, not loaded at run time};
+  \node[simc/ok, anchor=north west, text width=72mm, align=left, font=\sffamily\footnotesize] (in) at (0,-4.55)
+    {\textbf{in tree}\quad \texttt{src/<module>/} as a CMake OBJECT library, linked into \texttt{simc++}
+     (every object file is kept, so every SIMC\_REGISTER runs)};
+  \node[simc/stage, anchor=north west, text width=78mm, align=left, font=\sffamily\footnotesize] (out) at (8.6,-4.55)
+    {\textbf{out of tree}\quad \texttt{find\_package(SIMC)}; \texttt{my\_simc} = \texttt{main.cpp}
+     (\texttt{CommandLineMain}) + the plug-in sources, linked with \texttt{SIMC::simc} (all built-in stages)};
+\end{tikzpicture}
+\end{document}

@@ -1,0 +1,71 @@
+% docs/latex/figures/spectrometer_arm.tex — one spectrometer arm, generic (HMS, SHMS, SOS, HRS): MonteCarlo::run
+% (driver/MonteCarlo.h) and ISpectrometer::transport (stages/ISpectrometer.h; kernels spectrometers/*/kernel,
+% optics::CosyEngine transp/recon, optics::Lfit), task P15.D5.
+\documentclass{article}
+\usepackage{simcfonts,simcfig}
+\usepackage[active,tightpage]{preview}
+\PreviewEnvironment{tikzpicture}
+\setlength\PreviewBorder{3pt}
+\begin{document}
+\begin{tikzpicture}[
+    lab/.style={font=\sffamily\scriptsize\bfseries, text=simcnavy, align=center},
+    sub/.style={font=\sffamily\scriptsize, text=simcgray, align=center},
+    quad/.style={draw=simcblue!80!black, fill=simcblue!75, rounded corners=1pt, line width=0.6pt},
+    stopx/.style={text=simcred, font=\sffamily\bfseries\small},
+    p/.style={simc/box, font=\sffamily\scriptsize, align=left, text width=#1, inner sep=3pt},
+    p/.default=34mm]
+  % ---------------- the beamline drawing
+  \draw[line width=1.6pt, simcblue, -{Stealth[length=3mm]}] (-1.6,0) -- (-0.35,0);
+  \node[sub, anchor=south] at (-1.0,0.12) {beam};
+  \fill[simcamber] (0,0) circle (0.42);
+  \fill[simcgray!30] (-0.18,-0.25) rectangle (0.18,0.25);
+  \draw[simcgray, line width=0.5pt] (-0.18,-0.25) rectangle (0.18,0.25);
+  \node[lab] at (0,-0.85) {target};
+  % collimator / slit
+  \fill[simcgray!70] (1.6,0.22) rectangle (1.85,0.75); \fill[simcgray!70] (1.6,-0.22) rectangle (1.85,-0.75);
+  \node[lab] at (1.72,-1.15) {slit /\\collimator};
+  % quadrupoles
+  \foreach \x/\nm in {3.0/Q1, 4.6/Q2, 6.2/Q3} {
+    \draw[quad] (\x,0.25) rectangle ++(1.05,0.6); \draw[quad] (\x,-0.25) rectangle ++(1.05,-0.6);
+    \node[lab] at (\x+0.52,-1.15) {\nm};}
+  % dipole
+  \draw[draw=simcgreen!70!black, fill=simcgreen!70, line width=0.6pt] (7.8,0.85) -- (10.4,1.25) -- (10.6,0.25) -- (7.9,-0.1) -- cycle;
+  \draw[draw=simcgreen!70!black, fill=simcgreen!55, line width=0.6pt] (7.9,-0.25) -- (10.6,0.1) -- (10.7,-0.55) -- (7.95,-0.85) -- cycle;
+  \node[lab] at (9.2,-1.15) {D (dipole)};
+  % hut
+  \draw[simcnavy, line width=0.8pt, rounded corners=2pt, fill=simcnavy!4] (11.3,-0.9) rectangle (15.0,1.6);
+  \foreach \x in {11.8, 12.15} \draw[simcblue, line width=1.4pt] (\x,-0.5) -- (\x,1.3);
+  \foreach \x in {12.8, 13.9} \draw[simcgray, line width=2.4pt] (\x,-0.5) -- (\x,1.3);
+  \fill[simcgray!35] (14.25,-0.5) rectangle (14.75,1.3);
+  \node[lab] at (13.15,-1.15) {detector hut};
+  \node[sub, font=\sffamily\tiny] at (12.0,1.42) {DC};
+  \node[sub, font=\sffamily\tiny] at (13.35,1.42) {scint.};
+  \node[sub, font=\sffamily\tiny] at (14.5,1.42) {cal.};
+  \draw[simcnavy, densely dashed] (11.98,-0.75) -- (11.98,1.5);
+  \node[sub, anchor=north] at (11.98,-0.75) {};
+  % track
+  \draw[simcred, line width=1.1pt, -{Stealth[length=2.2mm]}] (0.2,0) .. controls (6,0.05) and (8.5,0.1) .. (10.8,0.45) -- (14.6,0.6);
+  % stop markers
+  \foreach \x in {1.72, 3.52, 5.12, 6.72, 9.2, 11.3} \node[stopx] at (\x,1.05) {$\times$};
+  \node[simc/note, text=simcred, anchor=west] at (-1.6,1.05) {aperture checks};
+  % ---------------- the steps
+  \node[p=38mm, anchor=north west, fill=simcpale, draw=simcblue] (s1) at (-1.6,-1.6)
+    {\textbf{MonteCarlo::run} (driver)\\energy loss and multiple scattering in the target
+     (\texttt{ITarget}); conversion to the TRANSPORT frame of the arm (offsets, drift back to z = 0);
+     optional target-field tracking};
+  \node[p=46mm, anchor=north west, fill=simcblue!10, draw=simcblue, ] (s2) at ([xshift=3mm]s1.north east)
+    {\textbf{ISpectrometer::transport}: forward Monte Carlo\\
+     drifts and COSY maps from element to element (\texttt{CosyEngine::transp}); aperture test at entrance,
+     middle and exit; decay in flight; multiple scattering};
+  \node[p=33mm, anchor=north west, fill=simcblue!10, draw=simcblue, ] (s3) at ([xshift=3mm]s2.north east)
+    {\textbf{detector hut}\\wire-chamber smearing, straight-line fit (\texttt{Lfit}) $\to$ focal plane
+     \texttt{x\_fp, dx\_fp, y\_fp, dy\_fp}};
+  \node[p=30mm, anchor=north west, fill=simcgreen!10, draw=simcgreen, ] (s4) at ([xshift=3mm]s3.north east)
+    {\textbf{reconstruction}\\\texttt{CosyEngine::recon}: delta, slopes, y at the target $\to$ \texttt{SpecResult},
+     then the RECON arm kinematics};
+  \draw[simc/arrow] (s1) -- (s2); \draw[simc/arrow] (s2) -- (s3); \draw[simc/arrow] (s3) -- (s4);
+  \node[simc/stop, anchor=north west, text width=150mm, align=left, font=\sffamily\scriptsize] at ([yshift=-3mm]s1.south west |- s2.south)
+    {a track that leaves an aperture stops: the arm fails, the try is not a success, and the counter of that element
+     (\texttt{stopCounters()}: slit, Q1\_in, \ldots, hut, dc1, scin, cal, successes) goes to the \texttt{.geni} report};
+\end{tikzpicture}
+\end{document}

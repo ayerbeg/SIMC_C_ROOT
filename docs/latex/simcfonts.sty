@@ -1,0 +1,21 @@
+% docs/latex/simcfonts.sty — typefaces of the SIMC++ books and figures (task P15.D5). XeLaTeX + fontspec.
+%   body: TeX Gyre Pagella (Palatino design; Latin, Greek and the arrows/relations used in the manuals);
+%   headings, tables, figures: TeX Gyre Heros; code: DejaVu Sans Mono (complete Greek, arrows, superscripts),
+%   else Inconsolata, else Latin Modern Mono. The TeX Gyre fonts are part of TeX Live (found by file name).
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{simcfonts}[2026/11/16 SIMC++ typefaces]
+\RequirePackage{fontspec}
+\defaultfontfeatures{Ligatures=TeX}
+\setmainfont{texgyrepagella}[Extension=.otf, UprightFont=*-regular, BoldFont=*-bold, ItalicFont=*-italic,
+  BoldItalicFont=*-bolditalic, Numbers=OldStyle]
+\setsansfont{texgyreheros}[Extension=.otf, UprightFont=*-regular, BoldFont=*-bold, ItalicFont=*-italic,
+  BoldItalicFont=*-bolditalic, Scale=MatchLowercase]
+\IfFontExistsTF{DejaVu Sans Mono}{%
+  \setmonofont{DejaVu Sans Mono}[Scale=0.85, Ligatures=NoCommon]%
+}{\IfFontExistsTF{Inconsolatazi4-Regular.otf}{%
+  \setmonofont{Inconsolatazi4-Regular.otf}[BoldFont=Inconsolatazi4-Bold.otf, Scale=MatchLowercase]%
+}{\setmonofont{Latin Modern Mono}}}
+% lining figures where numbers line up (tables, headings, figures)
+\newfontfamily\simcliningserif{texgyrepagella}[Extension=.otf, UprightFont=*-regular, BoldFont=*-bold,
+  ItalicFont=*-italic, BoldItalicFont=*-bolditalic, Numbers=Lining]
+\endinput

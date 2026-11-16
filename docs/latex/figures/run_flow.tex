@@ -1,0 +1,64 @@
+% docs/latex/figures/run_flow.tex — a run from the inputs to the outputs (driver::SimcRun), task P15.D5.
+% Names checked against include/simc/driver/SimcRun.h, Pipeline.h, setup/SetupBuilder.h and the registered sinks.
+\documentclass{article}
+\usepackage{simcfonts,simcfig}
+\usepackage[active,tightpage]{preview}
+\PreviewEnvironment{tikzpicture}
+\setlength\PreviewBorder{3pt}
+\begin{document}
+\begin{tikzpicture}[node distance=4mm and 6mm,
+    chip/.style={simc/stage, font=\sffamily\footnotesize, minimum height=6.2mm, inner sep=2.5pt, text width=30mm},
+    stp/.style={simc/box, text width=40mm, font=\sffamily\footnotesize, align=left},
+    ofile/.style={simc/file, text width=33mm, align=left, font=\footnotesize}]
+  % ---------------- inputs
+  \node[simc/title] (tin) at (0,0) {Inputs};
+  \node[ofile, below=3mm of tin] (inp) {\ttfamily run.inp\\\sffamily\scriptsize legacy SIMC format};
+  \node[ofile, below=3mm of inp] (json) {\ttfamily run.json\\\sffamily\scriptsize parameters, run, pipeline};
+  \node[ofile, below=3mm of json] (cli) {\ttfamily simc++ options\\\sffamily\scriptsize -{}-seed, -{}-ngen, -{}-threads, \ldots};
+  % ---------------- initialise
+  \node[simc/title] (tinit) at (5.6,0) {SimcRun::initialise()};
+  \node[stp, below=3mm of tinit] (par) {\textbf{SimcParameters}\\\scriptsize InpReader / JSON reader, RunOptions};
+  \node[stp, below=of par] (setup) {\textbf{BuildRunSetup} $\to$ RunSetup\\\scriptsize derived constants, limits, luminosity};
+  \node[stp, below=of setup] (pipe) {\textbf{PipelineConfig}\\\scriptsize Defaults(setup) + apply(json "pipeline")};
+  \node[stp, below=of pipe] (central) {\textbf{calculateCentral}\\\scriptsize central event, report values};
+  \draw[simc/arrow] (par) -- (setup); \draw[simc/arrow] (setup) -- (pipe);
+  % ---------------- stages
+  \node[simc/title] (tst) at (11.7,0) {stages, created by name (Registry)};
+  \node[chip, below=3mm of tst, xshift=-16mm] (rng) {rng \hfill \texttt{IRandom}};
+  \node[chip, below=2mm of rng] (tgt) {target \hfill \texttt{ITarget}};
+  \node[chip, below=2mm of tgt] (rad) {radiator \hfill \texttt{IRadiator}};
+  \node[chip, below=2mm of rad] (beam) {beam \hfill \texttt{IBeam}};
+  \node[chip, right=3mm of rng] (phys) {physics \hfill \texttt{IPhysicsModel}};
+  \node[chip, below=2mm of phys] (reac) {reaction \hfill \texttt{IReaction}};
+  \node[chip, below=2mm of reac] (arms) {2 arms \hfill \texttt{ISpectrometer}};
+  \node[chip, below=2mm of arms] (sinks) {sinks \hfill \texttt{IOutputSink}};
+  \begin{scope}[on background layer]
+    \node[simc/panel, fit=(rng)(sinks)(tst)] (stages) {};
+  \end{scope}
+  \node[simc/note, below=1mm of stages, text width=64mm] {each: \texttt{configure(json, params)}, then
+    \texttt{init(StageContext)}; order rng, target, radiator, beam, physics, reaction, arms, sinks};
+  \draw[simc/arrow] (pipe.east) -- (pipe.east -| stages.west);
+  \draw[simc/arrow] (pipe) -- (central);
+  % ---------------- loop and finish
+  \node[simc/key, text width=40mm, below=10mm of central, align=center] (loop)
+    {event loop\\[1pt]\sffamily\mdseries\scriptsize\texttt{while (!done()) step();}\\one try per step};
+  \node[simc/key, fill=simcblue, draw=simcblue, text width=40mm, below=of loop, align=center] (fin)
+    {SimcRun::finish()\\[1pt]\sffamily\mdseries\scriptsize Normalise, MakeRunSummary};
+  \draw[simc/flow] (central) -- (loop);
+  \draw[simc/flow] (loop) -- (fin);
+  \draw[simc/arrow, densely dashed] (stages.south) ++(0,-8mm) |- (loop.east) node[pos=0.75, above, simc/note] {stages called per try};
+  \node[simc/note, left=2mm of loop, text width=26mm, align=right] {\texttt{-{}-threads N}: N workers,\\merged in order};
+  % ---------------- outputs
+  \node[simc/title, anchor=west] (tout) at (8.15,-8.25) {Outputs (sinks)};
+  \node[ofile, below=2mm of tout.south west, anchor=north west] (o1) {\ttfamily <run>.root\\\sffamily\scriptsize tree h10 (root\_tree)};
+  \node[ofile, right=2mm of o1] (o2) {\ttfamily .hist .geni .gen\\\sffamily\scriptsize reports (fortran\_hist)};
+  \node[ofile, below=2mm of o1] (o3) {\ttfamily <run>.gen.root\\\sffamily\scriptsize histograms (gen\_hist)};
+  \node[ofile, right=2mm of o3] (o4) {\ttfamily .summary.json/.txt\\\sffamily\scriptsize run summary (run\_summary)};
+  \draw[simc/flow] (fin.east) -- ++(5mm,0) |- (o1.west);
+  % ---------------- input arrows
+  \draw[simc/arrow] (inp.east) -- ++(3mm,0) |- (par.west);
+  \draw[simc/arrow] (json.east) -- ++(3mm,0) |- (par.west);
+  \draw[simc/arrow] (cli.east) -- ++(3mm,0) |- (par.west);
+  \draw[simc/arrow] (json.east) -- ++(3mm,0) |- (pipe.west);
+\end{tikzpicture}
+\end{document}

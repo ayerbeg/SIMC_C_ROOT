@@ -1,0 +1,41 @@
+% docs/latex/figures/parallel_mode.tex — the parallel event loop (--threads N): SimcRun::runThreaded,
+% src/driver/SimcRunParallel.cpp; Mt64Random::seedStream; IParallelSink; MergeTotals. Task P15.D5.
+\documentclass{article}
+\usepackage{simcfonts,simcfig}
+\usepackage[active,tightpage]{preview}
+\PreviewEnvironment{tikzpicture}
+\setlength\PreviewBorder{3pt}
+\begin{document}
+\begin{tikzpicture}[
+    w/.style={simc/stage, text width=39mm, align=left, font=\sffamily\scriptsize, inner sep=3pt},
+    m/.style={simc/key, text width=40mm, align=center, font=\sffamily\bfseries\footnotesize}]
+  \node[m] (init) at (0,0) {master: initialise()\\[1pt]\mdseries\scriptsize set-up, central event, sinks (beginRun)};
+  \node[simc/note, right=4mm of init, text width=52mm] (ref) {refused (exit 2) with \texttt{fortran\_compat}, an rng
+    other than \texttt{mt64}, \texttt{setRandom}, or a sink without \texttt{IParallelSink}};
+  % workers
+  \foreach \k/\x/\lab in {0/-7.2/0, 1/-2.4/1, 2/2.4/k, 3/7.2/{N-1}} {
+    \node[w, anchor=north] (w\k) at (\x,-1.7) {\textbf{worker \lab}: own \texttt{SimcRun}\\
+      own stages and set-up\\
+      \texttt{Mt64Random::seedStream(base, \lab)}\\
+      $\approx$ ngen/N events\\
+      worker sinks (\texttt{makeWorkerSink})};
+    \node[simc/ok, below=7mm of w\k, text width=39mm, font=\sffamily\scriptsize, align=center] (t\k)
+      {std::thread\\\texttt{while (!done()) step();}};
+    \draw[simc/arrow] (w\k) -- (t\k);
+    \draw[simc/flow] (init.south) -- ++(0,-0.35) -| (w\k.north);
+  }
+  \node[font=\sffamily\bfseries\large, text=simcgray] at ($(w2.east)!0.5!(w3.west)$) {\ldots};
+  % merge
+  \node[m, fill=simcblue, draw=simcblue, text width=150mm, anchor=north] (merge) at (0,-6.1)
+    {merge in the fixed order 0, 1, \ldots, N$-$1\\[1pt]\mdseries\scriptsize MergeTotals (ntried, nevent, wtcontribute,
+     sums, ranges)\quad$\cdot$\quad stop counters (summed)\quad$\cdot$\quad mergeWorkerSink for every sink};
+  \foreach \k in {0,1,2,3} \draw[simc/flow] (t\k.south) -- (t\k.south |- merge.north);
+  \node[m, below=6mm of merge] (fin) {master: finish()\\[1pt]\mdseries\scriptsize normalisation, outputs as one run};
+  \draw[simc/flow] (merge) -- (fin);
+  \node[simc/note, right=4mm of fin, text width=60mm]
+    {deterministic: (seed, N) always gives the same files; statistically equal to, not bitwise equal to, the
+     one-thread run};
+  \node[simc/note, left=4mm of fin, text width=50mm, align=right]
+    {threads exchange nothing during the loop (two relaxed atomic counters for the progress line)};
+\end{tikzpicture}
+\end{document}

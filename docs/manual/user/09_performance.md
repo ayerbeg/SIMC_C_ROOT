@@ -7,7 +7,7 @@ Measured on the development machine (Intel i7-3770, 4 cores / 8 hardware threads
 One thread, whole program including the start-up of about 0.5 s:
 
 | case | µs per try |
-|---|---|---|
+|---|---|
 | H(e,e'p) radiative | 16.3 |
 | π+ H, decay on | 27.1 |
 | SIDIS | 7.2 |

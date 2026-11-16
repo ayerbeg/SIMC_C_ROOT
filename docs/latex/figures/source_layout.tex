@@ -1,0 +1,60 @@
+% docs/latex/figures/source_layout.tex — the source tree and the installed layout (D-073), task P15.D5.
+% Builds alone (xelatex with TEXINPUTS=docs/latex//:) and is included by the books; PNG: docs/figures/source_layout.png.
+\documentclass{article}
+\usepackage{simcfonts,simcfig}
+\usepackage[active,tightpage]{preview}
+\PreviewEnvironment{tikzpicture}
+\setlength\PreviewBorder{3pt}
+% \row{node}{k}{directory}{description}{marker colour}
+\newcommand\row[5]{%
+  \node[d] (#1) at (0.45,-0.95-0.78*#2) {#3/};
+  \node[t, text width=\rowtw] at (\rowx,-0.95-0.78*#2) {#4};
+  \fill[#5] (0.12,-0.95-0.78*#2) circle (1.1mm);}
+\newcommand\rowx{3.05}\newcommand\rowtw{60mm}
+\begin{document}
+\begin{tikzpicture}[
+    d/.style={anchor=west, inner sep=1.5pt, font=\ttfamily\bfseries\small, text=simcnavy},
+    t/.style={anchor=west, inner sep=1.5pt, font=\sffamily\footnotesize, text=simcgray, align=left}]
+  % ---------------- source tree
+  \fill[simcpale, rounded corners=4pt] (-0.25,0.35) rectangle (9.3,-7.55);
+  \node[anchor=west, font=\sffamily\bfseries, text=simcnavy] at (-0.05,0) {Source tree \ttfamily\$SIMCPP\_SRC};
+  \node[anchor=west, font=\sffamily\scriptsize, text=simcgray] at (-0.05,-0.42) {the git checkout};
+  \row{sinc}{1}{include/simc}{public headers by module;\\\texttt{<module>/kernel/}: private}{simcblue}
+  \row{ssrc}{2}{src}{one CMake OBJECT library per module\\(core, driver, reactions, \ldots)}{simcblue}
+  \row{stools}{3}{tools}{\texttt{simc++} main, inp2json, hist2json,\\check\_all.sh, md2latex.py}{simcblue}
+  \row{sdata}{4}{data}{COSY maps, model tables,\\spectral functions, field map}{simcgreen}
+  \row{sdocs}{5}{docs}{manual/user, manual/developer,\\translation, latex, figures}{simcgreen}
+  \row{sex}{6}{examples}{ideal\_box, dev\_manual,\\out\_of\_tree\_plugin}{simcgreen}
+  \row{stests}{7}{tests}{unit, l1, fortran\_diff, regression,\\docs checks (CTest only)}{simcgray!60}
+  \row{sval}{8}{validation}{simc\_compare (own CMake project)}{simcgray!60}
+  % ---------------- build and install
+  \node[simc/key, minimum width=30mm, font=\ttfamily\bfseries\footnotesize] (b) at (11.45,-2.2)
+    {cmake -{}-build};
+  \node[simc/key, minimum width=30mm, fill=simcblue, draw=simcblue, font=\ttfamily\bfseries\footnotesize] (i)
+    at (11.45,-4.4) {cmake -{}-install};
+  \node[simc/note, align=center] at (11.45,-3.3) {\$SIMCPP\_BUILD};
+  \draw[simc/flow] (9.3,-2.2) -- (b);
+  \draw[simc/flow] (b) -- (i);
+  \draw[simc/flow] (i) -- (13.65,-4.4);
+  \draw[simc/flow, draw=simcgreen] (9.3,-6.2) -- (12.6,-6.2) |- (13.65,-5.6);
+  \node[simc/note, text=simcgreen!70!black, align=left] at (11.0,-6.55) {copied unchanged};
+  % ---------------- installed tree
+  \begin{scope}[xshift=13.9cm]
+  \renewcommand\rowx{4.5}\renewcommand\rowtw{44mm}
+  \fill[simcpale, rounded corners=4pt] (-0.25,0.35) rectangle (9.0,-7.55);
+  \node[anchor=west, font=\sffamily\bfseries, text=simcnavy] at (-0.05,0) {Installed \ttfamily\$SIMCPP\_PREFIX};
+  \node[anchor=west, font=\sffamily\scriptsize, text=simcgray] at (-0.05,-0.42) {what users put on the PATH};
+  \row{ibin}{1}{bin}{simc++, inp2json, hist2json,\\simc\_root\_identity}{simcblue}
+  \row{ilib}{2}{lib/simc}{static libraries; \texttt{objects/}:\\the plug-in object files}{simcblue}
+  \row{icm}{3}{lib/cmake/SIMC}{find\_package(SIMC):\\SIMC::simc, SIMC\_DATA\_DIR}{simcblue}
+  \row{iinc}{4}{include/simc}{public headers\\(without \texttt{kernel/})}{simcblue}
+  \row{idata}{5}{share/simc/data}{found without \texttt{-{}-data-dir}}{simcgreen}
+  \row{idocs}{6}{share/simc/docs}{this documentation}{simcgreen}
+  \row{iex}{7}{share/simc/examples}{example plug-ins, inputs}{simcgreen}
+  \end{scope}
+  % legend
+  \fill[simcblue] (0.12,-8.05) circle (1.1mm); \node[t] at (0.3,-8.05) {compiled / generated};
+  \fill[simcgreen] (3.8,-8.05) circle (1.1mm); \node[t] at (3.98,-8.05) {installed as they are};
+  \fill[simcgray!60] (7.4,-8.05) circle (1.1mm); \node[t] at (7.58,-8.05) {not installed};
+\end{tikzpicture}
+\end{document}

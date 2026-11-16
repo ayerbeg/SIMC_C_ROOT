@@ -1,0 +1,49 @@
+% docs/latex/figures/compat_switch.tex — the two behaviour modes and how --fortran-compat reaches the code
+% (docs/translation/05_compat.md §5.1-5.2; RunOptions, SetupOptions, RunSetup::fortran_compat, StageContext). P15.D5.
+\documentclass{article}
+\usepackage{simcfonts,simcfig}
+\usepackage[active,tightpage]{preview}
+\PreviewEnvironment{tikzpicture}
+\setlength\PreviewBorder{3pt}
+\begin{document}
+\begin{tikzpicture}[node distance=4mm,
+    ch/.style={simc/box, text width=46mm, align=left, font=\sffamily\scriptsize, inner sep=3pt},
+    cl/.style={font=\sffamily\bfseries\footnotesize, text=simcnavy, anchor=west},
+    md/.style={simc/base, font=\sffamily\scriptsize, text width=33mm, minimum height=7mm, rounded corners=2pt}]
+  % ---------------- the switch path
+  \node[simc/title, anchor=west] at (-0.1,0.55) {how the switch reaches the code (no global)};
+  \node[ch, anchor=north west, fill=simcpale] (c0) at (0,0) {\texttt{simc++ -{}-fortran-compat}\\or JSON
+    \texttt{"run": \{"fortran\_compat": true\}}};
+  \node[ch, below=of c0] (c1) {\texttt{driver::RunOptions::fortran\_compat}};
+  \node[ch, below=of c1] (c2) {\texttt{SetupOptions} $\to$ \texttt{RunSetup::fortran\_compat}\\(set-up corrections)};
+  \node[ch, below=of c2] (c3) {every stage reads \texttt{StageContext::setup} in \texttt{init()}};
+  \node[ch, below=of c3] (c4) {kernels get it explicitly: arguments, argument structs, setters
+    (\texttt{CosyEngine::setFortranCompat}, \ldots)};
+  \foreach \a/\b in {c0/c1, c1/c2, c2/c3, c3/c4} \draw[simc/flow] (\a) -- (\b);
+  \node[simc/note, below=2mm of c4, text width=46mm] {recorded in the summary JSON (\texttt{run.fortran\_compat});
+    refuses \texttt{-{}-threads N > 1}};
+  % ---------------- the two modes
+  \begin{scope}[xshift=6.3cm]
+  \node[simc/title, anchor=west] at (-0.1,0.55) {what each class of finding does in the two modes};
+  \node[md, simc/key, text width=33mm] (hdef) at (5.3,-0.2) {default mode};
+  \node[md, simc/key, fill=simcblue, draw=simcblue, text width=33mm] (hcomp) at (9.1,-0.2) {\texttt{-{}-fortran-compat}};
+  \foreach \y/\c/\t/\d/\f [count=\k] in {
+      -1.15/a/{clear Fortran bug}/{corrected}/{Fortran},
+      -2.05/b/{ambiguous (expert list)}/{Fortran}/{Fortran},
+      -2.95/c/{open question}/{Fortran}/{Fortran},
+      -3.85/d/{faithful quirk}/{Fortran}/{Fortran},
+      -4.75/dev/{design deviation}/{SIMC++}/{SIMC++}} {
+    \node[cl] at (0,\y) {\c};
+    \node[simc/note, anchor=west, text=simcnavy, font=\sffamily\scriptsize] at (0.75,\y) {\t};
+  }
+  \node[md, simc/ok] at (5.3,-1.15) {\textbf{corrected}};
+  \node[md, simc/stop] at (9.1,-1.15) {\textbf{Fortran behaviour}};
+  \foreach \y in {-2.05,-2.95,-3.85} {
+    \node[md, simc/box] at (5.3,\y) {Fortran behaviour}; \node[md, simc/box] at (9.1,\y) {Fortran behaviour};}
+  \node[md, simc/stage] at (5.3,-4.75) {SIMC++ behaviour}; \node[md, simc/stage] at (9.1,-4.75) {SIMC++ behaviour};
+  \node[simc/note, text width=72mm, anchor=north west] at (0,-5.45)
+    {default: physics runs, the catalogued bugs fixed.\quad \texttt{-{}-fortran-compat}: bit-for-bit reproduction of the
+     Fortran program; used by the L1 tables, the replays and the RANLUX full-run tests};
+  \end{scope}
+\end{tikzpicture}
+\end{document}
