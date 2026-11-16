@@ -1,16 +1,20 @@
-// include/simc/spectrometers/calo/CaloSpectrometer.h
-//
-// ISpectrometer "calo": the calorimeter arm of SIMC (arm codes 7 = HMS side and 8 = SHMS side of the beam; NPS-like),
-// task P14.3. It adapts the kernel calo::McCalo (kernel/McCalo.h: calo/mc_calo.f) to the stage interface, as
-// simc.f:montecarlo calls mc_calo (l.1489-1563 hadron arm, l.1756-1765 electron arm). One particle per call: the pi0
-// two-photon logic (rotation to the calorimeter frame, two calls, ok_gamma, pizero_ngamma) is driver::PizeroCalorimeter
-// (driver/PizeroCalorimeter.h), used by the driver for a pi0 hadron arm.
-//
-// JSON config (all optional): "drift_to_cal" (cm, default params.drift_to_cal: the distance target -> calorimeter face;
-// FORTRAN-DIFF-CANDIDATE D-062 G5: 0 by default, unchecked, as dbase.f:1104), "ctau" (cm), "verbose".
-// Outputs: the focal plane = the position and slopes at the calorimeter face (on success); the "recon" values are the
-// input values unchanged (no reconstruction, mc_calo.f:167); no resolution factor (resmult is not written, D-062 G7).
-// Stop counters: trials, slit_hor, slit_vert, successes (COMMON /spectrometer_calo/; .geni 'Calo Trials').
+/**
+ * @file
+ * @ingroup spectrometers
+ * @brief simc::calo::CaloSpectrometer: ISpectrometer "calo", the calorimeter arm (mc_calo.f).
+ *
+ * ISpectrometer "calo": the calorimeter arm of SIMC (arm codes 7 = HMS side and 8 = SHMS side of the beam; NPS-like),
+ * task P14.3. It adapts the kernel calo::McCalo (kernel/McCalo.h: calo/mc_calo.f) to the stage interface, as
+ * simc.f:montecarlo calls mc_calo (l.1489-1563 hadron arm, l.1756-1765 electron arm). One particle per call: the pi0
+ * two-photon logic (rotation to the calorimeter frame, two calls, ok_gamma, pizero_ngamma) is driver::PizeroCalorimeter
+ * (driver/PizeroCalorimeter.h), used by the driver for a pi0 hadron arm.
+ *
+ * JSON config (all optional): "drift_to_cal" (cm, default params.drift_to_cal: the distance target -> calorimeter face;
+ * FORTRAN-DIFF-CANDIDATE D-062 G5: 0 by default, unchecked, as dbase.f:1104), "ctau" (cm), "verbose".
+ * Outputs: the focal plane = the position and slopes at the calorimeter face (on success); the "recon" values are the
+ * input values unchanged (no reconstruction, mc_calo.f:167); no resolution factor (resmult is not written, D-062 G7).
+ * Stop counters: trials, slit_hor, slit_vert, successes (COMMON /spectrometer_calo/; .geni 'Calo Trials').
+ */
 #ifndef SIMC_SPECTROMETERS_CALO_CALOSPECTROMETER_H
 #define SIMC_SPECTROMETERS_CALO_CALOSPECTROMETER_H
 
@@ -25,20 +29,34 @@ namespace calo {
 
 class McCalo;
 
+/// @addtogroup spectrometers
+/// @{
+
+/// @brief ISpectrometer "calo": the calorimeter arm (drift to the calorimeter face, resolutions).
+///
+/// Owns its kernel (the Fortran COMMON counters and SAVEd state). Not copyable, not thread-safe (one per worker).
 class CaloSpectrometer : public ISpectrometer {
 public:
+    /// Creates the plug-in with a default kernel.
     CaloSpectrometer();
+    /// Destroys the kernel.
     ~CaloSpectrometer() override;
+    /// Not copyable (owns Fortran state).
     CaloSpectrometer(const CaloSpectrometer&) = delete;
+    /// Not copyable.
+    /// @return (deleted)
     CaloSpectrometer& operator=(const CaloSpectrometer&) = delete;
 
     std::string name() const override { return "calo"; }
     void configure(const Json& config, const SimcParameters& params) override;
+    /// @param ctx the stage context.
     void init(const StageContext& ctx) override;
     SpecResult transport(const SpecInput& in, IRandom& rng) override;
     const std::map<std::string, long>& stopCounters() const override;
 
+    /// @return the kernel (owned by the plug-in).
     McCalo& kernel() { return *k_; }
+    /// @return the drift distance from the target to the calorimeter face [cm].
     double driftToCal() const { return drift_; }
 
 private:
@@ -48,6 +66,8 @@ private:
     int side_{0};
     mutable std::map<std::string, long> cntMap_;
 };
+
+/// @}
 
 }  // namespace calo
 }  // namespace simc

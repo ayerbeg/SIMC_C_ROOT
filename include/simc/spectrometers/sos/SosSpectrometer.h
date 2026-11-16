@@ -1,20 +1,24 @@
-// include/simc/spectrometers/sos/SosSpectrometer.h
-//
-// ISpectrometer "sos": the SOS (Hall C Short Orbit Spectrometer, arm code 2) plug-in (task P14.1). It adapts the
-// Fortran-faithful kernel sos::McSos (kernel/McSos.h: mc_sos.f, mc_sos_hut.f, mc_sos_recon.f on the shared COSY engine)
-// to the stage interface, exactly as simc.f:montecarlo calls mc_sos (l.1468-1472 hadron arm: m2 = Mh2, decay =
-// doing_decay, resmult -> ntup%resfac; l.1734-1738 electron arm: m2 = me2, decay = .false., resmult -> tmpfact;
-// ms = wcs = mc_smear, pathlen = 0, and the recon argument fry = the RASTER fry of simc.f:1349-1355, SpecInput::raster_fry,
-// not xtar_init as for HMS/SHMS).
-//
-// JSON config (all optional):
-//   "matrix_dir"    : directory holding sos/forward_cosy.dat, sos/recon_cosy.dat (default: the repository copies)
-//   "ctau"          : cm (default params.ctau)
-//   "ms_flag", "wcs_flag", "decay": bool — if present they OVERRIDE the per-call SpecInput flags
-//   "use_sieve"     : bool (default false; mc_sos.f:50 mock sieve slit, a Fortran compile-time option)
-//   "verbose"       : bool (default true; false = no Fortran write(6,*) messages)
-// Stop counters (stopCounters()): trials, slit_hor, slit_vert, slit_oct, quad_in, quad_mid, quad_out, bm01_in, bm01_out,
-// bm02_in, bm02_out, exit, hut, dc1, dc2, scin, cal, successes (COMMON /spectrometer2/ sSTOP_*).
+/**
+ * @file
+ * @ingroup spectrometers
+ * @brief simc::sos::SosSpectrometer: ISpectrometer "sos", the SOS plug-in on the Fortran-faithful kernel McSos.
+ *
+ * ISpectrometer "sos": the SOS (Hall C Short Orbit Spectrometer, arm code 2) plug-in (task P14.1). It adapts the
+ * Fortran-faithful kernel sos::McSos (kernel/McSos.h: mc_sos.f, mc_sos_hut.f, mc_sos_recon.f on the shared COSY engine)
+ * to the stage interface, exactly as simc.f:montecarlo calls mc_sos (l.1468-1472 hadron arm: m2 = Mh2, decay =
+ * doing_decay, resmult -> ntup%resfac; l.1734-1738 electron arm: m2 = me2, decay = .false., resmult -> tmpfact;
+ * ms = wcs = mc_smear, pathlen = 0, and the recon argument fry = the RASTER fry of simc.f:1349-1355, SpecInput::raster_fry,
+ * not xtar_init as for HMS/SHMS).
+ *
+ * JSON config (all optional):
+ *   "matrix_dir"    : directory holding sos/forward_cosy.dat, sos/recon_cosy.dat (default: the repository copies)
+ *   "ctau"          : cm (default params.ctau)
+ *   "ms_flag", "wcs_flag", "decay": bool — if present they OVERRIDE the per-call SpecInput flags
+ *   "use_sieve"     : bool (default false; mc_sos.f:50 mock sieve slit, a Fortran compile-time option)
+ *   "verbose"       : bool (default true; false = no Fortran write(6,*) messages)
+ * Stop counters (stopCounters()): trials, slit_hor, slit_vert, slit_oct, quad_in, quad_mid, quad_out, bm01_in, bm01_out,
+ * bm02_in, bm02_out, exit, hut, dc1, dc2, scin, cal, successes (COMMON /spectrometer2/ sSTOP_*).
+ */
 #ifndef SIMC_SPECTROMETERS_SOS_SOSSPECTROMETER_H
 #define SIMC_SPECTROMETERS_SOS_SOSSPECTROMETER_H
 
@@ -30,24 +34,43 @@ namespace sos {
 
 class McSos;   // kernel (kernel/McSos.h)
 
+/// @addtogroup spectrometers
+/// @{
+
+/// @brief ISpectrometer "sos": the SOS single-arm Monte Carlo (apertures, COSY transport, hut, reconstruction).
+///
+/// Owns its kernel (the Fortran COMMON counters and SAVEd state). Not copyable, not thread-safe (one per worker).
 class SosSpectrometer : public ISpectrometer {
 public:
+    /// Creates the plug-in with a default kernel.
     SosSpectrometer();
+    /// Destroys the kernel.
     ~SosSpectrometer() override;
+    /// Not copyable (owns Fortran state).
     SosSpectrometer(const SosSpectrometer&) = delete;
+    /// Not copyable.
+    /// @return (deleted)
     SosSpectrometer& operator=(const SosSpectrometer&) = delete;
 
     std::string name() const override { return "sos"; }
     void configure(const Json& config, const SimcParameters& params) override;
     /// Loads the COSY maps.
+    /// @param ctx the stage context.
     void init(const StageContext& ctx) override;
     SpecResult transport(const SpecInput& in, IRandom& rng) override;
     const std::map<std::string, long>& stopCounters() const override;
     /// mc_sos_recon on the last hut track (trg_track.f:track_to_tgt, P15.2b).
+    /// @param fry vertical beam position [cm].
+    /// @param[out] delta reconstructed delta [%].
+    /// @param[out] dydz reconstructed yptar.
+    /// @param[out] dxdz reconstructed xptar.
+    /// @param[out] y reconstructed ytar [cm].
     void reconstructLastTrack(double fry, double& delta, double& dydz, double& dxdz, double& y) override;
 
     /// The Fortran-faithful kernel (L1 tests, diagnostics).
+    /// @return the kernel (owned by the plug-in).
     McSos& kernel() { return *k_; }
+    /// @return the kernel (owned by the plug-in).
     const McSos& kernel() const { return *k_; }
 
 private:
@@ -56,6 +79,8 @@ private:
     std::optional<bool> msOverride_, wcsOverride_, decayOverride_;
     mutable std::map<std::string, long> cntMap_;
 };
+
+/// @}
 
 }  // namespace sos
 }  // namespace simc
