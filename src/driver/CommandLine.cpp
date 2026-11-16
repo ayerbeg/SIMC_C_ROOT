@@ -45,6 +45,7 @@ void usage() {
     std::cerr << "usage: simc++ <file.inp|file.json> [-o OUTDIR] [--seed N] [--ngen N] [--pipeline FILE]\n"
                  "               [--run-name NAME] [--data-dir DIR] [--infiles-dir DIR] [--quiet] [--print-pipeline]\n"
                  "               [--fortran-compat] [--threads N] [--print-data-dir]\n"
+                 "  --print-pipeline  print the resolved pipeline (JSON), then run\n"
                  "  --fortran-compat  exact Fortran behaviour (known Fortran bugs kept; bitwise validation)\n"
                  "  --threads N       event loop on N threads (independent mt64 streams per thread; a given seed and N\n"
                  "                    always give the same output; not with --fortran-compat or rng ranlux). Default 1.\n"
@@ -156,7 +157,7 @@ int CommandLineMain(int argc, char** argv) {
             // with legacy '.' names (targ.A, spec.e.P, ...) keeps the defaults of those variables. Same behaviour here,
             // but said loudly.
             std::cerr << "simc++: WARNING: " << ignoredNames.size()
-                      << " input variable(s) are not SIMC variables and are IGNORED, as by the Fortran (their defaults are "
+                      << " input variable(s) are not SIMC variables and are IGNORED (legacy SIMC behaviour; their defaults are "
                          "used):\n  ";
             for (std::size_t i = 0; i < ignoredNames.size(); ++i)
                 std::cerr << ignoredNames[i] << (i + 1 < ignoredNames.size() ? (i % 6 == 5 ? "\n  " : ", ") : "\n");

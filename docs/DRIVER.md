@@ -67,7 +67,7 @@ finish: Normalise → RunReport → RunSummary → sinks (endRun; IReportSink::w
   `deuterium_eep` (D) / `nucleus_eep` (A > 2), `pion_production` (doing_pion, P9.2), `kaon_production` (doing_kaon, P10.2), `delta_production` (doing_delta, P11.1), `sigep` (H) / `deforest` (D, A) / `pion`
   (doing_pion) / `kaon` (doing_kaon) / `delta` (doing_delta; no cross section, D-048 F4), `simc_rad` (radc_init_ev runs for every event, even without radiation), the arms
   from `electron_arm`/`hadron_arm` (`MonteCarlo::DefaultArm`), `root_tree` only if `Nntu > 0`.
-  `simc++ --print-pipeline` shows the resolved pipeline.
+  `simc++ --print-pipeline` prints the resolved pipeline, then runs.
 * **Wiring (P7.4).** `SimcRun::initialise` creates the stages by name, initialises the target and the radiator
   first and passes them to the other stages in the `StageContext` of `init()` (beam, reaction: `ctx.target`,
   `ctx.radiator`; the spectrometers get the context from `MonteCarlo`). What the driver reads back from the radiator
@@ -125,8 +125,13 @@ finish: Normalise → RunReport → RunSummary → sinks (endRun; IReportSink::w
 * **L2.** `simc_compare` of 200k-event C++ runs (Mt64Random) against the Fortran A/B runs
   (reference/comparisons/CPP_vs_F/).
 
-## 5. Not supported yet
+## 5. Not supported
 
-Reactions other than H/D/A(e,e'p), exclusive pion (P9.2), kaon (P10.2) and Delta-region (e,e'p)pi (P11.1) production and
-`doing_phsp` (rho, semi-inclusive: NotPorted at initialise), `random_state_file`, the semi/rho ntuple layouts. (The polarized-target field `using_tgt_field` is ported since P15.2b: optics::TargetField, owned by driver::MonteCarlo.)
-(all spectrometer arms are ported: SOS P14.1, HRS P14.2, calorimeter + pi0 P14.3).
+Every reaction family of the Fortran is available: H/D/A(e,e'p), `doing_phsp`, exclusive pion, kaon, Delta-region
+(e,e'p)pi, semi-inclusive (`sidis_production`) and exclusive rho (`rho_production`), with their ntuple layouts; every
+spectrometer arm (HMS, SOS, HRS-R/L, SHMS, calorimeter 7/8 with pi0 -> 2 gamma) and the polarized-target field
+(`using_tgt_field`, optics::TargetField owned by driver::MonteCarlo). Not supported:
+
+* `random_state_file` (the RANLUX state file is not read; a RANLUX state can be given as `pipeline.rng.state`);
+* input combinations that the Fortran itself cannot run (they are refused at set-up with a message, e.g. (e,e'rho)
+  with A >= 4 or `doing_rho` together with another reaction flag; see docs/translation/06_catalogue.md).
