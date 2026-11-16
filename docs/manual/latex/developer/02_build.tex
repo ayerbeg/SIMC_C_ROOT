@@ -176,3 +176,19 @@ package's data directory at start-up (\code{simc::\allowbreak{}detail::\allowbre
 data without \code{-{}-{}data-{}dir}\simcidx{Command-line options!data-dir@\code{-{}-{}data-{}dir}}. The CTest \code{package\_\allowbreak{}out\_\allowbreak{}of\_\allowbreak{}tree\_\allowbreak{}plugin}
 (\code{examples/\allowbreak{}out\_\allowbreak{}of\_\allowbreak{}tree\_\allowbreak{}plugin/\allowbreak{}package\_\allowbreak{}check.\allowbreak{}sh}) proves the whole chain on every \code{check\_\allowbreak{}all}.
 
+
+\section{Documentation targets}\label{developer_manual-02u5fbuild:28-documentation-targets}
+
+\begin{itemize}
+\item \code{doc} (needs doxygen; graphviz \code{dot} for the graphs): the API reference as HTML, \code{<build>/docs/doxygen/html/index.html} --- open it in a browser.
+\item \code{doc\_pdf} (doxygen, pdflatex and the TeX packages listed in \code{docs/README.md}): \code{<build>/docs/doxygen/SIMCpp\_API\_Reference.pdf}.
+\item \code{pdf} (xelatex, makeindex): the three books in \code{<build>/docs/}.
+\end{itemize}
+
+\begin{lstlisting}[language=bash]
+cmake --build $SIMCPP_BUILD --target doc      # HTML API reference
+cmake --build $SIMCPP_BUILD --target doc_pdf  # API reference as PDF
+cmake --build $SIMCPP_BUILD --target pdf      # user manual, developer manual, translation report
+\end{lstlisting}
+
+If doxygen is not installed, \code{doc} only prints a message. The HTML is not committed; the PDFs in \code{docs/*/pdf/} are release copies to rebuild and re-commit when the sources change.

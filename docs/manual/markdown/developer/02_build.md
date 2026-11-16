@@ -162,3 +162,20 @@ to `SIMC::simc`, compiled into the consumer with `SIMC_INSTALLED_DATA_DIR=<prefi
 package's data directory at start-up (`simc::detail::SetInstalledDataRoot`), so a consumer program finds the installed
 data without `--data-dir`. The CTest `package_out_of_tree_plugin`
 (`examples/out_of_tree_plugin/package_check.sh`) proves the whole chain on every `check_all`.
+
+## 2.8 Documentation targets
+
+| target | needs | output |
+|---|---|---|
+| `doc` | doxygen (graphviz `dot` for the graphs) | API reference as HTML: `<build>/docs/doxygen/html/index.html` (open it in a browser) |
+| `doc_pdf` | doxygen + pdflatex and the TeX packages listed in [docs/README.md](../../../README.md) | `<build>/docs/doxygen/SIMCpp_API_Reference.pdf` |
+| `pdf` | xelatex, makeindex | the three books in `<build>/docs/` |
+
+```bash
+cmake --build $SIMCPP_BUILD --target doc      # HTML API reference
+cmake --build $SIMCPP_BUILD --target doc_pdf  # API reference as PDF
+cmake --build $SIMCPP_BUILD --target pdf      # user manual, developer manual, translation report
+```
+
+If doxygen is not installed, `doc` only prints a message. The HTML is not committed; the PDFs in `docs/*/pdf/` are
+release copies to rebuild and re-commit when the sources change.
