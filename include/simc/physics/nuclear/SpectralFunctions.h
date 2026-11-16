@@ -13,7 +13,7 @@
  *             (event.f:1399-1401).
  *
  * JSON (the "spectral_function" object of the reaction config; every key optional):
- *   {"type": "theory" | "benhar", "file": "<file in the data directory>", "transparency": <Benhar only>}
+ *   {"type": "theory" | "benhar", "file": "\<file in the data directory\>", "transparency": \<Benhar only\>}
  * The file defaults to the Fortran choice from the target A (RunSetup::sf; a warning is printed when the Fortran
  * falls back to the C-12 file for an A without its own file, D-033 F1). For "theory" the setup has already read the
  * file (it also fixes the VERTEXedge limits), so a "file" given here must be the same one: SimcRun passes it to the

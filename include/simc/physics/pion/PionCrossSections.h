@@ -77,7 +77,7 @@ double sigParam3000(double thetacm, double phicm, double t, double q2_gev, doubl
 // --------------------------------------------------------------------------------------------- 2021 fit
 /// The outputs of physics_pion.f:exclfit.
 struct ExclfitResult {
-    double sigl{0}, sigt{0}, sigtt{0}, siglt{0}, sig{0};  ///< L, T, TT, LT components and the total cross section.
+    double sigl{0} /**< @copydoc sig */, sigt{0} /**< @copydoc sig */, sigtt{0} /**< @copydoc sig */, siglt{0} /**< @copydoc sig */, sig{0};  ///< L, T, TT, LT components and the total cross section.
 };
 /// Fortran: physics_pion.f:exclfit (l.807-854). p = p(1:17) at [0..16]. mtar_gev is the local 0.938 and pi the
 /// literal 3.1415928 of the Fortran (FORTRAN-DIFF-CANDIDATE D-038 F4: the nucleon mass also for coherent production).
@@ -99,7 +99,7 @@ extern const std::array<double, 17> kParam2021PiMinus;
 
 /// Fortran: COMMON /excmn/ sigl, sigt, sigttv, sigltv (physics_pion.f:745), the components of the last exclfit call.
 struct Excmn {
-    double sigl{0}, sigt{0}, sigttv{0}, sigltv{0};  ///< L, T, TT, LT components of the last exclfit call.
+    double sigl{0} /**< @copydoc sigltv */, sigt{0} /**< @copydoc sigltv */, sigttv{0} /**< @copydoc sigltv */, sigltv{0};  ///< L, T, TT, LT components of the last exclfit call.
 };
 /// Fortran: physics_pion.f:sig_param_2021 (l.738-805). pi0 (doing_pizero): the average of the pi+ and pi- fits with
 /// fpifact = 0; pi- for which_pion 1, 11, 3; pi+ otherwise. `excmn` (optional) receives COMMON /excmn/ after the call
@@ -123,11 +123,11 @@ double sigParam2021(double thcm, double phicm, double t, double q2, double wsq, 
 /// Read-only after load(); thread-safe for reading.
 class MaidTables {
 public:
-    static constexpr int kNipi = 4, kNq = 25, kNw = 46, kNth = 23, kNcol = 18;  ///< table dimensions: channels, Q2, W, theta bins and columns.
+    static constexpr int kNipi = 4 /**< @copydoc kNcol */, kNq = 25 /**< @copydoc kNcol */, kNw = 46 /**< @copydoc kNcol */, kNth = 23 /**< @copydoc kNcol */, kNcol = 18;  ///< table dimensions: channels, Q2, W, theta bins and columns.
     /// File names in the order of ipi = 1..4 (physics_pion.f:620-623).
     static const std::array<const char*, 4> kFiles;
 
-    /// Read <dir>/maidpi0p.dat, maidpi0n.dat, maidpipn.dat, maidpimp.dat with the Fortran format (f11.6,18f8.4).
+    /// Read \<dir\>/maidpi0p.dat, maidpi0n.dat, maidpipn.dat, maidpimp.dat with the Fortran format (f11.6,18f8.4).
     /// Returns false and sets `err` if a file is missing or short.
     /// @param dir the data directory.
     /// @param[out] err error text (optional, may be nullptr).
@@ -152,11 +152,11 @@ private:
 /// Outputs of physics_pion.f:sigmaid. Only sig0 is returned by the Fortran routine; sigz, sigez and sige are its
 /// local polarisation terms (computed for completeness).
 struct SigmaidResult {
-    double sig0{0}, sigz{0}, sigez{0}, sige{0};  ///< dsigma/dOmega* [ub/sr] and the local polarisation terms.
+    double sig0{0} /**< @copydoc sige */, sigz{0} /**< @copydoc sige */, sigez{0} /**< @copydoc sige */, sige{0};  ///< dsigma/dOmega* [ub/sr] and the local polarisation terms.
 };
 /// The nearest-bin indices of sigmaid (physics_pion.f:659-669), 1-based.
 struct MaidBin {
-    int iq{1}, iw{1}, ith{1};  ///< Q2, W and theta bins.
+    int iq{1} /**< @copydoc ith */, iw{1} /**< @copydoc ith */, ith{1};  ///< Q2, W and theta bins.
 };
 /// Fortran: physics_pion.f:659-669. FORTRAN-QUIRK(D-038 F14): nearest (lower) bin, no interpolation; only the theta
 /// rows 1..6 of the 23 stored per (Q2, W) are reachable.

@@ -119,7 +119,7 @@ public:
 
     /// The trgInit state (L1 tests): angles of arm e (spect -1) / p (+1) and the map arrays (1-based iz, ir).
     struct Angles {
-        double theta{0}, stheta{0}, ctheta{0}, phi{0}, sphi{0}, cphi{0};  ///< angle [rad] and its sine and cosine, for theta and phi.
+        double theta{0} /**< @copydoc cphi */, stheta{0} /**< @copydoc cphi */, ctheta{0} /**< @copydoc cphi */, phi{0} /**< @copydoc cphi */, sphi{0} /**< @copydoc cphi */, cphi{0};  ///< angle [rad] and its sine and cosine, for theta and phi.
     };
     /// @return the electron-arm angles.
     const Angles& anglesE() const { return e_; }

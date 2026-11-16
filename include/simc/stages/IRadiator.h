@@ -39,11 +39,11 @@ using CompleteEvFn = std::function<bool(MainEvent& main, Event& vertex, IRandom&
  */
 struct RadiationValues {
     /// Hard-photon correction factor; eta*zeta of the target material; internal and external b parameters (g).
-    double hardcorfac{0}, etatzai{0}, g_int{0}, g_ext{0};
+    double hardcorfac{0}, etatzai{0} /**< @copydoc hardcorfac */, g_int{0} /**< @copydoc hardcorfac */, g_ext{0} /**< @copydoc hardcorfac */;
     std::array<double, 3> frac{};     ///< frac(1:3): fraction of the radiation probability per tail
     std::array<double, 3> lambda{};   ///< lambda(1:3): radiation exponent of each tail
     std::array<double, 2> bt{};       ///< bt(1:2): b x t of the target material (incoming, outgoing)
-    std::array<double, 4> c_int{}, c_ext{}, c{}, g{};   ///< (0:3): internal, external and total normalisations c, exponents g
+    std::array<double, 4> c_int{} /**< @copydoc g */, c_ext{} /**< @copydoc g */, c{} /**< @copydoc g */, g{};   ///< (0:3): internal, external and total normalisations c, exponents g
 };
 
 /**

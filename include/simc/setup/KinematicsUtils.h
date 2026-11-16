@@ -56,7 +56,7 @@ void SpectrometerAngles(double theta0, double phi0, double& dx, double& dy, doub
 
 /// Result of loren (energy, momentum components and |p| in the boosted frame).
 struct LorenResult {
-    double ef1{0}, pxf{0}, pyf{0}, pzf{0}, pf1{0};  ///< energy, px, py, pz and |p| in the boosted frame (input units).
+    double ef1{0} /**< @copydoc pf1 */, pxf{0} /**< @copydoc pf1 */, pyf{0} /**< @copydoc pf1 */, pzf{0} /**< @copydoc pf1 */, pf1{0};  ///< energy, px, py, pz and |p| in the boosted frame (input units).
 };
 
 /// Fortran: loren.f:loren (l.1-26). Boost (e,x,y,z) into the frame moving with velocity (bx,by,bz)

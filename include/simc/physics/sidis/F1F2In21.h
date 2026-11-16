@@ -58,7 +58,7 @@ void rescsn(double w2, double q2, double& sigtn, double& sigln);
 
 /// Proton and neutron structure functions F1, FL, F2.
 struct NucleonSF {
-    double F1p{0}, FLp{0}, F2p{0}, F1n{0}, FLn{0}, F2n{0};  ///< F1, FL, F2 of the proton and of the neutron.
+    double F1p{0} /**< @copydoc F2n */, FLp{0} /**< @copydoc F2n */, F2p{0} /**< @copydoc F2n */, F1n{0} /**< @copydoc F2n */, FLn{0} /**< @copydoc F2n */, F2n{0};  ///< F1, FL, F2 of the proton and of the neutron.
 };
 /// Fortran: SF(w2, q2, F1p, FLp, F2p, F1n, FLn, F2n)
 /// @param w2 W^2 [GeV^2].

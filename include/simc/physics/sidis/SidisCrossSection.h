@@ -56,17 +56,17 @@ double rhadGlobal(double A, double z);
 
 /// The run constants that peepiX reads from COMMON blocks, and the D-031 switches (false = the Fortran, fortran_compat).
 struct PeepiXConfig {
-    double targA{0}, targZ{0};        ///< targ%A, targ%Z
+    double targA{0} /**< @copydoc targZ */, targZ{0};        ///< targ%A, targ%Z
     double Mtar_struck{0};            ///< targ%Mtar_struck [MeV] (Mp for doing_semi, dbase.f:301-302)
-    bool doing_semipi{false}, doing_semika{false}, doing_pizero{false}, doing_hplus{false};  ///< SIDIS flags of the input.
+    bool doing_semipi{false} /**< @copydoc doing_hplus */, doing_semika{false} /**< @copydoc doing_hplus */, doing_pizero{false} /**< @copydoc doing_hplus */, doing_hplus{false};  ///< SIDIS flags of the input.
     bool do_fermi{false};             ///< after dbase.f:202-206 (forced off for hydrogen)
     bool doing_decay{false};  ///< doing_decay of the input.
     int hadron_arm{1};                ///< spectrometer code (1 HMS, 2 SOS, 3 HRSR, 4 HRSL, 5 SHMS, ...)
     double ctau{0};                   ///< hadron c*tau [cm] (input)
     double spec_p_P{0};               ///< spec%p%P [MeV/c]
     double Mh2{0};                    ///< Mh2 [MeV^2]
-    int sigc_flag{0}, sigc_nbin{0};   ///< central cross section binning (doing_cent only, dead code)
-    double sigc_kin_min{0}, sigc_kin_max{0}, sigc_kin_ind{0};  ///< doing_cent binning (dead code).
+    int sigc_flag{0} /**< @copydoc sigc_nbin */, sigc_nbin{0};   ///< central cross section binning (doing_cent only, dead code)
+    double sigc_kin_min{0} /**< @copydoc sigc_kin_ind */, sigc_kin_max{0} /**< @copydoc sigc_kin_ind */, sigc_kin_ind{0};  ///< doing_cent binning (dead code).
     /// FORTRAN-BUG(D-051 F1): dsigdz = 0 when sum_sq <= 0 (all PDFs 0: x_Bj clamped to 1, or Q < Alambda); the
     /// Fortran divides 0/0 (semi_physics.f:508-513, the old guard l.378-400 is commented out) and returns NaN.
     bool sum_sq_guard{false};
@@ -87,27 +87,27 @@ struct PeepiXConfig {
 /// SAVEd locals of peepiX (-fno-automatic): the first-call flags, zaero (only assigned for hadron_arm 1-4) and the
 /// doing_cent kinematics pt2/zhad (kept from the previous call when sigc_flag is neither 0 nor 1).
 struct PeepiXState {
-    bool first{true}, firstqe{true}, first_cent{true};  ///< first-call flags.
+    bool first{true} /**< @copydoc first_cent */, firstqe{true} /**< @copydoc first_cent */, first_cent{true};  ///< first-call flags.
     double zaero{0};  ///< aerogel distance [cm].
-    double pt2{0}, zhad{0};  ///< doing_cent kinematics.
+    double pt2{0} /**< @copydoc zhad */, zhad{0};  ///< doing_cent kinematics.
 };
 
 /// Intermediate values of one peepiX call (optional diagnostics for the L1 tables; never changes the numerics).
 struct PeepiXTrace {
     bool threshold_return{false};     ///< mmpi2 below threshold: returned 0 at l.280-284
-    double Mpi_gev{0}, mhad{0}, mtar{0};  ///< peepiX locals (semi_physics.f names; GeV).
+    double Mpi_gev{0} /**< @copydoc mtar */, mhad{0} /**< @copydoc mtar */, mtar{0};  ///< peepiX locals (semi_physics.f names; GeV).
     double xbj_raw{0};                ///< x_Bj before the clamp to 1
-    double xbj{0}, Q2gev{0}, Qgev{0}, pt2gev{0}, wsq{0}, w{0}, mmpi2{0}, zhad{0}, pt2{0}, Ehad{0}, phad{0}, cthpq{0};  ///< peepiX locals: kinematics.
-    double u{0}, ubar{0}, d{0}, dbar{0}, s{0}, sbar{0}, sum_sq{0};  ///< parton distributions of the proton and their sum of squares.
-    double uA{0}, ubarA{0}, dA{0}, dbarA{0}, sA{0}, sbarA{0};  ///< parton distributions of the target.
+    double xbj{0} /**< @copydoc cthpq */, Q2gev{0} /**< @copydoc cthpq */, Qgev{0} /**< @copydoc cthpq */, pt2gev{0} /**< @copydoc cthpq */, wsq{0} /**< @copydoc cthpq */, w{0} /**< @copydoc cthpq */, mmpi2{0} /**< @copydoc cthpq */, zhad{0} /**< @copydoc cthpq */, pt2{0} /**< @copydoc cthpq */, Ehad{0} /**< @copydoc cthpq */, phad{0} /**< @copydoc cthpq */, cthpq{0};  ///< peepiX locals: kinematics.
+    double u{0} /**< @copydoc sum_sq */, ubar{0} /**< @copydoc sum_sq */, d{0} /**< @copydoc sum_sq */, dbar{0} /**< @copydoc sum_sq */, s{0} /**< @copydoc sum_sq */, sbar{0} /**< @copydoc sum_sq */, sum_sq{0};  ///< parton distributions of the proton and their sum of squares.
+    double uA{0} /**< @copydoc sbarA */, ubarA{0} /**< @copydoc sbarA */, dA{0} /**< @copydoc sbarA */, dbarA{0} /**< @copydoc sbarA */, sA{0} /**< @copydoc sbarA */, sbarA{0};  ///< parton distributions of the target.
     double Qgev_after{0};             ///< Qgev after the six Ctq5Pdf calls (Alambda if Q < Alambda)
     double sin2th2{0};  ///< sin^2(theta/2).
-    double u1{0}, ub{0}, d1{0}, db{0}, s1{0}, sb{0};   ///< fragmentation functions (z D) used
-    double xp{0}, zp{0}, sv{0}, yf{0}, yu{0};  ///< peepiX locals (semi_physics.f names).
-    double dsigdz{0}, b{0}, rhad{0}, sighad{0};  ///< peepiX locals: cross-section factors.
-    double F1p{0}, F2p{0}, F1n{0}, F2n{0}, emc{0}, F1{0}, F2{0}, W1{0}, W2{0}, sige{0}, sigsemi{0};  ///< peepiX locals: structure functions and inclusive cross section.
-    double jacobian{0}, fac{0}, sigma{0};  ///< peepiX locals: Jacobian, factor and result.
-    double pathlen{0}, betak{0}, gammak{0}, survival{0};  ///< peepiX locals: decay path and survival probability.
+    double u1{0} /**< @copydoc sb */, ub{0} /**< @copydoc sb */, d1{0} /**< @copydoc sb */, db{0} /**< @copydoc sb */, s1{0} /**< @copydoc sb */, sb{0};   ///< fragmentation functions (z D) used
+    double xp{0} /**< @copydoc yu */, zp{0} /**< @copydoc yu */, sv{0} /**< @copydoc yu */, yf{0} /**< @copydoc yu */, yu{0};  ///< peepiX locals (semi_physics.f names).
+    double dsigdz{0} /**< @copydoc sighad */, b{0} /**< @copydoc sighad */, rhad{0} /**< @copydoc sighad */, sighad{0};  ///< peepiX locals: cross-section factors.
+    double F1p{0} /**< @copydoc sigsemi */, F2p{0} /**< @copydoc sigsemi */, F1n{0} /**< @copydoc sigsemi */, F2n{0} /**< @copydoc sigsemi */, emc{0} /**< @copydoc sigsemi */, F1{0} /**< @copydoc sigsemi */, F2{0} /**< @copydoc sigsemi */, W1{0} /**< @copydoc sigsemi */, W2{0} /**< @copydoc sigsemi */, sige{0} /**< @copydoc sigsemi */, sigsemi{0};  ///< peepiX locals: structure functions and inclusive cross section.
+    double jacobian{0} /**< @copydoc sigma */, fac{0} /**< @copydoc sigma */, sigma{0};  ///< peepiX locals: Jacobian, factor and result.
+    double pathlen{0} /**< @copydoc survival */, betak{0} /**< @copydoc survival */, gammak{0} /**< @copydoc survival */, survival{0};  ///< peepiX locals: decay path and survival probability.
 };
 
 /// Fortran: semi_physics.f:peepiX(vertex, vertex0, main, survivalprob, doing_cent) (l.1-631).
@@ -137,8 +137,8 @@ double peepiX(const Event& vertex, const Event& vertex0, MainEvent& main, double
 
 /// SAVEd locals of semi_dilution.
 struct SemiDilutionState {
-    bool first{true}, kfirst{true};  ///< first-call flags.
-    double N{0}, a1{0}, a2{0};   ///< kept when neither doing_semipi nor doing_semika
+    bool first{true} /**< @copydoc kfirst */, kfirst{true};  ///< first-call flags.
+    double N{0} /**< @copydoc a2 */, a1{0} /**< @copydoc a2 */, a2{0};   ///< kept when neither doing_semipi nor doing_semika
 };
 /// Fortran: semi_dilution.f:semi_dilution(vertex, main) (l.1-270). DEAD CODE in SIMC (event.f:1524 commented out).
 /// Reads vertex (Ein, Q2, nu, pt2, zhad, e%E), doing_semipi/semika/hplus/deutsemi. Returns the dilution factor

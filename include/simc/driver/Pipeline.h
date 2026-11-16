@@ -6,7 +6,7 @@
  * The plug-in choice of a SIMC++ run (task P7.2, D-026): one registry name (+ its JSON config) per stage.
  *
  * JSON ("pipeline" section of the run JSON, or the --pipeline file of the CLI). Every key is optional; a stage is
- * either a string (the registry name) or an object {"type": name, <config keys>...}. Config keys are merged over
+ * either a string (the registry name) or an object {"type": name, \<config keys\>...}. Config keys are merged over
  * the default config of that stage.
  *   {
  *     "rng":      {"type": "mt64", "seed": 12345},
@@ -62,8 +62,8 @@ struct StageSpec {
 
 /// The plug-in of every stage of a run; see the file description for the JSON form and the defaults.
 struct PipelineConfig {
-    StageSpec rng, target, beam, reaction, physics, radiator;  ///< random generator, target, beam, reaction, physics model and radiator plug-ins.
-    StageSpec hadron_arm, electron_arm;   ///< type "" = from the arm code
+    StageSpec rng /**< @copydoc radiator */, target /**< @copydoc radiator */, beam /**< @copydoc radiator */, reaction /**< @copydoc radiator */, physics /**< @copydoc radiator */, radiator;  ///< random generator, target, beam, reaction, physics model and radiator plug-ins.
+    StageSpec hadron_arm /**< @copydoc electron_arm */, electron_arm;   ///< type "" = from the arm code
     std::vector<StageSpec> sinks;  ///< the output sinks, in order.
     int threads{0};   ///< P15.4: "threads" (0 = not given = 1 thread)
 
@@ -80,7 +80,7 @@ struct PipelineConfig {
     /// {"type", "file"}); empty strings if it does not. Needed BEFORE the set-up (task P8.1): the set-up reads the
     /// theory file and uses it for the generation limits.
     struct SpectralFunctionSpec {
-        std::string type, file;  ///< type: registry name; file: the spectral-function file ("" if none).
+        std::string type /**< @copydoc file */, file;  ///< type: registry name; file: the spectral-function file ("" if none).
     };
     /// @param section the "pipeline" JSON section.
     /// @return the spectral-function type and file (empty strings if not given).

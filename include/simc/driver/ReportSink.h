@@ -8,9 +8,9 @@
  * endRun() on every sink that also implements IReportSink (task P7.2).
  *
  * FortranHistSink ("fortran_hist"): the three text files of simc.f in the exact gfortran layout:
- *   <run>.hist  simc.f:report (l.644-1142)
- *   <run>.geni  simc.f l.462-532 (stop counters)
- *   <run>.gen   simc.f l.534-612 (the H%RECON, H%gen, H%geni histograms, 50 bins, histograms.inc), filled in fill()
+ *   \<run\>.hist  simc.f:report (l.644-1142)
+ *   \<run\>.geni  simc.f l.462-532 (stop counters)
+ *   \<run\>.gen   simc.f l.534-612 (the H%RECON, H%gen, H%geni histograms, 50 bins, histograms.inc), filled in fill()
  *               exactly like simc.f:250-287 with inc() (simc.f:624-640). The .gen quirks are kept: the "Original E arm"
  *               block prints H%gen%e%delta but H%geni%e%yptar/xptar, all on the H%gen bin centres; H%gen%Pm is never
  *               filled; H%RECON xptar is not negated.
@@ -62,8 +62,8 @@ public:
     /// Fortran: type histograms (H%RECON, H%gen, H%geni): e/p delta, yptar, xptar, Em, Pm.
     struct HistSet {
         /// Histograms of one arm.
-        struct Arm { Hist delta, yptar, xptar; /**< delta, yptar, xptar histograms */ } e, p;  ///< histograms of one arm; e = electron arm, p = hadron arm.
-        Hist Em, Pm;  ///< missing energy and missing momentum histograms.
+        struct Arm { Hist delta /**< @copydoc xptar */, yptar /**< @copydoc xptar */, xptar; /**< delta, yptar, xptar histograms */ } e /**< @copydoc p */, p;  ///< histograms of one arm; e = electron arm, p = hadron arm.
+        Hist Em /**< @copydoc Pm */, Pm;  ///< missing energy and missing momentum histograms.
     };
 
     std::string name() const override { return "fortran_hist"; }

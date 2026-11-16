@@ -37,7 +37,7 @@ namespace simc {
 struct Cartesian {
     /// Lab-frame components (z along the beam; the arm at phi = pi/2 lies at +y, the one at 3 pi/2 at -y); unit
     /// vectors are normalised.
-    double x{0}, y{0}, z{0};
+    double x{0}, y{0} /**< @copydoc x */, z{0} /**< @copydoc x */;
 };
 
 /**
@@ -47,9 +47,9 @@ struct Cartesian {
 struct ArmFull {
     /// delta = (P - P_central)/P_central [%]; xptar, yptar: target slopes in the spectrometer frame [dx/dz, dy/dz];
     /// z: vertex position along the spectrometer axis ("ytar" coordinate) [cm].
-    double delta{0}, xptar{0}, yptar{0}, z{0};
+    double delta{0}, xptar{0} /**< @copydoc delta */, yptar{0} /**< @copydoc delta */, z{0} /**< @copydoc delta */;
     /// theta, phi: lab polar and azimuthal angles [rad]; E: total energy [MeV]; P: momentum [MeV/c].
-    double theta{0}, phi{0}, E{0}, P{0};
+    double theta{0}, phi{0} /**< @copydoc theta */, E{0} /**< @copydoc theta */, P{0} /**< @copydoc theta */;
 };
 
 /**
@@ -63,29 +63,29 @@ struct Event {
     /// Incident beam energy at the vertex [MeV].
     double Ein{0};
     /// Missing energy Em [MeV] and missing momentum Pm [MeV/c] of the reaction (definition per reaction family).
-    double Em{0}, Pm{0};
+    double Em{0}, Pm{0} /**< @copydoc Em */;
     /// Missing energy nu + M_target - E_hadron [MeV] and magnitude of the missing momentum vector [MeV/c].
-    double Emiss{0}, Pmiss{0};
+    double Emiss{0}, Pmiss{0} /**< @copydoc Emiss */;
     /// Missing-momentum vector p_hadron - q in the lab frame [MeV/c].
-    double Pmx{0}, Pmy{0}, Pmz{0};
+    double Pmx{0}, Pmy{0} /**< @copydoc Pmx */, Pmz{0} /**< @copydoc Pmx */;
     /// Missing-momentum components parallel to q, perpendicular to q (in plane) and out of the scattering plane [MeV/c].
-    double PmPar{0}, PmPer{0}, PmOop{0};
+    double PmPar{0}, PmPer{0} /**< @copydoc PmPar */, PmOop{0} /**< @copydoc PmPar */;
     /// Energy transfer nu [MeV], |q| [MeV/c], Q^2 [MeV^2], recoil kinetic energy Trec [MeV], invariant mass W [MeV],
     /// recoil mass Mrec [MeV].
-    double nu{0}, q{0}, Q2{0}, Trec{0}, W{0}, Mrec{0};
+    double nu{0}, q{0} /**< @copydoc nu */, Q2{0} /**< @copydoc nu */, Trec{0} /**< @copydoc nu */, W{0} /**< @copydoc nu */, Mrec{0} /**< @copydoc nu */;
     /// Virtual-photon polarisation epsilon; angle between hadron and q (theta_pq) [rad]; angle between the target
     /// polarisation and q (theta_tarq) [rad]; azimuth of the hadron around q (phi_pq) [rad]; azimuth of the target
     /// polarisation (phi_targ) [rad].
-    double epsilon{0}, theta_pq{0}, theta_tarq{0}, phi_pq{0}, phi_targ{0};
+    double epsilon{0}, theta_pq{0} /**< @copydoc epsilon */, theta_tarq{0} /**< @copydoc epsilon */, phi_pq{0} /**< @copydoc epsilon */, phi_targ{0} /**< @copydoc epsilon */;
     /// Polarised-target angles [rad]: beta (target polarisation in the (q, hadron) frame), phi_s = phi_pq - phi_targ
     /// (Sivers) and phi_c = phi_pq + phi_targ (Collins), each folded into [0, 2 pi).
-    double beta{0}, phi_s{0}, phi_c{0};
+    double beta{0}, phi_s{0} /**< @copydoc beta */, phi_c{0} /**< @copydoc beta */;
     /// SIDIS variables: hadron energy fraction z, transverse momentum squared pt2 [MeV^2], Bjorken x.
-    double zhad{0}, pt2{0}, xbj{0};
+    double zhad{0}, pt2{0} /**< @copydoc zhad */, xbj{0} /**< @copydoc zhad */;
     /// The electron arm (e) and the hadron arm (p).
-    ArmFull e, p;
+    ArmFull e, p /**< @copydoc e */;
     /// Unit vectors of the scattered electron (ue), the hadron (up) and the momentum transfer (uq) in the lab.
-    Cartesian ue, up, uq;
+    Cartesian ue, up /**< @copydoc ue */, uq /**< @copydoc ue */;
 };
 
 /**
@@ -94,7 +94,7 @@ struct Event {
  */
 struct EventTarget {
     /// Vertex position x, y, z [cm] (lab) and the raster offsets rasterx, rastery [cm].
-    double x{0}, y{0}, z{0}, rasterx{0}, rastery{0};
+    double x{0}, y{0} /**< @copydoc x */, z{0} /**< @copydoc x */, rasterx{0} /**< @copydoc x */, rastery{0} /**< @copydoc x */;
     std::array<double, 3> teff{};    ///< Material traversed [radiation lengths]: [0] beam, [1] electron, [2] hadron (Fortran teff(1:3))
     std::array<double, 3> Eloss{};   ///< Energy loss [MeV]: [0] beam, [1] electron, [2] hadron (Fortran Eloss(1:3))
     /// Coulomb energy shift of the electron in the field of the nucleus [MeV].
@@ -107,7 +107,7 @@ struct EventTarget {
  */
 struct ArmSP {
     /// delta [%], target slopes yptar, xptar [dy/dz, dx/dz], target coordinate z ("ytar") [cm].
-    double delta{0}, yptar{0}, xptar{0}, z{0};
+    double delta{0}, yptar{0} /**< @copydoc delta */, xptar{0} /**< @copydoc delta */, z{0} /**< @copydoc delta */;
 };
 
 /**
@@ -116,7 +116,7 @@ struct ArmSP {
  */
 struct DoubleArm {
     /// Electron arm (e) and hadron arm (p).
-    ArmSP e, p;
+    ArmSP e, p /**< @copydoc e */;
 };
 
 /**
@@ -125,7 +125,7 @@ struct DoubleArm {
  */
 struct ArmFP {
     /// Focal-plane position x, y [cm], slopes dx, dy [dx/dz, dy/dz], path length through the spectrometer [cm].
-    double x{0}, dx{0}, y{0}, dy{0}, path{0};
+    double x{0}, dx{0} /**< @copydoc x */, y{0} /**< @copydoc x */, dy{0} /**< @copydoc x */, path{0} /**< @copydoc x */;
 };
 
 /**
@@ -134,7 +134,7 @@ struct ArmFP {
  */
 struct DoubleArmFP {
     /// Electron arm (e) and hadron arm (p).
-    ArmFP e, p;
+    ArmFP e, p /**< @copydoc e */;
 };
 
 /**
@@ -152,7 +152,7 @@ struct NtupVars {
     /// Relative momentum of the recoil system (krel) [MeV/c] (reaction-specific; may keep a previous value).
     double krel{0};
     /// Missing mass on the nucleon (mm) and on the nucleus (mmA) [MeV], Mandelstam t [MeV^2].
-    double mm{0}, mmA{0}, t{0};
+    double mm{0}, mmA{0} /**< @copydoc mm */, t{0} /**< @copydoc mm */;
     double decdist{0};   ///< decay distance (cm), Fortran decdist
     double Mh2_final{0}; ///< hadron mass^2 after decay (MeV^2)
     double sigcm1{0};    ///< pion/kaon: first model cross section (physics_pion.f:126 sig_param_2021) [ub/MeV^2/rad]
@@ -160,12 +160,12 @@ struct NtupVars {
     double dilu{0};      ///< SIDIS dilution (event.f:1525 ntup%dilu = 1.0; semi_dilution is dead code). Not an ntuple column
     double xfermi{0};    ///< SIDIS with Fermi motion: x_Bjorken = Q2/(2 P.q) (semi_physics.f:250, ntuple column 55)
     /// pi0 photons (pizero_decay.f, event.f:899-901): (E, px, py, pz) in the lab [MeV] (task P9.2)
-    std::array<double, 4> gamma1{}, gamma2{};
+    std::array<double, 4> gamma1{}, gamma2{} /**< @copydoc gamma1 */;
     /// pi0 photon positions at the calorimeter [cm] (simc.f:1500-1560, mc_calo only; never written with HMS/SHMS)
-    double xcal_gamma1{0}, ycal_gamma1{0}, xcal_gamma2{0}, ycal_gamma2{0};
+    double xcal_gamma1{0}, ycal_gamma1{0} /**< @copydoc xcal_gamma1 */, xcal_gamma2{0} /**< @copydoc xcal_gamma1 */, ycal_gamma2{0} /**< @copydoc xcal_gamma1 */;
     /// rho: the Breit-Wigner rho mass of the try [MeV] (generate_rho.f:79 ntup%rhomass = Mh; ntuple column Mrho) and
     /// the decay polar angle in the rho rest frame [rad] (rho_decay.f:66 ntup%rhotheta; column Thrho). Task P13.1.
-    double rhomass{0}, rhotheta{0};
+    double rhomass{0}, rhotheta{0} /**< @copydoc rhomass */;
 };
 
 /**
@@ -178,7 +178,7 @@ struct NtupVars {
  */
 struct FermiMomentum {
     /// Momentum [MeV/c], its lab unit vector (pferx, pfery, pferz), and the nucleon energy efer [MeV].
-    double pfer{0}, pferx{0}, pfery{0}, pferz{0}, efer{0};
+    double pfer{0}, pferx{0} /**< @copydoc pfer */, pfery{0} /**< @copydoc pfer */, pferz{0} /**< @copydoc pfer */, efer{0} /**< @copydoc pfer */;
 };
 
 /**
@@ -192,7 +192,7 @@ struct FermiMomentum {
  */
 struct HadronMass {
     /// Hadron mass [MeV], its square [MeV^2], the final-state mass squared after the decay [MeV^2].
-    double Mh{0}, Mh2{0}, Mh2_final{0};
+    double Mh{0}, Mh2{0} /**< @copydoc Mh */, Mh2_final{0} /**< @copydoc Mh */;
 };
 
 /**
@@ -204,26 +204,26 @@ struct MainEvent {
     /// Event weight (cross section x jacobians x spectral-function and generation weights; normalised at the end of
     /// the run), spectral-function weight, generation weight (phase-space volume factor), jacobian of the generation
     /// variables.
-    double weight{0}, SF_weight{0}, gen_weight{0}, jacobian{0};
+    double weight{0}, SF_weight{0} /**< @copydoc weight */, gen_weight{0} /**< @copydoc weight */, jacobian{0} /**< @copydoc weight */;
     /// Shift of the vertex beam energy from its run average (Coulomb + energy loss) and of the scattered-electron
     /// energy (Coulomb) [MeV]; used to compare generated energies with the generation limits.
-    double Ein_shift{0}, Ee_shift{0};
+    double Ein_shift{0}, Ee_shift{0} /**< @copydoc Ein_shift */;
     /// Cross section of the try (vertex kinematics), of the reconstructed kinematics, and at the central kinematics
     /// (sigcent is never assigned: 0) [units of the physics model].
-    double sigcc{0}, sigcc_recon{0}, sigcent{0};
+    double sigcc{0}, sigcc_recon{0} /**< @copydoc sigcc */, sigcent{0} /**< @copydoc sigcc */;
     /// Copies of the corresponding simc::Event quantities for the outputs (epsilon, angles [rad], beta).
-    double epsilon{0}, theta_pq{0}, theta_tarq{0}, phi_pq{0}, phi_targ{0}, beta{0};
+    double epsilon{0}, theta_pq{0} /**< @copydoc epsilon */, theta_tarq{0} /**< @copydoc epsilon */, phi_pq{0} /**< @copydoc epsilon */, phi_targ{0} /**< @copydoc epsilon */, beta{0} /**< @copydoc epsilon */;
     /// Meson production: invariant mass w [MeV], Mandelstam t and its minimum tmin [MeV^2], Q^2 [MeV^2].
-    double w{0}, t{0}, tmin{0}, q2{0};
+    double w{0}, t{0} /**< @copydoc w */, tmin{0} /**< @copydoc w */, q2{0} /**< @copydoc w */;
     /// Meson production in the centre-of-mass frame: momentum pcm [MeV/c], angles thetacm, phicm [rad], energy wcm
     /// [MeV].
-    double pcm{0}, thetacm{0}, phicm{0}, wcm{0};
+    double pcm{0}, thetacm{0} /**< @copydoc pcm */, phicm{0} /**< @copydoc pcm */, wcm{0} /**< @copydoc pcm */;
     /// Reaction jacobians written to the ntuple (davejac: the SIDIS/meson jacobian; johnjac: never assigned, 0).
-    double davejac{0}, johnjac{0};
+    double davejac{0}, johnjac{0} /**< @copydoc davejac */;
     /// Interaction point, energy losses and Coulomb shift of the try.
     EventTarget target;
     /// Spectrometer target coordinates of both arms: true values (SP) and reconstructed values (RECON).
-    DoubleArm SP, RECON;
+    DoubleArm SP, RECON /**< @copydoc SP */;
     /// Focal-plane tracks of both arms.
     DoubleArmFP FP;
     /// Recoil kinetic energy of the try [MeV].

@@ -40,21 +40,21 @@ namespace simc {
  */
 struct ReactionFlags {
     /// (e,e'p): any target, hydrogen elastic, deuterium, heavier nucleus.
-    bool doing_eep{false}, doing_hyd_elast{false}, doing_deuterium{false}, doing_heavy{false};
+    bool doing_eep{false}, doing_hyd_elast{false} /**< @copydoc doing_eep */, doing_deuterium{false} /**< @copydoc doing_eep */, doing_heavy{false} /**< @copydoc doing_eep */;
     /// Exclusive pion production: any target, on hydrogen, on deuterium, on a heavier nucleus.
-    bool doing_pion{false}, doing_hydpi{false}, doing_deutpi{false}, doing_hepi{false};
+    bool doing_pion{false}, doing_hydpi{false} /**< @copydoc doing_pion */, doing_deutpi{false} /**< @copydoc doing_pion */, doing_hepi{false} /**< @copydoc doing_pion */;
     /// Exclusive kaon production: any target, on hydrogen, on deuterium, on a heavier nucleus.
-    bool doing_kaon{false}, doing_hydkaon{false}, doing_deutkaon{false}, doing_hekaon{false};
+    bool doing_kaon{false}, doing_hydkaon{false} /**< @copydoc doing_kaon */, doing_deutkaon{false} /**< @copydoc doing_kaon */, doing_hekaon{false} /**< @copydoc doing_kaon */;
     /// Delta production: any target, on hydrogen, on deuterium, on a heavier nucleus.
-    bool doing_delta{false}, doing_hyddelta{false}, doing_deutdelta{false}, doing_hedelta{false};
+    bool doing_delta{false}, doing_hyddelta{false} /**< @copydoc doing_delta */, doing_deutdelta{false} /**< @copydoc doing_delta */, doing_hedelta{false} /**< @copydoc doing_delta */;
     /// Semi-inclusive (SIDIS) production: any hadron, pion, kaon.
-    bool doing_semi{false}, doing_semipi{false}, doing_semika{false};
+    bool doing_semi{false}, doing_semipi{false} /**< @copydoc doing_semi */, doing_semika{false} /**< @copydoc doing_semi */;
     /// Semi-inclusive production on hydrogen, deuterium, a heavier nucleus.
-    bool doing_hydsemi{false}, doing_deutsemi{false}, doing_hesemi{false};
+    bool doing_hydsemi{false}, doing_deutsemi{false} /**< @copydoc doing_hydsemi */, doing_hesemi{false} /**< @copydoc doing_hydsemi */;
     /// Exclusive rho production: any target, on hydrogen, on deuterium, on a heavier nucleus.
-    bool doing_rho{false}, doing_hydrho{false}, doing_deutrho{false}, doing_herho{false};
+    bool doing_rho{false}, doing_hydrho{false} /**< @copydoc doing_rho */, doing_deutrho{false} /**< @copydoc doing_rho */, doing_herho{false} /**< @copydoc doing_rho */;
     /// Phase-space (acceptance) mode; neutral-pion detection; positive hadron; Fermi motion of the struck nucleon.
-    bool doing_phsp{false}, doing_pizero{false}, doing_hplus{false}, do_fermi{false};
+    bool doing_phsp{false}, doing_pizero{false} /**< @copydoc doing_phsp */, doing_hplus{false} /**< @copydoc doing_phsp */, do_fermi{false} /**< @copydoc doing_phsp */;
     /// Polarised-target magnetic field tracking is on.
     bool using_tgt_field{false};
 };
@@ -94,12 +94,12 @@ struct HistAxis {
 struct DiagHistAxes {
     /// Axes of one arm.
     struct Arm {
-        HistAxis delta, yptar, xptar;   ///< delta [%], yptar and xptar [rad].
+        HistAxis delta /**< @copydoc xptar */, yptar /**< @copydoc xptar */, xptar;   ///< delta [%], yptar and xptar [rad].
     };
     /// Electron arm (e) and hadron arm (p).
-    Arm e, p;
+    Arm e, p /**< @copydoc e */;
     /// Missing energy [MeV] and missing momentum [MeV/c].
-    HistAxis Em, Pm;
+    HistAxis Em, Pm /**< @copydoc Em */;
 };
 
 // ---------------------------------------------------------------------------------------------
@@ -125,7 +125,7 @@ struct Cut {
  */
 struct SlopItem {
     /// lo, hi: run accumulators of the smallest / largest value seen (0 at start); used: the slop applied.
-    double lo{0}, hi{0}, used{0};
+    double lo{0}, hi{0} /**< @copydoc lo */, used{0} /**< @copydoc lo */;
 };
 
 /**
@@ -134,12 +134,12 @@ struct SlopItem {
  */
 struct TargetFunction {
     /// Average, minimum and maximum over the target (unit of the quantity).
-    double ave{0}, min{0}, max{0};
+    double ave{0}, min{0} /**< @copydoc ave */, max{0} /**< @copydoc ave */;
 };
 
 /// Fortran: target.inc type target_info (COMMON /target_info/ targ), after dbase.f conversions.
 struct TargetInfo {
-    double A{0}, Z{0}, N{0};          ///< dbase.f:250 N = A - Z
+    double A{0} /**< @copydoc N */, Z{0} /**< @copydoc N */, N{0};          ///< dbase.f:250 N = A - Z
     double mass_amu{0};               ///< [amu] input
     double M{0};                      ///< [MeV] dbase.f:251 (+ forced Mp/Md l.256-266)
     double mrec_amu{0};               ///< [amu] input
@@ -149,13 +149,13 @@ struct TargetInfo {
     double angle{0};                  ///< [rad] dbase.f:454 (forced 0 for liquid, l.458-461)
     double abundancy{0};              ///< [%]
     double length{0};                 ///< [cm] dbase.f:453 thick/rho
-    double zoffset{0}, xoffset{0}, yoffset{0};   ///< [cm]
+    double zoffset{0} /**< @copydoc yoffset */, xoffset{0} /**< @copydoc yoffset */, yoffset{0};   ///< [cm]
     double X0{0};                     ///< [g/cm^2] init.f:target_init l.33-42
     double X0_cm{0};                  ///< [cm] init.f:43
-    double L1{0}, L2{0};              ///< init.f:19-24
-    double fr1{0}, fr2{0};            ///< [cm] raster
+    double L1{0} /**< @copydoc L2 */, L2{0};              ///< init.f:19-24
+    double fr1{0} /**< @copydoc fr2 */, fr2{0};            ///< [cm] raster
     /// Raster pattern (1 bedpost, 2 circle, 3 flat square) and target can type (1 beer can, 2 pudding can, 3 cryo17).
-    int fr_pattern{0}, can{0};
+    int fr_pattern{0}, can{0} /**< @copydoc fr_pattern */;
     std::array<TargetFunction, 3> Eloss{};   ///< [MeV] 1 beam, 2 e', 3 hadron. ave: target_init (hook),
                                              ///< min/max: extreme_trip_thru_target (hook); zeroed if !using_Eloss
     std::array<TargetFunction, 3> teff{};    ///< [rad. len.] same origin (never zeroed)
@@ -163,13 +163,13 @@ struct TargetInfo {
     double Coulomb_constant{0};              ///< [MeV] init.f:75/79
     std::array<double, 3> musc_max{};        ///< [rad] extreme_target_musc (hook); zeroed if !mc_smear (init.f:254-258)
     double musc_nsig_max{0};                 ///< extreme_target_musc (hook)
-    double Mtar_struck{0}, Mrec_struck{0};   ///< [MeV] dbase.f:277-450
+    double Mtar_struck{0} /**< @copydoc Mrec_struck */, Mrec_struck{0};   ///< [MeV] dbase.f:277-450
 };
 
 /// Fortran: structures.inc spectrometer offsets (after dbase.f:472-475 xptar/yptar mrad -> rad).
 struct SpecOffset {
-    double x{0}, y{0}, z{0};          ///< [cm]
-    double xptar{0}, yptar{0};        ///< [rad] (NB: the .hist prints these under 'mr' without *1000)
+    double x{0} /**< @copydoc z */, y{0} /**< @copydoc z */, z{0};          ///< [cm]
+    double xptar{0} /**< @copydoc yptar */, yptar{0};        ///< [rad] (NB: the .hist prints these under 'mr' without *1000)
 };
 
 /// Fortran: structures.inc spec%e / spec%p (after dbase.f:238-262).
@@ -177,7 +177,7 @@ struct SpecArm {
     double P{0};                      ///< [MeV/c]
     double theta{0};                  ///< [rad] dbase.f:239/242 abs(theta)/degrad
     /// cos(theta) and sin(theta) of the central angle.
-    double cos_th{0}, sin_th{0};
+    double cos_th{0}, sin_th{0} /**< @copydoc cos_th */;
     double phi{0};                    ///< [rad] dbase.f:247-262: 3pi/2 (beam-right arms, SpectrometerId::IsBeamRight) or pi/2
     SpecOffset offset;                ///< Mispointing offsets of the arm.
 };
@@ -185,52 +185,52 @@ struct SpecArm {
 /// Fortran: arm cuts in double_arm_cuts (SPedge%e / SPedge%p): delta [%], yptar/xptar [rad], z.
 struct ArmCuts {
     /// delta [%], yptar, xptar [rad], z [cm] acceptance edges.
-    Cut delta, yptar, xptar, z;
+    Cut delta, yptar /**< @copydoc delta */, xptar /**< @copydoc delta */, z /**< @copydoc delta */;
 };
 
 /// Fortran: edge_arm (E, yptar, xptar).
 struct EdgeArm {
     /// Energy [MeV] and target slopes yptar, xptar [rad].
-    Cut E, yptar, xptar;
+    Cut E, yptar /**< @copydoc E */, xptar /**< @copydoc E */;
 };
 
 /// Fortran: edge_true (edge, VERTEXedge).
 struct EdgeTrue {
     /// Electron arm (e) and hadron arm (p).
-    EdgeArm e, p;
+    EdgeArm e, p /**< @copydoc e */;
     /// Missing energy [MeV], missing momentum [MeV/c], recoil mass [MeV], recoil kinetic energy [MeV] (of the system
     /// and of the struck nucleon).
-    Cut Em, Pm, Mrec, Trec, Trec_struck;
+    Cut Em, Pm /**< @copydoc Em */, Mrec /**< @copydoc Em */, Trec /**< @copydoc Em */, Trec_struck /**< @copydoc Em */;
 };
 
 /// Fortran: arm_limits (gen%e / gen%p).
 struct GenArm {
     /// delta [%], yptar, xptar [rad], energy E [MeV].
-    Cut delta, yptar, xptar, E;
+    Cut delta, yptar /**< @copydoc delta */, xptar /**< @copydoc delta */, E /**< @copydoc delta */;
 };
 
 /// Fortran: gen_limits (gen).
 struct GenLimits {
     /// Electron arm (e) and hadron arm (p).
-    GenArm e, p;
+    GenArm e, p /**< @copydoc e */;
     /// Sum of the generated energies [MeV] and recoil kinetic energy [MeV].
-    Cut sumEgen, Trec;
-    double xwid{0}, ywid{0};          ///< [cm] input gen%xwid/ywid
+    Cut sumEgen, Trec /**< @copydoc sumEgen */;
+    double xwid{0} /**< @copydoc ywid */, ywid{0};          ///< [cm] input gen%xwid/ywid
 };
 
 /// Fortran: sloptype (slop%total, slop%MC).
 struct Slops {
     /// Slops of the missing energy [MeV] and missing momentum [MeV/c].
     struct Total {
-        SlopItem Em, Pm;   ///< Missing-energy slop [MeV] and missing-momentum slop [MeV/c].
+        SlopItem Em /**< @copydoc Pm */, Pm;   ///< Missing-energy slop [MeV] and missing-momentum slop [MeV/c].
     } total;               ///< Slops on the missing quantities.
     /// Slops of one arm.
     struct Arm {
-        SlopItem delta, yptar, xptar;   ///< delta [%], yptar and xptar [rad].
+        SlopItem delta /**< @copydoc xptar */, yptar /**< @copydoc xptar */, xptar;   ///< delta [%], yptar and xptar [rad].
     };
     /// Monte Carlo (resolution) slops of the two arms.
     struct MC {
-        Arm e, p;   ///< Electron arm (e) and hadron arm (p).
+        Arm e /**< @copydoc p */, p;   ///< Electron arm (e) and hadron arm (p).
     } MC;           ///< Monte Carlo (resolution) slops per arm.
 };
 
@@ -260,14 +260,14 @@ struct TheoryData {
     /// Missing-momentum axis of one distribution (structures.inc axis).
     struct PmAxis {
         /// Lower edge, upper edge and bin width [MeV/c].
-        double min{0}, max{0}, bin{0};
+        double min{0}, max{0} /**< @copydoc min */, bin{0} /**< @copydoc min */;
         int n{0};   ///< Number of bins.
     };
     std::string file;                   ///< theory_file (h2.theory, c12.theory, ...)
     bool loaded{false};                 ///< True when the file was read.
     int nrhoPm{0};                      ///< Number of momentum distributions (shells) in the file.
     double E_Fermi{0};                  ///< Fermi energy of the nucleus [MeV] (from the file).
-    std::vector<double> nprot, Em, Emsig, bs_norm, Em_int;   ///< per distribution m (0-based)
+    std::vector<double> nprot /**< @copydoc Em_int */, Em /**< @copydoc Em_int */, Emsig /**< @copydoc Em_int */, bs_norm /**< @copydoc Em_int */, Em_int;   ///< per distribution m (0-based)
     std::vector<PmAxis> Pm;                                  ///< Pm_theory(m)
     std::vector<std::vector<double>> theory;                 ///< theory(m, n) (0-based both)
 };
@@ -286,14 +286,14 @@ struct SpectralFunctionChoice {
 /// Fortran: dbase.f:571-596 momentum distribution (pval, mprob, nump) for deut/he pion/kaon/semi.
 struct MomentumDistribution {
     std::string file;                   ///< File name of the distribution (in RunSetup::data_dir).
-    std::vector<double> pval, mprob;    ///< mprob normalised to mprob(nump)
+    std::vector<double> pval /**< @copydoc mprob */, mprob;    ///< mprob normalised to mprob(nump)
 };
 
 /// Fortran: radc.inc quantities fixed by radc_init / limits_init (per-event ones live elsewhere).
 struct RadSetup {
     double etatzai{0};                  ///< init.f:630 (12+(Z+1)/(Z*L1+L2))/9
     double Egamma_tot_max{0};           ///< init.f:limits_init l.408-418
-    double Egamma1_max{0}, Egamma2_max{0}, Egamma3_max{0};   ///< init.f:419-421 (0 if tail off)
+    double Egamma1_max{0} /**< @copydoc Egamma3_max */, Egamma2_max{0} /**< @copydoc Egamma3_max */, Egamma3_max{0};   ///< init.f:419-421 (0 if tail off)
 };
 
 /**
@@ -314,20 +314,20 @@ struct RunSetup {
     bool fortran_compat{false};
 
     // dbase.f:239-244 (kept for the P1.4 sinks; identical to spec.e/p.theta, sin_th, cos_th)
-    double e_theta{0}, e_sin_th{0}, e_cos_th{0};   ///< rad
-    double p_theta{0}, p_sin_th{0}, p_cos_th{0};   ///< rad (hadron arm)
+    double e_theta{0} /**< @copydoc e_cos_th */, e_sin_th{0} /**< @copydoc e_cos_th */, e_cos_th{0};   ///< rad
+    double p_theta{0} /**< @copydoc p_cos_th */, p_sin_th{0} /**< @copydoc p_cos_th */, p_cos_th{0};   ///< rad (hadron arm)
 
     DiagHistAxes hist;              ///< init.f:limits_init l.515-570
 
     // ---------------- filled by BuildRunSetup (P2.1) ----------------
-    double Mh{0}, Mh2{0}, Mh2_final{0};   ///< [MeV] dbase.f:136-219, 221-222
+    double Mh{0} /**< @copydoc Mh2_final */, Mh2{0} /**< @copydoc Mh2_final */, Mh2_final{0};   ///< [MeV] dbase.f:136-219, 221-222
     double sign_hadron{0};                ///< dbase.f:277-446 (0 if no branch sets it, e.g. doing_phsp)
     double Ebeam{0};                      ///< [MeV]
     double dEbeam{0};                     ///< [MeV] dbase.f:238 Ebeam*dEbeam/100 (full width)
     double Ebeam_vertex_ave{0};           ///< [MeV] init.f:283 Ebeam + Coulomb.ave - Eloss(1).ave
     struct { SpecArm e, p; } spec;        ///< dbase.f:238-262, 472-475
     TargetInfo targ;                      ///< The target after the dbase.f/init.f conversions.
-    double targ_Bangle{0}, targ_Bphi{0};  ///< [rad] dbase.f:455-456
+    double targ_Bangle{0} /**< @copydoc targ_Bphi */, targ_Bphi{0};  ///< [rad] dbase.f:455-456
     struct { ArmCuts e, p; } SPedge;      ///< dbase.f:479-490 then + slop%MC (init.f:209-220)
     struct { Cut Em, Pm; } cuts;          ///< [MeV] dbase.f:536-540 (±1e6 for pion/kaon/delta or Em.min=Em.max)
     EdgeTrue edge;                        ///< init.f:limits_init

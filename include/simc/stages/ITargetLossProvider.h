@@ -31,7 +31,7 @@ namespace simc {
  * @note Origin: Fortran SIMC init.f:target_init, called at dbase.f:551-552.
  */
 struct TargetInitArgs {
-    int electron_arm{0}, hadron_arm{0};   ///< Fortran COMMON electron_arm/hadron_arm (window materials per arm)
+    int electron_arm{0} /**< @copydoc hadron_arm */, hadron_arm{0};   ///< Fortran COMMON electron_arm/hadron_arm (window materials per arm)
     bool using_Eloss{false};              ///< energy loss is simulated
     bool using_Coulomb{false};            ///< the Coulomb correction is applied
     double the_cent{0};    ///< [rad] spec%e%theta
@@ -48,7 +48,7 @@ struct TargetInitArgs {
  *       init.f:limits_init l.231-246.
  */
 struct ExtremeTripArgs {
-    int electron_arm{0}, hadron_arm{0};   ///< Fortran COMMON electron_arm/hadron_arm
+    int electron_arm{0} /**< @copydoc hadron_arm */, hadron_arm{0};   ///< Fortran COMMON electron_arm/hadron_arm
     double Ebeam{0};       ///< beam energy [MeV]
     Cut the;               ///< the_phys min/max [rad] (init.f:232-235)
     Cut thp;               ///< thp_phys min/max [rad] (init.f:236-239)

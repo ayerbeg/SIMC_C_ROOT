@@ -57,7 +57,7 @@ double inter(bool calculate_spence, double alpha, double ar1, double ar2, double
 
 /// Values srad computes (it has no output arguments; they are only printed).
 struct SradValues {
-    double dsoft{0}, dsoftz{0}, dsoftzz{0};  ///< the three soft corrections of the ultra-relativistic limit.
+    double dsoft{0} /**< @copydoc dsoftzz */, dsoftz{0} /**< @copydoc dsoftzz */, dsoftzz{0};  ///< the three soft corrections of the ultra-relativistic limit.
 };
 /// Fortran: brem.f:srad (l.251-283). Prints if produce_output; returns the three computed values.
 /// @param ak,akp incoming and scattered electron momenta [GeV].

@@ -42,9 +42,9 @@ using CentralRad = RadiationValues;
 /// Fortran: type event_central (structures.inc).
 struct CentralEvent {
     /// Central kinematics: Q2 [MeV^2], q, nu, Em, Pm, W, MM [MeV] (same units as Event).
-    double Q2{0}, q{0}, nu{0}, Em{0}, Pm{0}, W{0}, MM{0};
+    double Q2{0}, q{0} /**< @copydoc Q2 */, nu{0} /**< @copydoc Q2 */, Em{0} /**< @copydoc Q2 */, Pm{0} /**< @copydoc Q2 */, W{0} /**< @copydoc Q2 */, MM{0} /**< @copydoc Q2 */;
     /// Central reconstructed quantities of one arm (delta [%], xptar/yptar [rad]); `e` = electron arm, `p` = hadron arm.
-    struct Arm { double delta{0}, xptar{0}, yptar{0}; /**< delta [%], xptar, yptar [rad] */ } e, p;  ///< e = electron arm, p = hadron arm
+    struct Arm { double delta{0} /**< @copydoc yptar */, xptar{0} /**< @copydoc yptar */, yptar{0}; /**< delta [%], xptar, yptar [rad] */ } e /**< @copydoc p */, p;  ///< e = electron arm, p = hadron arm
     double sigcc{0};  ///< central cross section (sigcc) from complete_main with force_sigcc = .true.
     CentralRad rad;  ///< radiation central values (filled only when radiation is on).
 };

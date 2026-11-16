@@ -24,22 +24,22 @@ namespace optics {
 struct DecayRecord {
     int kind{0};             ///< 1 project, 2 transp 1st half (before the COSY map), 3 transp 2nd half (after it)
     int cls{0};              ///< COSY class (transp), 0 for project
-    double x{0}, y{0};       ///< COMMON xs, ys when loren is called
-    double dxdz_before{0}, dydz_before{0}, dpp_before{0}, p_before{0};   ///< parent slopes, dpps, ph
+    double x{0} /**< @copydoc y */, y{0};       ///< COMMON xs, ys when loren is called
+    double dxdz_before{0} /**< @copydoc p_before */, dydz_before{0} /**< @copydoc p_before */, dpp_before{0} /**< @copydoc p_before */, p_before{0};   ///< parent slopes, dpps, ph
     double pathlen_at{0};    ///< pathlen when loren is called
     double decdist_at{0};    ///< decdist after the += z_decay
     double m2_before{0};  ///< parent mass squared [MeV^2].
-    double gamma{0}, bx{0}, by{0}, bz{0}, er{0}, pxr{0}, pyr{0}, pzr{0};   ///< loren inputs
-    double ef{0}, pxf{0}, pyf{0}, pzf{0}, pf{0};                         ///< loren outputs
-    double dxdz_after{0}, dydz_after{0};   ///< pxf/pzf, pyf/pzf
-    double dpp_after{0}, m2_after{0}, p_after{0};   ///< dpps, m2, ph at the end of the decaying step
+    double gamma{0} /**< @copydoc pzr */, bx{0} /**< @copydoc pzr */, by{0} /**< @copydoc pzr */, bz{0} /**< @copydoc pzr */, er{0} /**< @copydoc pzr */, pxr{0} /**< @copydoc pzr */, pyr{0} /**< @copydoc pzr */, pzr{0};   ///< loren inputs
+    double ef{0} /**< @copydoc pf */, pxf{0} /**< @copydoc pf */, pyf{0} /**< @copydoc pf */, pzf{0} /**< @copydoc pf */, pf{0};                         ///< loren outputs
+    double dxdz_after{0} /**< @copydoc dydz_after */, dydz_after{0};   ///< pxf/pzf, pyf/pzf
+    double dpp_after{0} /**< @copydoc p_after */, m2_after{0} /**< @copydoc p_after */, p_after{0};   ///< dpps, m2, ph at the end of the decaying step
     double step_len{0};      ///< zd (transp) / z_drift (project)
     double z_decay{0};       ///< the sampled decay distance (cm along the path)
 };
 
 /// Entry or exit state of one project/transp call.
 struct StepState {
-    double xs{0}, ys{0}, dxdzs{0}, dydzs{0}, dpps{0}, m2{0}, ph{0}, pathlen{0}, decdist{0};  ///< COMMON /track/ values: positions [cm], slopes, dpps [%], m2 [MeV^2], ph [MeV/c], pathlen and decdist [cm].
+    double xs{0} /**< @copydoc decdist */, ys{0} /**< @copydoc decdist */, dxdzs{0} /**< @copydoc decdist */, dydzs{0} /**< @copydoc decdist */, dpps{0} /**< @copydoc decdist */, m2{0} /**< @copydoc decdist */, ph{0} /**< @copydoc decdist */, pathlen{0} /**< @copydoc decdist */, decdist{0};  ///< COMMON /track/ values: positions [cm], slopes, dpps [%], m2 [MeV^2], ph [MeV/c], pathlen and decdist [cm].
 };
 
 /// One project/transp call (steps.txt.xz of the P6.F2 tables).
@@ -48,8 +48,8 @@ struct StepRecord {
     int cls{0};    ///< transp class, 0 for project
     double zd{0};  ///< drift / step length [cm].
     bool decay_check{false};   ///< entered with decay_flag .and. .not.dflag (one grnd)
-    bool dflag_in{false}, dflag_out{false};  ///< decay flag on entry and on exit.
-    StepState in, out;  ///< state on entry and on exit.
+    bool dflag_in{false} /**< @copydoc dflag_out */, dflag_out{false};  ///< decay flag on entry and on exit.
+    StepState in /**< @copydoc out */, out;  ///< state on entry and on exit.
 };
 
 /// Per-call counters of the transport (project/transp) kernels.
@@ -60,7 +60,7 @@ struct TransportTrace {
     long dec_check{0};        ///< 1-based index of the decaying check among the decay checks
     long dec_step{0};         ///< 1-based index of the decaying step among all steps
     DecayRecord dec;  ///< the decay (if #decayed).
-    std::vector<StepRecord>* steps{nullptr};   ///< optional: every step  ///< optional: every step (not owned).
+    std::vector<StepRecord>* steps{nullptr};   ///< optional: every step (not owned)
     /// Clear the counters (and the attached step list), keeping the attachment.
     void reset() {
         std::vector<StepRecord>* s = steps;
@@ -80,7 +80,7 @@ struct CollCall {
 struct CollTrace {
     long n_absorb_calls{0};  ///< number of pion_coll_absorb calls.
     bool absorbed{false};  ///< the particle was absorbed.
-    double ab_p_last{0}, ab_thick_last{0}, ab_trans_last{0}, ab_u_last{0};  ///< arguments and results of the last pion_coll_absorb call (p, thickness, transmission, uniform).
+    double ab_p_last{0} /**< @copydoc ab_u_last */, ab_thick_last{0} /**< @copydoc ab_u_last */, ab_trans_last{0} /**< @copydoc ab_u_last */, ab_u_last{0};  ///< arguments and results of the last pion_coll_absorb call (p, thickness, transmission, uniform).
     long n_eloss_calls{0};  ///< number of enerloss_new calls.
     double eloss_sum{0};  ///< summed energy loss [MeV].
     bool ranged_out{false};   ///< corrected mode only: stopped because enerloss_new clamped the loss (D-037 F4)

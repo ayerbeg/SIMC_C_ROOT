@@ -121,11 +121,11 @@ struct McHmsArgs {
     double p_spec{0};    ///< in: central momentum (MeV/c)
     double th_spec{0};   ///< in: central angle (rad); not used (mc_hms.f:153 xt = th_spec)
     double dpp{0};       ///< in: dp/p (%);                out if ok: reconstructed delta (%)
-    double x{0}, y{0}, z{0};   ///< in: cm at z = 0 plane;  out if ok: y = reconstructed ytar (cm)
-    double dxdz{0}, dydz{0};   ///< in: slopes;             out if ok: dxdz = recon xptar, dydz = recon yptar
-    double x_fp{0}, dx_fp{0}, y_fp{0}, dy_fp{0};   ///< out after both DCs: fitted focal plane (real*4 values)
+    double x{0} /**< @copydoc z */, y{0} /**< @copydoc z */, z{0};   ///< in: cm at z = 0 plane;  out if ok: y = reconstructed ytar (cm)
+    double dxdz{0} /**< @copydoc dydz */, dydz{0};   ///< in: slopes;             out if ok: dxdz = recon xptar, dydz = recon yptar
+    double x_fp{0} /**< @copydoc dy_fp */, dx_fp{0} /**< @copydoc dy_fp */, y_fp{0} /**< @copydoc dy_fp */, dy_fp{0};   ///< out after both DCs: fitted focal plane (real*4 values)
     double m2{0};        ///< in/out: mass^2 (MeV^2), changed on decay
-    bool ms_flag{false}, wcs_flag{false}, decay_flag{false};  ///< in: multiple scattering, wire-chamber smearing, decay switches.
+    bool ms_flag{false} /**< @copydoc decay_flag */, wcs_flag{false} /**< @copydoc decay_flag */, decay_flag{false};  ///< in: multiple scattering, wire-chamber smearing, decay switches.
     double resmult{0};   ///< out when the hut is reached: DC resolution factor (1 or 2)
     double fry{0};       ///< in: simc.f passes xtar_init (cm)
     bool ok_spec{false};   ///< out
@@ -142,7 +142,7 @@ struct McHmsDetail {
     int stop_code{kSuccess};   ///< StopCode of the counter incremented at the stop (0 = success)
     bool reached_hut{false};   ///< hSTOP_hut incremented
     bool fit_done{false};      ///< x_fp..dy_fp written (both chambers passed)
-    float xfp4{0}, dxfp4{0}, yfp4{0}, dyfp4{0};   ///< the real*4 lfit results (valid if fit_done)
+    float xfp4{0} /**< @copydoc dyfp4 */, dxfp4{0} /**< @copydoc dyfp4 */, yfp4{0} /**< @copydoc dyfp4 */, dyfp4{0};   ///< the real*4 lfit results (valid if fit_done)
 };
 
 /// Fortran: hms/pion_coll_absorb.f:pion_coll_absorb(ppi,thick,transmission) — returns transmission.

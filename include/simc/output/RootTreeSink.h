@@ -9,7 +9,7 @@
  * Only successful events are written (results_write.f:34, "if (.not.success) return").
  *
  * JSON config (all optional):
- *   {"file": "<path>.root"}   default: <output_dir>/<run_name>.root
+ *   {"file": "<path>.root"}   default: \<output_dir\>/\<run_name\>.root
  *   {"tree": "h10"}
  */
 #ifndef SIMC_OUTPUT_ROOTTREESINK_H
@@ -49,7 +49,7 @@ public:
     void fill(const MainEvent& main, const Event& vertex, const Event& orig, const Event& recon,
               bool success) override;
     void endRun(const RunSummary& summary) override;
-    /// P15.4 (--threads N): a worker writes its tree to the temporary file <file>.w<k>.tmp; mergeWorkerSink() appends
+    /// P15.4 (--threads N): a worker writes its tree to the temporary file \<file\>.w<k>.tmp; mergeWorkerSink() appends
     /// its entries to this tree (worker order) and removes the file.
     /// @param worker worker index (0-based).
     /// @param nworkers number of workers.

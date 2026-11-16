@@ -59,22 +59,22 @@ struct CaloCounters {
 
 /// The argument list of mc_calo (mc_calo.f:1-5) plus the decay COMMON variables.
 struct McCaloArgs {
-    double p_spec{0}, th_spec{0};  ///< in: central momentum [MeV/c] and angle [rad].
+    double p_spec{0} /**< @copydoc th_spec */, th_spec{0};  ///< in: central momentum [MeV/c] and angle [rad].
     double dpp{0};  ///< in: dp/p [%]; out: reconstructed delta [%].
-    double x{0}, y{0}, z{0};  ///< in: position [cm]; out: reconstructed ytar in y [cm].
-    double dxdz{0}, dydz{0};  ///< in: slopes; out: reconstructed xptar, yptar.
-    double x_fp{0}, dx_fp{0}, y_fp{0}, dy_fp{0};   ///< out on success only
+    double x{0} /**< @copydoc z */, y{0} /**< @copydoc z */, z{0};  ///< in: position [cm]; out: reconstructed ytar in y [cm].
+    double dxdz{0} /**< @copydoc dydz */, dydz{0};  ///< in: slopes; out: reconstructed xptar, yptar.
+    double x_fp{0} /**< @copydoc dy_fp */, dx_fp{0} /**< @copydoc dy_fp */, y_fp{0} /**< @copydoc dy_fp */, dy_fp{0};   ///< out on success only
     double m2{0};                                  ///< in/out (decay)
-    bool ms_flag{false}, wcs_flag{false}, decay_flag{false};  ///< in: multiple scattering, smearing, decay switches.
+    bool ms_flag{false} /**< @copydoc decay_flag */, wcs_flag{false} /**< @copydoc decay_flag */, decay_flag{false};  ///< in: multiple scattering, smearing, decay switches.
     double resmult{0};   ///< not written (D-062 G7)
-    double frx{0}, fry{0};  ///< in: beam (raster) position [cm].
+    double frx{0} /**< @copydoc fry */, fry{0};  ///< in: beam (raster) position [cm].
     bool ok_spec{false};  ///< out: the ray hit the calorimeter.
     double pathlen{0};   ///< in/out: accumulated
     bool using_tgt_field{false};  ///< in: polarized-target field in use.
     double prot_zbeam{0};  ///< in: prot_zbeam argument of mc_calo (only in commented-out code of the Fortran).
     int spect_side{0};  ///< in: 7 (HMS side) or 8 (SHMS side).
     double drift_to_cal{0};  ///< in: drift distance from the target to the calorimeter face [cm].
-    double ctau{0}, decdist{0}, Mh2_final{0};  ///< COMMON (simulate.inc) of the decay code.
+    double ctau{0} /**< @copydoc Mh2_final */, decdist{0} /**< @copydoc Mh2_final */, Mh2_final{0};  ///< COMMON (simulate.inc) of the decay code.
 };
 
 /// Diagnostics of one mc_calo call.

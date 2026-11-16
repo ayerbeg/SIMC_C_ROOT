@@ -69,11 +69,11 @@ struct PeerhoConfig {
 
 /// The intermediate quantities of one peerho call (for the L1 tests; the Fortran returns only peerho).
 struct PeerhoTrace {
-    double efer{0}, tcos{0}, tsin{0}, tfcos{0}, tfsin{0}, epsi{0};  ///< peerho locals (rho_physics.f names): kinematics.
-    double s{0}, nu_eq{0}, t{0}, tmin{0}, tprime{0};  ///< peerho locals: s, equivalent photon energy, t, tmin, t'.
-    double qstar{0}, ppicm{0}, thetacm{0}, phicm{0}, phiqn{0};  ///< peerho locals: CM momenta and angles.
-    double sig0{0}, R{0}, sigt{0}, cdeltatau{0}, brho{0}, sig219{0}, sig{0};  ///< peerho locals: cross-section factors.
-    double gtpr{0}, factor{0}, jacobian{0}, johnjac{0}, davesig{0};  ///< peerho locals: flux, factors and Jacobians.
+    double efer{0} /**< @copydoc epsi */, tcos{0} /**< @copydoc epsi */, tsin{0} /**< @copydoc epsi */, tfcos{0} /**< @copydoc epsi */, tfsin{0} /**< @copydoc epsi */, epsi{0};  ///< peerho locals (rho_physics.f names): kinematics.
+    double s{0} /**< @copydoc tprime */, nu_eq{0} /**< @copydoc tprime */, t{0} /**< @copydoc tprime */, tmin{0} /**< @copydoc tprime */, tprime{0};  ///< peerho locals: s, equivalent photon energy, t, tmin, t'.
+    double qstar{0} /**< @copydoc phiqn */, ppicm{0} /**< @copydoc phiqn */, thetacm{0} /**< @copydoc phiqn */, phicm{0} /**< @copydoc phiqn */, phiqn{0};  ///< peerho locals: CM momenta and angles.
+    double sig0{0} /**< @copydoc sig */, R{0} /**< @copydoc sig */, sigt{0} /**< @copydoc sig */, cdeltatau{0} /**< @copydoc sig */, brho{0} /**< @copydoc sig */, sig219{0} /**< @copydoc sig */, sig{0};  ///< peerho locals: cross-section factors.
+    double gtpr{0} /**< @copydoc davesig */, factor{0} /**< @copydoc davesig */, jacobian{0} /**< @copydoc davesig */, johnjac{0} /**< @copydoc davesig */, davesig{0};  ///< peerho locals: flux, factors and Jacobians.
     bool crazy{false};   ///< sigma_eerho > 1e10 or < 0 -> 0 (l.388-393)
 };
 

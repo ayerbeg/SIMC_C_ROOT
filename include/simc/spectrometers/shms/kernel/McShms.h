@@ -147,18 +147,18 @@ struct McShmsArgs {
     double p_spec{0};    ///< in (MeV/c)
     double th_spec{0};   ///< in (rad), unused
     double dpp{0};       ///< in (%); out if ok: recon delta
-    double x{0}, y{0}, z{0};   ///< in (cm); out if ok: y = recon ytar
-    double dxdz{0}, dydz{0};   ///< in; out if ok: dxdz = recon xptar, dydz = recon yptar
-    double x_fp{0}, dx_fp{0}, y_fp{0}, dy_fp{0};   ///< out after the fit (real*4 values), else unchanged
+    double x{0} /**< @copydoc z */, y{0} /**< @copydoc z */, z{0};   ///< in (cm); out if ok: y = recon ytar
+    double dxdz{0} /**< @copydoc dydz */, dydz{0};   ///< in; out if ok: dxdz = recon xptar, dydz = recon yptar
+    double x_fp{0} /**< @copydoc dy_fp */, dx_fp{0} /**< @copydoc dy_fp */, y_fp{0} /**< @copydoc dy_fp */, dy_fp{0};   ///< out after the fit (real*4 values), else unchanged
     double m2{0};        ///< in/out (decay)
-    bool ms_flag{false}, wcs_flag{false}, decay_flag{false};  ///< in: multiple scattering, wire-chamber smearing, decay switches.
+    bool ms_flag{false} /**< @copydoc decay_flag */, wcs_flag{false} /**< @copydoc decay_flag */, decay_flag{false};  ///< in: multiple scattering, wire-chamber smearing, decay switches.
     double resmult{0};   ///< out when the hut is entered (always 1.0)
     double fry{0};       ///< in: xtar_init
     bool ok_spec{false};  ///< out: the ray passed.
     double pathlen{0};   ///< in/out
     int spectr{5};       ///< 5 = SHMS (any other value -> FortranStop, mc_shms.f:335-340)
     bool using_SHMScoll{false};  ///< in: use the collimator.
-    double ctau{0}, decdist{0}, Mh2_final{0};   ///< COMMON (simulate.inc), see hms/kernel/McHms.h
+    double ctau{0} /**< @copydoc Mh2_final */, decdist{0} /**< @copydoc Mh2_final */, Mh2_final{0};   ///< COMMON (simulate.inc), see hms/kernel/McHms.h
 };
 
 /// Diagnostics of one mc_shms call.
@@ -167,7 +167,7 @@ struct McShmsDetail {
     int stop_id{0};            ///< COMMON stop_id after the call
     bool reached_hut{false};  ///< the hut was entered.
     bool fit_done{false};  ///< x_fp..dy_fp written.
-    float xfp4{0}, dxfp4{0}, yfp4{0}, dyfp4{0};  ///< the real*4 lfit results (valid if fit_done).
+    float xfp4{0} /**< @copydoc dyfp4 */, dxfp4{0} /**< @copydoc dyfp4 */, yfp4{0} /**< @copydoc dyfp4 */, dyfp4{0};  ///< the real*4 lfit results (valid if fit_done).
 };
 
 /// The other COMMON /track/ variables written by mc_shms (spectrometers.inc): aperture-plane positions and the
@@ -175,8 +175,8 @@ struct McShmsDetail {
 struct ShmsTrace {
     static constexpr int kN = 31;  ///< number of aperture planes recorded.
     static const char* const kNames[kN];   ///< hb_in hb_men hb_mex hb_out q1_in ... q3_out d_in d_flr d_men d_m1..d_m7 d_mex d_out
-    std::array<double, kN> x{}, y{};  ///< x and y at each aperture plane [cm].
-    double xs_fp{0}, ys_fp{0}, dxdzs_fp{0}, dydzs_fp{0};  ///< track at the hut entrance (positions [cm], slopes).
+    std::array<double, kN> x{} /**< @copydoc y */, y{};  ///< x and y at each aperture plane [cm].
+    double xs_fp{0} /**< @copydoc dydzs_fp */, ys_fp{0} /**< @copydoc dydzs_fp */, dxdzs_fp{0} /**< @copydoc dydzs_fp */, dydzs_fp{0};  ///< track at the hut entrance (positions [cm], slopes).
 };
 
 /// @brief The SHMS single-arm Monte Carlo with the Fortran COMMON counters and SAVEd state.

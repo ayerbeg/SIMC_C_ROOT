@@ -27,7 +27,7 @@ namespace driver {
 /// (simc.f:139 p-arm same-side sign for targ_Bangle < theta_p). Default (corrected): abs(abs(dphi)-180) < .01 and the
 /// e-arm formula for the p arm.
 struct ArmFieldAngles {
-    double earm{0.0}, parm{0.0};   ///< ang_targ_earm, ang_targ_parm [rad]
+    double earm{0.0} /**< @copydoc parm */, parm{0.0};   ///< ang_targ_earm, ang_targ_parm [rad]
     std::vector<std::string> log;  ///< Fortran write(*,*) lines produced while computing the angles (one string per line).
 };
 /// @brief Compute the angle between the target field and each arm.

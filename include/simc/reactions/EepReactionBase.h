@@ -48,12 +48,12 @@ namespace reactions {
 
 /// Fortran COMMON /pfermi/ (simulate.inc): Fermi momentum of the struck nucleon (0 for (e,e'p)) and its energy.
 struct FermiMomentum {
-    double pfer{0}, pferx{0}, pfery{0}, pferz{0}, efer{0};  ///< |p|, px, py, pz [MeV] and energy [MeV] of the struck nucleon.
+    double pfer{0} /**< @copydoc efer */, pferx{0} /**< @copydoc efer */, pfery{0} /**< @copydoc efer */, pferz{0} /**< @copydoc efer */, efer{0};  ///< |p|, px, py, pz [MeV] and energy [MeV] of the struck nucleon.
 };
 
 /// ntup%mm, mmA, t written by complete_recon_ev for pion/kaon/delta/rho/semi (event.f:1257-1266).
 struct ReconNtup {
-    double mm{0}, mmA{0}, t{0};  ///< missing mass, missing mass of the nucleus, Mandelstam t (ntuple units).
+    double mm{0} /**< @copydoc t */, mmA{0} /**< @copydoc t */, t{0};  ///< missing mass, missing mass of the nucleus, Mandelstam t (ntuple units).
 };
 
 /// @brief Base class of the (e,e'p) and meson reactions: event completion, reconstruction and weight.

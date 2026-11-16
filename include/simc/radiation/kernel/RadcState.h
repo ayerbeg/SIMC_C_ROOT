@@ -66,22 +66,22 @@ struct RadcRun {
     std::array<bool, 4> doing_tail{};    ///< [1..3] = doing_tail(1:3) (dbase.f:494-513); [0] unused
     double etatzai{0};                   ///< init.f:634
     double Egamma_tot_max{0};            ///< init.f:limits_init
-    double Egamma1_max{0}, Egamma2_max{0}, Egamma3_max{0};  ///< maximum photon energy per tail [MeV].
+    double Egamma1_max{0} /**< @copydoc Egamma3_max */, Egamma2_max{0} /**< @copydoc Egamma3_max */, Egamma3_max{0};  ///< maximum photon energy per tail [MeV].
     BremFlags brem;                      ///< /bremcom/
     // ---- simulate.inc values read by radc.f / init.f ----------------------------------------------
     double Egamma_gen_max{0};            ///< [MeV]
     double dE_edge_test{0};              ///< [MeV]
-    bool doing_eep{false}, doing_hyd_elast{false}, doing_deuterium{false}, doing_heavy{false};  ///< reaction flags read by the radiation code.
-    bool doing_pion{false}, doing_kaon{false}, doing_rho{false}, doing_semi{false};  ///< reaction flags read by the radiation code.
+    bool doing_eep{false} /**< @copydoc doing_heavy */, doing_hyd_elast{false} /**< @copydoc doing_heavy */, doing_deuterium{false} /**< @copydoc doing_heavy */, doing_heavy{false};  ///< reaction flags read by the radiation code.
+    bool doing_pion{false} /**< @copydoc doing_semi */, doing_kaon{false} /**< @copydoc doing_semi */, doing_rho{false} /**< @copydoc doing_semi */, doing_semi{false};  ///< reaction flags read by the radiation code.
     bool doing_delta{false};  ///< doing_delta flag.
     /// D-048 F2 (FORTRAN-BUG): tail-1 Egamma limits of doing_delta set by CASE 4 (pion production); false = the Fortran
     /// (no branch for doing_delta, radc.f:288-293). = doing_delta && !fortran_compat.
     bool delta_tail1_case4{false};
     double targ_A{0};                    ///< targ%A (schwinger)
-    double Mh{0}, Mh2{0};                ///< [MeV], [MeV^2]
-    double spec_e_P{0}, spec_p_P{0};     ///< spec%e%P, spec%p%P [MeV/c]
-    Cut edge_e_E, edge_p_E, edge_Em;     ///< edge%e%E, edge%p%E, edge%Em [MeV]
-    Cut VERTEXedge_Em, VERTEXedge_Pm, VERTEXedge_Trec;  ///< vertex cuts on Em, Pm, Trec [MeV].
+    double Mh{0} /**< @copydoc Mh2 */, Mh2{0};                ///< [MeV], [MeV^2]
+    double spec_e_P{0} /**< @copydoc spec_p_P */, spec_p_P{0};     ///< spec%e%P, spec%p%P [MeV/c]
+    Cut edge_e_E /**< @copydoc edge_Em */, edge_p_E /**< @copydoc edge_Em */, edge_Em;     ///< edge%e%E, edge%p%E, edge%Em [MeV]
+    Cut VERTEXedge_Em /**< @copydoc VERTEXedge_Trec */, VERTEXedge_Pm /**< @copydoc VERTEXedge_Trec */, VERTEXedge_Trec;  ///< vertex cuts on Em, Pm, Trec [MeV].
     Cut gen_sumEgen;                     ///< gen%sumEgen [MeV]
 
     /// Take every field from a built RunSetup (BuildRunSetup already applied radc_init).
@@ -128,7 +128,7 @@ struct RadcState {
     std::array<double, 4> c_int{};       ///< c_int(0:3)
     std::array<double, 4> c_ext{};       ///< c_ext(0:3)
     std::array<double, 5> c{};           ///< c(0:4)
-    double g_int{0}, g_ext{0};  ///< internal and external parts of g.
+    double g_int{0} /**< @copydoc g_ext */, g_ext{0};  ///< internal and external parts of g.
     std::array<double, 5> g{};           ///< g(0:4)
     bool rad_proton_this_ev{false};  ///< the hadron radiates in this event.
     // ---- /radccom/ generate_rad part --------------------------------------------------------------
@@ -140,8 +140,8 @@ struct RadcState {
     std::array<double, 4> lim{};         ///< lim1..lim3
     std::array<double, 4> phot{};        ///< phot1..phot3
     // ---- SAVEd locals (-fno-automatic) -----------------------------------------------------------------
-    double initev_dsoft{0}, initev_dhard{0}, initev_dsoft_prime{0};   ///< init.f:radc_init_ev locals
-    double prw_dsoft_intmin{0}, prw_dsoft_intmax{0};                  ///< radc.f:peaked_rad_weight locals
+    double initev_dsoft{0} /**< @copydoc initev_dsoft_prime */, initev_dhard{0} /**< @copydoc initev_dsoft_prime */, initev_dsoft_prime{0};   ///< init.f:radc_init_ev locals
+    double prw_dsoft_intmin{0} /**< @copydoc prw_dsoft_intmax */, prw_dsoft_intmax{0};                  ///< radc.f:peaked_rad_weight locals
     bool lambda_warned{false};                                        ///< radc.f:lambda_dave DATA warned
     // ---- not Fortran state: the gamma() memo (P15.4); mutable because extrad_phi reads a const RadcState ------------
     mutable TgammaMemo gamma;  ///< the tgamma memo.

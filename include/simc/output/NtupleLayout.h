@@ -109,7 +109,7 @@ constexpr int kSemiNtupleSize = 56;   ///< NtupleInit.f:192-237 (doing_semi, no 
 /// The SIDIS columns (56) in Fortran order; columns 1-33 are those of the (e,e'p) layout.
 /// @return the static column table.
 const std::vector<NtupleColumn>& SemiNtupleColumns();
-constexpr int kSemiPizeroNtupleSize = 68;   ///< doing_semi with doing_pizero: + xcal/ycal/E/p of both photons (P14.3)  ///< doing_semi with doing_pizero: + xcal/ycal/E/p of both photons (P14.3).
+constexpr int kSemiPizeroNtupleSize = 68;   ///< doing_semi with doing_pizero: + xcal/ycal/E/p of both photons (P14.3)
 /// The SIDIS columns with doing_pizero (68).
 /// @return the static column table.
 const std::vector<NtupleColumn>& SemiPizeroNtupleColumns();

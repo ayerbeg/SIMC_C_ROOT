@@ -43,8 +43,8 @@ namespace optics {
 
 /// Fortran: COMMON /track/ (spectrometers.inc l.23-25): the ray carried through transp/project/rotate/recon.
 struct Track {
-    double xs{0}, ys{0}, zs{0};   ///< cm
-    double dxdzs{0}, dydzs{0};    ///< slopes
+    double xs{0} /**< @copydoc zs */, ys{0} /**< @copydoc zs */, zs{0};   ///< cm
+    double dxdzs{0} /**< @copydoc dydzs */, dydzs{0};    ///< slopes
     double dpps{0};               ///< delta p/p in %
 };
 

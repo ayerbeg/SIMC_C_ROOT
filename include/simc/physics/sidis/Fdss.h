@@ -5,7 +5,7 @@
  *
  * fDSS fragmentation functions (de Florian, Sassot, Stratmann, PRD 75 114010 and PRD 76 074033 (2007)), a bit-for-bit
  * port of fdss/fdss.f (task P12.1):
- *   FdssGrid::load   fdss.f:fDSS l.70-139  grid selection and reading (fdss/<set>.GRID, format 9(1PE10.3)), the
+ *   FdssGrid::load   fdss.f:fDSS l.70-139  grid selection and reading (fdss/\<set\>.GRID, format 9(1PE10.3)), the
  *                                          interpolation arrays XUTOTF ... XSVALF, ARRF (SAVEd in the Fortran)
  *   FdssGrid::eval   fdss.f:fDSS l.58-69, 140-200   z D(z, Q2) of u, ubar, d, dbar, s, sbar, c, b, g for charge IC
  *   ffint            fdss.f:fFINT (l.206-247)       CERNLIB E104 multilinear interpolation, NARG <= 2 here
@@ -46,7 +46,7 @@ double ffint(int narg, const double* arg, const int* nent, const double* ent, co
 
 /// The nine fDSS outputs (always z times the distribution).
 struct FdssValues {
-    double U{0}, UB{0}, D{0}, DB{0}, S{0}, SB{0}, C{0}, B{0}, GL{0};  ///< z times the fragmentation function of u, ubar, d, dbar, s, sbar, c, b, gluon.
+    double U{0} /**< @copydoc GL */, UB{0} /**< @copydoc GL */, D{0} /**< @copydoc GL */, DB{0} /**< @copydoc GL */, S{0} /**< @copydoc GL */, SB{0} /**< @copydoc GL */, C{0} /**< @copydoc GL */, B{0} /**< @copydoc GL */, GL{0};  ///< z times the fragmentation function of u, ubar, d, dbar, s, sbar, c, b, gluon.
 };
 
 /// @brief One fDSS grid (hadron IH, order IO) with the SAVEd arrays of fdss.f.
@@ -54,7 +54,7 @@ struct FdssValues {
 /// Read-only after load(); eval() is const and thread-safe.
 class FdssGrid {
 public:
-    static constexpr int NPART = 9, NX = 35, NQ = 24, NARG = 2;  ///< dimensions: partons, x nodes, Q2 nodes, interpolation dimensions.
+    static constexpr int NPART = 9 /**< @copydoc NARG */, NX = 35 /**< @copydoc NARG */, NQ = 24 /**< @copydoc NARG */, NARG = 2;  ///< dimensions: partons, x nodes, Q2 nodes, interpolation dimensions.
     /// fdss.f:57-63 DATA QS (REAL(16) literals rounded to REAL(8)) and XB (REAL(8) literals)
     static const std::array<double, NQ> kQS;
     /// The x nodes (fdss.f DATA XB).
@@ -67,7 +67,7 @@ public:
     /// @return the file name, or nullptr.
     static const char* gridFile(int ih, int io);
 
-    /// The first-call branch of fDSS (FINI = 0, l.70-139): read <dir>/<gridFile(ih, io)> and build the interpolation
+    /// The first-call branch of fDSS (FINI = 0, l.70-139): read \<dir\>/<gridFile(ih, io)> and build the interpolation
     /// arrays. Returns false and sets `err` for a wrong set, a missing file or a short/malformed record (in the Fortran
     /// a missing file is created empty by OPEN and the READ fails with an end-of-file run-time error).
     /// @param dir the data directory.

@@ -32,8 +32,8 @@ namespace driver {
 /// Fortran: type sums_twoarm (structures.inc) — per arm delta, xptar, yptar, ytar.
 struct TwoArmSums {
     /// Sums for one arm: delta [%], xptar, yptar [rad], ytar [cm].
-    struct Arm { double delta{0}, xptar{0}, yptar{0}, ytar{0}; /**< sums of delta, xptar, yptar, ytar */ };
-    Arm e, p;  ///< e = electron arm, p = hadron arm.
+    struct Arm { double delta{0} /**< @copydoc ytar */, xptar{0} /**< @copydoc ytar */, yptar{0} /**< @copydoc ytar */, ytar{0}; /**< sums of delta, xptar, yptar, ytar */ };
+    Arm e /**< @copydoc p */, p;  ///< e = electron arm, p = hadron arm.
 };
 
 /// Accumulators of the main loop (simc.f l.160-352 and COMMON /simulate/ counters).
@@ -45,7 +45,7 @@ struct RunTotals {
     long npasscuts{0};  ///< successes that pass the SPedge cuts (PassCuts).
     double wtcontribute{0};              ///< sum of main%weight over pass_cuts successes (before *normfac)
     double sum_sigcc{0};                 ///< sum of main%sigcc over successes
-    TwoArmSums sumerr, sumerr2;          ///< pass_cuts successes
+    TwoArmSums sumerr /**< @copydoc sumerr2 */, sumerr2;          ///< pass_cuts successes
     reactions::Contrib contrib;          ///< "found" ranges (limits_update)
     Slops slop;                          ///< slop%MC / slop%total ranges (limits_update; .used from the setup)
 };
@@ -58,17 +58,17 @@ void MergeTotals(RunTotals& into, const RunTotals& worker);
 
 /// simc.f l.94-101 and l.360-432.
 struct Normalisation {
-    double targetfac{0}, luminosity{0};  ///< from the setup (simc.f:94-101)
+    double targetfac{0} /**< @copydoc luminosity */, luminosity{0};  ///< from the setup (simc.f:94-101)
     double charge{0};                    ///< EXPER%charge [mC]
-    double genvol{0}, normfac{0};  ///< generation volume and normalisation factor (simc.f:360-398).
+    double genvol{0} /**< @copydoc normfac */, normfac{0};  ///< generation volume and normalisation factor (simc.f:360-398).
     double wtcontribute{0};              ///< wtcontribute*normfac (simc.f:398)
-    TwoArmSums aveerr, resol;            ///< zero unless npasscuts > 1 (simc.f:405)
+    TwoArmSums aveerr /**< @copydoc resol */, resol;            ///< zero unless npasscuts > 1 (simc.f:405)
 };
 
 /// Everything simc.f:report prints that is not in the RunSetup.
 struct RunReport {
     std::string run_name;  ///< run name (output file stem).
-    std::string begin_time, end_time;    ///< ctime() strings (simc.f:162, 357)
+    std::string begin_time /**< @copydoc end_time */, end_time;    ///< ctime() strings (simc.f:162, 357)
     long ngen{0};  ///< requested number of events (Fortran ngen).
     int random_seed{0};  ///< seed of the run.
     std::string rng_type;   ///< IRandom::name() of the run (D-054, P15.1)

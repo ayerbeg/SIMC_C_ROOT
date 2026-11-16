@@ -39,8 +39,8 @@ namespace driver {
 
 /// One photon in the calorimeter frame (simc.f:1495-1515): ex, ey, ez and the slopes ex/ez, ey/ez.
 struct PhotonSlopes {
-    double ex{0}, ey{0}, ez{0};  ///< photon momentum components in the calorimeter frame [MeV].
-    double dxdz{0}, dydz{0};  ///< slopes ex/ez, ey/ez.
+    double ex{0} /**< @copydoc ez */, ey{0} /**< @copydoc ez */, ez{0};  ///< photon momentum components in the calorimeter frame [MeV].
+    double dxdz{0} /**< @copydoc dydz */, dydz{0};  ///< slopes ex/ez, ey/ez.
 };
 /// simc.f:1495-1515: rotate the lab photon (E, px, py, pz; z along the beam) by the arm angle theta to the frame whose z
 /// axis points to the calorimeter centre. arm 8 (SHMS side): ey = py cos - pz sin, ez = py sin + pz cos; arm 7 (HMS side):
@@ -54,11 +54,11 @@ PhotonSlopes rotateToCalorimeter(const std::array<double, 4>& gamma, double thet
 /// Result of PizeroCalorimeter::detect().
 struct PizeroCaloResult {
     bool ok{false};                    ///< ok_P_arm
-    bool ok_gamma1{false}, ok_gamma2{false};  ///< photon 1 / photon 2 hit the calorimeter.
-    double xcal_gamma1{-1.0e10}, ycal_gamma1{-1.0e10}, xcal_gamma2{-1.0e10}, ycal_gamma2{-1.0e10};  ///< hit positions of the photons at the calorimeter face [cm] (-1e10 = not computed).
+    bool ok_gamma1{false} /**< @copydoc ok_gamma2 */, ok_gamma2{false};  ///< photon 1 / photon 2 hit the calorimeter.
+    double xcal_gamma1{-1.0e10} /**< @copydoc ycal_gamma2 */, ycal_gamma1{-1.0e10} /**< @copydoc ycal_gamma2 */, xcal_gamma2{-1.0e10} /**< @copydoc ycal_gamma2 */, ycal_gamma2{-1.0e10};  ///< hit positions of the photons at the calorimeter face [cm] (-1e10 = not computed).
     SpecResult fp;                     ///< the photon reported in FP%p (last hit) — x_fp..dy_fp
     double pathlen{0};                 ///< FP%p%path
-    double dxdz_last{0}, dydz_last{0}; ///< dx_P_arm/dy_P_arm after the calls (photon 2 slopes)
+    double dxdz_last{0} /**< @copydoc dydz_last */, dydz_last{0}; ///< dx_P_arm/dy_P_arm after the calls (photon 2 slopes)
     std::string stop_reason;           ///< "gamma1:<reason>" / "gamma2:<reason>" of the photons that missed
 };
 

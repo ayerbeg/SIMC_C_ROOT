@@ -26,7 +26,7 @@ using TargetInfo = simc::TargetInfo;
 
 /// Fortran: target.f:316 type limits (min, max)
 struct Limits {
-    double min{0}, max{0};  ///< lower and upper limit (units of the quantity).
+    double min{0} /**< @copydoc max */, max{0};  ///< lower and upper limit (units of the quantity).
 };
 
 /// @}

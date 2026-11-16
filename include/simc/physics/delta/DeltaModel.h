@@ -54,8 +54,8 @@ struct DeltaConfig {
 
 /// The intermediate quantities of one peedelta call (for the L1 tests; peedelta itself returns only the value).
 struct PeedeltaTrace {
-    double tfcos{0}, s{0}, k_eq{0}, fac{0}, gtpr{0};  ///< peedelta locals: tfcos, s [MeV^2], k_eq (equivalent photon energy) [MeV], fac (Fermi-motion factor), gtpr (flux Gamma_T' [1/MeV]).
-    double t_arg{0}, q2_arg{0}, s_arg{0};   ///< the t, q2_gev, s_gev values sig_blok actually used
+    double tfcos{0} /**< @copydoc gtpr */, s{0} /**< @copydoc gtpr */, k_eq{0} /**< @copydoc gtpr */, fac{0} /**< @copydoc gtpr */, gtpr{0};  ///< peedelta locals: tfcos, s [MeV^2], k_eq (equivalent photon energy) [MeV], fac (Fermi-motion factor), gtpr (flux Gamma_T' [1/MeV]).
+    double t_arg{0} /**< @copydoc s_arg */, q2_arg{0} /**< @copydoc s_arg */, s_arg{0};   ///< the t, q2_gev, s_gev values sig_blok actually used
 };
 
 /// Fortran: physics_delta.f:peedelta (l.1-135). Reads vertex (Ein, nu, q, Q2, e%E, p%P, p%E, up, uq), main%t,

@@ -66,8 +66,8 @@ namespace driver {
 struct MonteCarloInfo {
     bool success{false};  ///< both arms passed.
     int fail_arm{0};                  ///< 0 none, 1 hadron arm, 2 electron arm
-    bool p_called{false}, e_called{false};   ///< the arm MC was called
-    std::string p_stop, e_stop;       ///< ISpectrometer stop reason ("" = passed / not called)
+    bool p_called{false} /**< @copydoc e_called */, e_called{false};   ///< the arm MC was called
+    std::string p_stop /**< @copydoc e_stop */, e_stop;       ///< ISpectrometer stop reason ("" = passed / not called)
 };
 
 /// @brief Transport of one event through the hadron and electron arms (beam multiple scattering, energy loss,

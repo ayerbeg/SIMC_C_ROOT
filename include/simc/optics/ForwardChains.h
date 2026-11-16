@@ -39,7 +39,7 @@ struct ChainStep {
     std::string name;   ///< step name as in the reference tables (coll_ent, q1_in, ..., fp)
     Track track;        ///< COMMON /track/ after the step
     double path{0};     ///< accumulated pathlen (cm)
-    double xt{0}, yt{0};   ///< coordinates used by the aperture test of this step
+    double xt{0} /**< @copydoc yt */, yt{0};   ///< coordinates used by the aperture test of this step
 };
 
 /// Called after each step; return false to stop the chain.

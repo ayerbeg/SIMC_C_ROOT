@@ -34,8 +34,8 @@ struct SpecInput {
     double p_spec{0};      ///< central momentum (MeV/c)
     double th_spec{0};     ///< central angle (rad)
     double delta{0};       ///< dp/p (%)
-    double x{0}, y{0}, z{0};        ///< track position in the TRANSPORT system [cm]
-    double dxdz{0}, dydz{0};        ///< track slopes in the TRANSPORT system [dx/dz, dy/dz]
+    double x{0} /**< @copydoc z */, y{0} /**< @copydoc z */, z{0};        ///< track position in the TRANSPORT system [cm]
+    double dxdz{0} /**< @copydoc dydz */, dydz{0};        ///< track slopes in the TRANSPORT system [dx/dz, dy/dz]
     double m2{0};          ///< particle mass squared (MeV^2)
     bool ms_flag{false};   ///< multiple scattering (mc_smear)
     bool wcs_flag{false};  ///< wire-chamber smearing (mc_smear)
@@ -59,8 +59,8 @@ struct SpecInput {
 struct SpecResult {
     bool ok{false};                  ///< the track reached the detectors and was reconstructed
     std::string stop_reason;         ///< name of the aperture/detector that stopped the track ("" if ok)
-    double x_fp{0}, dx_fp{0}, y_fp{0}, dy_fp{0};   ///< focal plane (cm, slopes); used when ok
-    double delta_recon{0}, dxdz_recon{0}, dydz_recon{0}, y_recon{0};  ///< reconstructed target (%, slopes, cm); when ok
+    double x_fp{0} /**< @copydoc dy_fp */, dx_fp{0} /**< @copydoc dy_fp */, y_fp{0} /**< @copydoc dy_fp */, dy_fp{0};   ///< focal plane (cm, slopes); used when ok
+    double delta_recon{0} /**< @copydoc y_recon */, dxdz_recon{0} /**< @copydoc y_recon */, dydz_recon{0} /**< @copydoc y_recon */, y_recon{0};  ///< reconstructed target (%, slopes, cm); when ok
     double pathlen{0};               ///< cm
     /// Resolution factor of the track reconstruction (ntup%resfac; HMS/SHMS: 1 or 2 from the wire chambers), if the
     /// spectrometer determined one for this track (HMS/SHMS: the detector hut was reached). Empty otherwise: the

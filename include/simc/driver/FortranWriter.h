@@ -22,11 +22,11 @@
 
 #include <string>
 
-/// @addtogroup driver
-/// @{
-
 namespace simc {
 namespace fortran {
+
+/// @addtogroup driver
+/// @{
 
 /// Fw.d
 /// @param v value to write.

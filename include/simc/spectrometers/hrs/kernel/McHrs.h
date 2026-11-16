@@ -112,7 +112,7 @@ struct HrsCounters {
 
 /// COMMON /g_dump_all_r|l/ (g_dump_all_events.inc): where the last stopped ray stopped.
 struct HrsDump {
-    double stop_where{0}, x_stop{0}, y_stop{0};  ///< z of the stop [cm] and x, y of the ray there [cm].
+    double stop_where{0} /**< @copydoc y_stop */, x_stop{0} /**< @copydoc y_stop */, y_stop{0};  ///< z of the stop [cm] and x, y of the ray there [cm].
 };
 
 /// The side constants (the only differences between mc_hrsl.f and mc_hrsr.f).
@@ -146,18 +146,18 @@ double low8(Quad q);
 
 /// The argument list of mc_hrs*(...) (mc_hrsl.f:1-3), as McSosArgs.
 struct McHrsArgs {
-    double p_spec{0}, th_spec{0};  ///< in: central momentum [MeV/c] and angle [rad].
+    double p_spec{0} /**< @copydoc th_spec */, th_spec{0};  ///< in: central momentum [MeV/c] and angle [rad].
     double dpp{0};  ///< in: dp/p [%]; out if ok: reconstructed delta [%].
-    double x{0}, y{0}, z{0};  ///< in: position at z = 0 [cm]; out if ok: y = reconstructed ytar [cm].
-    double dxdz{0}, dydz{0};  ///< in: slopes; out if ok: reconstructed xptar, yptar.
-    double x_fp{0}, dx_fp{0}, y_fp{0}, dy_fp{0};  ///< out after both DCs: fitted focal plane.
+    double x{0} /**< @copydoc z */, y{0} /**< @copydoc z */, z{0};  ///< in: position at z = 0 [cm]; out if ok: y = reconstructed ytar [cm].
+    double dxdz{0} /**< @copydoc dydz */, dydz{0};  ///< in: slopes; out if ok: reconstructed xptar, yptar.
+    double x_fp{0} /**< @copydoc dy_fp */, dx_fp{0} /**< @copydoc dy_fp */, y_fp{0} /**< @copydoc dy_fp */, dy_fp{0};  ///< out after both DCs: fitted focal plane.
     double m2{0};  ///< in/out: mass squared [MeV^2] (changed on decay).
-    bool ms_flag{false}, wcs_flag{false}, decay_flag{false};  ///< in: multiple scattering, wire-chamber smearing, decay switches.
+    bool ms_flag{false} /**< @copydoc decay_flag */, wcs_flag{false} /**< @copydoc decay_flag */, decay_flag{false};  ///< in: multiple scattering, wire-chamber smearing, decay switches.
     double resmult{0};  ///< out when the hut is reached: DC resolution factor.
     double fry{0};  ///< in: vertical raster position [cm].
     bool ok_spec{false};  ///< out: the ray passed.
     double pathlen{0};  ///< in/out: accumulated path length [cm].
-    double ctau{0}, decdist{0}, Mh2_final{0};   ///< COMMON (simulate.inc) of the decay code
+    double ctau{0} /**< @copydoc Mh2_final */, decdist{0} /**< @copydoc Mh2_final */, Mh2_final{0};   ///< COMMON (simulate.inc) of the decay code
 };
 
 /// Diagnostics of one mc_hrs* call.
@@ -212,7 +212,7 @@ public:
     optics::CosyEngine& engine() { return *eng_; }
     /// @param d directory of the COSY map files.
     void setMatrixDir(const std::string& d) { matrixDir_ = d; }
-    /// mc_hrs*.f:47 `logical use_sieve /.false./`.
+    /// mc_hrs*.f:47 'logical use_sieve /.false./'.
     /// @param b true to use the mock sieve.
     void setUseSieve(bool b) { useSieve_ = b; }
     /// D-031 run option, kept in the (possibly shared) COSY engine.

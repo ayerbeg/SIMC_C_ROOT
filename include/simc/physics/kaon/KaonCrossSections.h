@@ -64,8 +64,8 @@ double fint(int narg, const float* arg, const int* nent, const float* ent, const
 /// Read-only after load(); thread-safe for reading.
 class SaghaiTables {
 public:
-    static constexpr int kNsP = 10, kNqP = 11, kNa = 19;   ///< zrff*(10,11,19): s, Q2, angle
-    static constexpr int kNsS = 20, kNqS = 10;             ///< zsrff*(20,10,19)  ///< zsrff*(20,10,19): s, Q2 (angle as kNa).
+    static constexpr int kNsP = 10 /**< @copydoc kNa */, kNqP = 11 /**< @copydoc kNa */, kNa = 19;   ///< zrff*(10,11,19): s, Q2, angle
+    static constexpr int kNsS = 20 /**< @copydoc kNqS */, kNqS = 10;   ///< zsrff*(20,10,19): s, Q2 (angle as kNa)
     static const std::array<const char*, 4> kFiles;        ///< weightc.dat weightd.dat saghai_proton.dat saghai_sigma0.dat
 
     /// dbase.f:624-679. `sigma0Corrected` = false reads saghai_sigma0.dat exactly as dbase.f:662-677 (one line off,
@@ -83,8 +83,8 @@ public:
 
     std::vector<float> weightc;                 ///< weightc(20,50)
     std::vector<float> weightd;                 ///< weightd(8,40,30)
-    std::array<std::vector<float>, 6> zrff, ziff;     ///< zrff1..6, ziff1..6 (10,11,19)
-    std::array<std::vector<float>, 6> zsrff, zsiff;   ///< zsrff1..6, zsiff1..6 (20,10,19)
+    std::array<std::vector<float>, 6> zrff /**< @copydoc ziff */, ziff;     ///< zrff1..6, ziff1..6 (10,11,19)
+    std::array<std::vector<float>, 6> zsrff /**< @copydoc zsiff */, zsiff;   ///< zsrff1..6, zsiff1..6 (20,10,19)
 
     /// 1-based accessors (Fortran indices)
     /// Element weightc(j, i).
@@ -123,7 +123,7 @@ struct SaghaiOptions {
 /// routine used, zf(1,k) (real parts) and zf(2,k) (imaginary parts).
 struct SaghaiTrace {
     float px[3]{};  ///< the fint arguments px(1:3).
-    double zr[6]{}, zi[6]{};  ///< the fint values: real and imaginary parts.
+    double zr[6]{} /**< @copydoc zi */, zi[6]{};  ///< the fint values: real and imaginary parts.
 };
 
 /// Fortran: physics_kaon.f:eekeek (l.241-355). Mrec_struck = targ%Mrec_struck (COMMON) [MeV]. Returns sigma_eep.

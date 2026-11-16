@@ -69,11 +69,11 @@ bool assembleWeight(bool force_sigcc, MainEvent& main, const Event& vertex, cons
 
 /// Fortran: structures.inc rangetype (lo, hi); min_max_init starts lo = +1e10, hi = -1e10.
 struct Range {
-    double lo{1.0e10}, hi{-1.0e10};  ///< lowest and highest value seen.
+    double lo{1.0e10} /**< @copydoc hi */, hi{-1.0e10};  ///< lowest and highest value seen.
 };
 /// Ranges of one arm.
 struct ArmRange {
-    Range delta, yptar, xptar, z;  ///< delta [%], yptar, xptar [rad], z [cm].
+    Range delta /**< @copydoc z */, yptar /**< @copydoc z */, xptar /**< @copydoc z */, z;  ///< delta [%], yptar, xptar [rad], z [cm].
 };
 /// Fortran: structures.inc contribtype (init.f:min_max_init l.1080-1190).
 struct Contrib {
@@ -127,12 +127,12 @@ void mergeSlops(Slops& into, const Slops& worker);
 
 /// Outputs of jacobians.f:transform_to_cm.
 struct CmTransform {
-    double gstar{0}, bstar{0}, bstarx{0}, bstary{0}, bstarz{0};  ///< gamma, beta and beta components of the boost to the CM frame.
-    double nustar{0}, qstar{0}, qstarx{0}, qstary{0}, qstarz{0};  ///< energy, momentum and momentum components of the virtual photon in the CM frame [MeV].
-    double ehadcm{0}, phadcm{0}, phadcmx{0}, phadcmy{0}, phadcmz{0};  ///< energy, momentum and momentum components of the hadron in the CM frame [MeV].
-    double ebeamcm{0}, pbeamcm{0}, pbeamcmx{0}, pbeamcmy{0}, pbeamcmz{0};  ///< energy, momentum and momentum components of the beam in the CM frame [MeV].
-    double etarcm{0}, ptarcm{0}, ptarcmx{0}, ptarcmy{0}, ptarcmz{0};  ///< energy, momentum and momentum components of the target nucleon in the CM frame [MeV].
-    double thetacm{0}, phicm{0}, phiqn{0}, jacobian{0}, jac_old{0};  ///< CM angles [rad], and the CM-to-lab Jacobian (new and old formula).
+    double gstar{0} /**< @copydoc bstarz */, bstar{0} /**< @copydoc bstarz */, bstarx{0} /**< @copydoc bstarz */, bstary{0} /**< @copydoc bstarz */, bstarz{0};  ///< gamma, beta and beta components of the boost to the CM frame.
+    double nustar{0} /**< @copydoc qstarz */, qstar{0} /**< @copydoc qstarz */, qstarx{0} /**< @copydoc qstarz */, qstary{0} /**< @copydoc qstarz */, qstarz{0};  ///< energy, momentum and momentum components of the virtual photon in the CM frame [MeV].
+    double ehadcm{0} /**< @copydoc phadcmz */, phadcm{0} /**< @copydoc phadcmz */, phadcmx{0} /**< @copydoc phadcmz */, phadcmy{0} /**< @copydoc phadcmz */, phadcmz{0};  ///< energy, momentum and momentum components of the hadron in the CM frame [MeV].
+    double ebeamcm{0} /**< @copydoc pbeamcmz */, pbeamcm{0} /**< @copydoc pbeamcmz */, pbeamcmx{0} /**< @copydoc pbeamcmz */, pbeamcmy{0} /**< @copydoc pbeamcmz */, pbeamcmz{0};  ///< energy, momentum and momentum components of the beam in the CM frame [MeV].
+    double etarcm{0} /**< @copydoc ptarcmz */, ptarcm{0} /**< @copydoc ptarcmz */, ptarcmx{0} /**< @copydoc ptarcmz */, ptarcmy{0} /**< @copydoc ptarcmz */, ptarcmz{0};  ///< energy, momentum and momentum components of the target nucleon in the CM frame [MeV].
+    double thetacm{0} /**< @copydoc jac_old */, phicm{0} /**< @copydoc jac_old */, phiqn{0} /**< @copydoc jac_old */, jacobian{0} /**< @copydoc jac_old */, jac_old{0};  ///< CM angles [rad], and the CM-to-lab Jacobian (new and old formula).
 };
 /// Fortran: jacobians.f:transform_to_cm (l.1-282). Reads vertex Ein, nu, q, p%P, p%E, up, uq, main%phi_pq and
 /// COMMON /pfermi/ (pfer, pferx..z, efer). The |beta|>1 warning goes to `log` (if non-null).

@@ -5,7 +5,7 @@
  *
  * The Fortran diagnostic histograms H%geni, H%gen, H%RECON (histograms.inc, nHbins=50),
  * filled exactly like simc.f l.254-286 with inc() (simc.f:624-640), written as TH1D to
- * <run>.gen.root. Axes come from RunSetup::hist (init.f:limits_init l.515-570).
+ * \<run\>.gen.root. Axes come from RunSetup::hist (init.f:limits_init l.515-570).
  *
  *   geni_*  every tried event, weight 1: vertex e/p delta, yptar, -xptar, Em, Pm
  *   gen_*   successful events, weight 1: vertex e/p delta, yptar, -xptar, Em   (no Pm, as the Fortran)

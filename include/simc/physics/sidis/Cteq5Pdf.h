@@ -49,13 +49,13 @@ double polint(const double* xa, const double* ya, int n, double x, double& dy);
 /// @brief One CTEQ5 set with the COMMON blocks and SAVEd locals of Ctq5Pdf.f. Not thread-safe (SAVEd warnings).
 class Cteq5Pdf {
 public:
-    static constexpr int MXX = 105, MXQ = 25, MXF = 6;  ///< table dimensions (Ctq5Pdf.f PARAMETERs).
+    static constexpr int MXX = 105 /**< @copydoc MXF */, MXQ = 25 /**< @copydoc MXF */, MXF = 6;  ///< table dimensions (Ctq5Pdf.f PARAMETERs).
     static constexpr int MXPQX = (MXF * 2 + 2) * MXQ * MXX;  ///< size of UPD.
-    static constexpr int M = 2, M1 = M + 1;  ///< interpolation order and points.
+    static constexpr int M = 2 /**< @copydoc M1 */, M1 = M + 1;  ///< interpolation order and points.
     /// Ctq5Pdf.f:207-212 Flnm(1..9) without the directory 'cteq5/'
     static const std::array<const char*, 9> kFiles;
 
-    /// SetCtq5(iset) + ReadTbl: reads <dir>/<kFiles[iset-1]>. Returns false and sets `err` if iset is out of range
+    /// SetCtq5(iset) + ReadTbl: reads \<dir\>/<kFiles[iset-1]>. Returns false and sets `err` if iset is out of range
     /// (Fortran: 'Invalid Iset number in SetCtq5' STOP), if the file is missing (Fortran: STOP l.226) or malformed.
     /// The table read stops silently at an end of file (IOSTAT=IRET, l.272): `points_read()` tells how many were read.
     /// @param dir the data directory.
@@ -112,10 +112,10 @@ public:
     /// @return UPD(i).
     double UPD(int i) const { return c1_[static_cast<std::size_t>(kUPD + i - 1)]; }
     // /CtqPar2/ Nx, Nt, NfMx; /XQrange/ Qini, Qmax, Xmin; /QCDtable/ Alambda, Nfl, Iorder; /Masstbl/ Amass(6)
-    int Nx{0}, Nt{0}, NfMx{0};  ///< /CtqPar2/ number of x and Q points, number of flavours.
-    double Qini{0}, Qmax{0}, Xmin{0};  ///< /XQrange/ Q range [GeV] and minimum x.
+    int Nx{0} /**< @copydoc NfMx */, Nt{0} /**< @copydoc NfMx */, NfMx{0};  ///< /CtqPar2/ number of x and Q points, number of flavours.
+    double Qini{0} /**< @copydoc Xmin */, Qmax{0} /**< @copydoc Xmin */, Xmin{0};  ///< /XQrange/ Q range [GeV] and minimum x.
     double Alambda{0};  ///< /QCDtable/ Lambda_QCD [GeV].
-    int Nfl{0}, Iorder{0};  ///< /QCDtable/ number of flavours and order.
+    int Nfl{0} /**< @copydoc Iorder */, Iorder{0};  ///< /QCDtable/ number of flavours and order.
     std::array<double, 6> Amass{};  ///< /Masstbl/ quark masses [GeV].
     /// @return the number of table points read.
     int points_read() const { return npts_read_; }
