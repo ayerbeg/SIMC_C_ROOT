@@ -147,7 +147,15 @@ int CommandLineMain(int argc, char** argv) {
         InpReader rd(params, ro);
         if (!rd.loadRun(input)) {
             for (const auto& e : rd.errors()) std::cerr << "simc++: input error: " << input << ": " << e << "\n";
-            if (rd.errors().empty()) std::cerr << "simc++: cannot read " << input << "\n";
+            if (rd.errors().empty()) {
+                // Say which file failed: the main input or the extra_dbase_file it names (looked up next to the
+                // main input, or in --infiles-dir).
+                std::cerr << "simc++: cannot read " << input << "\n";
+                for (const auto& m : rd.messages()) std::cerr << "simc++:   " << m.text << "\n";
+                if (!params.extra_dbase_file.empty())
+                    std::cerr << "simc++:   the input names extra_dbase_file='" << params.extra_dbase_file
+                              << "': put that file next to the input, or give its folder with --infiles-dir DIR\n";
+            }
             return 2;
         }
         for (const auto& m : rd.messages()) std::cout << m.text << "\n";   // CTP messages, like the Fortran
