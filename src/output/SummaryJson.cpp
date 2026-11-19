@@ -154,7 +154,7 @@ Json BuildSummaryJson(const RunSetup& s, const RunSummary& r) {
                   {"doing_rho", f.doing_rho},       {"doing_hplus", f.doing_hplus},
                   {"doing_semipi", f.doing_semipi}, {"doing_semika", f.doing_semika},
                   {"doing_pizero", f.doing_pizero}, {"doing_delta", f.doing_delta},
-                  {"doing_phsp", f.doing_phsp},
+                  {"doing_phsp", f.doing_phsp},     {"doing_nuc_elast", f.doing_nuc_elast},
                   {"doing_hyd_elast", f.doing_hyd_elast}, {"doing_deuterium", f.doing_deuterium},
                   {"doing_heavy", f.doing_heavy},   {"doing_hydpi", f.doing_hydpi},
                   {"doing_deutpi", f.doing_deutpi}, {"doing_hepi", f.doing_hepi},

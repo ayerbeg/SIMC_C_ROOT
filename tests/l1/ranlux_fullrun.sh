@@ -14,14 +14,23 @@ echo '{"pipeline": {"rng": {"type": "ranlux"}}}' > "$work/ranlux.json"
 fail=0
 "$simc" "$ref/$run.inp" -o "$work/compat" --fortran-compat --pipeline "$work/ranlux.json" --quiet > "$work/compat.log" 2>&1 \
     || { echo "simc++ (compat) failed:"; tail -5 "$work/compat.log"; exit 1; }
-if diff <(sed '2,3d' "$work/compat/$run.hist") <(sed '2,3d' "$ref/$run.hist") > "$work/hist.diff"; then
+# U.1: the .hist of SIMC++ has the line `doing_nuc_elast= F` of upstream simc.f:894 (4df7351); a reference of the frozen
+# 294f662 Fortran does not have it, so the line is dropped from the C++ .hist only when the reference lacks it.
+nucel='^ *doing_nuc_elast= [TF]$'
+grep -q 'doing_nuc_elast=' "$ref/$run.hist" && nucel='^$NEVER'
+if diff <(sed '2,3d' "$work/compat/$run.hist" | grep -v -E "$nucel") <(sed '2,3d' "$ref/$run.hist") > "$work/hist.diff"; then
     echo "  $run.hist (except BEGIN/END Time): identical"
 else echo "  $run.hist: DIFFERENT"; head -20 "$work/hist.diff"; fail=1; fi
 for x in geni gen; do
     if cmp -s "$work/compat/$run.$x" "$ref/$run.$x"; then echo "  $run.$x: identical"
     else echo "  $run.$x: DIFFERENT"; diff "$work/compat/$run.$x" "$ref/$run.$x" | head -20; fail=1; fi
 done
-if "$ident" "$work/compat/$run.root" "$ref/$run.root" > "$work/identity.log" 2>&1; then
+# U.1: COMMON_LEAVES=1 compares only the h10 leaves present in both trees (a reference with the 59ccdf6 ntuple layout)
+identopt=(); [ "${COMMON_LEAVES:-0}" = 1 ] && identopt=(--common-leaves)
+# U.1: a 294f662 reference (no doing_nuc_elast line): accept the upstream z/pt2 and pfermi changes (tests/l1/Upstream294.h)
+grep -q 'doing_nuc_elast=' "$ref/$run.hist" || identopt+=(--u1-upstream)
+if "$ident" "${identopt[@]}" "$work/compat/$run.root" "$ref/$run.root" > "$work/identity.log" 2>&1; then
+    grep -E "common leaves|U.1 upstream" "$work/identity.log"
     echo "  $run.root: $(tail -1 "$work/identity.log")"
 else echo "  $run.root: DIFFERENT"; tail -10 "$work/identity.log"; fail=1; fi
 # default (corrected) mode

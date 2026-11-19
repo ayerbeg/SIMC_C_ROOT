@@ -63,7 +63,7 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
     const ReactionFlags& ff = s.flags;
     auto ngammaOk = [&]() { return p.pizero_ngamma == 1 || p.pizero_ngamma == 2; };
     if (ff.doing_eep) {
-        if (!(ff.doing_hyd_elast || ff.doing_deuterium || ff.doing_heavy)) {
+        if (!(ff.doing_hyd_elast || ff.doing_deuterium || ff.doing_heavy || ff.doing_nuc_elast)) {   // upstream dbase.f:700
             stop("I don't have ANY idea what (e,e'p) we're doing!!!");
             return s;
         }

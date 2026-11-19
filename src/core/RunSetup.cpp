@@ -29,11 +29,18 @@ ReactionFlags DeriveReactionFlags(const SimcParameters& p, std::vector<std::stri
     f.doing_hplus = p.doing_hplus;
     f.do_fermi = p.do_fermi;
     f.using_tgt_field = p.using_tgt_field;
+    f.doing_nuc_elast = p.doing_nuc_elast;   // stays set like the Fortran logical (tested on its own in event.f/init.f)
     const int A = nint(p.targ.A);   // the target class is decided on nint(targ%A): 1 = H, 2 = D, >= 3 nucleus
 
     // --- 1. semi-inclusive: doing_pion/doing_kaon with doing_semi select the SIDIS hadron (dbase.f:127-134)
     if (f.doing_pion && f.doing_semi) { f.doing_semipi = true; f.doing_semika = false; f.doing_pion = false; }
     if (f.doing_kaon && f.doing_semi) { f.doing_semika = true; f.doing_semipi = false; f.doing_kaon = false; }
+
+    // SIMC++ (finding U-D2): the Fortran keeps doing_nuc_elast set when another family wins the if-chain below and then
+    // mixes the elastic kinematics into that reaction (event.f:517/546 at 20d46fc); such an input is refused.
+    if (f.doing_nuc_elast && (f.doing_pion || f.doing_kaon || f.doing_delta || f.doing_semi || f.doing_rho ||
+                              f.doing_semipi || f.doing_semika || f.doing_phsp))
+        problem(problems, "STOP doing_nuc_elast cannot be combined with another doing_* reaction flag or doing_phsp");
 
     // --- 2. one reaction family per run (the first true flag of the dbase.f if-chain wins), split by target class;
     //        the coherent channels (which_* >= 10) are run as on a single nucleon (the doing_hyd* flag)
@@ -66,6 +73,8 @@ ReactionFlags DeriveReactionFlags(const SimcParameters& p, std::vector<std::stri
         f.doing_hydrho = A == 1;
         f.doing_deutrho = A == 2;
         f.doing_herho = A == 3;   // FORTRAN-DIFF-CANDIDATE(D-018): dbase.f:213 uses .eq.3 (other he* flags .ge.3). Intended? (rho A >= 4 is refused by the set-up)
+    } else if (f.doing_nuc_elast) {   // upstream dbase.f:216-218 (4df7351): A(e,e')A, no hyd_elast/deuterium/heavy
+        f.doing_eep = true;
     } else {   // no production flag: (e,e'p)
         f.doing_eep = true;
         f.doing_hyd_elast = A == 1;
@@ -87,6 +96,7 @@ std::string ReactionTitle(const ReactionFlags& f, const SimcParameters& p) {
         if (f.doing_hyd_elast) return "H(e,e'p)";
         if (f.doing_deuterium) return "D(e,e'p)";
         if (f.doing_heavy) return "A(e,e'p)";
+        if (f.doing_nuc_elast) return "A(e,e')A";   // upstream simc.f:682-683
     } else if (f.doing_semi) {
         const char* h = f.doing_semipi ? (plus ? "pi+" : "pi-") : (plus ? "k+" : "k-");
         const std::string t = p.targ.A == 1 ? "H" : (p.targ.A == 2 ? "D" : "A");

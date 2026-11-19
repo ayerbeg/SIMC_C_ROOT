@@ -84,6 +84,11 @@ struct Expr {
             v = static_cast<double>(std::strtol(start, &end, 16));
         } else {
             v = std::strtod(start, &end);
+            // CTP reads the whole operand (thTestParse.c:350-371: up to a blank or an operator), classifies "2118.0."
+            // as TOKFLOAT (thUtils.c:218-258) and converts it with atof, which stops at the second '.': the trailing
+            // digits and dots of such a literal are skipped (shipped upstream infiles/ee_calcium48.inp: `Ebeam = 2118.0.`).
+            if (end != start && *end == '.')
+                while (*end == '.' || std::isdigit(static_cast<unsigned char>(*end))) ++end;
             // CTP float literals (D-018): thTestParse.c:391-394 stores a TOKFLOAT literal through
             // `DAFLOAT f = atof(string)` (DAFLOAT = float, daVar.h:114). Integer literals (only digits)
             // stay exact. The arithmetic of thTestExecute.c:487-560 then promotes the operands to

@@ -91,6 +91,7 @@ add_library(simcfw_physics OBJECT
     src/physics/proton/ProtonModels.cpp
     src/physics/nuclear/SpectralFunctionTables.cpp   # sf_lookup.f, complete_main SF weight (P8.1)
     src/physics/nuclear/SpectralFunctions.cpp        # ISpectralFunction "theory", "benhar" (P8.1)
+    src/physics/nuclear/NuclearElastic.cpp           # nuclear_elastic.f (upstream 4df7351), "nuc_elastic" model (U.1)
 )
 target_link_libraries(simcfw_physics PUBLIC simcfw simcfw_material)
 target_compile_options(simcfw_physics PRIVATE -Wall -Wextra -pedantic)

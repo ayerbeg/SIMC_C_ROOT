@@ -52,7 +52,7 @@ bool assembleWeight(bool force_sigcc, MainEvent& main, const Event& vertex, cons
     if (f.doing_phsp) {
         main.sigcc = 1.0;
         main.sigcc_recon = 1.0;
-    } else if (f.doing_hyd_elast || f.doing_deuterium || f.doing_heavy) {
+    } else if (f.doing_hyd_elast || f.doing_nuc_elast || f.doing_deuterium || f.doing_heavy) {   // + l.1457 (20d46fc)
         main.sigcc = model.sigcc(vertex, main);
         main.sigcc_recon = model.sigccRecon(recon, main);
     } else {

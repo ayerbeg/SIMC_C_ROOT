@@ -327,6 +327,13 @@ bool generateRad(const RadcRun& run, RadcState& st, MainEvent& main, Event& vert
             st.Egamma_min[1] = vertex.Ein - ebeam_max;
             st.Egamma_max[1] = vertex.Ein - ebeam_min;
             st.Egamma_max[1] = fmin2(st.Egamma_max[1], run.edge_Em.max);
+        } else if (run.doing_nuc_elast) {   // CASE 2b: upstream radc.f:278-286 (4df7351), A(e,e')A with targ%M
+            double ebeam_max = run.targ_M * run.edge_e_E.max / (run.targ_M - run.edge_e_E.max * (1. - vertex.ue.z));
+            if (ebeam_max < 0) ebeam_max = 1.e10;
+            const double ebeam_min = run.targ_M * run.edge_e_E.min / (run.targ_M - run.edge_e_E.min * (1. - vertex.ue.z));
+            st.Egamma_min[1] = vertex.Ein - ebeam_max;
+            st.Egamma_max[1] = vertex.Ein - ebeam_min;
+            st.Egamma_max[1] = fmin2(st.Egamma_max[1], run.edge_Em.max);
         } else if (run.doing_deuterium) {   // CASE 3 (l.280-282)
             st.Egamma_max[1] = fmin2(run.Egamma1_max, run.gen_sumEgen.max - vertex.e.E);
             // FORTRAN-DIFF-CANDIDATE(D-019): radc.f:283-286, for ntail = 0 Egamma_min(1) keeps its stale COMMON value.

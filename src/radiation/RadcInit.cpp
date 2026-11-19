@@ -48,6 +48,8 @@ RadcRun RadcRun::FromSetup(const RunSetup& s) {
     r.delta_tail1_case4 = s.flags.doing_delta && !s.fortran_compat;   // D-048 F2
     r.doing_semi = s.flags.doing_semi;
     r.targ_A = s.targ.A;
+    r.targ_M = s.targ.M;
+    r.doing_nuc_elast = s.flags.doing_nuc_elast;
     r.Mh = s.Mh;
     r.Mh2 = s.Mh2;
     r.spec_e_P = s.spec.e.P;

@@ -74,10 +74,12 @@ struct RadcRun {
     bool doing_eep{false} /**< @copydoc doing_heavy */, doing_hyd_elast{false} /**< @copydoc doing_heavy */, doing_deuterium{false} /**< @copydoc doing_heavy */, doing_heavy{false};  ///< reaction flags read by the radiation code.
     bool doing_pion{false} /**< @copydoc doing_semi */, doing_kaon{false} /**< @copydoc doing_semi */, doing_rho{false} /**< @copydoc doing_semi */, doing_semi{false};  ///< reaction flags read by the radiation code.
     bool doing_delta{false};  ///< doing_delta flag.
+    bool doing_nuc_elast{false};  ///< doing_nuc_elast flag (upstream radc.f:278-286, CASE 2b).
     /// D-048 F2 (FORTRAN-BUG): tail-1 Egamma limits of doing_delta set by CASE 4 (pion production); false = the Fortran
     /// (no branch for doing_delta, radc.f:288-293). = doing_delta && !fortran_compat.
     bool delta_tail1_case4{false};
     double targ_A{0};                    ///< targ%A (schwinger)
+    double targ_M{0};                    ///< targ%M [MeV] (upstream radc.f:280-282, doing_nuc_elast)
     double Mh{0} /**< @copydoc Mh2 */, Mh2{0};                ///< [MeV], [MeV^2]
     double spec_e_P{0} /**< @copydoc spec_p_P */, spec_p_P{0};     ///< spec%e%P, spec%p%P [MeV/c]
     Cut edge_e_E /**< @copydoc edge_Em */, edge_p_E /**< @copydoc edge_Em */, edge_Em;     ///< edge%e%E, edge%p%E, edge%Em [MeV]

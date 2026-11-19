@@ -75,6 +75,8 @@ bool BuildReactionAndKinematics(RunSetup& s, const SimcParameters& p) {
         if (f0.doing_hydsemi && p.do_fermi) msg("WARNING: Cannot do Fermi motion for Hydrogen!");
     } else if (f0.doing_rho) {                   // dbase.f:208
         s.Mh = K::Mrho;
+    } else if (f0.doing_nuc_elast) {             // upstream dbase.f:216-218 (4df7351): the hadron is the nucleus
+        s.Mh = p.targ.mass_amu * K::amu;
     } else {                                     // dbase.f:216
         s.Mh = K::Mp;
     }

@@ -158,7 +158,7 @@ bool BuildLimits(RunSetup& s, const SimcParameters& p, ITargetLossProvider* loss
     EdgeTrue& V = s.VERTEXedge;
     const TheoryData& th = s.theory;
     auto pdistMax = [&]() { return s.pdist.pval.empty() ? 0.0 : s.pdist.pval.back(); };   // pval(nump)
-    if (f.doing_hyd_elast) {
+    if (f.doing_hyd_elast || f.doing_nuc_elast) {   // upstream init.f:321 (4df7351) adds doing_nuc_elast
         V.Em.min = 0.0;
         V.Em.max = 0.0;
         V.Pm.min = 0.0;
@@ -181,6 +181,7 @@ bool BuildLimits(RunSetup& s, const SimcParameters& p, ITargetLossProvider* loss
         }
         V.Em.min = th.E_Fermi;
         V.Em.max = 1000.;   // Need Egamma_tot_max for good limit.
+    // upstream init.f:344 also lists doing_nuc_elast here: unreachable (caught at :321, finding U-D1)
     } else if (f.doing_hydpi || f.doing_hydkaon || f.doing_hyddelta || f.doing_hydrho) {
         V.Em.min = 0.0;
         V.Em.max = 0.0;
@@ -205,7 +206,9 @@ bool BuildLimits(RunSetup& s, const SimcParameters& p, ITargetLossProvider* loss
     msg("E_bind = " + std::to_string(V.Em.min) + " MeV in limits_init (QF only)");
 
     // init.f:379-392 recoiling (A-1) system
-    if (f.doing_hyd_elast || f.doing_hydpi || f.doing_hydkaon || f.doing_hyddelta || f.doing_hydrho || f.doing_semi) {
+    // upstream init.f:374 (4df7351) adds doing_nuc_elast
+    if (f.doing_hyd_elast || f.doing_nuc_elast || f.doing_hydpi || f.doing_hydkaon || f.doing_hyddelta ||
+        f.doing_hydrho || f.doing_semi) {
         V.Mrec.min = 0.0;
         V.Mrec.max = 0.0;
         V.Trec.min = 0.0;
@@ -246,7 +249,7 @@ bool BuildLimits(RunSetup& s, const SimcParameters& p, ITargetLossProvider* loss
     }
 
     // init.f:441-475 generated summed energies
-    if (f.doing_hyd_elast) {
+    if (f.doing_hyd_elast || f.doing_nuc_elast) {   // upstream init.f:438
         gen.sumEgen.min = 0.0;
         gen.sumEgen.max = 0.0;
     } else if (f.doing_heavy) {
@@ -270,7 +273,7 @@ bool BuildLimits(RunSetup& s, const SimcParameters& p, ITargetLossProvider* loss
     gen.sumEgen.min = std::max(0.e0, gen.sumEgen.min);
 
     // init.f:480-498 E arm generation limits
-    if (f.doing_hyd_elast) {
+    if (f.doing_hyd_elast || f.doing_nuc_elast) {   // upstream init.f:474
         gen.e.E.min = edge.e.E.min;
         gen.e.E.max = edge.e.E.max + rad.Egamma2_max;
     } else if (s.flags.doing_deuterium || f.doing_pion || f.doing_kaon || f.doing_rho || f.doing_delta) {
@@ -290,7 +293,9 @@ bool BuildLimits(RunSetup& s, const SimcParameters& p, ITargetLossProvider* loss
     gen.e.xptar.max = edge.e.xptar.max;
 
     // init.f:503-517 P arm generation limits
-    if (f.doing_hyd_elast || s.flags.doing_deuterium || f.doing_pion || f.doing_kaon || f.doing_rho || f.doing_delta) {
+    // upstream init.f:500 adds doing_nuc_elast
+    if (f.doing_hyd_elast || f.doing_nuc_elast || s.flags.doing_deuterium || f.doing_pion || f.doing_kaon ||
+        f.doing_rho || f.doing_delta) {
         gen.p.E.min = edge.p.E.min;
         gen.p.E.max = edge.p.E.max + rad.Egamma3_max;
     } else if (f.doing_heavy || f.doing_semi) {

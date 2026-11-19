@@ -4,7 +4,7 @@
  * @brief simc::SimcParameters: every input variable of a SIMC `.inp` file, and the parameter table that drives the
  *        `.inp` reader, the JSON (de)serialisation and the reference tables.
  *
- * The struct has exactly one field for each of the 106 input variables of the original program, grouped like its
+ * The struct has exactly one field for each of the 106 input variables of the original program (107 since upstream 4df7351 added doing_nuc_elast), grouped like its
  * COMMON blocks / derived types.
  *
  * Conventions:
@@ -19,7 +19,7 @@
  *  - The JSON path of each field is its original name split on '%' (e.g. "targ%thick" -> {"targ":{"thick":...}});
  *    see simc::ParameterTable().
  *
- * @note Origin: Fortran SIMC dbase.f:regallvars (l.967-1128, 106 CTP variables) and dbase.f:convert_to_logical
+ * @note Origin: Fortran SIMC dbase.f:regallvars (l.967-1128, 106 CTP variables; + doing_nuc_elast of upstream 4df7351) and dbase.f:convert_to_logical
  *       (l.1129-1166). The third argument of the CTP regparm*() calls is a title pointer, NOT a default (e.g.
  *       doing_hplus, sigc_nbin and sigc_kin_max default to 0); source: the reference input-variable table (D-005).
  */
@@ -80,6 +80,7 @@ struct SimcParameters {
     bool doing_semi{false};          ///< Fortran: doing_semi (doing_semi_int) [flag]
     bool doing_hplus{false};         ///< Fortran: doing_hplus (doing_hplus_int) [flag] (title arg '1' is NOT a default)
     bool doing_pizero{false};        ///< Fortran: doing_pizero (doing_pizero_int) [flag]
+    bool doing_nuc_elast{false};     ///< Fortran (upstream 4df7351): doing_nuc_elast (doing_nuc_elast_int) [flag] A(e,e')A nuclear elastic
     int pizero_ngamma{0};            ///< Fortran: pizero_ngamma [count] 1 or 2 photons required
     bool doing_rho{false};           ///< Fortran: doing_rho (doing_rho_int) [flag]
     bool doing_decay{false};         ///< Fortran: doing_decay (doing_decay_int) [flag]
@@ -249,7 +250,7 @@ struct ParamDescriptor {
 
 /**
  * @brief The table of all input variables.
- * @return All 106 descriptors, in the registration order of the original program (dbase.f:regallvars); a static
+ * @return All 107 descriptors (106 + upstream doing_nuc_elast), in the registration order of the original program (dbase.f:regallvars); a static
  *         table, built on first use (thread-safe).
  */
 const std::vector<ParamDescriptor>& ParameterTable();

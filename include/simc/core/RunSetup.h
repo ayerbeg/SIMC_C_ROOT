@@ -57,6 +57,9 @@ struct ReactionFlags {
     bool doing_phsp{false}, doing_pizero{false} /**< @copydoc doing_phsp */, doing_hplus{false} /**< @copydoc doing_phsp */, do_fermi{false} /**< @copydoc doing_phsp */;
     /// Polarised-target magnetic field tracking is on.
     bool using_tgt_field{false};
+    /// A(e,e')A nuclear elastic scattering (upstream SIMC commit 4df7351, dbase.f:216-218): the raw input flag. With it
+    /// doing_eep is true and none of doing_hyd_elast / doing_deuterium / doing_heavy is set.
+    bool doing_nuc_elast{false};
 };
 
 /**

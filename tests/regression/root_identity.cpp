@@ -9,6 +9,13 @@
 //     overflow), entries and the statistics array — all bitwise;
 //   * other objects: only the class name.
 // The TFile/TKey date stamps are NOT compared (they change with every run).
+//
+//   simc_root_identity --common-leaves A.root B.root
+// (U.1) compares only the tree leaves present in both files, matched by name (the other leaves are listed): for a
+// reference whose ntuple layout differs (upstream SIMC 59ccdf6 vs the 294f662 layout of SIMC++).
+//   simc_root_identity --u1-upstream A.root B.root
+// (U.1) B is a 294f662 Fortran reference: a leaf value that differs only by an upstream change SIMC++ follows (z/pt2
+// columns 0 in B, pfermi NaN in B and 0 in A; tests/l1/Upstream294.h) is accepted and counted.
 // Exit status: 0 identical, 1 different, 2 usage / cannot open.
 #include <TClass.h>
 #include <TFile.h>
@@ -25,7 +32,13 @@
 #include <string>
 #include <vector>
 
+#include "../l1/Upstream294.h"
+
 namespace {
+
+bool gCommon = false;   // --common-leaves
+bool gU1 = false;       // --u1-upstream
+long gU1n = 0;
 
 bool sameBits(double a, double b) { return std::memcmp(&a, &b, sizeof a) == 0; }
 
@@ -46,12 +59,28 @@ long compareTree(TTree& a, TTree& b, const std::string& name) {
     }
     TObjArray* la = a.GetListOfLeaves();
     TObjArray* lb = b.GetListOfLeaves();
-    if (la->GetEntriesFast() != lb->GetEntriesFast()) {
+    std::vector<std::pair<TLeaf*, TLeaf*>> leaves;
+    if (gCommon) {
+        std::string onlyA, onlyB;
+        for (int i = 0; i < la->GetEntriesFast(); ++i) {
+            auto* x = static_cast<TLeaf*>(la->At(i));
+            auto* y = static_cast<TLeaf*>(lb->FindObject(x->GetName()));
+            if (!y) { onlyA += std::string(" ") + x->GetName(); continue; }
+            if (std::strcmp(x->GetTypeName(), y->GetTypeName()) != 0) {
+                std::printf("  %s: leaf %s is %s vs %s\n", name.c_str(), x->GetName(), x->GetTypeName(), y->GetTypeName());
+                return 1;
+            }
+            leaves.emplace_back(x, y);
+        }
+        for (int i = 0; i < lb->GetEntriesFast(); ++i)
+            if (!la->FindObject(lb->At(i)->GetName())) onlyB += std::string(" ") + lb->At(i)->GetName();
+        std::printf("  %s: %zu common leaves; only in A:%s; only in B:%s\n", name.c_str(), leaves.size(),
+                    onlyA.empty() ? " -" : onlyA.c_str(), onlyB.empty() ? " -" : onlyB.c_str());
+    } else if (la->GetEntriesFast() != lb->GetEntriesFast()) {
         std::printf("  %s: %d leaves vs %d\n", name.c_str(), la->GetEntriesFast(), lb->GetEntriesFast());
         return 1;
     }
-    std::vector<std::pair<TLeaf*, TLeaf*>> leaves;
-    for (int i = 0; i < la->GetEntriesFast(); ++i) {
+    for (int i = 0; !gCommon && i < la->GetEntriesFast(); ++i) {
         auto* x = static_cast<TLeaf*>(la->At(i));
         auto* y = static_cast<TLeaf*>(lb->At(i));
         if (std::strcmp(x->GetName(), y->GetName()) != 0 || std::strcmp(x->GetTypeName(), y->GetTypeName()) != 0) {
@@ -69,6 +98,11 @@ long compareTree(TTree& a, TTree& b, const std::string& name) {
             const int na = p.first->GetLen() * p.first->GetLenType();
             const int nb = p.second->GetLen() * p.second->GetLenType();
             if (na != nb || std::memcmp(p.first->GetValuePointer(), p.second->GetValuePointer(), na) != 0) {
+                if (gU1 && na == nb && p.first->GetLen() == 1 &&
+                    simcl1::u1UpstreamChange(p.first->GetName(), p.second->GetValue(), p.first->GetValue())) {
+                    ++gU1n;
+                    continue;
+                }
                 if (diffs[p.first->GetName()]++ == 0)
                     std::printf("  %s: leaf %s differs first at entry %lld (%.9g vs %.9g)\n", name.c_str(),
                                 p.first->GetName(), e, p.first->GetValue(), p.second->GetValue());
@@ -115,8 +149,13 @@ long compareHist(TH1& a, TH1& b, const std::string& name) {
 }  // namespace
 
 int main(int argc, char** argv) {
+    while (argc >= 4 && (std::strcmp(argv[1], "--common-leaves") == 0 || std::strcmp(argv[1], "--u1-upstream") == 0)) {
+        if (std::strcmp(argv[1], "--common-leaves") == 0) gCommon = true; else gU1 = true;
+        ++argv;
+        --argc;
+    }
     if (argc != 3) {
-        std::fprintf(stderr, "usage: simc_root_identity A.root B.root\n");
+        std::fprintf(stderr, "usage: simc_root_identity [--common-leaves] [--u1-upstream] A.root B.root\n");
         return 2;
     }
     std::unique_ptr<TFile> fa(TFile::Open(argv[1], "READ")), fb(TFile::Open(argv[2], "READ"));
@@ -149,6 +188,8 @@ int main(int argc, char** argv) {
         }
     }
     if (nh) std::printf("  %ld histograms compared\n", nh);
+    if (gU1n) std::printf("  %ld leaf values accepted as U.1 upstream changes (z/pt2 0 -> computed, pfermi NaN -> 0)\n", gU1n);
+    simcl1::u1Count().n = 0;   // printed above
     std::printf("%s vs %s: %s\n", argv[1], argv[2], bad ? "DIFFERENT" : "IDENTICAL");
     return bad ? 1 : 0;
 }

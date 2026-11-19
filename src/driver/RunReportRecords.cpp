@@ -29,6 +29,7 @@ void reactionLines(Out& o, const RunSetup& s) {
         if (f.doing_hyd_elast) o.list("              ****--------  H(e,e'p)  --------****");
         else if (f.doing_deuterium) o.list("              ****--------  D(e,e'p)  --------****");
         else if (f.doing_heavy) o.list("              ****--------  A(e,e'p)  --------****");
+        else if (f.doing_nuc_elast) o.list("              ****--------  A(e,e')A  --------****");   // upstream simc.f:682-683
         else stop("I don't have ANY idea what (e,e'p) we're doing!!!");
     } else if (f.doing_semi) {
         // simc.f:677-720

@@ -135,10 +135,19 @@ int completeness(const std::string& csv) {
     }
     check(n_registered == 106, "csv lists 106 registered variables (got " + std::to_string(n_registered) + ")");
     check(n_legacy == 46, "csv lists 46 obsolete names (got " + std::to_string(n_legacy) + ")");
-    check(ParameterTable().size() == 106, "ParameterTable has 106 entries (got " +
-                                              std::to_string(ParameterTable().size()) + ")");
+    // U.1: variables registered only by the upstream SIMC (59ccdf6), absent from the 294f662 inventory csv:
+    // doing_nuc_elast (dbase.f:1007, commit 4df7351; integer flag, default 0).
+    const std::set<std::string> upstream_only = {"doing_nuc_elast"};
+    for (const auto& u : upstream_only) {
+        const ParamDescriptor* d = FindParameter(u);
+        check(d != nullptr && d->kind == ParamKind::Flag && !*d->asBool(const_cast<SimcParameters&>(def)),
+              "upstream-only flag " + u + " registered, default F");
+    }
+    check(ParameterTable().size() == 106 + upstream_only.size(), "ParameterTable has 106 + " +
+              std::to_string(upstream_only.size()) + " upstream entries (got " + std::to_string(ParameterTable().size()) + ")");
     for (const auto& d : ParameterTable())
-        check(csv_registered.count(lower(d.name)) == 1, std::string("table entry ") + d.name + " is in the csv");
+        check(csv_registered.count(lower(d.name)) == 1 || upstream_only.count(d.name) == 1,
+              std::string("table entry ") + d.name + " is in the csv (or an upstream-only variable)");
     std::printf("registered=%d obsolete=%d table=%zu\n", n_registered, n_legacy, ParameterTable().size());
     return simctest::finish("params_completeness");
 }

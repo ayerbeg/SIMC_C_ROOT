@@ -2,7 +2,7 @@
 // Parameter table and JSON (de)serialisation for SimcParameters: one descriptor per Fortran input variable (name,
 // kind, units, origin) giving uniform access to the struct members. Used by the .inp reader (input/InpReader.cpp),
 // the JSON configuration of the command line, inp2json and the summary writer.
-// Fortran: dbase.f:regallvars (l.967-1128) — the table below lists the 106 registered
+// Fortran: dbase.f:regallvars (l.967-1128) — the table below lists the 106 registered (+ doing_nuc_elast, upstream 4df7351)
 // variables in the same order and with the same CTP names.
 #include "simc/core/SimcParameters.h"
 
@@ -60,6 +60,7 @@ std::vector<ParamDescriptor> buildTable() {
         P_DBL("Ebeam", Ebeam, "MeV", "Ebeam (dbase.f:996)"),
         P_DBL("dEbeam", dEbeam, "% (full width)", "dEbeam (dbase.f:997)"),
         P_DBL("EXPER%charge", EXPER.charge, "mC", "EXPER%charge (dbase.f:998)"),
+        P_FLAG("doing_nuc_elast", doing_nuc_elast, "flag", "doing_nuc_elast_int (upstream dbase.f:1007, commit 4df7351)"),
         P_FLAG("doing_kaon", doing_kaon, "flag", "doing_kaon_int (dbase.f:999)"),
         P_INT("which_kaon", which_kaon, "code", "which_kaon (dbase.f:1000)"),
         P_FLAG("doing_pion", doing_pion, "flag", "doing_pion_int (dbase.f:1001)"),

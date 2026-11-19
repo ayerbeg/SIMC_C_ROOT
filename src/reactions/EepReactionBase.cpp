@@ -68,14 +68,14 @@ bool EepReactionBase::completeEv(MainEvent& main, Event& vertex, IRandom& rng) {
     vertex.ue.x = std::sin(vertex.e.theta) * std::cos(vertex.e.phi);
     vertex.ue.y = std::sin(vertex.e.theta) * std::sin(vertex.e.phi);
     vertex.ue.z = std::cos(vertex.e.theta);
-    if (!f.doing_hyd_elast && !f.doing_rho) {
+    if (!f.doing_hyd_elast && !f.doing_rho && !f.doing_nuc_elast) {   // upstream event.f:507 adds doing_nuc_elast
         vertex.up.x = std::sin(vertex.p.theta) * std::cos(vertex.p.phi);
         vertex.up.y = std::sin(vertex.p.theta) * std::sin(vertex.p.phi);
         vertex.up.z = std::cos(vertex.p.theta);
     }
 
-    // l.517-524
-    if (f.doing_hyd_elast) {
+    // l.517-524 (upstream 20d46fc: also doing_nuc_elast, Mh = the nucleus mass)
+    if (f.doing_hyd_elast || f.doing_nuc_elast) {
         vertex.e.E = vertex.Ein * s.Mh / (s.Mh + vertex.Ein * (1. - vertex.ue.z));
         // FORTRAN-QUIRK(D-024): the only failure; at theta = 0 Ein*Mh/Mh can round 1 ulp above Ein.
         if (vertex.e.E > vertex.Ein) return false;
@@ -95,7 +95,7 @@ bool EepReactionBase::completeEv(MainEvent& main, Event& vertex, IRandom& rng) {
     if (std::fabs(sq(vertex.uq.x) + sq(vertex.uq.y) + sq(vertex.uq.z) - 1) > 0.01)
         throw FortranStop("Error in q vector normalization (event.f:538-539)");
 
-    if (f.doing_hyd_elast) {   // p = q (l.546-563)
+    if (f.doing_hyd_elast || f.doing_nuc_elast) {   // p = q (l.546-563; upstream 20d46fc: also doing_nuc_elast)
         vertex.Em = 0.0;
         vertex.Pm = 0.0;
         vertex.Mrec = 0.0;
@@ -160,8 +160,8 @@ bool EepReactionBase::completeEv(MainEvent& main, Event& vertex, IRandom& rng) {
     // FORTRAN-QUIRK(D-024): for H elastic vertex%Pm is 0 (l.547), so PmPer = 0. For D/A see FORTRAN-BUG(D-033 F5) below.
     vertex.PmPer = std::sqrt(fmaxF(0.e0, sq(vertex.Pm) - sq(vertex.PmPar) - sq(vertex.PmOop)));
 
-    // l.937-955
-    if (f.doing_hyd_elast) {
+    // l.937-955 (upstream 20d46fc: also doing_nuc_elast)
+    if (f.doing_hyd_elast || f.doing_nuc_elast) {
         vertex.Trec = 0.0;
     } else if (f.doing_deuterium) {
         vertex.Pm = vertex.Pmiss;
@@ -188,6 +188,11 @@ bool EepReactionBase::completeEv(MainEvent& main, Event& vertex, IRandom& rng) {
     // l.964-977: krel only for deut/he pion/kaon. FORTRAN-QUIRK(D-033 F8): ntup%krel = the SAVEd local krel, never
     // assigned on the (e,e'p) branches (0).
     main.ntup.krel = krel_;
+
+    // upstream event.f:990-991 (e4dd175): z and pt^2 of the vertex are computed for every reaction (no random numbers).
+    // main.theta_pq is the value of the meson block (event.f:727), i.e. the previous value for the (e,e'p) branches.
+    vertex.zhad = vertex.p.E / vertex.nu;
+    vertex.pt2 = sq(vertex.p.P) * (1.0 - sq(std::cos(main.theta_pq)));
 
     // l.1013-1024
     double r = std::sqrt(1. + sq(vertex.e.yptar) + sq(vertex.e.xptar));   // r=cos(theta-theta0)
@@ -363,13 +368,12 @@ bool EepReactionBase::completeRecon(Event& recon) {
         const double t = recon.Q2 - commonMh2() + 2 * (recon.nu * recon.p.E - recon.p.P * recon.q * std::cos(recon.theta_pq));
         reconNtup_ = {mm, mmA, t};
     }
-    if (f.doing_semi || f.doing_rho) {
-        recon.zhad = recon.p.E / recon.nu;
-        recon.pt2 = sq(recon.p.P) * (1.0 - sq(std::cos(recon.theta_pq)));
-    }
+    // upstream event.f:1338-1342 (e4dd175, "Always calculate z and pt"): no longer only for doing_semi/doing_rho
+    recon.zhad = recon.p.E / recon.nu;
+    recon.pt2 = sq(recon.p.P) * (1.0 - sq(std::cos(recon.theta_pq)));
 
-    // l.1325-1335
-    if (f.doing_hyd_elast) {
+    // l.1325-1335 (upstream 20d46fc l.1344: also doing_nuc_elast)
+    if (f.doing_hyd_elast || f.doing_nuc_elast) {
         recon.Trec = 0.0;
         recon.Em = recon.nu + s.targ.M - recon.p.E - recon.Trec;
     } else if (f.doing_deuterium || f.doing_heavy) {

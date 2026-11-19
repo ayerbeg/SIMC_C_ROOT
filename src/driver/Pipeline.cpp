@@ -80,6 +80,8 @@ PipelineConfig PipelineConfig::Defaults(const RunSetup& s) {
         p.reaction.type = "deuterium_eep";
     else if (f.doing_heavy)
         p.reaction.type = "nucleus_eep";
+    else if (f.doing_nuc_elast)   // A(e,e')A (upstream 4df7351; event.f at 20d46fc)
+        p.reaction.type = "nuclear_elastic";
     else if (f.doing_pion)   // which_pion 0/1/2/3/10/11, pi+/pi-/pi0
         p.reaction.type = "pion_production";
     else if (f.doing_kaon)   // which_kaon 0/1/2/10/11/12
@@ -96,6 +98,8 @@ PipelineConfig PipelineConfig::Defaults(const RunSetup& s) {
     if (f.doing_deuterium || f.doing_heavy) {
         p.physics.type = "deforest";
         p.physics.config["Mh"] = s.Mh;
+    } else if (f.doing_nuc_elast && !f.doing_phsp) {
+        p.physics.type = "nuc_elastic";   // nuclear_elastic.f:sig_nuc_elastic (event.f:1457-1459 at 20d46fc)
     } else if (f.doing_pion && !f.doing_phsp) {
         p.physics.type = "pion";   // physics_pion.f:peepi (l.1459)
     } else if (f.doing_kaon && !f.doing_phsp) {

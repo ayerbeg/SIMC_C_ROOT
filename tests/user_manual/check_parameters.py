@@ -3,7 +3,7 @@
 
 usage: check_parameters.py <inp2json> <simc++> <parameter reference .md> <manual dir>
 
-1. Every input variable of SimcParameters (the 106 rows of ParameterTable(), printed by `inp2json --mapping`) must have
+1. Every input variable of SimcParameters (the 107 rows of ParameterTable(), printed by `inp2json --mapping`) must have
    a row in the parameter reference: a Markdown table line whose first cell is the Fortran name in backticks.
    Rows naming a '%' variable that does not exist, or a parameter with the wrong case, are errors too.
 2. Every option printed by `simc++ --help` (--xxx and -x) must appear in backticks somewhere in the manual directory.

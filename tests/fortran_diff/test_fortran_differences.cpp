@@ -1579,6 +1579,33 @@ SemiRun runSemi(const SimcParameters& p, bool compat, long ngen, std::unique_ptr
     return r;
 }
 
+// U-DEV1 (task U.1): doing_nuc_elast together with another reaction flag is refused in both modes; alone it sets up
+// A(e,e')A (upstream dbase.f:216-218: doing_eep, no hyd_elast/deuterium/heavy, Mh = mass_amu*amu).
+int testNucElastCombination() {
+    SimcParameters p;
+    if (!loadPionInp("l1s_h_delta3", p)) return 77;
+    for (int compat = 0; compat < 2; ++compat) {
+        SetupOptions so;
+        so.fortran_compat = compat == 1;
+        so.data_dir = specDir();
+        SimcParameters q = p;
+        q.doing_nuc_elast = true;
+        const RunSetup s = BuildRunSetup(q, so);
+        expect(!s.ok() && s.stops.front().find("doing_nuc_elast cannot be combined") != std::string::npos,
+               std::string("doing_pion + doing_nuc_elast refused, compat=") + (compat ? "1" : "0"));
+        SimcParameters e = p;
+        e.doing_pion = false;
+        e.doing_nuc_elast = true;
+        e.doing_decay = false;
+        e.targ.A = 12; e.targ.Z = 6; e.targ.mass_amu = 12.0; e.targ.mrec_amu = 11.0;
+        const RunSetup t = BuildRunSetup(e, so);
+        expect(t.ok() && t.flags.doing_eep && t.flags.doing_nuc_elast && !t.flags.doing_hyd_elast &&
+                   !t.flags.doing_heavy && t.Mh == 12.0 * constants::amu && ReactionTitle(t.flags, e) == "A(e,e')A",
+               std::string("doing_nuc_elast alone: A(e,e')A set up, compat=") + (compat ? "1" : "0"));
+    }
+    return 0;
+}
+
 // D-051 F3 (results_write.f:208-209, pfermi 0/0 for pfer = 0) and F9 (event.f:922, PmPer from the previous Pm), H pi+.
 int testSemiPfermiPmPer() {
     SimcParameters p;
@@ -1592,8 +1619,10 @@ int testSemiPfermiPmPer() {
     }
     const SemiSink &c = *r[1].sink, &k = *r[0].sink;
     char b[300];
-    std::snprintf(b, sizeof b, "F3 compat: pfermi = 0/0 = NaN in %ld of %ld H events (as the Fortran .bin)", c.pfermiNan, c.n);
-    expect(c.n == 300 && c.pfermiNan == c.n, b);
+    // U.1: upstream SIMC fixed F3 (results_write.f:216-218, e4dd175); fortran_compat follows the fix (pfermi = 0)
+    std::snprintf(b, sizeof b, "F3 compat (fixed upstream e4dd175): pfermi = 0 in %ld of %ld H events (NaN in %ld)",
+                  c.pfermiZero, c.n, c.pfermiNan);
+    expect(c.n == 300 && c.pfermiZero == c.n && c.pfermiNan == 0, b);
     std::snprintf(b, sizeof b, "F3 corrected: pfermi = 0 in %ld of %ld H events", k.pfermiZero, k.n);
     expect(k.n == 300 && k.pfermiZero == k.n, b);
     std::snprintf(b, sizeof b, "F9 compat: vertex PmPer from this event's Pm in %ld of %ld events (stale Pm otherwise)",
@@ -2014,6 +2043,7 @@ const std::map<std::string, std::function<int()>>& items() {
         {"D067_T1_field_opposite_side", testFieldOppositeSide},
         {"D067_T2_field_parm_sign", testFieldPArmSign},
         {"D067_T14_field_ntuple_columns", testFieldNtupleColumns},
+        {"U_DEV1_nuc_elast_combination", testNucElastCombination},
     };
     return m;
 }

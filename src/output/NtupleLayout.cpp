@@ -90,7 +90,8 @@ bool UsesEepLayout(const ReactionFlags& f) {
     // NtupleInit.f: the pion/kaon/delta branch comes first, then semi/rho, then (e,e'p).
     if (f.doing_pion || f.doing_kaon || f.doing_delta) return false;
     if (f.doing_semi || f.doing_rho) return false;
-    return f.doing_hyd_elast || f.doing_deuterium || f.doing_heavy;
+    // upstream NtupleInit.f:293 / results_write.f:246 at 20d46fc: doing_nuc_elast uses the (e,e'p) layout
+    return f.doing_hyd_elast || f.doing_deuterium || f.doing_heavy || f.doing_nuc_elast;
 }
 
 namespace {
@@ -291,7 +292,7 @@ const std::vector<NtupleColumn>& SemiNtupleColumns() {
             {"sighad", "main.ntup.sigcm (peepiX sighad)", "GeV^-2", "results_write.f:205"},
             {"jacobian", "main.davejac (peepiX jacobian*1000)", "", "results_write.f:206"},
             {"centjac", "main.johnjac (never assigned: 0, D-051 F5)", "", "results_write.f:207"},
-            {"pfermi", "pfer/1000*sign(pfermi_hat.uq) (vertex uq; 0/0 = NaN for pfer = 0 in compat, D-051 F3)", "GeV/c",
+            {"pfermi", "pfer/1000*sign(pfermi_hat.uq) (vertex uq; 0 for pfer = 0, D-051 F3, fixed upstream e4dd175)", "GeV/c",
              "results_write.f:208-209"},
             {"xfermi", "main.ntup.xfermi (x_Bj with Fermi motion)", "", "results_write.f:210"},
             {"phipqi", "main.phi_pq", "rad", "results_write.f:211"},
@@ -330,8 +331,9 @@ bool FillSemiNtuple(const RunSetup& s, const MainEvent& main, const Event& verte
     double dummy = F.pferx * vertex.uq.x + F.pfery * vertex.uq.y + F.pferz * vertex.uq.z;
     // FORTRAN-BUG(D-051 F3): original Fortran results_write.f:208-209 has no `if (dummy.eq.0) dummy=1.e-20` (the pion
     // block, l.143, has it): pfer = 0 (every H and A > 2 event) gives 0/0 = NaN in the ntuple column pfermi; corrected
-    // as the pion block (pfermi = 0).
-    if (!s.fortran_compat && dummy == 0) dummy = 1.e-20;
+    // as the pion block (pfermi = 0). Upstream SIMC fixed it the same way (results_write.f:216-218, e4dd175), so
+    // fortran_compat follows the upstream fix too (task U.1).
+    if (dummy == 0) dummy = 1.e-20;
     ntu[53] = F.pfer / 1000. * std::fabs(dummy) / dummy;
     ntu[54] = main.ntup.xfermi;
     ntu[55] = main.phi_pq;
@@ -381,8 +383,8 @@ const std::vector<NtupleColumn>& RhoNtupleColumns() {
         c[35].source = "main.ntup.t/1e6 (recon, the detected decay pion: Mh2 = Mpi2)";
         c[38].source = "main.sigcc (peerho of the rho vertex)";
         c[39].source = "main.sigcent (never assigned: 0)";
-        c[44].source = "vertex.zhad (never assigned for rho: 0)";
-        c[46].source = "vertex.pt2/1e6 (never assigned for rho: 0)";
+        c[44].source = "vertex.zhad (event.f:990, every reaction since upstream e4dd175)";
+        c[46].source = "vertex.pt2/1e6 (event.f:991, every reaction since upstream e4dd175)";
         c[50].source = "main.ntup.sigcm (peerho dsigma/dOmega_cm)";
         c[51].source = "main.davejac (peerho, not applied)";
         c[52].source = "main.johnjac (peerho)";
@@ -506,11 +508,17 @@ bool FillEepNtuple(const RunSetup& s, const MainEvent& main, const Event& /*vert
     // sin(..)**2 is x*x in gfortran; std::pow(x,2) is NOT folded to x*x by gcc 16 under -fmath-errno (not bitwise)
     const double sinh2 = std::sin(recon.e.theta / 2.);
     const double poftheta = kMp * Ebeam / (2 * Ebeam * (sinh2 * sinh2) + kMp);
-    const double corrsing = recon.e.P - poftheta;
+    double corrsing = recon.e.P - poftheta;
     const double uqyz = std::sqrt(recon.uq.y * recon.uq.y + recon.uq.z * recon.uq.z);
-    const double Pm_Heepz = -(recon.Pmy * recon.uq.y + recon.Pmz * recon.uq.z) / uqyz;
-    const double Pm_Heepy = (recon.Pmz * recon.uq.y - recon.Pmy * recon.uq.z) / uqyz;
-    const double Pm_Heepx = -recon.Pmx;
+    double Pm_Heepz = -(recon.Pmy * recon.uq.y + recon.Pmz * recon.uq.z) / uqyz;
+    double Pm_Heepy = (recon.Pmz * recon.uq.y - recon.Pmy * recon.uq.z) / uqyz;
+    double Pm_Heepx = -recon.Pmx;
+    if (s.flags.doing_nuc_elast) {
+        // FORTRAN-QUIRK(U-B2): upstream results_write.f:54 (20d46fc) tests only hyd_elast/deuterium/heavy, so for
+        // doing_nuc_elast corrsing and Pm_Heep* are never assigned (SAVEd locals: 0). Kept in both modes (corrsing is
+        // defined with the proton mass, meaningless for a nucleus).
+        corrsing = Pm_Heepx = Pm_Heepy = Pm_Heepz = 0.0;
+    }
 
     const ArmSide side = ElectronArmSide(s.params.electron_arm);
     auto fillArm = [&](int off, const ArmFull& r, const ArmFP& fp, const ArmFull& o, double ytari) {

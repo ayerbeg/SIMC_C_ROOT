@@ -30,12 +30,12 @@ void HydrogenElastic::init(const StageContext& ctx) {
                                     "': handles only H(e,e'p) (doing_hyd_elast) and doing_phsp; meson production is the "
                                     "reaction 'pion_production', 'kaon_production', 'delta_production', 'sidis_production' "
                                     "or 'rho_production'");
-    if (!f.doing_hyd_elast && !f.doing_phsp)
-        throw NotPorted("reaction '" + name_ + "': the setup is neither doing_hyd_elast nor doing_phsp");
+    if (!f.doing_hyd_elast && !f.doing_phsp && !f.doing_nuc_elast)
+        throw NotPorted("reaction '" + name_ + "': the setup is neither doing_hyd_elast, doing_nuc_elast nor doing_phsp");
     EepReactionBase::init(ctx);
 }
 
-// Fortran: event.f:complete_main l.1397-1398 (doing_hyd_elast, doing_phsp: no spectral function)
+// Fortran: event.f:complete_main l.1397-1398 (doing_hyd_elast, doing_phsp, upstream doing_nuc_elast: no spectral function)
 double HydrogenElastic::spectralWeight(const Event&) { return 1.0; }
 
 // Fortran: event.f:generate (l.214-428), after the beam part (StandardBeam).
@@ -86,10 +86,16 @@ namespace {
 struct PhaseSpace : HydrogenElastic {
     PhaseSpace() : HydrogenElastic("phase_space") {}
 };
+// A(e,e')A (upstream SIMC 4df7351, event.f at 20d46fc): event.f:generate takes the H(e,e'p) path (only the electron
+// angles are generated, l.276-301); complete_ev/complete_recon_ev branch on doing_hyd_elast.or.doing_nuc_elast.
+struct NuclearElastic : HydrogenElastic {
+    NuclearElastic() : HydrogenElastic("nuclear_elastic") {}
+};
 }  // namespace
 
 SIMC_REGISTER(IReaction, "hydrogen_elastic", HydrogenElastic)
 SIMC_REGISTER(IReaction, "phase_space", PhaseSpace)
+SIMC_REGISTER(IReaction, "nuclear_elastic", NuclearElastic)
 
 }  // namespace reactions
 }  // namespace simc
