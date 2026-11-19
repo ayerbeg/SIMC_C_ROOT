@@ -10,9 +10,11 @@ the Fortran files.
   benharsf_4.dat     "                                                               A = 4
   benharsf_12.dat    "                                                               A = 12 (and the Fortran default)
   benharsf_56.dat    "                                                               A = 56
+  benharsf_64.dat    "  (upstream SIMC a85dc6b/40e2867; 49 Pm x 100 Em, SFp = SFn)   A = 64
   benharsf_197.dat   "                                                               A = 197
 
-The Fortran chooses the file from nint(targ%A) (init.f:839-851, dbase.f:598-616) and silently falls back to the C-12
+The Fortran chooses the file from nint(targ%A) (init.f:839-851, dbase.f:598-616; A = 64 since upstream a85dc6b,
+dbase.f:608-609, task U.1) and silently falls back to the C-12
 file for every other A (He-3, He-4, Ca-40, ...; D-033 F1). SIMC++ takes the same default, prints a warning when it
 falls back, and lets the user name the file explicitly:
 

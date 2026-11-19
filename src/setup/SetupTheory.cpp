@@ -295,6 +295,7 @@ bool BuildTargetAndTheory(RunSetup& s, const SimcParameters& p, const SetupOptio
         } else if (A == 4) sf.file = "benharsf_4.dat";
         else if (A == 12) sf.file = "benharsf_12.dat";
         else if (A == 56) sf.file = "benharsf_56.dat";
+        else if (A == 64) sf.file = "benharsf_64.dat";   // upstream dbase.f:608-609 (a85dc6b): Cu
         else if (A == 197) sf.file = "benharsf_197.dat";
         else {
             msg("No spectral function for A = " + std::to_string(t.A) + ", Defaulting to Carbon S.F.");

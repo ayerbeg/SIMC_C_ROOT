@@ -29,6 +29,7 @@
 #include <vector>
 
 #include "L1Runner.h"
+#include "Md5.h"
 #include "simc/core/Registry.h"
 #include "simc/core/random/ScriptedRandom.h"
 #include "simc/driver/SimcRun.h"
@@ -66,7 +67,7 @@ struct Cmp {
     std::string worst;
     void check(const std::string& col, double cpp, double ref, std::size_t row) {
         ++n;
-        if (same(cpp, ref)) {
+        if (same(cpp, ref) || simcl1::u1UpstreamChange(col, ref, cpp)) {
             ++eq;
             return;
         }
@@ -146,8 +147,14 @@ int runFiles(const std::string& dataDir, const std::string& fortranDir) {
             ++bad;
             continue;
         }
+        // U.1: the copy must also match the md5 recorded in MD5SUMS (benharsf_64.dat exists only in the upstream tree)
+        if (simcl1::md5hex(a) != md5) {
+            std::printf("  %-20s md5 DIFFERS from MD5SUMS\n", name.c_str());
+            ++bad;
+            continue;
+        }
         if (!slurp(fortranDir + "/" + name, b)) {
-            std::printf("  %s: Fortran file missing (skip)\n", name.c_str());
+            std::printf("  %-20s md5 as in MD5SUMS; not in the Fortran tree (upstream-only file)\n", name.c_str());
             continue;
         }
         const bool eq = a == b;
@@ -922,7 +929,7 @@ struct CaptureCompare {
             if (it == o.end()) continue;
             const double f = r[n], c = it->second;
             ++values;
-            if (same(f, c)) {
+            if (same(f, c) || simcl1::u1UpstreamChange(n, f, c)) {
                 ++bitwise;
                 continue;
             }
