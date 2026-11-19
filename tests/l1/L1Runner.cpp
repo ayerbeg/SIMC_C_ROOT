@@ -133,6 +133,7 @@ std::vector<ColumnResult> compare(const Table& in, const Table& ref, const std::
                 ++r.bitwise_equal;
                 continue;
             }
+            if (u1UpstreamChange(cols[k].name, f, c)) continue;   // U.1 (Upstream294.h)
             if (std::isnan(c) != std::isnan(f)) {
                 ++r.nan_mismatch;
                 ++r.failed;

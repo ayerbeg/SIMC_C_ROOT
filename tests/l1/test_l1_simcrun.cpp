@@ -36,6 +36,7 @@
 #include <TH1D.h>
 #include <TTree.h>
 
+#include "Upstream294.h"
 #include "simc/core/SimcParameters.h"
 #include "simc/core/random/ScriptedRandom.h"
 #include "simc/driver/FortranWriter.h"
@@ -145,7 +146,7 @@ using Counters = std::map<std::string, Counter>;
 void check(Counters& c, const std::string& k, double cpp, double ref, long where) {
     Counter& x = c[k];
     ++x.n;
-    if (!same(cpp, ref)) {
+    if (!same(cpp, ref) && !simcl1::u1UpstreamChange(k, ref, cpp)) {
         if (x.diff++ == 0) {
             x.first = where;
             x.fr = ref;
@@ -437,7 +438,8 @@ int replay(const std::string& capdir, const std::string& rundir, const std::stri
                 ta->GetEntry(k);
                 tb->GetEntry(k);
                 for (std::size_t i = 0; i < cols.size(); ++i) {
-                    const bool eq = (std::isnan(va[i]) && std::isnan(vb[i])) || std::memcmp(&va[i], &vb[i], 4) == 0;
+                    const bool eq = (std::isnan(va[i]) && std::isnan(vb[i])) || std::memcmp(&va[i], &vb[i], 4) == 0 ||
+                                    simcl1::u1UpstreamChange(cols[i].name, vb[i], va[i]);   // U.1 (Upstream294.h)
                     check(ct, cols[i].name, eq ? 0. : static_cast<double>(va[i]), eq ? 0. : static_cast<double>(vb[i]),
                           static_cast<long>(k));
                 }
@@ -450,8 +452,11 @@ int replay(const std::string& capdir, const std::string& rundir, const std::stri
     }
 
     // ---- text files
-    ok = compareText((run + ".hist (except BEGIN/END Time)").c_str(), slurp(outdir + "/" + run + ".hist"),
-                     slurp(rundir + "/" + run + ".hist"), {2, 3}) && ok;
+    {
+        const std::string refHist = slurp(rundir + "/" + run + ".hist");   // U.1: no doing_nuc_elast line in 294f662
+        ok = compareText((run + ".hist (except BEGIN/END Time)").c_str(),
+                         simcl1::u1StripHist(slurp(outdir + "/" + run + ".hist"), refHist), refHist, {2, 3}) && ok;
+    }
     ok = compareText((run + ".geni").c_str(), slurp(outdir + "/" + run + ".geni"), slurp(rundir + "/" + run + ".geni"), {}) && ok;
     ok = compareText((run + ".gen").c_str(), slurp(outdir + "/" + run + ".gen"), slurp(rundir + "/" + run + ".gen"), {}) && ok;
 

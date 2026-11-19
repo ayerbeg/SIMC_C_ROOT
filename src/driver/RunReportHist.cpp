@@ -116,6 +116,7 @@ std::string FormatHist(const RunSetup& s, const RunReport& r) {
         x.x(2).a("pizero_ngamma", 19).lit("=").i(p.pizero_ngamma, 2);
         o.line(x);
     }
+    o.line(flags({{"doing_nuc_elast", f.doing_nuc_elast}}));   // upstream simc.f:894 (4df7351), printed for every run
     o.line(flags({{"doing_hyd_elast", f.doing_hyd_elast}, {"doing_deuterium", f.doing_deuterium}, {"doing_heavy", f.doing_heavy}}));
     o.line(flags({{"doing_hydpi", f.doing_hydpi}, {"doing_deutpi", f.doing_deutpi}, {"doing_hepi", f.doing_hepi}}));
     o.line(flags({{"doing_hydkaon", f.doing_hydkaon}, {"doing_deutkaon", f.doing_deutkaon}, {"doing_hekaon", f.doing_hekaon}}));

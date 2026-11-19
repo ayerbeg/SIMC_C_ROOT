@@ -829,7 +829,7 @@ struct Cmp {
     std::string worst;
     void check(const std::string& col, double cpp, double ref, std::size_t row) {
         ++n;
-        if (same(cpp, ref)) {
+        if (same(cpp, ref) || simcl1::u1UpstreamChange(col, ref, cpp)) {
             ++eq;
             return;
         }
@@ -1227,7 +1227,7 @@ struct CaptureCompare {
             if (it == o.end()) continue;
             const double f = r[n], c = it->second;
             ++values;
-            if (same(f, c)) {
+            if (same(f, c) || simcl1::u1UpstreamChange(n, f, c)) {
                 ++bitwise;
                 continue;
             }

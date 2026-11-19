@@ -463,6 +463,11 @@ bool PionProduction::completeEv(MainEvent& main, Event& vertex, IRandom& rng) {
     }
     main.ntup.krel = krel_;
 
+    // upstream event.f:990-991 (e4dd175): z and pt^2 of the vertex are computed for every reaction (no random numbers).
+    // main.theta_pq is the value of the meson block (event.f:727), i.e. the previous value for the (e,e'p) branches.
+    vertex.zhad = vertex.p.E / vertex.nu;
+    vertex.pt2 = sq(vertex.p.P) * (1.0 - sq(std::cos(main.theta_pq)));
+
     // l.1013-1024: 1/cos**3(theta-theta0) for both arms
     double r = std::sqrt(1. + sq(vertex.e.yptar) + sq(vertex.e.xptar));
     main.jacobian = main.jacobian / (r * r * r);

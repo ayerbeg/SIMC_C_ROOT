@@ -505,7 +505,7 @@ struct CaptureCompare {
             if (it == o.end()) continue;
             const double f = r[n], c = it->second;
             ++values;
-            if (std::memcmp(&f, &c, sizeof f) == 0 || (std::isnan(f) && std::isnan(c))) {
+            if (std::memcmp(&f, &c, sizeof f) == 0 || (std::isnan(f) && std::isnan(c)) || simcl1::u1UpstreamChange(n, f, c)) {
                 ++bitwise;
                 continue;
             }

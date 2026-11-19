@@ -202,7 +202,11 @@ bool SidisProduction::completeEv(MainEvent& main, Event& vertex, IRandom& rng) {
     vertex.zhad = vertex.p.E / vertex.nu;
     const double c = std::cos(main.theta_pq);
     vertex.pt2 = sq(vertex.p.P) * (1.0 - c * c);
-    if (vertex.zhad > 1.0) return false;
+    if (vertex.zhad > 1.0) {
+        // upstream event.f:996 (e4dd175) prints this line for every such try
+        if (log_) *log_ << " WARNING! z=E/nu>1.0. This should never happen. Setting success to .false.\n";
+        return false;
+    }
 
     // l.1013-1024: 1/cos**3(theta-theta0) for both arms
     double r = std::sqrt(1. + sq(vertex.e.yptar) + sq(vertex.e.xptar));

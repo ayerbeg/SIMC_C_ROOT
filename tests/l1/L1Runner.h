@@ -18,6 +18,8 @@
 #include <string>
 #include <vector>
 
+#include "Upstream294.h"
+
 namespace simcl1 {
 
 /// A whitespace-separated harness table.
