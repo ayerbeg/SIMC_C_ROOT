@@ -64,7 +64,7 @@ finish: Normalise → RunReport → RunSummary → sinks (endRun; IReportSink::w
   ```
   `PipelineConfig::Defaults` reproduces the Fortran choices from the flags: `phase_space` if `doing_phsp`
   (D-009: on hydrogen it still runs the elastic kinematics with sigcc = 1), `hydrogen_elastic` for H(e,e'p),
-  `deuterium_eep` (D) / `nucleus_eep` (A > 2), `pion_production` (doing_pion, P9.2), `kaon_production` (doing_kaon, P10.2), `delta_production` (doing_delta, P11.1), `sigep` (H) / `deforest` (D, A) / `pion`
+  `deuterium_eep` (D) / `nucleus_eep` (A > 2), `nuclear_elastic` (doing_nuc_elast, upstream SIMC 4df7351; model `nuc_elastic`), `pion_production` (doing_pion, P9.2), `kaon_production` (doing_kaon, P10.2), `delta_production` (doing_delta, P11.1), `sigep` (H) / `deforest` (D, A) / `pion`
   (doing_pion) / `kaon` (doing_kaon) / `delta` (doing_delta; no cross section, D-048 F4), `simc_rad` (radc_init_ev runs for every event, even without radiation), the arms
   from `electron_arm`/`hadron_arm` (`MonteCarlo::DefaultArm`), `root_tree` only if `Nntu > 0`.
   `simc++ --print-pipeline` prints the resolved pipeline, then runs.

@@ -178,7 +178,7 @@ class IReaction : public IStage {
   Fortran part after the SF weight (cross section, Coulomb focusing factor, weight).
 * `genVolume()` is the generated phase-space volume used in the normalisation.
 * Select it with `"reaction": "my_reaction"`. The default comes from the run flags (`hydrogen_elastic`,
-  `phase_space`, `deuterium_eep`, `nucleus_eep`, `pion_production`, `kaon_production`, `delta_production`,
+  `phase_space`, `nuclear_elastic`, `deuterium_eep`, `nucleus_eep`, `pion_production`, `kaon_production`, `delta_production`,
   `sidis_production`, `rho_production`).
 * Optional hooks: `beginTry(ntried)` (messages), `prepareCentral(main0, vertex0)` (called by calculate_central before
   the central complete_main: set the main0 quantities your cross section reads) and `finalTargetState(targ)` (target

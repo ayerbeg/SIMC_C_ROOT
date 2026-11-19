@@ -21,7 +21,8 @@ Each sink accepts an optional JSON config `{"file": "..."}`.
   util/root_tree/make_root_tree.f + froot.c (tree `h10`, one `Float_t` leaf per tag, branch title = name).
 - Only successful events are written (results_write.f:34).
 - Each value is computed in double precision and stored as `Float_t`, like make_root_tree's `real*4 ntup_out`.
-- Implemented layouts: the (e,e'p) family (`doing_hyd_elast`, `doing_deuterium`, `doing_heavy`), 46 columns. This includes
+- Implemented layouts: the (e,e'p) family (`doing_hyd_elast`, `doing_deuterium`, `doing_heavy`, and `doing_nuc_elast`
+  as at upstream 20d46fc, with corrsing and Pmx/y/z = 0), 46 columns. This includes
   `doing_phsp`, which keeps `doing_hyd_elast`, so the acceptance runs also have these 46 columns. Exclusive pion production
   (`doing_pion`, P9.2): 53 columns, 65 with `doing_pizero` (§1b). Kaon production (`doing_kaon`, P10.2): 55 columns (§1c).
   Delta region (`doing_delta`, P11.1): the 53 pion columns (§1d). SIDIS (`doing_semi`, P12.2): 56 columns (§1e), 68 with `doing_pizero` (the 12 photon columns of §1b appended, P14.3). Rho
@@ -188,7 +189,7 @@ Columns 1-33 as the (e,e'p) layout, then:
 | 51 | `sighad` | `main.ntup.sigcm` = peepiX σ_had | GeV⁻² |
 | 52 | `jacobian` | `main.davejac` (peepiX jacobian × 1000) | |
 | 53 | `centjac` | `main.johnjac`: never assigned, always 0 (D-051 F5) | |
-| 54 | `pfermi` | `pfer/1000 * sign(p̂_fermi·q̂)`: fortran_compat 0/0 = **NaN** for every event with pfer = 0 (H, A > 2; D-051 F3), default 0 | GeV/c |
+| 54 | `pfermi` | `pfer/1000 * sign(p̂_fermi·q̂)`: 0 for every event with pfer = 0 (H, A > 2) in both modes (the 294f662 Fortran wrote 0/0 = NaN, D-051 F3, fixed upstream in e4dd175) | GeV/c |
 | 55 | `xfermi` | `main.ntup.xfermi` (x_Bj with Fermi motion; unchanged without do_fermi) | |
 | 56 | `phipqi` | `main.phi_pq` | rad |
 
@@ -204,11 +205,12 @@ below, then 3 more (D-057 F14):
 | 9-24 | P-arm `*i` columns | `orig.p`: the detected DECAY PION (rho_decay) | |
 | 36 | `t` | `main.ntup.t/1e6`: the PION t (complete_recon_ev with Mh2 = Mpi2) | GeV² |
 | 39 | `siglab` | `main.sigcc` = peerho of the RHO vertex | µb/MeV/sr² |
-| 40, 45, 47, 55 | `sigcent`, `zi`, `pt2i`, `xfermi` | never assigned for rho: 0 | |
+| 40, 55 | `sigcent`, `xfermi` | never assigned for rho: 0 | |
+| 45, 47 | `zi`, `pt2i` | vertex z = E_h/ν and p_T²/1e6 of the rho (computed for every reaction since upstream e4dd175, event.f:990-991; 0 in the 294f662 Fortran) | , GeV² |
 | 43 | `Mhadron` | `sqrt(Mh2_final)` = Mpi (139.57018) | MeV |
 | 51 | `sighad` | `main.ntup.sigcm` = peerho dσ/dΩ_cm | µb/sr |
 | 52, 53 | `jacobian`, `centjac` | `main.davejac` (not applied), `main.johnjac` (peerho) | |
-| 54 | `pfermi` | NaN for every H event in fortran_compat (D-051 F3; 0 in the default mode), ±0 for D/³He (pfer = 0, D-057 F4) | GeV/c |
+| 54 | `pfermi` | 0 for H (D-051 F3, fixed upstream e4dd175; NaN in the 294f662 Fortran), ±0 for D/³He (pfer = 0, D-057 F4) | GeV/c |
 | 56 | `phipqi` | `main.phi_pq` of the rho | rad |
 | 57 | `Mrho` | `main.ntup.rhomass`: the Breit-Wigner rho mass of the try (generate_rho.f:79) | MeV |
 | 58 | `Thrho` | `main.ntup.rhotheta`: the decay polar angle in the rho rest frame w.r.t. the LAB z axis (rho_decay.f:66; D-057 F8) | rad |

@@ -153,7 +153,7 @@ Options of the built-in plug-ins (all optional):
 | plug-in | options |
 |---|---|
 | all stages | `"verbose": false` silences the stage messages (`--quiet` sets it for every stage) |
-| `reaction` of D/A(e,e'p) | `"spectral_function": {"type": "theory" \| "benhar", "file": "<file in --data-dir>", "transparency": x}` ([5.2](05_reactions.md#52-heep-elastic-deep-and-aeep)) |
+| `reaction` of D/A(e,e'p) | `"spectral_function": {"type": "theory" \| "benhar", "file": "<file in --data-dir>", "transparency": x}` ([5.2](05_reactions.md#52-heep-elastic-deep-aeep-and-aeea)) |
 | `pion`, `kaon`, `sidis` models | `"data_dir"`: directory of the model tables (default: the data directory's `pion/`, `kaon/`, `sidis/`) |
 | `hms`, `shms`, `sos`, `hrsr`, `hrsl` | `"matrix_dir"` (optics maps), and expert overrides of the per-arm switches: `"ms_flag"`, `"wcs_flag"` (multiple scattering and wire-chamber smearing, default `mc_smear`), `"decay"` (default `doing_decay` for the hadron arm), `"ctau"`, `"use_sieve"`; `hms`: `"using_HMScoll"`; `shms`: `"using_SHMScoll"`, `"use_coll"`, `"skip_hb"`, `"use_2sieve"` |
 | `calo` | `"drift_to_cal"`, `"ctau"` |
@@ -224,6 +224,7 @@ says which runs read it: *all*, *eep* (H/D/A(e,e'p)), *D/A eep*, *pion*, *kaon*,
 | Name | Units | Default | Meaning | Used by |
 |---|---|---|---|---|
 | `doing_phsp` | flag | F | phase-space (acceptance) run: the cross section is 1 and normfac = 1. On hydrogen the elastic kinematics are kept ([5.8](05_reactions.md#58-phase-space-and-acceptance-runs-doing_phsp)) | phsp |
+| `doing_nuc_elast` | flag | F | A(e,e')A nuclear elastic scattering on the target nucleus (upstream SIMC 4df7351; [5.2](05_reactions.md#52-heep-elastic-deep-aeep-and-aeea)). Not together with another `doing_*` flag | nuclear elastic |
 | `doing_pion` | flag | F | exclusive pion production; with `doing_semi`: SIDIS pions | pion, semi |
 | `which_pion` | code | 0 | 0: π+ (π0 with `doing_pizero`) on a proton, quasifree; 1: π− (π0 from the neutron), on a neutron; 2: π+Δ0 (π0Δ+); 3: π−Δ++ (π0Δ0 from the neutron); 10: coherent π+ A→A'; 11: coherent π− | pion |
 | `doing_pizero` | flag | F | the pion is a π0 (decays to γγ, detected in the calorimeter arm 7/8 or transported as a π0 through the HMS/SHMS, [6.6](06_spectrometers.md#66-π0-in-the-hms-or-shms)) | pion, semi |

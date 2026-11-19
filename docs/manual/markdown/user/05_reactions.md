@@ -11,6 +11,7 @@ The reaction follows from the reaction flags and from `targ%A`. SIMC++ then pick
 | none of the flags below | A = 1 | `hydrogen_elastic` | `sigep` | (e,e'p), 46 columns |
 | none | A = 2 | `deuterium_eep` | `deforest` | (e,e'p) |
 | none | A ≥ 3 | `nucleus_eep` | `deforest` | (e,e'p) |
+| `doing_nuc_elast` | any | `nuclear_elastic` | `nuc_elastic` | (e,e'p), 46 columns |
 | `doing_pion` | any | `pion_production` | `pion` | pion, 53 (65 with π0) |
 | `doing_kaon` | any | `kaon_production` | `kaon` | kaon, 55 |
 | `doing_delta` | any | `delta_production` | `delta` | pion layout, 53 |
@@ -27,7 +28,7 @@ normalisation. The generation volume `genvol` is the product of the generated ra
 hadron solid angle and the electron energy for every reaction except H(e,e'p); also the hadron energy for A(e,e'p) and
 SIDIS.
 
-## 5.2 H(e,e'p) elastic, D(e,e'p) and A(e,e'p)
+## 5.2 H(e,e'p) elastic, D(e,e'p), A(e,e'p) and A(e,e')A
 
 * **H(e,e'p)** (`hydrogen_elastic`, model `sigep`): elastic scattering. Only the electron angles are generated; the
   proton follows from the kinematics. Elastic e-p cross section with a proton form-factor fit.
@@ -35,11 +36,21 @@ SIDIS.
   off-shell cross section (`deForest_flag`: σcc1, σcc2 or σcc1 on-shell) times a spectral function:
   * **theory files** (default): `h2.theory`, `c12.theory`, `fe56.theory`, `au197.theory` in the data directory's
     `spectral/`, chosen from A (2, 12, 56, 197). Any other A uses the C-12 file, with a WARNING;
-  * **Benhar spectral functions** (`use_benhar_sf = 1`): `benharsf_*.dat`, weighted by `transparency`.
+  * **Benhar spectral functions** (`use_benhar_sf = 1`): `benharsf_*.dat` (A = 3, 4, 12, 56, 64, 197; Cu-64 since upstream
+    SIMC a85dc6b), weighted by `transparency`.
 
   In a JSON input, `"pipeline": {"reaction": {"spectral_function": {"type": "benhar", "file": "benharsf_12.dat",
   "transparency": 0.6}}}` chooses the file explicitly (`--data-dir` sets its directory). `cuts%Em` limits the generated
   missing energy.
+
+* **A(e,e')A nuclear elastic** (`doing_nuc_elast = 1`, `nuclear_elastic`, model `nuc_elastic`; upstream SIMC commit
+  4df7351): elastic scattering from the whole nucleus, the "hadron" is the recoiling nucleus (mass `targ%mass_amu`).
+  Only the electron angles are generated, as for H(e,e'p). Cross section σ_Mott · (Z·F(Q²))² · recoil factor with a
+  Gaussian charge form factor F (R = 1.07 A^1/3 fm; de Vries radii for A = 27, 28, 56, 205) and no magnetic term (spin-0
+  nuclei). W and the ntuple columns `corrsing`, `Pmx/y/z` follow the (e,e'p) formulas with the proton mass (`corrsing`
+  and `Pmx/y/z` are 0). `doing_nuc_elast` cannot be combined with another `doing_*` reaction flag or `doing_phsp`.
+  Upstream SIMC 59ccdf6 lost this reaction in commit e4dd175 (0 successes); SIMC++ runs the code of commit 20d46fc
+  (FORTRAN_DIFFERENCES U-A1).
 
 Limitations: the D(e,e'p) weight has no hadron-angle jacobian while A(e,e'p) has one (a ≤ 1.5 % effect at the corners of
 the generated solid angle); He-3 and He-4 use the C-12 spectral function unless you give a file.

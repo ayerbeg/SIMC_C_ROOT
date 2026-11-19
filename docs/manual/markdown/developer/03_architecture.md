@@ -357,7 +357,7 @@ private header of a module, not installed.
 | `simc/reactions/EventChain.h` | `generateEvent`, `assembleWeight`, `limitsUpdate`, `transformToCm`, merge helpers |
 | `simc/reactions/StandardBeam.h` | IBeam `standard` |
 | `simc/reactions/EepReactionBase.h` | shared (e,e'p) complete_ev / complete_recon_ev / complete_main / genvol |
-| `simc/reactions/HydrogenElastic.h` | IReaction `hydrogen_elastic`, `phase_space` |
+| `simc/reactions/HydrogenElastic.h` | IReaction `hydrogen_elastic`, `phase_space`, `nuclear_elastic` |
 | `simc/reactions/NuclearEep.h` | IReaction `deuterium_eep`, `nucleus_eep` |
 | `simc/reactions/PionProduction.h` | IReaction `pion_production` |
 | `simc/reactions/KaonProduction.h` | IReaction `kaon_production` |
@@ -372,6 +372,7 @@ private header of a module, not installed.
 | `simc/physics/proton/ProtonCrossSections.h` | sigMott, fofa, sigep, deForest |
 | `simc/physics/nuclear/SpectralFunctions.h` | ISpectralFunction `theory`, `benhar` |
 | `simc/physics/nuclear/SpectralFunctionTables.h` | spectral-function tables (`SfTable`), theory-file weight |
+| `simc/physics/nuclear/NuclearElastic.h` | A(e,e')A cross section (upstream nuclear_elastic.f), IPhysicsModel `nuc_elastic` |
 | `simc/physics/pion/PionCrossSections.h` | exclusive pion cross sections (peepi and the models) |
 | `simc/physics/pion/PionModel.h` | IPhysicsModel `pion` |
 | `simc/physics/pion/PizeroDecay.h` | π0 → 2γ decay |

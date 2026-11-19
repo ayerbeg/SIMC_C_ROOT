@@ -30,7 +30,7 @@ translation was validated is described in `docs/translation/`.)
 
 | reaction (input flags) | targets | chapter |
 |---|---|---|
-| elastic and quasi-elastic (e,e'p) (no reaction flag) | H, D, nuclei (theory or Benhar spectral functions) | [5.2](05_reactions.md#52-heep-elastic-deep-and-aeep) |
+| elastic and quasi-elastic (e,e'p) (no reaction flag) | H, D, nuclei (theory or Benhar spectral functions) | [5.2](05_reactions.md#52-heep-elastic-deep-aeep-and-aeea) |
 | exclusive pion production (`doing_pion`): π+, π−, π0, Δ final states, coherent | H, D, nuclei | [5.3](05_reactions.md#53-exclusive-pion-production-doing_pion) |
 | kaon electroproduction (`doing_kaon`): K+Λ, K+Σ0, K+Σ−, hypernuclei | H, D, nuclei | [5.4](05_reactions.md#54-kaon-electroproduction-doing_kaon) |
 | (e,e'p)π in the Delta region (`doing_delta`) | H, D, nuclei | [5.5](05_reactions.md#55-eepπ-in-the-delta-region-doing_delta) |
