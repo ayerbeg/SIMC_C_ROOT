@@ -9,8 +9,12 @@ numerics. Code: `include/simc/driver/`, `src/driver/`, CLI `src/driver/CommandLi
 ```
 simc++ <file.inp | file.json> [-o OUTDIR] [--seed N] [--ngen N] [--pipeline overrides.json]
        [--run-name NAME] [--data-dir DIR] [--infiles-dir DIR] [--quiet] [--print-pipeline]
-       [--fortran-compat] [--threads N] [--print-data-dir]
+       [--fortran-compat] [--threads N] [--print-data-dir] [--tree-layout upstream|legacy]
 ```
+
+* `--tree-layout upstream|legacy` (task U.2, D-082; JSON `"output": {"layout": ...}`, the option wins): the column layout
+  of the tree h10. `upstream` (default) = upstream SIMC 59ccdf6 (NtupleInit.f/results_write.f after e4dd175), `legacy` =
+  SIMC 294f662 (OUTPUT_FORMAT.md §1). The events and every other output are the same in both layouts.
 
 * `--threads N` (P15.4, docs/manual/markdown/reference/PERFORMANCE.md): the event loop on N threads, each with its own stages and its own mt64
   stream (`seed_seq(seed, worker)`); the outputs are the deterministic merge of the workers (a given seed and N always

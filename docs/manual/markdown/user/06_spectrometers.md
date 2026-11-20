@@ -87,7 +87,7 @@ With `using_tgt_field = 1`, the particles are tracked through the magnetic field
 to the field-free region on the way to the spectrometer, and back for the reconstruction. The field map comes from
 `tgt_field_file` (`'trg_field_map.dat'` is in the data directory's `field/`; `'0'` = no field; `' '` = a uniform 5 T test
 field). Its orientation comes from `targ_Bangle` and `targ_Bphi`. The tree gets 8 more columns with the angles between q,
-the scattering plane and the polarization ([7.1.7](07_outputs.md#717-polarized-target-columns-using_tgt_field)).
+the scattering plane and the polarization ([7.1.7](07_outputs.md#718-polarized-target-columns-using_tgt_field)).
 
 * The calorimeter arms 7/8 cannot be used with the field (the run stops).
 * Approximations to know: the polarization vector is in-plane towards beam left (`targ_Bphi` and the sign of `targ_Bangle`

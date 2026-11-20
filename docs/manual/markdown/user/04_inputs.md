@@ -130,6 +130,15 @@ Example configurations come with SIMC++ in `data/config/` (installed in `$SIMCPP
 
 A command-line option wins over the JSON value. A `.inp` input runs in the default mode unless you give `--fortran-compat`.
 
+### 4.2.3 `output`
+
+| key | command-line equivalent | default | meaning |
+|---|---|---|---|
+| `layout` | `--tree-layout upstream\|legacy` | `upstream` | column layout of the tree `h10`: `upstream` = the layout of current upstream SIMC (commit 59ccdf6), `legacy` = the layout of SIMC 294f662 ([7.2](07_outputs.md#71-the-event-tree-h10)) |
+
+Example: `"output": {"layout": "legacy"}`. Any other value is an input error (exit 2; on the command line exit 1).
+The layout does not change the events, the weights or any other output file.
+
 ## 4.3 The `pipeline` section: choosing plug-ins
 
 Without a `pipeline` section, SIMC++ chooses the components from the input flags. `--print-pipeline` prints the resolved
@@ -296,7 +305,7 @@ says which runs read it: *all*, *eep* (H/D/A(e,e'p)), *D/A eep*, *pion*, *kaon*,
 |---|---|---|---|---|
 | `using_tgt_field` | flag | F | track the particles through the polarized-target magnetic field ([6.5](06_spectrometers.md#65-polarized-target-field-using_tgt_field)) | field |
 | `tgt_field_file` | path | blank | field map. `'0'` = no field; `' '` = a uniform 5 T test field; otherwise a map file looked for in `--data-dir`, the current directory, then the data directory's `field/` (`trg_field_map.dat` is included). Unset with `using_tgt_field = 1`: refused at start-up | field |
-| `targ_Bangle` | deg | 0 | angle of the target field (+ = beam left); also the polarization direction used for the polarized-target angle columns of the tree ([7.1.7](07_outputs.md#717-polarized-target-columns-using_tgt_field)) | field |
+| `targ_Bangle` | deg | 0 | angle of the target field (+ = beam left); also the polarization direction used for the polarized-target angle columns of the tree ([7.1.7](07_outputs.md#718-polarized-target-columns-using_tgt_field)) | field |
 | `targ_Bphi` | deg | 0 | side of the beam the field points to (90 = beam left, 270 = beam right) | field |
 | `targ_pol` | factor | 0 | target polarization (+ = along B); 0 makes the `th_tarq` column NaN | field |
 
@@ -378,6 +387,7 @@ These have no `.inp` counterpart:
 | setting | JSON | command line | default |
 |---|---|---|---|
 | legacy-compatible mode | `run.fortran_compat` | `--fortran-compat` | off |
+| tree `h10` column layout | `output.layout` | `--tree-layout upstream\|legacy` | `upstream` |
 | output name and directory | `run.name`, `run.output_dir` | `--run-name NAME`, `-o DIR` | input stem, `.` |
 | plug-ins, random-number generator | `pipeline` | `--pipeline FILE` | from the flags ([4.3](#43-the-pipeline-section-choosing-plug-ins)) |
 | event-loop threads | `pipeline.threads` | `--threads N` | 1 |

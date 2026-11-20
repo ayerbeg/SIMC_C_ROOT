@@ -19,16 +19,22 @@ A run writes into the output directory (`-o DIR`, default `.`), with `<run>` = t
 * One entry per **accepted** event.
 * Every branch is a `Float_t` (computed in double precision, stored as float). The branch names and order are those of
   the classic SIMC ntuple, so existing analysis scripts work unchanged.
-* The layout depends on the reaction (`NtupleColumnsFor`):
+* Two column layouts exist (option `--tree-layout`, JSON `"output": {"layout": ...}`,
+  [4.2.3](04_inputs.md#423-output)); the events, weights and every other output file are the same in both:
+  * `upstream` (**default**): the layout of current upstream SIMC (commit 59ccdf6, where every reaction shares columns
+    1-40 and the vertex quantities have an `i` suffix), [7.1.3](#713-upstream-layout-default);
+  * `legacy`: the layout of SIMC 294f662 used before, [7.1.4](#714-legacy-eep-layout-46-columns) to
+    [7.1.7](#717-legacy-rho-layout-59-columns).
+* The number of columns depends on the reaction (`NtupleColumnsFor`):
 
-| run | columns | section |
+| run | upstream | legacy |
 |---|---|---|
-| H/D/A(e,e'p) and `doing_phsp` | 46 | [7.1.3](#713-eep-layout-46-columns) |
-| pion (`doing_pion`), Delta (`doing_delta`) | 53; π0: 65 | [7.1.4](#714-pion-kaon-and-delta-layouts) |
-| kaon (`doing_kaon`) | 55 | [7.1.4](#714-pion-kaon-and-delta-layouts) |
-| SIDIS (`doing_semi`) | 56; π0: 68 | [7.1.5](#715-sidis-layout-56-columns) |
-| rho (`doing_rho`) | 59 | [7.1.6](#716-rho-layout-59-columns) |
-| any of the above except (e,e'p), with `using_tgt_field` | + 8 | [7.1.7](#717-polarized-target-columns-using_tgt_field) |
+| H/D/A(e,e'p), `doing_phsp`, A(e,e')A (`doing_nuc_elast`) | 53 | 46 |
+| pion (`doing_pion`), Delta (`doing_delta`) | 64; π0: 76 | 53; π0: 65 |
+| kaon (`doing_kaon`) | 66 | 55 |
+| SIDIS (`doing_semi`) | 64; π0: 76 | 56; π0: 68 |
+| rho (`doing_rho`) | 67 | 59 |
+| any of the above except (e,e'p), with `using_tgt_field` | + 8 | + 8 |
 
 ### 7.1.1 Weights and normalisation
 
@@ -50,7 +56,48 @@ As in results_write.f, `hs*` is the spectrometer on the beam **right** and `ss*`
 
 Slopes (`*yptar`, `*xptar`, `*xpfp`, `*ypfp`) are in radians (dx/dz); deltas are in %.
 
-### 7.1.3 (e,e'p) layout (46 columns)
+### 7.1.3 Upstream layout (default)
+
+Columns 1-24 are the arm columns of [7.1.2](#712-arm-prefixes-hs-and-ss) (`hsdelta` ... `ssytari`, as in 7.1.4). Then, for
+every reaction:
+
+| # | branches | content | units |
+|---|---|---|---|
+| 25-32 | `q nu Q2 W xbj epsilon Em Pm` | reconstructed kinematics, Bjorken x, missing energy and momentum | GeV/c, GeV, GeV², GeV, —, —, GeV, GeV/c |
+| 33-40 | `qi nui Q2i Wi xbji epsiloni Emi Pmi` | the same at the vertex (generated) | same units |
+
+`Wi` and `epsiloni` are always 0 for (e,e'p) (upstream SIMC fills them only for meson production; kept, finding U-B1).
+For rho, `Wi` and `ti` are in GeV/1000 and GeV²/1000 (the ρ physics stores W and t in GeV; D-056 R5).
+
+(e,e'p), `doing_phsp` and A(e,e')A then have 41-53: `corrsing Pmx Pmy Pmz PmPar PmPer PmOop fry radphot sigcc Weight
+theta_e theta_p` (as columns 34-46 of 7.1.4; for A(e,e')A `corrsing` and `Pmx Pmy Pmz` are 0).
+
+Meson production (pion, kaon, Delta, SIDIS, rho) has 41-64:
+
+| # | branch | content | units |
+|---|---|---|---|
+| 41-42 | `missmass mmnuc` | missing mass on the struck nucleon and on the nucleus | GeV |
+| 43 | `phad` | hadron momentum | GeV/c |
+| 44-45 | `t ti` | −t reconstructed and at the vertex | GeV² |
+| 46-49 | `z zi pt2 pt2i` | energy fraction and p_T² (reconstructed, vertex) | —, GeV² |
+| 50-53 | `thetapq phipq thetapqi phipqi` | hadron angles w.r.t. q (reconstructed, vertex) | rad |
+| 54-56 | `pmpar pmper pmoop` | missing-momentum components | GeV/c |
+| 57-58 | `fry radphot` | −(raster vertical position), radiated photon energy | cm, GeV |
+| 59 | `pfermi` | Fermi momentum along q (signed; 0 without Fermi motion) | GeV/c |
+| 60 | `siglab` | lab cross section | |
+| 61 | `sigcm` (SIDIS: `sighad`) | CM cross section (SIDIS: hadronic cross section) | |
+| — | kaon: `saghai factor` after `sigcm` | Saghai-model and factorized cross sections | |
+| 62-64 | `Weight decdist Mhadron` | event weight, decay distance (cm), detected-particle mass (MeV) | |
+
+Then rho adds `Mrho Thrho mmnuc` (the tree has two branches named `mmnuc`, as upstream SIMC; both hold the same value),
+π0 runs add the 12 photon columns (`xcal_gamma1` ... `Pgamma2z`, see 7.1.5), and `using_tgt_field` adds its 8 columns
+last ([7.1.8](#718-polarized-target-columns-using_tgt_field)).
+
+Two upstream SIMC bugs are corrected in this layout: for kaons upstream SIMC declares `saghai factor` but writes three
+values and stops at the first event (finding U-A2): SIMC++ declares `sigcm saghai factor` (66 columns). π0 with
+`using_tgt_field` (84 columns) overflows the upstream 80-column arrays (U-A4); SIMC++ writes all 84.
+
+### 7.1.4 Legacy (e,e'p) layout (46 columns)
 
 | # | branches | content | units |
 |---|---|---|---|
@@ -70,7 +117,7 @@ Slopes (`*yptar`, `*xptar`, `*xpfp`, `*ypfp`) are in radians (dx/dz); deltas are
 | 44 | `Weight` | event weight | |
 | 45-46 | `theta_e theta_p` | reconstructed scattering angles | rad |
 
-### 7.1.4 Pion, kaon and Delta layouts
+### 7.1.5 Legacy pion, kaon and Delta layouts
 
 Columns 1-33 as above, then:
 
@@ -98,7 +145,7 @@ Kaon runs add 54 `saghai` (Saghai-model cross section) and 55 `factor`
 momentum, `siglab` and `Weight` contain **no cross section** ([5.5](05_reactions.md#55-eepπ-in-the-delta-region-doing_delta)),
 and `decdist`, `Mhadron` are 0 and Mp.
 
-### 7.1.5 SIDIS layout (56 columns)
+### 7.1.6 Legacy SIDIS layout (56 columns)
 
 Columns 1-33 as (e,e'p), then: 34 `missmass` (GeV), 35 `ppi` (hadron momentum, GeV/c), 36 `t` (GeV²), 37 `fry`, 38
 `radphot`, 39 `siglab` (µb/MeV²/sr²), 40 `sigcent` (always 0), 41 `Weight`, 42 `decdist` (cm, or the survival probability
@@ -106,20 +153,22 @@ with decay OFF), 43 `Mhadron` (MeV), 44-45 `z zi`, 46-47 `pt2 pt2i` (GeV²), 48-
 (GeV⁻²), 52 `jacobian`, 53 `centjac` (always 0), 54 `pfermi` (GeV/c), 55 `xfermi`, 56 `phipqi` (rad). π0 SIDIS appends the 12 photon columns (57-68). The `i`
 suffix means vertex (generated) values.
 
-### 7.1.6 Rho layout (59 columns)
+### 7.1.7 Legacy rho layout (59 columns)
 
 The 56 SIDIS columns with the rho meanings, then 57 `Mrho` (Breit-Wigner ρ mass of the event, MeV), 58 `Thrho` (decay
 angle in the ρ rest frame w.r.t. the lab z axis, rad) and 59 `mmnuc` (GeV). The hadron-arm columns describe the detected
-decay pion; `t` is the pion t; `siglab` (µb/MeV/sr) is the ρ cross section; `sigcent`, `zi`, `pt2i`, `xfermi` are 0.
+decay pion; `t` is the pion t; `siglab` (µb/MeV/sr) is the ρ cross section; `sigcent` and `xfermi` are 0.
 
-### 7.1.7 Polarized-target columns (`using_tgt_field`)
+### 7.1.8 Polarized-target columns (`using_tgt_field`)
 
-Eight columns follow `phipqi` (pion/kaon/Delta: 54-61; SIDIS/rho: 57-64), in radians: `th_tarq` (angle between q and the
+Upstream layout: the eight columns are the last ones. Legacy layout: they follow `phipqi` (pion/kaon/Delta: 54-61;
+SIDIS/rho: 57-64). In radians: `th_tarq` (angle between q and the
 polarization, NaN when `targ_pol = 0`), `phitarq`, `beta`, `phis` (Sivers angle φpq − φtarg), `phic` (Collins angle φpq
 + φtarg), and the vertex values `betai`, `phisi`, `phici`. The kaon columns `saghai`/`factor` and the rho columns
-`Mrho`/`Thrho`/`mmnuc` move after them. The shipped polarized-target pion example has 61 columns.
+`Mrho`/`Thrho`/`mmnuc` move after them (legacy). The shipped polarized-target pion example has 72 columns (upstream)
+or 61 (legacy).
 
-### 7.1.8 Values that are not measurements
+### 7.1.9 Values that are not measurements
 
 * With an arm switched off (`spect_mode` ≠ 0), that arm's focal-plane columns and `*ytar` are 0.0 in every event
   ([6.4](06_spectrometers.md#64-spect_mode-switching-the-spectrometer-monte-carlo-off)).

@@ -21,7 +21,13 @@ Each sink accepts an optional JSON config `{"file": "..."}`.
   util/root_tree/make_root_tree.f + froot.c (tree `h10`, one `Float_t` leaf per tag, branch title = name).
 - Only successful events are written (results_write.f:34).
 - Each value is computed in double precision and stored as `Float_t`, like make_root_tree's `real*4 ntup_out`.
-- Implemented layouts: the (e,e'p) family (`doing_hyd_elast`, `doing_deuterium`, `doing_heavy`, and `doing_nuc_elast`
+- **Two layouts (task U.2, D-082)**, chosen with `--tree-layout upstream|legacy` or the JSON `"output": {"layout": ...}`
+  (`RunSetup::tree_layout`): `upstream` (**default**) = the NtupleInit.f/results_write.f of upstream SIMC 59ccdf6 (rewritten
+  by e4dd175), §1u; `legacy` = SIMC 294f662, described in the rest of this section (§1, §1b-§1g). Events, weights, the
+  `.hist`/`.geni`/`.gen` and the summary do not depend on the layout. The C++ regression baselines (tests/regression) are
+  stored in the legacy layout (output_identity.sh adds `--tree-layout legacy`); the upstream layout is proved against the
+  Fortran 59ccdf6 runs (tests/l1/eep.cmake, `l1_simcrun_ranlux_up_*`).
+- Legacy implemented layouts: the (e,e'p) family (`doing_hyd_elast`, `doing_deuterium`, `doing_heavy`, and `doing_nuc_elast`
   as at upstream 20d46fc, with corrsing and Pmx/y/z = 0), 46 columns. This includes
   `doing_phsp`, which keeps `doing_hyd_elast`, so the acceptance runs also have these 46 columns. Exclusive pion production
   (`doing_pion`, P9.2): 53 columns, 65 with `doing_pizero` (§1b). Kaon production (`doing_kaon`, P10.2): 55 columns (§1c).
@@ -242,6 +248,67 @@ targ_Bphi and the sign of targ_Bangle are ignored (D-067 T15, kept). Not written
 start at the angles (pion 54-65, semi 57-68), overwriting them, and leaves the last 8 photon tags at 0; with doing_rho it
 never writes `mmnuc` (0). The default mode writes every value to its own tag; `--fortran-compat` reproduces the Fortran
 columns.
+
+### 1u. Upstream layout (default; upstream NtupleInit.f:84-247, results_write.f:145-320 at 59ccdf6; task U.2)
+
+`UpstreamNtupleColumns(setup)`, `FillUpstreamNtuple` (src/output/NtupleLayout.cpp). Columns 1-24 as §1. Then for every
+reaction:
+
+| # | branch | C++ source | units |
+|---|---|---|---|
+| 25-28 | `q nu Q2 W` | `recon.q/1000`, `recon.nu/1000`, `recon.Q2/1e6`, `recon.W/1000` | GeV/c, GeV, GeV², GeV |
+| 29-30 | `xbj epsilon` | `recon.xbj`, `recon.epsilon` | |
+| 31-32 | `Em Pm` | `recon.Em/1000`, `recon.Pm/1000` | GeV, GeV/c |
+| 33-35 | `qi nui Q2i` | `vertex.q/1000`, `vertex.nu/1000`, `vertex.Q2/1e6` | GeV/c, GeV, GeV² |
+| 36 | `Wi` | `main.w/1000`: set only in the meson block of complete_ev, so **0 for (e,e'p)** (U-B1, kept); rho: GeV/1000 (D-056 R5) | GeV |
+| 37 | `xbji` | `vertex.xbj` | |
+| 38 | `epsiloni` | `main.epsilon`: **0 for (e,e'p)** (U-B1, kept) | |
+| 39-40 | `Emi Pmi` | `vertex.Emiss/1000`, `vertex.Pmiss/1000` | GeV, GeV/c |
+
+(e,e'p) (`doing_hyd_elast`, `doing_deuterium`, `doing_heavy`, so also `doing_phsp`), results_write.f:287-313: 41-53 =
+`corrsing Pmx Pmy Pmz PmPar PmPer PmOop fry radphot sigcc Weight theta_e theta_p`, the sources of §1 columns 34-46.
+Total **53**. `doing_nuc_elast`: upstream 59ccdf6 has no branch for it and writes only columns 1-40 (e4dd175 dropped the
+4df7351 code, U-A1); SIMC++ gives it the 53 (e,e'p) columns with `corrsing`, `Pmx`, `Pmy`, `Pmz` = 0 (as at 20d46fc, U-B2).
+Its legacy layout is the 46-column one of 20d46fc.
+
+Meson production (`doing_pion`, `doing_kaon`, `doing_delta`, `doing_semi`, `doing_rho`), results_write.f:178-286:
+
+| # | branch | C++ source | units |
+|---|---|---|---|
+| 41 | `missmass` | `main.ntup.mm/1000` (nucleon) | GeV |
+| 42 | `mmnuc` | `main.ntup.mmA/1000` (nucleus) | GeV |
+| 43 | `phad` | `recon.p.P/1000` | GeV/c |
+| 44 | `t` | `main.ntup.t/1e6` (recon) | GeV² |
+| 45 | `ti` | `main.t/1e6` (vertex; rho GeV²/1e6, D-056 R5) | GeV² |
+| 46-47 | `z zi` | `recon.zhad`, `vertex.zhad` (every reaction since e4dd175) | |
+| 48-49 | `pt2 pt2i` | `recon.pt2/1e6`, `vertex.pt2/1e6` | GeV² |
+| 50-53 | `thetapq phipq thetapqi phipqi` | `recon.theta_pq`, `recon.phi_pq`, `main.theta_pq`, `main.phi_pq` | rad |
+| 54-56 | `pmpar pmper pmoop` | `recon.PmPar/1000`, `recon.PmPer/1000`, `recon.PmOop/1000` | GeV/c |
+| 57 | `fry` | `-main.target.rastery` | cm |
+| 58 | `radphot` | `main.ntup.radphot/1000` | GeV |
+| 59 | `pfermi` | `pfer/1000·sign(p̂fermi·q̂)` with the 1e-20 guard (0 for pfer = 0, every reaction) | GeV/c |
+| 60 | `siglab` | `main.sigcc` | |
+| 61 | `sigcm` / SIDIS `sighad` | `main.ntup.sigcm` | |
+| (kaon) 62-63 | `saghai factor` | `main.ntup.sigcm1`, `main.ntup.sigcm2` | |
+| 62-64 (kaon 64-66) | `Weight decdist Mhadron` | `main.weight`, `main.ntup.decdist`, `sqrt(main.ntup.Mh2_final)` | , cm, MeV |
+| rho +3 | `Mrho Thrho mmnuc` | `main.ntup.rhomass`, `main.ntup.rhotheta`, `main.ntup.mmA/1000` (a second branch named `mmnuc`, as upstream NtupleInit.f:180) | MeV, rad, GeV |
+| π0 +12 | `xcal_gamma1` ... `Pgamma2z` | as §1b 54-65 | |
+| field +8 | `th_tarq phitarq beta phis phic betai phisi phici` | as §1g, always the LAST columns (no T14 overwrite in this layout) | rad |
+
+Totals: pion/Delta **64** (π0 76), kaon **66**, SIDIS **64** (π0 76), rho **67**; `using_tgt_field` +8 (pion + π0 + field 84).
+
+Upstream bugs of this layout:
+* **U-A2 (Category A, corrected in both modes):** for kaons upstream NtupleInit.f:155-163 declares `saghai factor` (65 tags)
+  but results_write.f:222-227 writes `sigcm`, `sigcm1`, `sigcm2` (66 values), so every kaon run with Nntu = 1 STOPs at the
+  first event (results_write.f:316-320). SIMC++ declares `sigcm saghai factor` (66 columns). No Fortran tree exists to
+  compare with.
+* **U-A4 (Category A, latent, corrected in both modes):** π0 + `using_tgt_field` gives 84 values, beyond `ntu(80)`
+  (results_write.f:10), `NtupleTag(80)` and make_root_tree's arrays. SIMC++ writes all 84.
+* **U-B1 (Category B, kept in both modes):** `Wi` and `epsiloni` are 0 for (e,e'p) (main%W/main%epsilon are set only in the
+  meson block, event.f:723-726).
+
+Validation: `l1_simcrun_ranlux_up_*` (tests/l1/eep.cmake): RANLUX + `--fortran-compat`, the whole tree bitwise (every
+column) and the `.hist`/`.geni`/`.gen` text against reference/runs/up_* (59ccdf6).
 
 ## 2. Run summary JSON (RunSummarySink, hist2json)
 

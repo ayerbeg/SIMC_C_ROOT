@@ -19,7 +19,7 @@ The reaction follows from the reaction flags and from `targ%A`. SIMC++ then pick
 | `doing_rho` | A = 1, 2, 3 | `rho_production` | `rho` | rho, 59 |
 
 `doing_semi` takes priority: `doing_pion`/`doing_kaon` then only select the SIDIS hadron. With `using_tgt_field`, 8
-polarized-target columns are added ([7.1.7](07_outputs.md#717-polarized-target-columns-using_tgt_field)). The log shows
+polarized-target columns are added ([7.1.7](07_outputs.md#718-polarized-target-columns-using_tgt_field)). The log shows
 the reaction title (for example ` ****--------  H(e,e'pi+)X  --------****`).
 
 Common to all reactions: the beam (energy spread `dEbeam`, size `gen%xwid/ywid`, raster), the target (energy loss,
