@@ -35,10 +35,14 @@ one() {   # folder
   { echo "== $f ($run): simc++ RANLUX --fortran-compat, exit $rc, $(( $(date +%s) - t0 )) s"
     if [[ $rc -ne 0 ]]; then tail -3 "$w/run.log"; fi
     if [[ $rc -eq 0 ]]; then
-      diff <(sed 2,3d "$w/$run.hist") <(sed 2,3d "$d/$run.hist") > "$w/hist.diff" && echo "hist: identical" || echo "hist: DIFFERENT"
+      # U.1: a 294f662 reference has no `doing_nuc_elast= F` line (upstream simc.f:894) and its tree no upstream z/pt2 and
+      # pfermi values: the line is dropped and simc_root_identity --u1-upstream accepts those values (tests/l1/Upstream294.h)
+      local nucel='^ *doing_nuc_elast= [TF]$' u1=(--u1-upstream)
+      grep -q 'doing_nuc_elast=' "$d/$run.hist" && { nucel='^$NEVER'; u1=(); }
+      diff <(sed 2,3d "$w/$run.hist" | grep -v -E "$nucel") <(sed 2,3d "$d/$run.hist") > "$w/hist.diff" && echo "hist: identical" || echo "hist: DIFFERENT"
       cmp "$w/$run.geni" "$d/$run.geni" > /dev/null && echo "geni: identical" || echo "geni: DIFFERENT"
       cmp "$w/$run.gen" "$d/$run.gen" > /dev/null && echo "gen: identical" || echo "gen: DIFFERENT"
-      "$IDENT" "$w/$run.root" "$d/$run.root" > "$w/tree.txt" 2>&1 && echo "tree: identical ($(grep -o '[0-9]* entries x [0-9]* leaves' "$w/tree.txt" | head -1))" || { echo "tree: DIFFERENT"; head -5 "$w/tree.txt"; }
+      "$IDENT" "${u1[@]}" "$w/$run.root" "$d/$run.root" > "$w/tree.txt" 2>&1 && echo "tree: identical ($(grep -o '[0-9]* entries x [0-9]* leaves' "$w/tree.txt" | head -1))" || { echo "tree: DIFFERENT"; head -5 "$w/tree.txt"; }
     fi; } > "$w/identity.txt"
   if [[ $rc -ne 0 ]] && grep -q "not ported\|NotPorted" "$w/run.log"; then v=REFUSED
   elif [[ $rc -ne 0 ]]; then v=ERROR

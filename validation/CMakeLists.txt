@@ -116,7 +116,7 @@ endif()
 set(SIMC_BASELINE_DIR "$ENV{SIMC_BASELINES}" CACHE PATH "SIMC++ baseline outputs (empty = absent)")
 # P7.4: both trees empty (Ncontribute = 0 in both runs, K2 acceptance) -> per-variable tests skipped, PASS
 # P10.4: regenerated on glibc 2.43 / gcc 16.2.1 (the original f9cea51_K2K4_s4242 is kept)
-set(_K2C ${SIMC_BASELINE_DIR}/55cf7a0_glibc243_K2K4_s4242)
+set(_K2C ${SIMC_BASELINE_DIR}/1aad1f0_glibc243_K2K4_s4242)
 if(EXISTS ${R}/acc_phsp_K2_A/acc_phsp_K2_A.hist AND EXISTS ${_K2C}/cpp_acc_phsp_K2_A.summary.json)
   add_test(NAME compare_both_trees_empty
     COMMAND simc_compare --a ${R}/acc_phsp_K2_A --b ${_K2C}/cpp_acc_phsp_K2_A.summary.json
@@ -124,7 +124,7 @@ if(EXISTS ${R}/acc_phsp_K2_A/acc_phsp_K2_A.hist AND EXISTS ${_K2C}/cpp_acc_phsp_
 endif()
 # P12.3: a C++ compat run compared with the wrong mode (--mode-b corrected) is detected: its pass_cuts subset no longer
 # reproduces its wtcontr (warning); with --mode-b compat it does. (The verdict is a deterministic FAIL: Ngen 20000 vs 100000.)
-set(_SB ${SIMC_BASELINE_DIR}/55cf7a0_glibc243_sidis_h_k1_pip_rad_n20k_s4242)
+set(_SB ${SIMC_BASELINE_DIR}/1aad1f0_glibc243_sidis_h_k1_pip_rad_n20k_s4242)
 if(EXISTS ${R}/sidis_h_k1_pip_rad_A/sidis_h_k1_pip_rad_A.hist AND EXISTS ${_SB}/dir_sidis_h_k1_pip_rad_s4242.summary.json)
   foreach(m compat corrected)
     add_test(NAME compare_wtcontr_mode_${m}
