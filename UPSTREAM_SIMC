@@ -1,3 +1,8 @@
 # Version of the official Fortran SIMC (https://github.com/JeffersonLab/simc_gfortran) that SIMC++ reproduces.
 # Update this line when upstream changes have been ported and validated; tools/check_upstream_simc.sh reads it.
-commit 294f6629211ee5f74a30b91972ceac282c308d3f   2026-01-16 master "Merge pull request #64 from gaskelld/master"
+commit 59ccdf62b37ad606e1885a793cd209df7036aa6a   2026-10-01 master "Merge pull request #74 from rparvez92/master"
+# Deliberate exceptions (--fortran-compat does NOT follow 59ccdf6 here; docs/translation/markdown/FORTRAN_DIFFERENCES.md):
+#   U-A1 nuclear elastic: the complete 20d46fc code is kept (e4dd175 dropped it from event.f/NtupleInit.f/results_write.f);
+#   U-A2 kaon + Nntu=1 STOP and U-A4 pi0 + target field ntuple overflow: not reproduced (SIMC++ writes the tree);
+#   U-A3 pion which_pion 2/3 on A>=3 (39d7de0 weight 1/Z): old weight kept, pending JeffersonLab/simc_gfortran#75.
+# Previous target: 294f662 (2026-01-16), still reachable with --compat-target 294f662.
