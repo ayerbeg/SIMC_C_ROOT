@@ -24,6 +24,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <map>
@@ -243,6 +244,14 @@ int replay(const std::string& capdir, const std::string& rundir, const std::stri
     }
     driver::RunOptions opt;
     opt.fortran_compat = true;   // D-031: replay of a Fortran capture -> exact Fortran behaviour
+    // U.2: the tree layout of the reference: upstream 59ccdf6 if its .hist has the upstream line `doing_nuc_elast=`,
+    // else the legacy 294f662 layout (env LAYOUT=legacy|upstream overrides, as tests/l1/ranlux_fullrun.sh)
+    {
+        const bool up = slurp(rundir + "/" + run + ".hist").find("doing_nuc_elast=") != std::string::npos;
+        const char* env = std::getenv("LAYOUT");
+        const std::string l = env ? env : (up ? "upstream" : "legacy");
+        opt.tree_layout = l == "upstream" ? TreeLayout::Upstream : TreeLayout::Legacy;
+    }
     opt.run_name = run;
     opt.output_dir = outdir;
     opt.quiet_stages = true;

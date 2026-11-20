@@ -1953,6 +1953,7 @@ int testFieldPArmSign() { return testFieldArmAngles(false); }
 // T14: the ntuple columns of pi0 + field (pion layout) and rho + field (mmnuc), in both modes
 int testFieldNtupleColumns() {
     RunSetup s;
+    s.tree_layout = TreeLayout::Legacy;   // U.2: T14 is a bug of the legacy (294f662) layout
     s.params.electron_arm = 1;
     s.params.hadron_arm = 5;
     s.flags.doing_pion = true;
@@ -1982,6 +1983,7 @@ int testFieldNtupleColumns() {
         }
     }
     RunSetup r;
+    r.tree_layout = TreeLayout::Legacy;
     r.params.electron_arm = 1;
     r.params.hadron_arm = 5;
     r.flags.doing_rho = true;
@@ -1999,6 +2001,52 @@ int testFieldNtupleColumns() {
         expect(ntu[56] == 0.11 && ntu[64] == 770. && ntu[65] == 0.5, "rho + field: angles 57-64, Mrho 65, Thrho 66");
         expect(compat ? ntu[66] == 0.0 : ntu[66] == 1.234,
                compat ? "compat (Fortran): mmnuc (67) never written: 0" : "corrected: mmnuc = ntup%mmA/1000");
+    }
+    return 0;
+}
+
+// U-A2 / U-A4 (task U.2): the upstream 59ccdf6 layout. Kaon: upstream NtupleInit.f:155-163 declares saghai, factor but
+// results_write.f:222-227 writes sigcm, sigcm1, sigcm2 (the Fortran STOPs, results_write.f:316-320); SIMC++ declares all
+// three (66 columns). pi0 + using_tgt_field: 84 values overflow the Fortran ntu(80) (results_write.f:10); SIMC++ sizes the
+// row to the layout. Both corrections hold in both modes (the Fortran gives no output to reproduce).
+int testUpstreamLayoutKaonPi0Field() {
+    RunSetup s;   // default layout: upstream
+    s.params.electron_arm = 1;
+    s.params.hadron_arm = 5;
+    s.flags.doing_kaon = true;
+    MainEvent main;
+    Event vertex, orig, recon;
+    main.ntup.sigcm = 1.5, main.ntup.sigcm1 = 2.5, main.ntup.sigcm2 = 3.5, main.weight = 4.5;
+    const auto& kc = NtupleColumnsFor(s);
+    expect(kc.size() == 66 && std::string(kc[60].name) == "sigcm" && std::string(kc[61].name) == "saghai" &&
+               std::string(kc[62].name) == "factor" && std::string(kc[63].name) == "Weight",
+           "U-A2 kaon (upstream layout): 66 tags, sigcm 61, saghai 62, factor 63, Weight 64");
+    for (bool compat : {true, false}) {
+        s.fortran_compat = compat;
+        std::vector<double> ntu(kc.size(), 0.0);
+        FillNtuple(s, main, vertex, orig, recon, ntu);
+        expect(ntu[60] == 1.5 && ntu[61] == 2.5 && ntu[62] == 3.5 && ntu[63] == 4.5,
+               "U-A2 kaon: sigcm, sigcm1, sigcm2, weight in their columns (no STOP)");
+    }
+    RunSetup p;
+    p.params.electron_arm = 1;
+    p.params.hadron_arm = 5;
+    p.flags.doing_pion = true;
+    p.flags.doing_pizero = true;
+    p.flags.using_tgt_field = true;
+    p.params.using_tgt_field = true;
+    recon.theta_tarq = 0.11, vertex.phi_c = 0.18;
+    main.ntup.xcal_gamma1 = 1.1, main.ntup.gamma2[3] = 23.;
+    const auto& pc = NtupleColumnsFor(p);
+    expect(pc.size() == 84 && std::string(pc[64].name) == "xcal_gamma1" && std::string(pc[75].name) == "Pgamma2z" &&
+               std::string(pc[76].name) == "th_tarq" && std::string(pc[83].name) == "phici",
+           "U-A4 pi0 + field (upstream layout): 84 tags, photons 65-76, angles 77-84");
+    for (bool compat : {true, false}) {
+        p.fortran_compat = compat;
+        std::vector<double> ntu(pc.size(), 0.0);
+        FillNtuple(p, main, vertex, orig, recon, ntu);
+        expect(ntu[64] == 1.1 && ntu[75] == 23. && ntu[76] == 0.11 && ntu[83] == 0.18,
+               "U-A4 pi0 + field: photons and angles in their own columns, no overflow");
     }
     return 0;
 }
@@ -2044,6 +2092,7 @@ const std::map<std::string, std::function<int()>>& items() {
         {"D067_T2_field_parm_sign", testFieldPArmSign},
         {"D067_T14_field_ntuple_columns", testFieldNtupleColumns},
         {"U_DEV1_nuc_elast_combination", testNucElastCombination},
+        {"U_A2_A4_upstream_layout_kaon_pi0_field", testUpstreamLayoutKaonPi0Field},
     };
     return m;
 }

@@ -4,6 +4,9 @@
 #   <run>.hist (except the BEGIN/END Time lines 2-3), <run>.geni, <run>.gen text-identical, and the h10 tree of <run>.root
 #   bitwise identical (simc_root_identity). Then the same run in the default (corrected) mode must succeed and its .geni
 #   must print the stop counters of its own summary JSON (for the SOS: slit_hor before slit_vert, FORTRAN-BUG D-011).
+# U.2: the tree layout follows the reference: upstream (59ccdf6) for a reference whose .hist has the upstream line
+# `doing_nuc_elast=` (reference/runs/up_*), legacy (294f662) otherwise; env LAYOUT=upstream|legacy overrides (the 20d46fc
+# nuclear-elastic references have the line but the 46-column legacy tree).
 # usage: ranlux_fullrun.sh <simc++> <simc_root_identity> <ref_run_dir> <run> <workdir>
 # Exit: 0 pass, 1 fail, 77 reference missing.
 set -u
@@ -12,7 +15,10 @@ simc=$1; ident=$2; ref=$3; run=$4; work=$5
 rm -rf "$work"; mkdir -p "$work/compat" "$work/corrected"
 echo '{"pipeline": {"rng": {"type": "ranlux"}}}' > "$work/ranlux.json"
 fail=0
-"$simc" "$ref/$run.inp" -o "$work/compat" --fortran-compat --pipeline "$work/ranlux.json" --quiet > "$work/compat.log" 2>&1 \
+layout=legacy; grep -q 'doing_nuc_elast=' "$ref/$run.hist" && layout=upstream
+[ -n "${LAYOUT:-}" ] && layout=$LAYOUT
+echo "  tree layout: $layout"
+"$simc" "$ref/$run.inp" -o "$work/compat" --fortran-compat --pipeline "$work/ranlux.json" --tree-layout "$layout" --quiet > "$work/compat.log" 2>&1 \
     || { echo "simc++ (compat) failed:"; tail -5 "$work/compat.log"; exit 1; }
 # U.1: the .hist of SIMC++ has the line `doing_nuc_elast= F` of upstream simc.f:894 (4df7351); a reference of the frozen
 # 294f662 Fortran does not have it, so the line is dropped from the C++ .hist only when the reference lacks it.
@@ -34,7 +40,7 @@ if "$ident" "${identopt[@]}" "$work/compat/$run.root" "$ref/$run.root" > "$work/
     echo "  $run.root: $(tail -1 "$work/identity.log")"
 else echo "  $run.root: DIFFERENT"; tail -10 "$work/identity.log"; fail=1; fi
 # default (corrected) mode
-"$simc" "$ref/$run.inp" -o "$work/corrected" --pipeline "$work/ranlux.json" --quiet > "$work/corrected.log" 2>&1 \
+"$simc" "$ref/$run.inp" -o "$work/corrected" --pipeline "$work/ranlux.json" --tree-layout "$layout" --quiet > "$work/corrected.log" 2>&1 \
     || { echo "simc++ (corrected) failed:"; tail -5 "$work/corrected.log"; exit 1; }
 sj="$work/corrected/$run.summary.json"
 if grep -q "SOS Trials" "$work/corrected/$run.geni"; then

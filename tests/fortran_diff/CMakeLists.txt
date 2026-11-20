@@ -47,6 +47,7 @@ set(SIMC_FORTRAN_DIFF_ITEMS
     D067_T2_field_parm_sign
     D067_T14_field_ntuple_columns
     U_DEV1_nuc_elast_combination
+    U_A2_A4_upstream_layout_kaon_pi0_field
 )
 foreach(_item ${SIMC_FORTRAN_DIFF_ITEMS})
     add_test(NAME fortran_diff_${_item}

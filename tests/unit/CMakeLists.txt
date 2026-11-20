@@ -67,7 +67,14 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/setup.cmake OPTIONAL)   # P2.1 setup vs .his
 # P10.4 (D-044): squares are x*x as in gfortran, never std::pow(x, 2) (gcc 16 calls libm pow for it)
 add_test(NAME lint_no_pow_square COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/lint_no_pow_square.sh ${CMAKE_SOURCE_DIR})
 
+# U.2 (D-082): the tree-layout switch (--tree-layout, JSON "output": {"layout"}), label "cli"
+add_test(NAME cli_tree_layout
+         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/cli_tree_layout.sh $<TARGET_FILE:simcpp> $<TARGET_FILE:simc_root_identity>
+                 $<TARGET_FILE:inp2json> ${SIMC_FORTRAN_DIR}/infiles/eep_h_elastic_rad_A.inp ${CMAKE_CURRENT_BINARY_DIR}/cli_tree_layout)
+set_tests_properties(cli_tree_layout PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 300)
+
 # CTest labels (P7.4): every test of this directory is "unit"; the inp2json command line also "cli".
 get_property(_unit_tests DIRECTORY PROPERTY TESTS)
 set_property(TEST ${_unit_tests} APPEND PROPERTY LABELS unit)
 set_property(TEST inp2json_cli APPEND PROPERTY LABELS cli)
+set_property(TEST cli_tree_layout APPEND PROPERTY LABELS cli)

@@ -10,8 +10,11 @@
 # env: JOBS (default 4), REF (default $SIMC_REFERENCE/runs; SIMC_REFERENCE from the environment or check_all.env, see simc_env.sh)
 # writes <outdir>/<folder>/ (outputs, run.log, identity.txt) and <outdir>/summary.tsv; exit 0 if every run is IDENTICAL or
 # (with ALLOW_REFUSED=1) REFUSED, 1 otherwise (77 when a single requested folder is absent: CTest skip).
+# env LAYOUT=upstream|legacy forces the tree layout (default: upstream for a reference with the upstream .hist line
+# `doing_nuc_elast=`, i.e. reference/runs/up_*, legacy for the 294f662 references; task U.2).
 # The CTest label regression_shipped (tests/regression/CMakeLists.txt) runs this script once per folder.
 set -uo pipefail
+LAYOUT=${LAYOUT-}
 source "$(dirname "${BASH_SOURCE[0]}")/simc_env.sh"   # SIMC_PROJECT_DIR, SIMC_REFERENCE, ROOTSYS -> LD_LIBRARY_PATH
 SIMC=$1; IDENT=$2; OUT=$3; shift 3
 [[ -n ${REF-} ]] || simc_need SIMC_REFERENCE
@@ -30,9 +33,13 @@ one() {   # folder
   rm -rf "$w"; mkdir -p "$w"
   if [[ -z "$run" ]]; then printf '%s\t-\tNO_REFERENCE\t0\n' "$f" > "$w/row.tsv"; return; fi
   t0=$(date +%s)
-  "$SIMC" "$d/$run.inp" -o "$w" --fortran-compat --pipeline "$OUT/ranlux.json" --quiet > "$w/run.log" 2>&1
+  # U.2: an upstream (59ccdf6) reference has the .hist line `doing_nuc_elast=` and the upstream tree layout; a 294f662
+  # reference has neither, so simc++ writes the legacy layout for it (--tree-layout legacy).
+  local layout=legacy; grep -q 'doing_nuc_elast=' "$d/$run.hist" && layout=upstream
+  [[ -n ${LAYOUT-} ]] && layout=$LAYOUT
+  "$SIMC" "$d/$run.inp" -o "$w" --fortran-compat --pipeline "$OUT/ranlux.json" --tree-layout "$layout" --quiet > "$w/run.log" 2>&1
   rc=$?
-  { echo "== $f ($run): simc++ RANLUX --fortran-compat, exit $rc, $(( $(date +%s) - t0 )) s"
+  { echo "== $f ($run): simc++ RANLUX --fortran-compat --tree-layout $layout, exit $rc, $(( $(date +%s) - t0 )) s"
     if [[ $rc -ne 0 ]]; then tail -3 "$w/run.log"; fi
     if [[ $rc -eq 0 ]]; then
       # U.1: a 294f662 reference has no `doing_nuc_elast= F` line (upstream simc.f:894) and its tree no upstream z/pt2 and
@@ -51,7 +58,7 @@ one() {   # folder
   printf '%s\t%s\t%s\t%s\n' "$f" "$run" "$v" "$(( $(date +%s) - t0 ))" > "$w/row.tsv"
   rm -f "$w"/*.root.tmp
 }
-export -f one; export SIMC IDENT OUT REF
+export -f one; export SIMC IDENT OUT REF LAYOUT
 printf '%s\n' "${LIST[@]}" | xargs -P "$JOBS" -I{} bash -c 'one {}'
 { printf 'folder\trun\tverdict\tseconds\n'; for f in "${LIST[@]}"; do cat "$OUT/$f/row.tsv"; done; } > "$OUT/summary.tsv"
 column -t -s$'\t' "$OUT/summary.tsv"

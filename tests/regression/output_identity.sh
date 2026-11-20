@@ -4,7 +4,8 @@
 # Usage: output_identity.sh SIMCPP ROOT_IDENTITY INPUT SEED RUN_NAME BASELINE_DIR WORK_DIR [SIMCPP_ARGS...]
 #
 # Runs   SIMCPP INPUT --seed SEED --run-name RUN_NAME -o WORK_DIR --quiet [SIMCPP_ARGS...]
-# (P7.5: SIMCPP_ARGS, e.g. --fortran-compat for the exact-Fortran baselines)
+# (P7.5: SIMCPP_ARGS, e.g. --fortran-compat for the exact-Fortran baselines; U.2: --tree-layout legacy is added unless
+# SIMCPP_ARGS has --tree-layout, the baselines being in the legacy layout)
 # and requires every output file to be identical to the file of the same name in BASELINE_DIR:
 #   *.root                     bitwise identical trees (all branches, all entries) and histograms (ROOT_IDENTITY);
 #                              the TFile/TKey date stamps are ignored
@@ -17,6 +18,9 @@ set -uo pipefail
 if [[ $# -lt 7 ]]; then sed -n '2,17p' "$0"; exit 2; fi
 SIMCPP=$1; ROOTID=$2; INPUT=$3; SEED=$4; RUN=$5; BASE=$6; WORK=$7
 shift 7; EXTRA=("$@")
+# U.2 (D-082): the stored baselines hold the legacy (294f662) tree layout; unless the caller names a layout, the run
+# uses --tree-layout legacy (the upstream default layout is validated against the Fortran itself, tests/l1/eep.cmake).
+[[ " ${EXTRA[*]-} " == *" --tree-layout "* ]] || EXTRA+=(--tree-layout legacy)
 
 if [[ ! -d "$BASE" || ! -f "$INPUT" ]]; then echo "SKIP: baseline $BASE or input $INPUT missing"; exit 77; fi
 rm -rf "$WORK"; mkdir -p "$WORK"

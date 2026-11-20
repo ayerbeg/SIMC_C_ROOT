@@ -87,6 +87,7 @@ int main(int argc, char** argv) {
     par.Ebeam = 10600; par.spec.e.theta = 12.5; par.spec.p.theta = 36.0;
     par.SPedge.e.delta = {-10, 22}; par.SPedge.p.delta = {-10, 10};
     RunSetup setup = RunSetup::FromParameters(par, "synthetic");
+    setup.tree_layout = TreeLayout::Legacy;   // U.2: this test checks the 46-column 294f662 layout of the reference
     setup.output_dir = "output_sinks_tmp";
     setup.hist.e.delta = {-10, 0.5}; setup.hist.e.yptar = {-0.05, 0.002}; setup.hist.e.xptar = {-0.05, 0.002};
     setup.hist.p.delta = {-10, 0.5}; setup.hist.p.yptar = {-0.05, 0.002}; setup.hist.p.xptar = {-0.05, 0.002};

@@ -44,36 +44,40 @@ set_tests_properties(l1_nuc_elastic PROPERTIES SKIP_RETURN_CODE 77 LABELS l1)
 
 # U.1: full-run identity (RANLUX + --fortran-compat) against the upstream-SIMC references of task U.F1.
 # A(e,e')A nuclear elastic (doing_nuc_elast): the 20d46fc build (last upstream commit with the complete path, finding U-A1);
-# its ntuple is the 46-column (e,e'p) layout, so the h10 tree is compared bitwise in full.
+# its ntuple is the 46-column (e,e'p) layout, i.e. the SIMC++ legacy layout (LAYOUT=legacy), compared bitwise in full.
 foreach(_r "up_ee_calcium48_cap1000_20d46fc;upf1_ca48_cap" "up_ee_calcium48_20d46fc;ee_calcium48")
     list(GET _r 0 _dir)
     list(GET _r 1 _run)
     add_test(NAME l1_simcrun_ranlux_${_dir}
              COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/ranlux_fullrun.sh $<TARGET_FILE:simcpp> $<TARGET_FILE:simc_root_identity>
                      ${SIMC_REFERENCE_DIR}/runs/${_dir} ${_run} ${CMAKE_CURRENT_BINARY_DIR}/ranlux_${_dir})
-    set_tests_properties(l1_simcrun_ranlux_${_dir} PROPERTIES LABELS "l1;replay" SKIP_RETURN_CODE 77 TIMEOUT 600)
+    set_tests_properties(l1_simcrun_ranlux_${_dir} PROPERTIES LABELS "l1;replay" SKIP_RETURN_CODE 77 TIMEOUT 600
+                         ENVIRONMENT "LAYOUT=legacy")
 endforeach()
-# Cu-64 A(e,e'p) with the Benhar SF (benharsf_64.dat, upstream a85dc6b): the reference was made by 59ccdf6, whose ntuple
-# has the new layout, so only the 44 h10 leaves common to both layouts are compared (COMMON_LEAVES=1); .hist/.geni/.gen
-# in full. 200000 events, 7.1e6 tries.
-add_test(NAME l1_simcrun_ranlux_up_upf1_eep_cu64_bh_rad_A
-         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/ranlux_fullrun.sh $<TARGET_FILE:simcpp> $<TARGET_FILE:simc_root_identity>
-                 ${SIMC_REFERENCE_DIR}/runs/up_upf1_eep_cu64_bh_rad_A upf1_eep_cu64_bh_rad_A
-                 ${CMAKE_CURRENT_BINARY_DIR}/ranlux_up_upf1_eep_cu64_bh_rad_A)
-set_tests_properties(l1_simcrun_ranlux_up_upf1_eep_cu64_bh_rad_A PROPERTIES LABELS "l1;replay;slow" SKIP_RETURN_CODE 77
-                     TIMEOUT 2400 ENVIRONMENT "COMMON_LEAVES=1")
-# U.1 items 3 (z, pt^2 always computed; pfermi 0 instead of NaN; the .hist line doing_nuc_elast= F) against 59ccdf6 runs
-# whose only differences to 294f662 are these (reference/U.F1_report.md §2 "layout only"): common leaves incl. zi/pt2i
-# (rho, 4 events) and pfermi (SIDIS H, 100000 events).
-add_test(NAME l1_simcrun_ranlux_up_upf1_rho_h_k1_rad_A_s
-         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/ranlux_fullrun.sh $<TARGET_FILE:simcpp> $<TARGET_FILE:simc_root_identity>
-                 ${SIMC_REFERENCE_DIR}/runs/up_upf1_rho_h_k1_rad_A_s upf1_rho_h_k1_rad_A_s
-                 ${CMAKE_CURRENT_BINARY_DIR}/ranlux_up_upf1_rho_h_k1_rad_A_s)
-set_tests_properties(l1_simcrun_ranlux_up_upf1_rho_h_k1_rad_A_s PROPERTIES LABELS "l1;replay" SKIP_RETURN_CODE 77
-                     TIMEOUT 600 ENVIRONMENT "COMMON_LEAVES=1")
-add_test(NAME l1_simcrun_ranlux_up_sidis_h_k1_pip_rad_A
-         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/ranlux_fullrun.sh $<TARGET_FILE:simcpp> $<TARGET_FILE:simc_root_identity>
-                 ${SIMC_REFERENCE_DIR}/runs/up_sidis_h_k1_pip_rad_A sidis_h_k1_pip_rad_A
-                 ${CMAKE_CURRENT_BINARY_DIR}/ranlux_up_sidis_h_k1_pip_rad_A)
-set_tests_properties(l1_simcrun_ranlux_up_sidis_h_k1_pip_rad_A PROPERTIES LABELS "l1;replay;slow" SKIP_RETURN_CODE 77
-                     TIMEOUT 2400 ENVIRONMENT "COMMON_LEAVES=1")
+# U.2 (D-082): the upstream 59ccdf6 tree layout (the default) against the 59ccdf6 runs of task U.F1, the WHOLE h10 tree
+# bitwise (every column), .hist/.geni/.gen text-identical; RANLUX + --fortran-compat. ranlux_fullrun.sh selects
+# --tree-layout upstream from the reference .hist. Short runs (< 1 min) in the default set, the others "slow".
+# Not here: kaon (59ccdf6 STOPs at the first event, U-A2: no reference tree); pion C-12 which_pion 2/3 and H which_pion 3
+# (39d7de0 / 20d46fc physics changes, not ported in U.1/U.2).
+foreach(_r "up_upf1_rho_h_k1_rad_A_s;upf1_rho_h_k1_rad_A_s;fast"
+           "up_upf1_pion_c12_wp0_A;upf1_pion_c12_wp0_A;fast"
+           "up_eep_h_elastic_rad_A;eep_h_elastic_rad_A;slow" "up_eep_h_elastic_norad_A;eep_h_elastic_norad_A;slow"
+           "up_eep_d_rad_A;eep_d_rad_A;slow" "up_eep_c12_rad_A;eep_c12_rad_A;slow"
+           "up_upf1_eep_cu64_bh_rad_A;upf1_eep_cu64_bh_rad_A;slow"
+           "up_pion_h_k1_rad_dec0_A;pion_h_k1_rad_dec0_A;slow" "up_delta_h_d1_rad_A;delta_h_d1_rad_A;slow"
+           "up_p14f2_excl_h_ng2_A;p14f2_excl_h_ng2_A;slow" "up_sidis_h_k1_pip_rad_A;sidis_h_k1_pip_rad_A;slow"
+           "up_u_nps_5p639;u_nps_5p639;slow")
+    list(GET _r 0 _dir)
+    list(GET _r 1 _run)
+    list(GET _r 2 _speed)
+    add_test(NAME l1_simcrun_ranlux_${_dir}
+             COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/ranlux_fullrun.sh $<TARGET_FILE:simcpp> $<TARGET_FILE:simc_root_identity>
+                     ${SIMC_REFERENCE_DIR}/runs/${_dir} ${_run} ${CMAKE_CURRENT_BINARY_DIR}/ranlux_${_dir})
+    if(_speed STREQUAL "slow")
+        set_tests_properties(l1_simcrun_ranlux_${_dir} PROPERTIES LABELS "l1;replay;upstream_layout;slow"
+                             SKIP_RETURN_CODE 77 TIMEOUT 2400)
+    else()
+        set_tests_properties(l1_simcrun_ranlux_${_dir} PROPERTIES LABELS "l1;replay;upstream_layout"
+                             SKIP_RETURN_CODE 77 TIMEOUT 600)
+    endif()
+endforeach()

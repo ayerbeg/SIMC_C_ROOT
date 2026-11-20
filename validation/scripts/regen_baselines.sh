@@ -7,6 +7,7 @@
 #   --jobs N       simc++ runs in parallel (default 4)
 #   --only SUBSTR  only the baselines whose folder suffix contains SUBSTR
 # Writes NEW folders $SIMC_BASELINES (default <project>/baselines)/<rev>_<tag>_<suffix>/ (refuses to overwrite an existing one) with the
+# U.2 (D-082): every baseline is written with --tree-layout legacy (the 294f662 layout; output_identity.sh adds the same).
 # outputs of exactly the command the regression test runs (tests/regression/CMakeLists.txt, output_identity.sh), plus
 # README.txt (commit, command, toolchain line read by tests/toolchain_guard.sh) and MD5SUMS. Old folders are untouched.
 set -uo pipefail
@@ -95,6 +96,7 @@ echo "toolchain: $TOOLCHAIN"
 run_one() {
   local suffix input extra run note out
   IFS='|' read -r suffix input extra run note <<<"$1"
+  extra="${extra:+$extra }--tree-layout legacy"   # U.2: the baselines keep the legacy (294f662) tree layout
   out="$BASEDIR/${SHORT}_${TAG}_${suffix}"
   if [[ -e "$out" ]]; then echo "exists, not touched: $out"; return 1; fi
   mkdir -p "$out"
@@ -122,7 +124,7 @@ run_k2k4() {
   if [[ -e "$out" ]]; then echo "exists, not touched: $out"; return 1; fi
   mkdir -p "$out"
   for t in acc_phsp_K2_A eep_h_K4_norad_A eep_h_K2_norad_A eep_h_K3_norad_A eep_h_K2_rad_A eep_h_K4_rad_A eep_h_K3_rad_A; do
-    if ! "$SIMCPP" "$REF/runs/$t/$t.inp" --seed 4242 --run-name "cpp_$t" -o "$out" --fortran-compat > "$out/cpp_$t.log" 2>&1; then
+    if ! "$SIMCPP" "$REF/runs/$t/$t.inp" --seed 4242 --run-name "cpp_$t" -o "$out" --fortran-compat --tree-layout legacy > "$out/cpp_$t.log" 2>&1; then
       echo "FAILED: K2K4 $t"; return 1
     fi
   done
