@@ -9,7 +9,10 @@
  * Fortran: NtupleInit.f (tags, l.36-321), results_write.f:results_ntu_write (l.1-271),
  *          make_root_tree.f + froot.c (one Float_t branch per tag, tree "h10").
  *
- * Implemented layouts: the (e,e'p) family, i.e. doing_hyd_elast / doing_deuterium /
+ * Two layouts (task U.2, D-082; RunSetup::tree_layout): the upstream SIMC 59ccdf6 layout (default; UpstreamNtupleColumns,
+ * FillUpstreamNtuple) and the legacy 294f662 layout described below. NtupleColumnsFor/FillNtuple dispatch on the setting.
+ *
+ * Legacy layouts: the (e,e'p) family, i.e. doing_hyd_elast / doing_deuterium /
  * doing_heavy (this includes doing_phsp, which keeps doing_hyd_elast & co.): 46 columns; exclusive pion production
  * (doing_pion, task P9.2): 53 columns (65 with doing_pizero); kaon (doing_kaon, P10.2): 55; Delta (P11.1) as pion; SIDIS
  * (doing_semi, P12.2): 56. rho comes with that reaction.
@@ -147,7 +150,8 @@ bool FillRhoNtuple(const RunSetup& setup, const MainEvent& main, const Event& ve
 /// @return the static column table.
 const std::vector<NtupleColumn>& TargetFieldNtupleColumns();
 
-/// The layout of a run: the columns and the filler (FillEepNtuple or FillPionNtuple). Throws std::runtime_error for
+/// The layout of a run: the columns and the filler. With RunSetup::tree_layout = Upstream (default) UpstreamNtupleColumns;
+/// with Legacy the 294f662 layouts below. Legacy: (FillEepNtuple or FillPionNtuple). Throws std::runtime_error for
 /// the layouts that are not implemented (semi/rho, kaon, delta, target field).
 /// @param setup the run set-up.
 /// @return the static column table of the run.
@@ -163,6 +167,27 @@ const std::vector<NtupleColumn>& NtupleColumnsFor(const RunSetup& setup);
 /// @return false for an unknown electron arm.
 bool FillNtuple(const RunSetup& setup, const MainEvent& main, const Event& vertex, const Event& orig,
                 const Event& recon, std::vector<double>& ntu);
+
+// ------------------------------------------------------------------- upstream 59ccdf6 layout (task U.2, D-082)
+/// The columns of the upstream SIMC 59ccdf6 layout (NtupleInit.f:84-247 after e4dd175), the default
+/// (RunSetup::tree_layout = TreeLayout::Upstream): 1-24 arms, 25-40 common (q nu Q2 W xbj epsilon Em Pm qi nui Q2i Wi xbji
+/// epsiloni Emi Pmi), then (e,e'p) 41-53 (corrsing ... theta_p) or the meson block (pion/delta 64, kaon 66 = sigcm +
+/// saghai + factor [U-A2 corrected], SIDIS 64 with sighad, rho 67, pi0 +12, using_tgt_field +8 at the end).
+/// doing_nuc_elast uses the (e,e'p) block (53). Throws std::runtime_error for a reaction without layout.
+/// @param setup the run set-up.
+/// @return the column table (cached; thread-safe).
+const std::vector<NtupleColumn>& UpstreamNtupleColumns(const RunSetup& setup);
+/// results_ntu_write of upstream SIMC 59ccdf6 (results_write.f:1-326). `ntu` must have UpstreamNtupleColumns(setup).size()
+/// elements.
+/// @param setup the run set-up.
+/// @param main the main event record.
+/// @param vertex the generated vertex.
+/// @param orig the event after radiation.
+/// @param recon the reconstructed event.
+/// @param[in,out] ntu the ntuple row.
+/// @return false for an unknown electron arm.
+bool FillUpstreamNtuple(const RunSetup& setup, const MainEvent& main, const Event& vertex, const Event& orig,
+                        const Event& recon, std::vector<double>& ntu);
 
 /// @}
 

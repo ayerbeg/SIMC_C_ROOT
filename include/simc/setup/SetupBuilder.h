@@ -41,6 +41,8 @@ struct SetupOptions {
     /// D-031: false = correct the clear Fortran bugs (default), true = exact Fortran behaviour (bitwise tests).
     /// Copied into RunSetup::fortran_compat and ExtremeTripArgs::fortran_compat.
     bool fortran_compat{false};
+    /// Task U.2: ntuple layout (upstream 59ccdf6 = default, legacy 294f662). Copied into RunSetup::tree_layout.
+    TreeLayout tree_layout{TreeLayout::Upstream};
     /// D(e,e'p)/A(e,e'p): the spectral-function file named explicitly (JSON pipeline.reaction.spectral_function.file;
     /// task P8.1, D-033 F1). Empty = the Fortran choice from nint(A) (init.f:839-851, dbase.f:598-616), with a warning
     /// when it falls back to the C-12 file.

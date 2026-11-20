@@ -67,6 +67,9 @@ struct RunOptions {
     /// D-031: false (default) = clear Fortran bugs corrected; true = exact Fortran behaviour (--fortran-compat,
     /// JSON "run": {"fortran_compat": true}). Passed to the set-up (RunSetup::fortran_compat).
     bool fortran_compat{false};
+    /// Task U.2 (D-082): layout of the tree h10. Upstream (default) = upstream SIMC 59ccdf6; Legacy = SIMC 294f662
+    /// (--tree-layout legacy, JSON "output": {"layout": "legacy"}). Passed to RunSetup::tree_layout.
+    TreeLayout tree_layout{TreeLayout::Upstream};
     /// P15.4: worker threads of the event loop (--threads N); 0 = from the pipeline "threads" (default 1). N > 1:
     /// runThreaded() (docs/manual/markdown/reference/PERFORMANCE.md); refused with fortran_compat and with an rng other than mt64.
     int threads{0};

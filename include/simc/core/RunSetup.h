@@ -299,6 +299,11 @@ struct RadSetup {
     double Egamma1_max{0} /**< @copydoc Egamma3_max */, Egamma2_max{0} /**< @copydoc Egamma3_max */, Egamma3_max{0};   ///< init.f:419-421 (0 if tail off)
 };
 
+/// Layout of the diagnostic ntuple (tree "h10"), task U.2 (D-082).
+/// Upstream: the layout of upstream SIMC 59ccdf6 (NtupleInit.f / results_write.f after e4dd175), the DEFAULT;
+/// Legacy: the layout of SIMC 294f662 (and 20d46fc for doing_nuc_elast). CLI --tree-layout, JSON "output": {"layout"}.
+enum class TreeLayout { Upstream /**< upstream 59ccdf6 (default) */, Legacy /**< 294f662 */ };
+
 /**
  * @brief Every constant of a run, derived from the input before the event loop (see the file description).
  *
@@ -315,6 +320,9 @@ struct RunSetup {
     /// behaviour, used by the bitwise L1/replay/regression tests. Set once from SetupOptions::fortran_compat by
     /// BuildRunSetup and read by every stage through StageContext::setup (no global).
     bool fortran_compat{false};
+    /// Ntuple layout of the tree h10 (task U.2): upstream 59ccdf6 (default) or legacy 294f662. Set from
+    /// SetupOptions::tree_layout by BuildRunSetup.
+    TreeLayout tree_layout{TreeLayout::Upstream};
 
     // dbase.f:239-244 (kept for the P1.4 sinks; identical to spec.e/p.theta, sin_th, cos_th)
     double e_theta{0} /**< @copydoc e_cos_th */, e_sin_th{0} /**< @copydoc e_cos_th */, e_cos_th{0};   ///< rad

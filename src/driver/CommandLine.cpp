@@ -3,7 +3,7 @@
 //
 //   simc++ <file.inp | file.json> [-o OUTDIR] [--seed N] [--ngen N] [--pipeline overrides.json]
 //          [--run-name NAME] [--data-dir DIR] [--infiles-dir DIR] [--quiet] [--print-pipeline] [--fortran-compat]
-//          [--threads N] [--print-data-dir]
+//          [--threads N] [--print-data-dir] [--tree-layout upstream|legacy]
 //
 // Input:
 //   * a Fortran .inp (CTP syntax, + its extra_dbase_file), read exactly like dbase.f (InpReader), or
@@ -14,6 +14,9 @@
 // --threads N (docs/manual/markdown/reference/PERFORMANCE.md): the event loop on N threads with independent mt64 streams (reproducible for a
 // given seed and N; statistically equivalent to, not bitwise equal to, the one-thread run). Default 1 (or the pipeline
 // "threads"). Refused (exit 2) with --fortran-compat and with an rng other than mt64.
+// --tree-layout upstream|legacy (or JSON "output": {"layout": "upstream"|"legacy"}; task U.2, D-082): the column layout
+// of the tree h10. upstream (default) = upstream SIMC 59ccdf6 (NtupleInit.f/results_write.f after e4dd175), legacy = SIMC
+// 294f662 (docs/manual/markdown/reference/OUTPUT_FORMAT.md). The CLI option wins over the JSON.
 // --print-data-dir prints the default data directory (include/simc/core/DataPath.h: env SIMC_DATA_DIR, the installed
 // package's, <exe>/../share/simc/data, or the source tree) and exits.
 // --pipeline FILE merges a pipeline JSON (either the section itself or {"pipeline": {...}}) over the input's.
@@ -44,11 +47,12 @@ namespace {
 void usage() {
     std::cerr << "usage: simc++ <file.inp|file.json> [-o OUTDIR] [--seed N] [--ngen N] [--pipeline FILE]\n"
                  "               [--run-name NAME] [--data-dir DIR] [--infiles-dir DIR] [--quiet] [--print-pipeline]\n"
-                 "               [--fortran-compat] [--threads N] [--print-data-dir]\n"
+                 "               [--fortran-compat] [--threads N] [--print-data-dir] [--tree-layout upstream|legacy]\n"
                  "  --print-pipeline  print the resolved pipeline (JSON), then run\n"
                  "  --fortran-compat  exact Fortran behaviour (known Fortran bugs kept; bitwise validation)\n"
                  "  --threads N       event loop on N threads (independent mt64 streams per thread; a given seed and N\n"
                  "                    always give the same output; not with --fortran-compat or rng ranlux). Default 1.\n"
+                 "  --tree-layout L   tree h10 column layout: upstream (default, upstream SIMC 59ccdf6) or legacy (SIMC 294f662)\n"
                  "  --print-data-dir  print the default data directory (env SIMC_DATA_DIR overrides it) and exit\n";
 }
 
@@ -60,6 +64,13 @@ std::string stem(const std::string& path) {
 
 bool endsWith(const std::string& s, const std::string& e) {
     return s.size() >= e.size() && s.compare(s.size() - e.size(), e.size(), e) == 0;
+}
+
+// task U.2: "upstream" / "legacy" -> the layout; false for anything else
+bool parseLayout(const std::string& v, TreeLayout& out) {
+    if (v == "upstream") { out = TreeLayout::Upstream; return true; }
+    if (v == "legacy") { out = TreeLayout::Legacy; return true; }
+    return false;
 }
 
 bool readJson(const std::string& path, Json& j) {
@@ -81,7 +92,8 @@ bool readJson(const std::string& path, Json& j) {
 // (a Fortran STOP, a refused feature or any other error during the run).
 int CommandLineMain(int argc, char** argv) {
     std::string input, outdir = ".", pipelineFile, runName, dataDir, infilesDir;
-    bool quiet = false, printPipeline = false, compatFlag = false;
+    bool quiet = false, printPipeline = false, compatFlag = false, layoutFlag = false;
+    TreeLayout layoutCli = TreeLayout::Upstream;
     driver::RunOptions opt;
     // --- 1. the options
     for (int i = 1; i < argc; ++i) {
@@ -101,6 +113,14 @@ int CommandLineMain(int argc, char** argv) {
         else if (a == "--quiet") quiet = true;
         else if (a == "--print-pipeline") printPipeline = true;
         else if (a == "--fortran-compat") compatFlag = true;
+        else if (a == "--tree-layout") {
+            next(v);
+            if (!parseLayout(v, layoutCli)) {
+                std::cerr << "simc++: --tree-layout: expected 'upstream' or 'legacy', got '" << v << "'\n";
+                return 1;
+            }
+            layoutFlag = true;
+        }
         else if (a == "--threads") {
             next(v);
             char* end = nullptr;
@@ -140,6 +160,15 @@ int CommandLineMain(int argc, char** argv) {
             if (runName.empty()) runName = j["run"].value("name", std::string());
             if (outdir == ".") outdir = j["run"].value("output_dir", outdir);
             opt.fortran_compat = j["run"].value("fortran_compat", false);
+        }
+        if (j.contains("output")) {   // task U.2: "output": {"layout": "upstream" | "legacy"}
+            const Json& o = j["output"];
+            if (!o.is_object() || (o.contains("layout") && (!o["layout"].is_string() ||
+                                                            !parseLayout(o["layout"].get<std::string>(), opt.tree_layout)))) {
+                std::cerr << "simc++: input error: " << input
+                          << ": \"output\": {\"layout\"} must be \"upstream\" or \"legacy\"\n";
+                return 2;
+            }
         }
     } else {
         InpReader::Options ro;
@@ -186,6 +215,7 @@ int CommandLineMain(int argc, char** argv) {
     opt.data_dir = dataDir;
     opt.quiet_stages = quiet;
     if (compatFlag) opt.fortran_compat = true;   // the CLI flag wins over the JSON
+    if (layoutFlag) opt.tree_layout = layoutCli;   // idem (task U.2)
     if (opt.threads > 1 && opt.fortran_compat) {  // refused before the run starts (also SimcRun::threadsRefusal)
         std::cerr << "simc++: --threads " << opt.threads
                   << " (more than one event-loop thread) cannot be used with --fortran-compat: the exact Fortran "

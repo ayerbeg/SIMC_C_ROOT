@@ -4,8 +4,12 @@
 // pi0-photon columns. Column order and values are those of NtupleInit.f / results_write.f, so the h10 trees of the
 // two codes compare tag by tag. Used by RootTreeSink (the tree), the summary (column list) and the documentation.
 // Fortran: NtupleInit.f, results_write.f:results_ntu_write (l.1-271).
+// Task U.2 (D-082): the layout of upstream SIMC 59ccdf6 (e4dd175: NtupleInit.f:84-247, results_write.f:145-320) is the
+// default (UpstreamNtupleColumns / FillUpstreamNtuple at the end of this file); the functions above are the legacy
+// 294f662 layout, selected by RunSetup::tree_layout = TreeLayout::Legacy.
 #include "simc/output/NtupleLayout.h"
 
+#include <map>
 #include <mutex>
 
 #include "simc/core/SpectrometerId.h"
@@ -473,6 +477,7 @@ const std::vector<NtupleColumn>& SemiFieldNtupleColumns(bool rho, bool pizero) {
 }  // namespace
 
 const std::vector<NtupleColumn>& NtupleColumnsFor(const RunSetup& s) {
+    if (s.tree_layout == TreeLayout::Upstream) return UpstreamNtupleColumns(s);   // task U.2 (default)
     const bool field = s.flags.using_tgt_field || s.params.using_tgt_field;
     // NtupleInit.f:101: doing_pion .or. doing_kaon .or. doing_delta share the 53 columns.
     // (using_tgt_field is checked on the flags and on the raw parameter: either one selects the field layouts.)
@@ -490,6 +495,7 @@ const std::vector<NtupleColumn>& NtupleColumnsFor(const RunSetup& s) {
 
 bool FillNtuple(const RunSetup& s, const MainEvent& main, const Event& vertex, const Event& orig, const Event& recon,
                 std::vector<double>& ntu) {
+    if (s.tree_layout == TreeLayout::Upstream) return FillUpstreamNtuple(s, main, vertex, orig, recon, ntu);   // U.2
     if (s.flags.doing_pion || s.flags.doing_kaon || s.flags.doing_delta)
         return FillPionNtuple(s, main, vertex, orig, recon, ntu);
     if (s.flags.doing_semi) return FillSemiNtuple(s, main, vertex, orig, recon, ntu);
@@ -564,6 +570,219 @@ bool FillEepNtuple(const RunSetup& s, const MainEvent& main, const Event& /*vert
     ntu[43] = main.weight;
     ntu[44] = recon.e.theta;
     ntu[45] = recon.p.theta;
+    return side != ArmSide::Unknown;
+}
+
+// ================================================================================ upstream 59ccdf6 layout (task U.2)
+// Fortran (upstream simc_gfortran_upstream @ 59ccdf6): NtupleInit.f:84-247 (tags), results_write.f:145-320 (values).
+// Columns 1-24 as the legacy layout; 25-40 common to every reaction; then either the meson block (pion, kaon, delta,
+// semi, rho: 41-64 [+ rho 3] [+ pi0 12] [+ target field 8]) or the (e,e'p) block (41-53).
+
+namespace {
+const std::vector<NtupleColumn>& UpstreamCommonColumns() {
+    static const std::vector<NtupleColumn> c = [] {
+        std::vector<NtupleColumn> v(EepNtupleColumns().begin(), EepNtupleColumns().begin() + 24);
+        const std::vector<NtupleColumn> tail = {
+            {"q", "recon.q/1000", "GeV/c", "results_write.f:147"},
+            {"nu", "recon.nu/1000", "GeV", "results_write.f:149"},
+            {"Q2", "recon.Q2/1e6", "(GeV/c)^2", "results_write.f:151"},
+            {"W", "recon.W/1000", "GeV", "results_write.f:153"},
+            {"xbj", "recon.xbj", "", "results_write.f:155"},
+            {"epsilon", "recon.epsilon", "", "results_write.f:157"},
+            {"Em", "recon.Em/1000", "GeV", "results_write.f:159"},
+            {"Pm", "recon.Pm/1000", "GeV/c", "results_write.f:161"},
+            {"qi", "vertex.q/1000", "GeV/c", "results_write.f:163"},
+            {"nui", "vertex.nu/1000", "GeV", "results_write.f:165"},
+            {"Q2i", "vertex.Q2/1e6", "(GeV/c)^2", "results_write.f:167"},
+            {"Wi", "main.w/1000 (set in the meson block only: 0 for (e,e'p), U-B1; rho: GeV/1000, D-056 R5)", "GeV",
+             "results_write.f:169"},
+            {"xbji", "vertex.xbj", "", "results_write.f:171"},
+            {"epsiloni", "main.epsilon (set in the meson block only: 0 for (e,e'p), U-B1)", "", "results_write.f:173"},
+            {"Emi", "vertex.Emiss/1000", "GeV", "results_write.f:175"},
+            {"Pmi", "vertex.Pmiss/1000", "GeV/c", "results_write.f:177"},
+        };
+        v.insert(v.end(), tail.begin(), tail.end());
+        return v;
+    }();
+    return c;
+}
+
+// NtupleInit.f:114-224 for the given flags (the tag list exactly as results_write.f:178-286 writes the values)
+std::vector<NtupleColumn> UpstreamMesonColumns(bool semi, bool kaon, bool rho, bool pizero, bool field) {
+    std::vector<NtupleColumn> c = UpstreamCommonColumns();
+    const std::vector<NtupleColumn> mid = {
+        {"missmass", "main.ntup.mm/1000 (nucleon)", "GeV", "results_write.f:180"},
+        {"mmnuc", "main.ntup.mmA/1000 (nucleus)", "GeV", "results_write.f:182"},
+        {"phad", "recon.p.P/1000", "GeV/c", "results_write.f:184"},
+        {"t", "main.ntup.t/1e6 (recon)", "GeV^2", "results_write.f:186"},
+        {"ti", "main.t/1e6 (vertex; rho: GeV^2/1e6, D-056 R5)", "GeV^2", "results_write.f:188"},
+        {"z", "recon.zhad", "", "results_write.f:190"},
+        {"zi", "vertex.zhad", "", "results_write.f:192"},
+        {"pt2", "recon.pt2/1e6", "GeV^2", "results_write.f:194"},
+        {"pt2i", "vertex.pt2/1e6", "GeV^2", "results_write.f:196"},
+        {"thetapq", "recon.theta_pq", "rad", "results_write.f:198"},
+        {"phipq", "recon.phi_pq", "rad", "results_write.f:200"},
+        {"thetapqi", "main.theta_pq", "rad", "results_write.f:202"},
+        {"phipqi", "main.phi_pq", "rad", "results_write.f:204"},
+        {"pmpar", "recon.PmPar/1000", "GeV/c", "results_write.f:206"},
+        {"pmper", "recon.PmPer/1000", "GeV/c", "results_write.f:208"},
+        {"pmoop", "recon.PmOop/1000", "GeV/c", "results_write.f:210"},
+        {"fry", "-main.target.rastery", "cm", "results_write.f:212"},
+        {"radphot", "main.ntup.radphot/1000", "GeV", "results_write.f:214"},
+        {"pfermi", "pfer/1000*sign(pfermi_hat.uq) (vertex uq; 0 for pfer = 0)", "GeV/c", "results_write.f:215-218"},
+        {"siglab", "main.sigcc", "ub/MeV/sr^2 (or /MeV^2)", "results_write.f:220"},
+    };
+    c.insert(c.end(), mid.begin(), mid.end());
+    if (semi)
+        c.push_back({"sighad", "main.ntup.sigcm (SIDIS sig_had)", "GeV^-2", "results_write.f:222"});
+    else
+        c.push_back({"sigcm", "main.ntup.sigcm", "ub/MeV^2/rad", "results_write.f:222"});
+    if (kaon) {
+        // FORTRAN-BUG(U-A2): upstream NtupleInit.f:155-163 declares only saghai, factor for doing_kaon (no sigcm) while
+        // results_write.f:222-227 writes sigcm, sigcm1, sigcm2, so the Fortran STOPs at the first event
+        // (results_write.f:316-320). Corrected in both modes: every written value has its tag (66 columns).
+        c.push_back({"saghai", "main.ntup.sigcm1 (Saghai model; 0 as built, D-043 F1)", "ub/MeV^2/rad", "results_write.f:225"});
+        c.push_back({"factor", "main.ntup.sigcm2 (factorized model)", "ub/MeV^2/rad", "results_write.f:227"});
+    }
+    c.push_back({"Weight", "main.weight", "", "results_write.f:230"});
+    c.push_back({"decdist", "main.ntup.decdist", "cm", "results_write.f:232"});
+    c.push_back({"Mhadron", "sqrt(main.ntup.Mh2_final)", "MeV", "results_write.f:234"});
+    if (rho) {
+        c.push_back({"Mrho", "main.ntup.rhomass", "MeV", "results_write.f:237"});
+        c.push_back({"Thrho", "main.ntup.rhotheta", "rad", "results_write.f:239"});
+        // (a second tag "mmnuc", as upstream NtupleInit.f:180: the tree has two branches of that name)
+        c.push_back({"mmnuc", "main.ntup.mmA/1000 (missing mass, nucleus; same value as column 42)", "GeV",
+                     "results_write.f:241"});
+    }
+    if (pizero) {
+        const auto& g = PionNtupleColumns(true);
+        for (auto it = g.end() - 12; it != g.end(); ++it) c.push_back({it->name, it->source, it->units, "results_write.f:243-267"});
+    }
+    if (field) {
+        // FORTRAN-BUG(U-A4): upstream results_write.f:10 ntu(80) (and NtupleTag(80), make_root_tree) overflow with pi0 +
+        // using_tgt_field (84 values); SIMC++ sizes the row to the layout (no overflow), in both modes.
+        for (const auto& f : TargetFieldNtupleColumns()) c.push_back({f.name, f.source, f.units, "results_write.f:269-285"});
+    }
+    return c;
+}
+
+const std::vector<NtupleColumn>& UpstreamEepColumns() {
+    static const std::vector<NtupleColumn> c = [] {
+        std::vector<NtupleColumn> v = UpstreamCommonColumns();
+        const auto& e = EepNtupleColumns();
+        v.insert(v.end(), e.begin() + 33, e.end());   // corrsing ... theta_p (results_write.f:260-285)
+        return v;
+    }();
+    return c;
+}
+
+bool UpstreamField(const RunSetup& s) { return s.flags.using_tgt_field || s.params.using_tgt_field; }
+bool UpstreamMeson(const ReactionFlags& f) {
+    return f.doing_pion || f.doing_kaon || f.doing_delta || f.doing_semi || f.doing_rho;   // results_write.f:178
+}
+}  // namespace
+
+const std::vector<NtupleColumn>& UpstreamNtupleColumns(const RunSetup& s) {
+    const ReactionFlags& f = s.flags;
+    if (UpstreamMeson(f)) {
+        static std::map<int, std::vector<NtupleColumn>> cache;
+        static std::mutex mutex;   // the sinks of the parallel loop's worker threads may ask at the same time
+        std::lock_guard<std::mutex> lock(mutex);
+        const bool field = UpstreamField(s);
+        const int key = (f.doing_semi ? 1 : 0) | (f.doing_kaon ? 2 : 0) | (f.doing_rho ? 4 : 0) |
+                        (f.doing_pizero ? 8 : 0) | (field ? 16 : 0);
+        auto it = cache.find(key);
+        if (it == cache.end())
+            it = cache.emplace(key, UpstreamMesonColumns(f.doing_semi, f.doing_kaon, f.doing_rho, f.doing_pizero, field)).first;
+        return it->second;
+    }
+    // results_write.f:287 (doing_hyd_elast, doing_deuterium, doing_heavy). doing_nuc_elast: upstream 59ccdf6 writes only
+    // columns 1-40 (e4dd175 dropped the 4df7351 nuc_elast branch, U-A1); SIMC++ gives it the (e,e'p) block (53 columns,
+    // corrsing/Pmx/Pmy/Pmz = 0 as at 20d46fc, U-B2).
+    if (UsesEepLayout(f)) return UpstreamEepColumns();
+    throw std::runtime_error("ntuple: no layout for this reaction");
+}
+
+// Fortran: upstream results_write.f:1-326 (59ccdf6)
+bool FillUpstreamNtuple(const RunSetup& s, const MainEvent& main, const Event& vertex, const Event& orig,
+                        const Event& recon, std::vector<double>& ntu) {
+    const ReactionFlags& f = s.flags;
+    const bool meson = UpstreamMeson(f);
+    if (!meson) {
+        // columns 1-24 and the (e,e'p) block (results_write.f:41-49, 260-285) from the legacy filler; upstream results_write.f:32-40, 287-313 (same formulas)
+        std::array<double, kEepNtupleSize> a{};
+        std::copy(ntu.begin(), ntu.begin() + 24, a.begin());   // (unknown arm: 1-24 keep their content)
+        FillEepNtuple(s, main, vertex, orig, recon, a);
+        std::copy(a.begin(), a.begin() + 24, ntu.begin());
+        std::copy(a.begin() + 33, a.end(), ntu.begin() + 40);
+    }
+    const ArmSide side = meson ? FillArms(s, main, orig, recon, ntu.data()) : ElectronArmSide(s.params.electron_arm);
+    std::size_t m = 24;
+    // results_write.f:146-177
+    ntu[m++] = recon.q / 1000.;
+    ntu[m++] = recon.nu / 1000.;
+    ntu[m++] = recon.Q2 / 1.e6;
+    ntu[m++] = recon.W / 1000.;
+    ntu[m++] = recon.xbj;
+    ntu[m++] = recon.epsilon;
+    ntu[m++] = recon.Em / 1000.;
+    ntu[m++] = recon.Pm / 1000.;
+    ntu[m++] = vertex.q / 1000.;
+    ntu[m++] = vertex.nu / 1000.;
+    ntu[m++] = vertex.Q2 / 1.e6;
+    ntu[m++] = main.w / 1000.;        // FORTRAN-QUIRK(U-B1): 0 for (e,e'p) (main%W set in the meson block only)
+    ntu[m++] = vertex.xbj;
+    ntu[m++] = main.epsilon;          // FORTRAN-QUIRK(U-B1): idem
+    ntu[m++] = vertex.Emiss / 1000.;
+    ntu[m++] = vertex.Pmiss / 1000.;
+    if (!meson) return side != ArmSide::Unknown;   // (e,e'p) block already in ntu[40..52]
+
+    // results_write.f:178-286
+    const FermiMomentum& F = main.pfermi;
+    ntu[m++] = main.ntup.mm / 1000.;
+    ntu[m++] = main.ntup.mmA / 1000.;
+    ntu[m++] = recon.p.P / 1000.;
+    ntu[m++] = main.ntup.t / 1.e6;
+    ntu[m++] = main.t / 1.e6;
+    ntu[m++] = recon.zhad;
+    ntu[m++] = vertex.zhad;
+    ntu[m++] = recon.pt2 / 1.e06;
+    ntu[m++] = vertex.pt2 / 1.e06;
+    ntu[m++] = recon.theta_pq;
+    ntu[m++] = recon.phi_pq;
+    ntu[m++] = main.theta_pq;
+    ntu[m++] = main.phi_pq;
+    ntu[m++] = recon.PmPar / 1000.;
+    ntu[m++] = recon.PmPer / 1000.;
+    ntu[m++] = recon.PmOop / 1000.;
+    ntu[m++] = -main.target.rastery;
+    ntu[m++] = main.ntup.radphot / 1000.;
+    double dummy = F.pferx * vertex.uq.x + F.pfery * vertex.uq.y + F.pferz * vertex.uq.z;
+    if (dummy == 0) dummy = 1.e-20;
+    ntu[m++] = F.pfer / 1000. * std::fabs(dummy) / dummy;
+    ntu[m++] = main.sigcc;
+    ntu[m++] = main.ntup.sigcm;
+    if (f.doing_kaon) {
+        ntu[m++] = main.ntup.sigcm1;   // sigcm - saghai model
+        ntu[m++] = main.ntup.sigcm2;   // sigcm - factorized.
+    }
+    ntu[m++] = main.weight;
+    ntu[m++] = main.ntup.decdist;
+    ntu[m++] = std::sqrt(main.ntup.Mh2_final);
+    if (f.doing_rho) {
+        ntu[m++] = main.ntup.rhomass;
+        ntu[m++] = main.ntup.rhotheta;
+        ntu[m++] = main.ntup.mmA / 1000;
+    }
+    if (f.doing_pizero) {
+        FillPhotonColumns(main, ntu, m);
+        m += 12;
+    }
+    if (UpstreamField(s)) {
+        FillTargetFieldColumns(main, vertex, recon, ntu, m);
+        m += 8;
+    }
+    if (m != ntu.size()) throw std::logic_error("FillUpstreamNtuple: row size does not match the layout");
     return side != ArmSide::Unknown;
 }
 

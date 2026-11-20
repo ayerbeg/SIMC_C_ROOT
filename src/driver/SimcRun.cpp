@@ -92,6 +92,7 @@ void SimcRun::initialise() {
         so.run_name = opt_.run_name;
         so.data_dir = opt_.data_dir.empty() ? DataDir("spectral") : opt_.data_dir;   // (data tree: core/DataPath.h)
         so.fortran_compat = opt_.fortran_compat;
+        so.tree_layout = opt_.tree_layout;   // task U.2
         // D/A(e,e'p): a spectral function named in the JSON (D-033 F1) reaches the set-up, which reads the
         // theory file / chooses the Benhar file: "theory"/"benhar" set use_benhar_sf, "file" the file.
         const PipelineConfig::SpectralFunctionSpec sf = PipelineConfig::SpectralFunction(pipelineJson_);
