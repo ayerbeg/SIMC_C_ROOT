@@ -30,20 +30,29 @@
 \item One entry per \textbf{accepted} event.
 \item Every branch is a \code{Float\_\allowbreak{}t} (computed in double precision, stored as float). The branch names and order are those of
 the classic SIMC ntuple, so existing analysis scripts work unchanged.
-\item The layout depends on the reaction (\code{NtupleColumnsFor}):
+\item Two column layouts exist (option \code{-{}-{}tree-{}layout}\simcidx{Command-line options!tree-layout@\code{-{}-{}tree-{}layout}}, JSON \code{"output":\ \{"layout":\ .\allowbreak{}.\allowbreak{}.\allowbreak{}\}},
+\hyperref[user_manual-04u5finputs:423-output]{4.2.3}); the events, weights and every other output file are the same in both:
+
+\begin{itemize}
+\item \code{upstream} (\textbf{default}): the layout of current upstream SIMC (commit 59ccdf6, where every reaction shares columns
+1-40 and the vertex quantities have an \code{i} suffix), \hyperref[user_manual-07u5foutputs:713-upstream-layout-default]{7.1.3};
+\item \code{legacy}: the layout of SIMC 294f662 used before, \hyperref[user_manual-07u5foutputs:714-legacy-eep-layout-46-columns]{7.1.4} to
+\hyperref[user_manual-07u5foutputs:717-legacy-rho-layout-59-columns]{7.1.7}.
 \end{itemize}
-\begin{simctable}{small}{3}{>{\raggedright\arraybackslash}p{\dimexpr 0.584\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.136\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.212\linewidth-2\tabcolsep\relax}}
+\item The number of columns depends on the reaction (\code{NtupleColumnsFor}):
+\end{itemize}
+\begin{simctable}{small}{3}{>{\raggedright\arraybackslash}p{\dimexpr 0.660\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.136\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.136\linewidth-2\tabcolsep\relax}}
 %
-\toprule\rowcolor{simchead}\simcth{run} & \simcth{columns} & \simcth{section} \\\midrule\endfirsthead
-\multicolumn{3}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{run} & \simcth{columns} & \simcth{section} \\\midrule\endhead
+\toprule\rowcolor{simchead}\simcth{run} & \simcth{upstream} & \simcth{legacy} \\\midrule\endfirsthead
+\multicolumn{3}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{run} & \simcth{upstream} & \simcth{legacy} \\\midrule\endhead
 \midrule\multicolumn{3}{r@{}}{\simccontinues}\\\endfoot
 \bottomrule\endlastfoot
-H/\allowbreak{}D/\allowbreak{}A(e,\allowbreak{}e'p) and \hyperref[param:doingu5fphsp]{\code{doing\_\allowbreak{}phsp}}\simcidx{Parameters!doing_phsp@\code{doing\_phsp}} & 46 & \hyperref[user_manual-07u5foutputs:713-eep-layout-46-columns]{7.1.3} \\
-pion (\hyperref[param:doingu5fpion]{\code{doing\_\allowbreak{}pion}}\simcidx{Parameters!doing_pion@\code{doing\_pion}}), Delta (\hyperref[param:doingu5fdelta]{\code{doing\_\allowbreak{}delta}}\simcidx{Parameters!doing_delta@\code{doing\_delta}}) & 53; π0: 65 & \hyperref[user_manual-07u5foutputs:714-pion-kaon-and-delta-layouts]{7.1.4} \\
-kaon (\hyperref[param:doingu5fkaon]{\code{doing\_\allowbreak{}kaon}}\simcidx{Parameters!doing_kaon@\code{doing\_kaon}}) & 55 & \hyperref[user_manual-07u5foutputs:714-pion-kaon-and-delta-layouts]{7.1.4} \\
-SIDIS (\hyperref[param:doingu5fsemi]{\code{doing\_\allowbreak{}semi}}\simcidx{Parameters!doing_semi@\code{doing\_semi}}) & 56; π0: 68 & \hyperref[user_manual-07u5foutputs:715-sidis-layout-56-columns]{7.1.5} \\
-rho (\hyperref[param:doingu5frho]{\code{doing\_\allowbreak{}rho}}\simcidx{Parameters!doing_rho@\code{doing\_rho}}) & 59 & \hyperref[user_manual-07u5foutputs:716-rho-layout-59-columns]{7.1.6} \\
-any of the above except (e,e'p), with \hyperref[param:usingu5ftgtu5ffield]{\code{using\_\allowbreak{}tgt\_\allowbreak{}field}}\simcidx{Parameters!using_tgt_field@\code{using\_tgt\_field}} & + 8 & \hyperref[user_manual-07u5foutputs:717-polarized-target-columns-usingu5ftgtu5ffield]{7.1.7} \\
+H/\allowbreak{}D/\allowbreak{}A(e,\allowbreak{}e'p),\allowbreak{} \hyperref[param:doingu5fphsp]{\code{doing\_\allowbreak{}phsp}}\simcidx{Parameters!doing_phsp@\code{doing\_phsp}}, A(e,e')A (\hyperref[param:doingu5fnucu5felast]{\code{doing\_\allowbreak{}nuc\_\allowbreak{}elast}}\simcidx{Parameters!doing_nuc_elast@\code{doing\_nuc\_elast}}) & 53 & 46 \\
+pion (\hyperref[param:doingu5fpion]{\code{doing\_\allowbreak{}pion}}\simcidx{Parameters!doing_pion@\code{doing\_pion}}), Delta (\hyperref[param:doingu5fdelta]{\code{doing\_\allowbreak{}delta}}\simcidx{Parameters!doing_delta@\code{doing\_delta}}) & 64; π0: 76 & 53; π0: 65 \\
+kaon (\hyperref[param:doingu5fkaon]{\code{doing\_\allowbreak{}kaon}}\simcidx{Parameters!doing_kaon@\code{doing\_kaon}}) & 66 & 55 \\
+SIDIS (\hyperref[param:doingu5fsemi]{\code{doing\_\allowbreak{}semi}}\simcidx{Parameters!doing_semi@\code{doing\_semi}}) & 64; π0: 76 & 56; π0: 68 \\
+rho (\hyperref[param:doingu5frho]{\code{doing\_\allowbreak{}rho}}\simcidx{Parameters!doing_rho@\code{doing\_rho}}) & 67 & 59 \\
+any of the above except (e,e'p), with \hyperref[param:usingu5ftgtu5ffield]{\code{using\_\allowbreak{}tgt\_\allowbreak{}field}}\simcidx{Parameters!using_tgt_field@\code{using\_tgt\_field}} & + 8 & + 8 \\
 \end{simctable}
 \subsection{\texorpdfstring{Weights and normalisation}{Weights and normalisation}}\label{user_manual-07u5foutputs:711-weights-and-normalisation}
 \begin{itemize}
@@ -65,9 +74,56 @@ As in results\_\allowbreak{}write.\allowbreak{}f,\allowbreak{} \code{hs*} is the
 \end{itemize}
 Slopes (\code{*yptar}, \code{*xptar}, \code{*xpfp}, \code{*ypfp}) are in radians (dx/dz); deltas are in \%.
 
-\subsection{\texorpdfstring{(e,e'p) layout (46 columns)}{(e,e'p) layout (46 columns)}}\label{user_manual-07u5foutputs:713-eep-layout-46-columns}
+\subsection{\texorpdfstring{Upstream layout (default)}{Upstream layout (default)}}\label{user_manual-07u5foutputs:713-upstream-layout-default}
+Columns 1-24 are the arm columns of \hyperref[user_manual-07u5foutputs:712-arm-prefixes-hs-and-ss]{7.1.2} (\code{hsdelta} ... \code{ssytari}, as in 7.1.4). Then, for
+every reaction:
+
+\begin{simctable}{small}{4}{>{\raggedright\arraybackslash}p{\dimexpr 0.073\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.274\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.364\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.200\linewidth-2\tabcolsep\relax}}
+%
+\toprule\rowcolor{simchead}\simcth{\#} & \simcth{branches} & \simcth{content} & \simcth{units} \\\midrule\endfirsthead
+\multicolumn{4}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{\#} & \simcth{branches} & \simcth{content} & \simcth{units} \\\midrule\endhead
+\midrule\multicolumn{4}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+25-32 & \code{q\ nu\ Q2\ W\ xbj\ epsilon\ Em\ Pm} & reconstructed kinematics, Bjorken x, missing energy and momentum & GeV/c, GeV, GeV², GeV, —, —, GeV, GeV/c \\
+33-40 & \code{qi\ nui\ Q2i\ Wi\ xbji\ epsiloni\ Emi\ Pmi} & the same at the vertex (generated) & same units \\
+\end{simctable}
+\code{Wi} and \code{epsiloni} are always 0 for (e,e'p) (upstream SIMC fills them only for meson production; kept, finding U-B1).
+For rho, \code{Wi} and \code{ti} are in GeV/1000 and GeV²/1000 (the ρ physics stores W and t in GeV; D-056 R5).
+
+(e,e'p), \hyperref[param:doingu5fphsp]{\code{doing\_\allowbreak{}phsp}}\simcidx{Parameters!doing_phsp@\code{doing\_phsp}} and A(e,e')A then have 41-53: \code{corrsing\ Pmx\ Pmy\ Pmz\ Pm\allowbreak{}Par\ Pm\allowbreak{}Per\ Pm\allowbreak{}Oop\ fry\ radphot\ sigcc\ Weight\ theta\_\allowbreak{}e\ theta\_\allowbreak{}p} (as columns 34-46 of 7.1.4; for A(e,e')A \code{corrsing} and \code{Pmx\ Pmy\ Pmz} are 0).
+
+Meson production (pion, kaon, Delta, SIDIS, rho) has 41-64:
+
+\begin{simctable}{small}{4}{>{\raggedright\arraybackslash}p{\dimexpr 0.073\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.227\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.517\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.094\linewidth-2\tabcolsep\relax}}
+\caption{Upstream layout (default)}\\%
+\toprule\rowcolor{simchead}\simcth{\#} & \simcth{branch} & \simcth{content} & \simcth{units} \\\midrule\endfirsthead
+\multicolumn{4}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{\#} & \simcth{branch} & \simcth{content} & \simcth{units} \\\midrule\endhead
+\midrule\multicolumn{4}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+41-42 & \code{missmass\ mmnuc} & missing mass on the struck nucleon and on the nucleus & GeV \\
+43 & \code{phad} & hadron momentum & GeV/c \\
+44-45 & \code{t\ ti} & −t reconstructed and at the vertex & GeV² \\
+46-49 & \code{z\ zi\ pt2\ pt2i} & energy fraction and p\_T² (reconstructed,\allowbreak{} vertex) & —, GeV² \\
+50-53 & \code{thetapq\ phipq\ thetapqi\ phipqi} & hadron angles w.r.t. q (reconstructed,\allowbreak{} vertex) & rad \\
+54-56 & \code{pmpar\ pmper\ pmoop} & missing-momentum components & GeV/c \\
+57-58 & \code{fry\ radphot} & −(raster vertical position), radiated photon energy & cm, GeV \\
+59 & \code{pfermi} & Fermi momentum along q (signed; 0 without Fermi motion) & GeV/c \\
+60 & \code{siglab} & lab cross section &  \\
+61 & \code{sigcm} (SIDIS: \code{sighad}) & CM cross section (SIDIS: hadronic cross section) &  \\
+— & kaon: \code{saghai\ factor} after \code{sigcm} & Saghai-model and factorized cross sections &  \\
+62-64 & \code{Weight\ decdist\ Mhadron} & event weight, decay distance (cm), detected-particle mass (MeV) &  \\
+\end{simctable}
+Then rho adds \code{Mrho\ Thrho\ mmnuc} (the tree has two branches named \code{mmnuc}, as upstream SIMC; both hold the same value),
+π0 runs add the 12 photon columns (\code{xcal\_\allowbreak{}gamma1} ... \code{Pgamma2z}, see 7.1.5), and \hyperref[param:usingu5ftgtu5ffield]{\code{using\_\allowbreak{}tgt\_\allowbreak{}field}}\simcidx{Parameters!using_tgt_field@\code{using\_tgt\_field}} adds its 8 columns
+last (\hyperref[user_manual-07u5foutputs:718-polarized-target-columns-usingu5ftgtu5ffield]{7.1.8}).
+
+Two upstream SIMC bugs are corrected in this layout: for kaons upstream SIMC declares \code{saghai\ factor} but writes three
+values and stops at the first event (finding U-A2): SIMC++ declares \code{sigcm\ saghai\ factor} (66 columns). π0 with
+\hyperref[param:usingu5ftgtu5ffield]{\code{using\_\allowbreak{}tgt\_\allowbreak{}field}}\simcidx{Parameters!using_tgt_field@\code{using\_tgt\_field}} (84 columns) overflows the upstream 80-column arrays (U-A4); SIMC++ writes all 84.
+
+\subsection{\texorpdfstring{Legacy (e,e'p) layout (46 columns)}{Legacy (e,e'p) layout (46 columns)}}\label{user_manual-07u5foutputs:714-legacy-eep-layout-46-columns}
 \begin{simctable}{small}{4}{>{\raggedright\arraybackslash}p{\dimexpr 0.073\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.247\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.443\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.148\linewidth-2\tabcolsep\relax}}
-\caption{(e,e'p) layout (46 columns)}\\%
+\caption{Legacy (e,e'p) layout (46 columns)}\\%
 \toprule\rowcolor{simchead}\simcth{\#} & \simcth{branches} & \simcth{content} & \simcth{units} \\\midrule\endfirsthead
 \multicolumn{4}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{\#} & \simcth{branches} & \simcth{content} & \simcth{units} \\\midrule\endhead
 \midrule\multicolumn{4}{r@{}}{\simccontinues}\\\endfoot
@@ -88,11 +144,11 @@ Slopes (\code{*yptar}, \code{*xptar}, \code{*xpfp}, \code{*ypfp}) are in radians
 44 & \code{Weight} & event weight &  \\
 45-46 & \code{theta\_\allowbreak{}e\ theta\_\allowbreak{}p} & reconstructed scattering angles & rad \\
 \end{simctable}
-\subsection{\texorpdfstring{Pion, kaon and Delta layouts}{Pion, kaon and Delta layouts}}\label{user_manual-07u5foutputs:714-pion-kaon-and-delta-layouts}
+\subsection{\texorpdfstring{Legacy pion, kaon and Delta layouts}{Legacy pion, kaon and Delta layouts}}\label{user_manual-07u5foutputs:715-legacy-pion-kaon-and-delta-layouts}
 Columns 1-33 as above, then:
 
 \begin{simctable}{small}{4}{>{\raggedright\arraybackslash}p{\dimexpr 0.073\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.227\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.430\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.181\linewidth-2\tabcolsep\relax}}
-\caption{Pion, kaon and Delta layouts}\\%
+\caption{Legacy pion, kaon and Delta layouts}\\%
 \toprule\rowcolor{simchead}\simcth{\#} & \simcth{branch} & \simcth{content} & \simcth{units} \\\midrule\endfirsthead
 \multicolumn{4}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{\#} & \simcth{branch} & \simcth{content} & \simcth{units} \\\midrule\endhead
 \midrule\multicolumn{4}{r@{}}{\simccontinues}\\\endfoot
@@ -119,27 +175,29 @@ Kaon runs add 54 \code{saghai} (Saghai-model cross section) and 55 \code{factor}
 momentum, \code{siglab} and \code{Weight} contain \textbf{no cross section} (\hyperref[user_manual-05u5freactions:55-eepu3c0-in-the-delta-region-doingu5fdelta]{5.5}),
 and \code{decdist}, \code{Mhadron} are 0 and Mp.
 
-\subsection{\texorpdfstring{SIDIS layout (56 columns)}{SIDIS layout (56 columns)}}\label{user_manual-07u5foutputs:715-sidis-layout-56-columns}
+\subsection{\texorpdfstring{Legacy SIDIS layout (56 columns)}{Legacy SIDIS layout (56 columns)}}\label{user_manual-07u5foutputs:716-legacy-sidis-layout-56-columns}
 Columns 1-33 as (e,e'p), then: 34 \code{missmass} (GeV), 35 \code{ppi} (hadron momentum, GeV/c), 36 \code{t} (GeV²), 37 \code{fry}, 38
 \code{radphot}, 39 \code{siglab} (µb/\allowbreak{}MeV²/\allowbreak{}sr²),\allowbreak{} 40 \code{sigcent} (always 0), 41 \code{Weight}, 42 \code{decdist} (cm, or the survival probability
 with decay OFF), 43 \code{Mhadron} (MeV), 44-45 \code{z\ zi}, 46-47 \code{pt2\ pt2i} (GeV²), 48-49 \code{xbj\ xbji}, 50 \code{thqi} (rad), 51 \code{sighad}
 (GeV\textsuperscript{−}²),\allowbreak{} 52 \code{jacobian}, 53 \code{centjac} (always 0), 54 \code{pfermi} (GeV/c), 55 \code{xfermi}, 56 \code{phipqi} (rad). π0 SIDIS appends the 12 photon columns (57-68). The \code{i}
 suffix means vertex (generated) values.
 
-\subsection{\texorpdfstring{Rho layout (59 columns)}{Rho layout (59 columns)}}\label{user_manual-07u5foutputs:716-rho-layout-59-columns}
+\subsection{\texorpdfstring{Legacy rho layout (59 columns)}{Legacy rho layout (59 columns)}}\label{user_manual-07u5foutputs:717-legacy-rho-layout-59-columns}
 The 56 SIDIS columns with the rho meanings, then 57 \code{Mrho} (Breit-Wigner ρ mass of the event, MeV), 58 \code{Thrho} (decay
 angle in the ρ rest frame w.r.t. the lab z axis, rad) and 59 \code{mmnuc} (GeV). The hadron-arm columns describe the detected
-decay pion; \code{t} is the pion t; \code{siglab} (µb/MeV/sr) is the ρ cross section; \code{sigcent}, \code{zi}, \code{pt2i}, \code{xfermi} are 0.
+decay pion; \code{t} is the pion t; \code{siglab} (µb/MeV/sr) is the ρ cross section; \code{sigcent} and \code{xfermi} are 0.
 
-\subsection{\texorpdfstring{Polarized-target columns (\code{using\_\allowbreak{}tgt\_\allowbreak{}field})}{Polarized-target columns (using\_\allowbreak{}tgt\_\allowbreak{}field)}}\label{user_manual-07u5foutputs:717-polarized-target-columns-usingu5ftgtu5ffield}
-Eight columns follow \code{phipqi} (pion/\allowbreak{}kaon/\allowbreak{}Delta: 54-61; SIDIS/rho: 57-64), in radians: \code{th\_\allowbreak{}tarq} (angle between q and the
+\subsection{\texorpdfstring{Polarized-target columns (\code{using\_\allowbreak{}tgt\_\allowbreak{}field})}{Polarized-target columns (using\_\allowbreak{}tgt\_\allowbreak{}field)}}\label{user_manual-07u5foutputs:718-polarized-target-columns-usingu5ftgtu5ffield}
+Upstream layout: the eight columns are the last ones. Legacy layout: they follow \code{phipqi} (pion/\allowbreak{}kaon/\allowbreak{}Delta: 54-61;
+SIDIS/rho: 57-64). In radians: \code{th\_\allowbreak{}tarq} (angle between q and the
 polarization,\allowbreak{} NaN when \code{targ\_\allowbreak{}pol\ =\ 0}), \code{phitarq}, \code{beta}, \code{phis} (Sivers angle φpq − φtarg), \code{phic} (Collins angle φpq
 
 \begin{itemize}
 \item φtarg), and the vertex values \code{betai}, \code{phisi}, \code{phici}. The kaon columns \code{saghai}/\code{factor} and the rho columns
-\code{Mrho}/\code{Thrho}/\code{mmnuc} move after them. The shipped polarized-target pion example has 61 columns.
+\code{Mrho}/\code{Thrho}/\code{mmnuc} move after them (legacy). The shipped polarized-target pion example has 72 columns (upstream)
+or 61 (legacy).
 \end{itemize}
-\subsection{\texorpdfstring{Values that are not measurements}{Values that are not measurements}}\label{user_manual-07u5foutputs:718-values-that-are-not-measurements}
+\subsection{\texorpdfstring{Values that are not measurements}{Values that are not measurements}}\label{user_manual-07u5foutputs:719-values-that-are-not-measurements}
 \begin{itemize}
 \item With an arm switched off (\hyperref[param:spectu5fmode]{\code{spect\_\allowbreak{}mode}}\simcidx{Parameters!spect_mode@\code{spect\_mode}} ≠ 0), that arm's focal-plane columns and \code{*ytar} are 0.0 in every event
 (\hyperref[user_manual-06u5fspectrometers:64-spectu5fmode-switching-the-spectrometer-monte-carlo-off]{6.4}).

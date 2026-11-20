@@ -376,7 +376,7 @@ private header of a module, not installed.
 \code{simc/\allowbreak{}reactions/\allowbreak{}Event\allowbreak{}Chain.\allowbreak{}h} & \code{generateEvent}, \code{assembleWeight}, \code{limitsUpdate}, \code{transformToCm}, merge helpers \\
 \code{simc/\allowbreak{}reactions/\allowbreak{}Standard\allowbreak{}Beam.\allowbreak{}h} & IBeam \code{standard} \\
 \code{simc/\allowbreak{}reactions/\allowbreak{}Eep\allowbreak{}Reaction\allowbreak{}Base.\allowbreak{}h} & shared (e,e'p) complete\_\allowbreak{}ev / complete\_\allowbreak{}recon\_\allowbreak{}ev / complete\_\allowbreak{}main / genvol \\
-\code{simc/\allowbreak{}reactions/\allowbreak{}Hydrogen\allowbreak{}Elastic.\allowbreak{}h} & IReaction \code{hydrogen\_\allowbreak{}elastic}, \code{phase\_\allowbreak{}space} \\
+\code{simc/\allowbreak{}reactions/\allowbreak{}Hydrogen\allowbreak{}Elastic.\allowbreak{}h} & IReaction \code{hydrogen\_\allowbreak{}elastic}, \code{phase\_\allowbreak{}space}, \code{nuclear\_\allowbreak{}elastic} \\
 \code{simc/\allowbreak{}reactions/\allowbreak{}Nuclear\allowbreak{}Eep.\allowbreak{}h} & IReaction \code{deuterium\_\allowbreak{}eep}, \code{nucleus\_\allowbreak{}eep} \\
 \code{simc/\allowbreak{}reactions/\allowbreak{}Pion\allowbreak{}Production.\allowbreak{}h} & IReaction \code{pion\_\allowbreak{}production} \\
 \code{simc/\allowbreak{}reactions/\allowbreak{}Kaon\allowbreak{}Production.\allowbreak{}h} & IReaction \code{kaon\_\allowbreak{}production} \\
@@ -385,7 +385,7 @@ private header of a module, not installed.
 \code{simc/\allowbreak{}reactions/\allowbreak{}Rho\allowbreak{}Production.\allowbreak{}h} & IReaction \code{rho\_\allowbreak{}production} \\
 \end{simctable}
 \subsection*{\texorpdfstring{physics}{physics}}\label{developer_manual-03u5farchitecture:physics}
-\begin{simctable}{small}{2}{>{\raggedright\arraybackslash}p{\dimexpr 0.434\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.519\linewidth-2\tabcolsep\relax}}
+\begin{simctable}{small}{2}{>{\raggedright\arraybackslash}p{\dimexpr 0.424\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.529\linewidth-2\tabcolsep\relax}}
 \caption{physics}\\%
 \toprule\rowcolor{simchead}\simcth{header} & \simcth{content} \\\midrule\endfirsthead
 \multicolumn{2}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{header} & \simcth{content} \\\midrule\endhead
@@ -394,6 +394,7 @@ private header of a module, not installed.
 \code{simc/\allowbreak{}physics/\allowbreak{}proton/\allowbreak{}Proton\allowbreak{}Cross\allowbreak{}Sections.\allowbreak{}h} & sigMott, fofa, sigep, deForest \\
 \code{simc/\allowbreak{}physics/\allowbreak{}nuclear/\allowbreak{}Spectral\allowbreak{}Functions.\allowbreak{}h} & ISpectralFunction \code{theory}, \code{benhar} \\
 \code{simc/\allowbreak{}physics/\allowbreak{}nuclear/\allowbreak{}Spectral\allowbreak{}Function\allowbreak{}Tables.\allowbreak{}h} & spectral-function tables (\code{SfTable}\simcidx{Classes and interfaces!SfTable@\code{SfTable}}), theory-file weight \\
+\code{simc/\allowbreak{}physics/\allowbreak{}nuclear/\allowbreak{}Nuclear\allowbreak{}Elastic.\allowbreak{}h} & A(e,e')A cross section (upstream nuclear\_\allowbreak{}elastic.\allowbreak{}f),\allowbreak{} IPhysicsModel \code{nuc\_\allowbreak{}elastic} \\
 \code{simc/\allowbreak{}physics/\allowbreak{}pion/\allowbreak{}Pion\allowbreak{}Cross\allowbreak{}Sections.\allowbreak{}h} & exclusive pion cross sections (peepi and the models) \\
 \code{simc/\allowbreak{}physics/\allowbreak{}pion/\allowbreak{}Pion\allowbreak{}Model.\allowbreak{}h} & IPhysicsModel \code{pion} \\
 \code{simc/\allowbreak{}physics/\allowbreak{}pion/\allowbreak{}Pizero\allowbreak{}Decay.\allowbreak{}h} & π0 → 2γ decay \\

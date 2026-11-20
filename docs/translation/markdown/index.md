@@ -23,7 +23,9 @@ The SIMC++ framework itself (architecture, interfaces, extending) is described i
    add a correction.
 6. [Catalogue of Fortran bugs, quirks and deviations](06_catalogue.md) (generated from
    [FORTRAN_DIFFERENCES.md](FORTRAN_DIFFERENCES.md)): every item with its id, Fortran file:line, class, effect and
-   what SIMC++ does in each mode; the expert list; the cross-check with the decisions.
+   what SIMC++ does in each mode; the expert list; the cross-check with the decisions; the findings fixed upstream.
+7. [Following upstream SIMC](07_following_upstream.md): the update from upstream 294f662 to 59ccdf6 (commit table,
+   findings fixed upstream, new findings, issue #75, the compat target) and how to repeat the procedure.
 
 User-oriented chapters (maintained with the user manual):
 

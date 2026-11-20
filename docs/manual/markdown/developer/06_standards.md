@@ -68,3 +68,24 @@ are listed in the [translation report](../../../translation/markdown/06_catalogu
 * `src/physics/rho/RhoModel.cpp`: `kNotPortedTag` / `isNotPortedProblem` are dead code.
 * `simc_compare` cannot exclude run-level quantities (a `--skip-run` option would help when comparing corrected runs).
 * `inp2json` writes a `"generator"` string with an old version tag.
+
+## 6.5 Porting future upstream changes
+
+SIMC++ follows the official Fortran SIMC (JeffersonLab/simc_gfortran). `UPSTREAM_SIMC` holds the followed commit (now
+59ccdf6) and the deliberate exceptions; the procedure and the first update (294f662 → 59ccdf6) are in the translation
+report, chapter 7.
+
+1. `tools/check_upstream_simc.sh` lists the newer upstream commits and the files they touch (needs `gh` or network git).
+2. The Fortran impact analysis is done on a separate upstream checkout (never the frozen `simc_gfortran` tree): build,
+   run old and new on the same inputs, classify each commit, produce `reference/runs/up_*` and L1 tables.
+3. Port one coherent group per task on a branch (not `main`). Keep the code markers: an upstream fix of a catalogue
+   finding becomes "fixed upstream in &lt;commit&gt;" in FORTRAN_DIFFERENCES.md (D-081), and `--fortran-compat` follows
+   it; if older references need the old behaviour, gate it on `RunSetup::compat294f662()` (or a new `CompatTarget`
+   value, `--compat-target`). New upstream bugs become `U-*` findings.
+4. Tests: add the new references to the RANLUX full-run list (`tests/l1/eep.cmake`, `ranlux_fullrun.sh` chooses the
+   tree layout and the compat target from the reference `.hist`); keep the old references passing; regenerate the
+   regression baselines only with a proof that they differ just by the ported change
+   (`validation/scripts/compare_baseline_sets.sh`).
+5. Update `UPSTREAM_SIMC` (full sha, date, exceptions) so that the check script reports 0 newer commits, then the
+   documentation in both editions (`tools/md2latex.py --write-sources --chapter ...`, catalogue generator) and the
+   PDFs.

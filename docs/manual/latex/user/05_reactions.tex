@@ -12,7 +12,7 @@
 The reaction follows from the reaction flags and from \hyperref[param:targu25A]{\code{targ\%\allowbreak{}A}}\simcidx{Parameters!targ.A@\code{targ\%A}}. SIMC++ then picks the reaction and physics-model plug-ins
 (\code{Pipeline\allowbreak{}Config::\allowbreak{}Defaults}\simcidx{Classes and interfaces!PipelineConfig@\code{PipelineConfig}}, \code{src/\allowbreak{}driver/\allowbreak{}Pipeline.\allowbreak{}cpp}). The first matching row wins:
 
-\begin{simctable}{footnotesize}{5}{>{\raggedright\arraybackslash}p{\dimexpr 0.218\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.129\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.197\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.150\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.207\linewidth-2\tabcolsep\relax}}
+\begin{simctable}{footnotesize}{5}{>{\raggedright\arraybackslash}p{\dimexpr 0.218\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.128\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.197\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.150\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.208\linewidth-2\tabcolsep\relax}}
 \caption{How the reaction is chosen}\\%
 \toprule\rowcolor{simchead}\simcth{flags} & \simcth{target} & \simcth{reaction plug-in} & \simcth{physics model} & \simcth{tree layout (\hyperref[user_manual-07u5foutputs:71-the-event-tree-h10]{7.1})} \\\midrule\endfirsthead
 \multicolumn{5}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{flags} & \simcth{target} & \simcth{reaction plug-in} & \simcth{physics model} & \simcth{tree layout (\hyperref[user_manual-07u5foutputs:71-the-event-tree-h10]{7.1})} \\\midrule\endhead
@@ -22,6 +22,7 @@ The reaction follows from the reaction flags and from \hyperref[param:targu25A]{
 none of the flags below & A = 1 & \code{hydrogen\_\allowbreak{}elastic} & \code{sigep} & (e,e'p), 46 columns \\
 none & A = 2 & \code{deuterium\_\allowbreak{}eep} & \code{deforest} & (e,e'p) \\
 none & A ≥ 3 & \code{nucleus\_\allowbreak{}eep} & \code{deforest} & (e,e'p) \\
+\hyperref[param:doingu5fnucu5felast]{\code{doing\_\allowbreak{}nuc\_\allowbreak{}elast}}\simcidx{Parameters!doing_nuc_elast@\code{doing\_nuc\_elast}} & any & \code{nuclear\_\allowbreak{}elastic} & \code{nuc\_\allowbreak{}elastic} & (e,e'p), 46 columns \\
 \hyperref[param:doingu5fpion]{\code{doing\_\allowbreak{}pion}}\simcidx{Parameters!doing_pion@\code{doing\_pion}} & any & \code{pion\_\allowbreak{}production} & \code{pion} & pion, 53 (65 with π0) \\
 \hyperref[param:doingu5fkaon]{\code{doing\_\allowbreak{}kaon}}\simcidx{Parameters!doing_kaon@\code{doing\_kaon}} & any & \code{kaon\_\allowbreak{}production} & \code{kaon} & kaon, 55 \\
 \hyperref[param:doingu5fdelta]{\code{doing\_\allowbreak{}delta}}\simcidx{Parameters!doing_delta@\code{doing\_delta}} & any & \code{delta\_\allowbreak{}production} & \code{delta} & pion layout, 53 \\
@@ -29,7 +30,7 @@ none & A ≥ 3 & \code{nucleus\_\allowbreak{}eep} & \code{deforest} & (e,e'p) \\
 \hyperref[param:doingu5frho]{\code{doing\_\allowbreak{}rho}}\simcidx{Parameters!doing_rho@\code{doing\_rho}} & A = 1, 2, 3 & \code{rho\_\allowbreak{}production} & \code{rho} & rho, 59 \\
 \end{simctable}
 \hyperref[param:doingu5fsemi]{\code{doing\_\allowbreak{}semi}}\simcidx{Parameters!doing_semi@\code{doing\_semi}} takes priority: \hyperref[param:doingu5fpion]{\code{doing\_\allowbreak{}pion}}\simcidx{Parameters!doing_pion@\code{doing\_pion}}/\hyperref[param:doingu5fkaon]{\code{doing\_\allowbreak{}kaon}}\simcidx{Parameters!doing_kaon@\code{doing\_kaon}} then only select the SIDIS hadron. With \hyperref[param:usingu5ftgtu5ffield]{\code{using\_\allowbreak{}tgt\_\allowbreak{}field}}\simcidx{Parameters!using_tgt_field@\code{using\_tgt\_field}}, 8
-polarized-target columns are added (\hyperref[user_manual-07u5foutputs:717-polarized-target-columns-usingu5ftgtu5ffield]{7.1.7}). The log shows
+polarized-target columns are added (\hyperref[user_manual-07u5foutputs:718-polarized-target-columns-usingu5ftgtu5ffield]{7.1.7}). The log shows
 the reaction title (for example \code{\ ****-{}-{}-{}-{}-{}-{}-{}-{}\ \ H(\allowbreak{}e,\allowbreak{}e'pi+)X\ \ -{}-{}-{}-{}-{}-{}-{}-{}****}).
 
 Common to all reactions: the beam (energy spread \hyperref[param:dEbeam]{\code{dEbeam}}\simcidx{Parameters!dEbeam@\code{dEbeam}}, size \code{gen\%\allowbreak{}xwid/\allowbreak{}ywid}, raster), the target (energy loss,
@@ -38,7 +39,7 @@ normalisation. The generation volume \code{genvol} is the product of the generat
 hadron solid angle and the electron energy for every reaction except H(e,e'p); also the hadron energy for A(e,e'p) and
 SIDIS.
 
-\section{\texorpdfstring{H(e,e'p) elastic, D(e,e'p) and A(e,e'p)}{H(e,e'p) elastic, D(e,e'p) and A(e,e'p)}}\label{user_manual-05u5freactions:52-heep-elastic-deep-and-aeep}
+\section{\texorpdfstring{H(e,e'p) elastic, D(e,e'p), A(e,e'p) and A(e,e')A}{H(e,e'p) elastic, D(e,e'p), A(e,e'p) and A(e,e')A}}\label{user_manual-05u5freactions:52-heep-elastic-deep-aeep-and-aeea}
 \begin{itemize}
 \item \textbf{H(e,e'p)} (\code{hydrogen\_\allowbreak{}elastic}, model \code{sigep}): elastic scattering. Only the electron angles are generated; the
 proton follows from the kinematics. Elastic e-p cross section with a proton form-factor fit.
@@ -48,10 +49,19 @@ off-shell cross section (\hyperref[param:deForestu5fflag]{\code{deForest\_\allow
 \begin{itemize}
 \item \textbf{theory files} (default): \code{h2.\allowbreak{}theory}, \code{c12.\allowbreak{}theory}, \code{fe56.\allowbreak{}theory}, \code{au197.\allowbreak{}theory} in the data directory's
 \code{spectral/}, chosen from A (2, 12, 56, 197). Any other A uses the C-12 file, with a WARNING;
-\item \textbf{Benhar spectral functions} (\code{use\_\allowbreak{}benhar\_\allowbreak{}sf\ =\ 1}): \code{benharsf\_\allowbreak{}*.\allowbreak{}dat}, weighted by \hyperref[param:transparency]{\code{transparency}}\simcidx{Parameters!transparency@\code{transparency}}.
+\item \textbf{Benhar spectral functions} (\code{use\_\allowbreak{}benhar\_\allowbreak{}sf\ =\ 1}): \code{benharsf\_\allowbreak{}*.\allowbreak{}dat} (A = 3, 4, 12, 56, 64, 197; Cu-64 since upstream
+SIMC a85dc6b), weighted by \hyperref[param:transparency]{\code{transparency}}\simcidx{Parameters!transparency@\code{transparency}}.
 \end{itemize}
 In a JSON input, \code{"pipeline":\ \{"reaction":\ \{"spectral\_\allowbreak{}function":\ \{"type":\ "benhar",\ "file":\ "benharsf\_\allowbreak{}12.\allowbreak{}dat",\ "transparency":\ 0.\allowbreak{}6\}\}\}} chooses the file explicitly (\code{-{}-{}data-{}dir}\simcidx{Command-line options!data-dir@\code{-{}-{}data-{}dir}} sets its directory). \code{cuts\%\allowbreak{}Em} limits the generated
 missing energy.
+\item \textbf{A(e,e')A nuclear elastic} (\code{doing\_\allowbreak{}nuc\_\allowbreak{}elast\ =\ 1}, \code{nuclear\_\allowbreak{}elastic}, model \code{nuc\_\allowbreak{}elastic}; upstream SIMC commit
+4df7351): elastic scattering from the whole nucleus, the "hadron" is the recoiling nucleus (mass \hyperref[param:targu25massu5famu]{\code{targ\%\allowbreak{}mass\_\allowbreak{}amu}}\simcidx{Parameters!targ.mass_amu@\code{targ\%mass\_amu}}).
+Only the electron angles are generated, as for H(e,e'p). Cross section σ\_Mott · (Z·F(Q²))² · recoil factor with a
+Gaussian charge form factor F (R = 1.07 A\textasciicircum{}1/\allowbreak{}3 fm; de Vries radii for A = 27, 28, 56, 205) and no magnetic term (spin-0
+nuclei). W and the ntuple columns \code{corrsing}, \code{Pmx/\allowbreak{}y/\allowbreak{}z} follow the (e,e'p) formulas with the proton mass (\code{corrsing}
+and \code{Pmx/\allowbreak{}y/\allowbreak{}z} are 0). \hyperref[param:doingu5fnucu5felast]{\code{doing\_\allowbreak{}nuc\_\allowbreak{}elast}}\simcidx{Parameters!doing_nuc_elast@\code{doing\_nuc\_elast}} cannot be combined with another \code{doing\_\allowbreak{}*} reaction flag or \hyperref[param:doingu5fphsp]{\code{doing\_\allowbreak{}phsp}}\simcidx{Parameters!doing_phsp@\code{doing\_phsp}}.
+Upstream SIMC 59ccdf6 lost this reaction in commit e4dd175 (0 successes); SIMC++ runs the code of commit 20d46fc
+(FORTRAN\_\allowbreak{}DIFFERENCES U-A1).
 \end{itemize}
 Limitations: the D(e,e'p) weight has no hadron-angle jacobian while A(e,e'p) has one (a ≤ 1.5 \% effect at the corners of
 the generated solid angle); He-3 and He-4 use the C-12 spectral function unless you give a file.

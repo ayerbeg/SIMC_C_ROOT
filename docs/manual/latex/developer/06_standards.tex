@@ -76,3 +76,24 @@ is disabled until it is completed.
 \item \code{simc\_\allowbreak{}compare} cannot exclude run-level quantities (a \code{-{}-{}skip-{}run} option would help when comparing corrected runs).
 \item \code{inp2json} writes a \code{"generator"} string with an old version tag.
 \end{itemize}
+\section{\texorpdfstring{Porting future upstream changes}{Porting future upstream changes}}\label{developer_manual-06u5fstandards:65-porting-future-upstream-changes}
+SIMC++ follows the official Fortran SIMC (JeffersonLab/\allowbreak{}simc\_\allowbreak{}gfortran). \code{UPSTREAM\_\allowbreak{}SIMC} holds the followed commit (now
+59ccdf6) and the deliberate exceptions; the procedure and the first update (294f662 → 59ccdf6) are in the translation
+report, chapter 7.
+
+\begin{enumerate}
+\item \code{tools/\allowbreak{}check\_\allowbreak{}upstream\_\allowbreak{}simc.\allowbreak{}sh} lists the newer upstream commits and the files they touch (needs \code{gh} or network git).
+\item The Fortran impact analysis is done on a separate upstream checkout (never the frozen \code{simc\_\allowbreak{}gfortran} tree): build,
+run old and new on the same inputs, classify each commit, produce \code{reference/\allowbreak{}runs/\allowbreak{}up\_\allowbreak{}*} and L1 tables.
+\item Port one coherent group per task on a branch (not \code{main}). Keep the code markers: an upstream fix of a catalogue
+finding becomes "fixed upstream in \&lt;commit\&gt;" in FORTRAN\_\allowbreak{}DIFFERENCES.md (D-081), and \code{-{}-{}fortran-{}compat}\simcidx{Command-line options!fortran-compat@\code{-{}-{}fortran-{}compat}} follows
+it; if older references need the old behaviour, gate it on \code{Run\allowbreak{}Setup::\allowbreak{}compat294f662(\allowbreak{})}\simcidx{Classes and interfaces!RunSetup@\code{RunSetup}} (or a new \code{CompatTarget}
+value, \code{-{}-{}compat-{}target}\simcidx{Command-line options!compat-target@\code{-{}-{}compat-{}target}}). New upstream bugs become \code{U-{}*} findings.
+\item Tests: add the new references to the RANLUX full-run list (\code{tests/\allowbreak{}l1/\allowbreak{}eep.\allowbreak{}cmake}, \code{ranlux\_\allowbreak{}fullrun.\allowbreak{}sh} chooses the
+tree layout and the compat target from the reference \code{.\allowbreak{}hist}); keep the old references passing; regenerate the
+regression baselines only with a proof that they differ just by the ported change
+(\code{validation/\allowbreak{}scripts/\allowbreak{}compare\_\allowbreak{}baseline\_\allowbreak{}sets.\allowbreak{}sh}).
+\item Update \code{UPSTREAM\_\allowbreak{}SIMC} (full sha, date, exceptions) so that the check script reports 0 newer commits, then the
+documentation in both editions (\code{tools/\allowbreak{}md2latex.\allowbreak{}py\ -{}-{}write-{}sources\ -{}-{}chapter\ .\allowbreak{}.\allowbreak{}.}, catalogue generator) and the
+PDFs.
+\end{enumerate}

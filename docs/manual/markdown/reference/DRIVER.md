@@ -9,8 +9,15 @@ numerics. Code: `include/simc/driver/`, `src/driver/`, CLI `src/driver/CommandLi
 ```
 simc++ <file.inp | file.json> [-o OUTDIR] [--seed N] [--ngen N] [--pipeline overrides.json]
        [--run-name NAME] [--data-dir DIR] [--infiles-dir DIR] [--quiet] [--print-pipeline]
-       [--fortran-compat] [--threads N] [--print-data-dir] [--tree-layout upstream|legacy]
+       [--fortran-compat] [--compat-target 59ccdf6|294f662] [--threads N] [--print-data-dir]
+       [--tree-layout upstream|legacy]
 ```
+
+* `--compat-target 59ccdf6|294f662` (task U.R, D-080; JSON `"run": {"compat_target": ...}`, the option wins): the
+  upstream Fortran commit that `--fortran-compat` reproduces (`RunSetup::compat_target`). `59ccdf6` (default, the
+  commit in `UPSTREAM_SIMC`) follows the upstream fixes of D-006 (kaon decay mass, 1fae2d7) and D-038 F1 (Δ++ STOP,
+  20d46fc); `294f662` keeps the frozen-tree behaviour for the old references. No effect without `--fortran-compat`.
+  A bad value: exit 1 (option) or 2 (JSON).
 
 * `--tree-layout upstream|legacy` (task U.2, D-082; JSON `"output": {"layout": ...}`, the option wins): the column layout
   of the tree h10. `upstream` (default) = upstream SIMC 59ccdf6 (NtupleInit.f/results_write.f after e4dd175), `legacy` =

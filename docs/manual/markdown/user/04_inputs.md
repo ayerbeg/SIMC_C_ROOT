@@ -127,6 +127,7 @@ Example configurations come with SIMC++ in `data/config/` (installed in `$SIMCPP
 | `name` | `--run-name NAME` | the input file name without its extension | stem of the output files `<name>.root`, `<name>.hist`, ... |
 | `output_dir` | `-o DIR`, `--output-dir DIR` | `.` | output directory (created if needed) |
 | `fortran_compat` | `--fortran-compat` | `false` | `true`: the legacy-compatible mode ([8.3](08_running_and_reproducibility.md#83-default-and-legacy-compatible-mode)) |
+| `compat_target` | `--compat-target 59ccdf6\|294f662` | `"59ccdf6"` | which legacy SIMC version the legacy-compatible mode reproduces ([8.3](08_running_and_reproducibility.md#83-default-and-legacy-compatible-mode)) |
 
 A command-line option wins over the JSON value. A `.inp` input runs in the default mode unless you give `--fortran-compat`.
 
@@ -387,6 +388,7 @@ These have no `.inp` counterpart:
 | setting | JSON | command line | default |
 |---|---|---|---|
 | legacy-compatible mode | `run.fortran_compat` | `--fortran-compat` | off |
+| legacy SIMC version reproduced by that mode | `run.compat_target` | `--compat-target 59ccdf6\|294f662` | `59ccdf6` |
 | tree `h10` column layout | `output.layout` | `--tree-layout upstream\|legacy` | `upstream` |
 | output name and directory | `run.name`, `run.output_dir` | `--run-name NAME`, `-o DIR` | input stem, `.` |
 | plug-ins, random-number generator | `pipeline` | `--pipeline FILE` | from the flags ([4.3](#43-the-pipeline-section-choosing-plug-ins)) |

@@ -48,6 +48,14 @@ simc++ --fortran-compat  |  JSON "run": {"fortran_compat": true}
         driver                        PassCuts(setup, recon), MonteCarlo, PizeroCalorimeter, RunReport, the sinks
                                       (NtupleLayout, FortranHistSink, GenHistSink: report-level corrections)
 \end{simcplain}
+\textbf{Which Fortran} (task U.R, D-080): \code{-{}-{}fortran-{}compat}\simcidx{Command-line options!fortran-compat@\code{-{}-{}fortran-{}compat}} reproduces the upstream commit recorded in \code{UPSTREAM\_\allowbreak{}SIMC}
+(59ccdf6). Where upstream fixed a finding itself (D-006 kaon decay mass, D-038 F1 Δ++ STOP; chapter 7) the compat
+mode follows the fix; \code{-{}-{}compat-{}target\ 294f662}\simcidx{Command-line options!compat-target@\code{-{}-{}compat-{}target}} (JSON \code{"run":\ \{"compat\_\allowbreak{}target":\ "294f662"\}}; \code{Run\allowbreak{}Setup::\allowbreak{}compat\_\allowbreak{}target}\simcidx{Classes and interfaces!RunSetup@\code{RunSetup}},
+\code{Run\allowbreak{}Setup::\allowbreak{}compat294f662(\allowbreak{})}\simcidx{Classes and interfaces!RunSetup@\code{RunSetup}}, \code{Cosy\allowbreak{}Engine::\allowbreak{}set\allowbreak{}Compat294f662}\simcidx{Classes and interfaces!CosyEngine@\code{CosyEngine}}) restores the frozen 294f662 behaviour for the old
+references. Exceptions that compat does not reproduce at 59ccdf6: U-A1 nuclear elastic (the 20d46fc code is kept),
+U-A2/U-A4 (no STOP, no ntuple overflow), U-A3 pion 1/Z (old weight, pending JeffersonLab/\allowbreak{}simc\_\allowbreak{}gfortran\#75); see
+chapter 7.
+
 The run log prints the mode (\code{\ SIMC++:\ fortran\_\allowbreak{}compat\ =\ true/\allowbreak{}false\ .\allowbreak{}.\allowbreak{}.}), and the summary JSON records it
 (\code{run.\allowbreak{}fortran\_\allowbreak{}compat}, D-054), which \code{simc\_\allowbreak{}compare} uses to choose the pass\_cuts window (chapter 2).
 \code{-{}-{}fortran-{}compat}\simcidx{Command-line options!fortran-compat@\code{-{}-{}fortran-{}compat}} also refuses \code{-{}-{}threads\ N\ >\ 1}\simcidx{Command-line options!threads@\code{-{}-{}threads}} (the exact reproduction needs one stream in the Fortran order).

@@ -117,7 +117,7 @@ Example configurations come with SIMC++ in \code{data/\allowbreak{}config/} (ins
 \code{h\_\allowbreak{}elastic\_\allowbreak{}norad.\allowbreak{}json}, \code{h\_\allowbreak{}elastic\_\allowbreak{}rad.\allowbreak{}json} and \code{acceptance\_\allowbreak{}phsp\_\allowbreak{}hms\_\allowbreak{}shms.\allowbreak{}json}, with the three sections written out.
 
 \subsection{\texorpdfstring{\code{run}}{run}}\label{user_manual-04u5finputs:422-run}
-\begin{simctable}{small}{4}{>{\raggedright\arraybackslash}p{\dimexpr 0.153\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.268\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.163\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.328\linewidth-2\tabcolsep\relax}}
+\begin{simctable}{small}{4}{>{\raggedright\arraybackslash}p{\dimexpr 0.151\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.262\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.172\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.326\linewidth-2\tabcolsep\relax}}
 %
 \toprule\rowcolor{simchead}\simcth{key} & \simcth{command-line equivalent} & \simcth{default} & \simcth{meaning} \\\midrule\endfirsthead
 \multicolumn{4}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{key} & \simcth{command-line equivalent} & \simcth{default} & \simcth{meaning} \\\midrule\endhead
@@ -126,8 +126,21 @@ Example configurations come with SIMC++ in \code{data/\allowbreak{}config/} (ins
 \code{name} & \code{-{}-{}run-{}name\ NAME}\simcidx{Command-line options!run-name@\code{-{}-{}run-{}name}} & the input file name without its extension & stem of the output files \code{<name>\allowbreak{}.\allowbreak{}root}, \code{<name>\allowbreak{}.\allowbreak{}hist}, ... \\
 \code{output\_\allowbreak{}dir} & \code{-{}o\ DIR}, \code{-{}-{}output-{}dir\ DIR} & \code{.} & output directory (created if needed) \\
 \code{fortran\_\allowbreak{}compat} & \code{-{}-{}fortran-{}compat}\simcidx{Command-line options!fortran-compat@\code{-{}-{}fortran-{}compat}} & \code{false} & \code{true}: the legacy-compatible mode (\hyperref[user_manual-08u5frunningu5fandu5freproducibility:83-default-and-legacy-compatible-mode]{8.3}) \\
+\code{compat\_\allowbreak{}target} & \code{-{}-{}compat-{}target\ 59ccdf6|\allowbreak{}294f662}\simcidx{Command-line options!compat-target@\code{-{}-{}compat-{}target}} & \code{"59ccdf6"} & which legacy SIMC version the legacy-compatible mode reproduces (\hyperref[user_manual-08u5frunningu5fandu5freproducibility:83-default-and-legacy-compatible-mode]{8.3}) \\
 \end{simctable}
 A command-line option wins over the JSON value. A \code{.\allowbreak{}inp} input runs in the default mode unless you give \code{-{}-{}fortran-{}compat}\simcidx{Command-line options!fortran-compat@\code{-{}-{}fortran-{}compat}}.
+
+\subsection{\texorpdfstring{\code{output}}{output}}\label{user_manual-04u5finputs:423-output}
+\begin{simctable}{small}{4}{>{\raggedright\arraybackslash}p{\dimexpr 0.090\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.284\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.136\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.401\linewidth-2\tabcolsep\relax}}
+%
+\toprule\rowcolor{simchead}\simcth{key} & \simcth{command-line equivalent} & \simcth{default} & \simcth{meaning} \\\midrule\endfirsthead
+\multicolumn{4}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{key} & \simcth{command-line equivalent} & \simcth{default} & \simcth{meaning} \\\midrule\endhead
+\midrule\multicolumn{4}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+\code{layout} & \code{-{}-{}tree-{}layout\ upstream|\allowbreak{}legacy}\simcidx{Command-line options!tree-layout@\code{-{}-{}tree-{}layout}} & \code{upstream} & column layout of the tree \code{h10}: \code{upstream} = the layout of current upstream SIMC (commit 59ccdf6), \code{legacy} = the layout of SIMC 294f662 (\hyperref[user_manual-07u5foutputs:71-the-event-tree-h10]{7.2}) \\
+\end{simctable}
+Example: \code{"output":\ \{"layout":\ "legacy"\}}. Any other value is an input error (exit 2; on the command line exit 1).
+The layout does not change the events, the weights or any other output file.
 
 \section{\texorpdfstring{The \code{pipeline} section: choosing plug-ins}{The pipeline section: choosing plug-ins}}\label{user_manual-04u5finputs:43-the-pipeline-section-choosing-plug-ins}
 Without a \code{pipeline} section, SIMC++ chooses the components from the input flags. \code{-{}-{}print-{}pipeline}\simcidx{Command-line options!print-pipeline@\code{-{}-{}print-{}pipeline}} prints the resolved
@@ -159,7 +172,7 @@ Options of the built-in plug-ins (all optional):
 \midrule\multicolumn{2}{r@{}}{\simccontinues}\\\endfoot
 \bottomrule\endlastfoot
 all stages & \code{"verbose":\ false} silences the stage messages (\code{-{}-{}quiet}\simcidx{Command-line options!quiet@\code{-{}-{}quiet}} sets it for every stage) \\
-\code{reaction} of D/A(e,e'p) & \code{"spectral\_\allowbreak{}function":\ \{"type":\ "theory"\ |\ "benhar",\ "file":\ "<file\ in\ -{}-{}data-{}dir>\allowbreak{}",\ "transparency":\ x\}} (\hyperref[user_manual-05u5freactions:52-heep-elastic-deep-and-aeep]{5.2}) \\
+\code{reaction} of D/A(e,e'p) & \code{"spectral\_\allowbreak{}function":\ \{"type":\ "theory"\ |\ "benhar",\ "file":\ "<file\ in\ -{}-{}data-{}dir>\allowbreak{}",\ "transparency":\ x\}} (\hyperref[user_manual-05u5freactions:52-heep-elastic-deep-aeep-and-aeea]{5.2}) \\
 \code{pion}, \code{kaon}, \code{sidis} models & \code{"data\_\allowbreak{}dir"}: directory of the model tables (default: the data directory's \code{pion/}, \code{kaon/}, \code{sidis/}) \\
 \code{hms}, \code{shms}, \code{sos}, \code{hrsr}, \code{hrsl} & \code{"matrix\_\allowbreak{}dir"} (optics maps), and expert overrides of the per-arm switches: \code{"ms\_\allowbreak{}flag"}, \code{"wcs\_\allowbreak{}flag"} (multiple scattering and wire-chamber smearing, default \hyperref[param:mcu5fsmear]{\code{mc\_\allowbreak{}smear}}\simcidx{Parameters!mc_smear@\code{mc\_smear}}), \code{"decay"} (default \hyperref[param:doingu5fdecay]{\code{doing\_\allowbreak{}decay}}\simcidx{Parameters!doing_decay@\code{doing\_decay}} for the hadron arm), \code{"ctau"}, \code{"use\_\allowbreak{}sieve"}; \code{hms}: \code{"using\_\allowbreak{}HMScoll"}; \code{shms}: \code{"using\_\allowbreak{}SHMScoll"}, \code{"use\_\allowbreak{}coll"}, \code{"skip\_\allowbreak{}hb"}, \code{"use\_\allowbreak{}2sieve"} \\
 \code{calo} & \code{"drift\_\allowbreak{}to\_\allowbreak{}cal"}, \code{"ctau"} \\
@@ -227,6 +240,7 @@ says which runs read it: \emph{all}, \emph{eep} (H/\allowbreak{}D/\allowbreak{}A
 \subsection*{\texorpdfstring{Reaction selection and physics models}{Reaction selection and physics models}}\label{user_manual-04u5finputs:reaction-selection-and-physics-models}
 \begin{simcparams}
 \simcparam{doing\_\allowbreak{}phsp}{param:doingu5fphsp}{flag}{F}{phsp}{phase-space (acceptance) run: the cross section is 1 and normfac = 1. On hydrogen the elastic kinematics are kept (\hyperref[user_manual-05u5freactions:58-phase-space-and-acceptance-runs-doingu5fphsp]{5.8})}{doing_phsp@\code{doing\_phsp}}
+\simcparam{doing\_\allowbreak{}nuc\_\allowbreak{}elast}{param:doingu5fnucu5felast}{flag}{F}{nuclear elastic}{A(e,e')A nuclear elastic scattering on the target nucleus (upstream SIMC 4df7351; \hyperref[user_manual-05u5freactions:52-heep-elastic-deep-aeep-and-aeea]{5.2}). Not together with another \code{doing\_\allowbreak{}*} flag}{doing_nuc_elast@\code{doing\_nuc\_elast}}
 \simcparam{doing\_\allowbreak{}pion}{param:doingu5fpion}{flag}{F}{pion, semi}{exclusive pion production; with \hyperref[param:doingu5fsemi]{\code{doing\_\allowbreak{}semi}}\simcidx{Parameters!doing_semi@\code{doing\_semi}}: SIDIS pions}{doing_pion@\code{doing\_pion}}
 \simcparam{which\_\allowbreak{}pion}{param:whichu5fpion}{code}{0}{pion}{0: π+ (π0 with \hyperref[param:doingu5fpizero]{\code{doing\_\allowbreak{}pizero}}\simcidx{Parameters!doing_pizero@\code{doing\_pizero}}) on a proton, quasifree; 1: π− (π0 from the neutron), on a neutron; 2: π+Δ0 (π0Δ+); 3: π−Δ++ (π0Δ0 from the neutron); 10: coherent π+ A→A'; 11: coherent π−}{which_pion@\code{which\_pion}}
 \simcparam{doing\_\allowbreak{}pizero}{param:doingu5fpizero}{flag}{F}{pion, semi}{the pion is a π0 (decays to γγ, detected in the calorimeter arm 7/8 or transported as a π0 through the HMS/SHMS, \hyperref[user_manual-06u5fspectrometers:66-u3c00-in-the-hms-or-shms]{6.6})}{doing_pizero@\code{doing\_pizero}}
@@ -290,7 +304,7 @@ says which runs read it: \emph{all}, \emph{eep} (H/\allowbreak{}D/\allowbreak{}A
 \begin{simcparams}
 \simcparam{using\_\allowbreak{}tgt\_\allowbreak{}field}{param:usingu5ftgtu5ffield}{flag}{F}{field}{track the particles through the polarized-target magnetic field (\hyperref[user_manual-06u5fspectrometers:65-polarized-target-field-usingu5ftgtu5ffield]{6.5})}{using_tgt_field@\code{using\_tgt\_field}}
 \simcparam{tgt\_\allowbreak{}field\_\allowbreak{}file}{param:tgtu5ffieldu5ffile}{path}{blank}{field}{field map. \code{'0'} = no field; \code{'\ '} = a uniform 5 T test field; otherwise a map file looked for in \code{-{}-{}data-{}dir}\simcidx{Command-line options!data-dir@\code{-{}-{}data-{}dir}}, the current directory, then the data directory's \code{field/} (\code{trg\_\allowbreak{}field\_\allowbreak{}map.\allowbreak{}dat} is included). Unset with \code{using\_\allowbreak{}tgt\_\allowbreak{}field\ =\ 1}: refused at start-up}{tgt_field_file@\code{tgt\_field\_file}}
-\simcparam{targ\_\allowbreak{}Bangle}{param:targu5fBangle}{deg}{0}{field}{angle of the target field (+ = beam left); also the polarization direction used for the polarized-target angle columns of the tree (\hyperref[user_manual-07u5foutputs:717-polarized-target-columns-usingu5ftgtu5ffield]{7.1.7})}{targ_Bangle@\code{targ\_Bangle}}
+\simcparam{targ\_\allowbreak{}Bangle}{param:targu5fBangle}{deg}{0}{field}{angle of the target field (+ = beam left); also the polarization direction used for the polarized-target angle columns of the tree (\hyperref[user_manual-07u5foutputs:718-polarized-target-columns-usingu5ftgtu5ffield]{7.1.7})}{targ_Bangle@\code{targ\_Bangle}}
 \simcparam{targ\_\allowbreak{}Bphi}{param:targu5fBphi}{deg}{0}{field}{side of the beam the field points to (90 = beam left, 270 = beam right)}{targ_Bphi@\code{targ\_Bphi}}
 \simcparam{targ\_\allowbreak{}pol}{param:targu5fpol}{factor}{0}{field}{target polarization (+ = along B); 0 makes the \code{th\_\allowbreak{}tarq} column NaN}{targ_pol@\code{targ\_pol}}
 \end{simcparams}
@@ -360,13 +374,15 @@ also the only accepted events. The defaults (±1e10) are wide open: \textbf{set 
 \section{\texorpdfstring{Settings that have no \code{.\allowbreak{}inp} variable}{Settings that have no .inp variable}}\label{user_manual-04u5finputs:47-settings-that-have-no-inp-variable}
 These have no \code{.\allowbreak{}inp} counterpart:
 
-\begin{simctable}{small}{4}{>{\raggedright\arraybackslash}p{\dimexpr 0.297\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.175\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.289\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.150\linewidth-2\tabcolsep\relax}}
+\begin{simctable}{small}{4}{>{\raggedright\arraybackslash}p{\dimexpr 0.299\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.175\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.290\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.148\linewidth-2\tabcolsep\relax}}
 \caption{Settings that have no \code{.\allowbreak{}inp} variable}\\%
 \toprule\rowcolor{simchead}\simcth{setting} & \simcth{JSON} & \simcth{command line} & \simcth{default} \\\midrule\endfirsthead
 \multicolumn{4}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{setting} & \simcth{JSON} & \simcth{command line} & \simcth{default} \\\midrule\endhead
 \midrule\multicolumn{4}{r@{}}{\simccontinues}\\\endfoot
 \bottomrule\endlastfoot
 legacy-compatible mode & \code{run.\allowbreak{}fortran\_\allowbreak{}compat} & \code{-{}-{}fortran-{}compat}\simcidx{Command-line options!fortran-compat@\code{-{}-{}fortran-{}compat}} & off \\
+legacy SIMC version reproduced by that mode & \code{run.\allowbreak{}compat\_\allowbreak{}target} & \code{-{}-{}compat-{}target\ 59ccdf6|\allowbreak{}294f662}\simcidx{Command-line options!compat-target@\code{-{}-{}compat-{}target}} & \code{59ccdf6} \\
+tree \code{h10} column layout & \code{output.\allowbreak{}layout} & \code{-{}-{}tree-{}layout\ upstream|\allowbreak{}legacy}\simcidx{Command-line options!tree-layout@\code{-{}-{}tree-{}layout}} & \code{upstream} \\
 output name and directory & \code{run.\allowbreak{}name}, \code{run.\allowbreak{}output\_\allowbreak{}dir} & \code{-{}-{}run-{}name\ NAME}\simcidx{Command-line options!run-name@\code{-{}-{}run-{}name}}, \code{-{}o\ DIR} & input stem, \code{.} \\
 plug-ins, random-number generator & \code{pipeline} & \code{-{}-{}pipeline\ FILE}\simcidx{Command-line options!pipeline@\code{-{}-{}pipeline}} & from the flags (\hyperref[user_manual-04u5finputs:43-the-pipeline-section-choosing-plug-ins]{4.3}) \\
 event-loop threads & \code{pipeline.\allowbreak{}threads} & \code{-{}-{}threads\ N}\simcidx{Command-line options!threads@\code{-{}-{}threads}} & 1 \\

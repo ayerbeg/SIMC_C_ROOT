@@ -129,6 +129,13 @@
         "chapters": [
           "06_catalogue.md"
         ]
+      },
+      {
+        "title": "Following upstream",
+        "intro": "How SIMC++ follows the official Fortran SIMC: the update to upstream 59ccdf6 and the procedure for the next ones.",
+        "chapters": [
+          "07_following_upstream.md"
+        ]
       }
     ],
     "appendices": [

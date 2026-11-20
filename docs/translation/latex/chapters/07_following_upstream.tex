@@ -1,0 +1,117 @@
+% docs/translation/latex/chapters/07_following_upstream.tex - chapter of the LaTeX edition of the book "translation_report" (SIMC++ documentation).
+%   Converted once from docs/translation/markdown/07_following_upstream.md by tools/md2latex.py; from then on THIS FILE is the source of the
+%   LaTeX edition and may be edited by hand. Re-running tools/md2latex.py --write-sources for this
+%   chapter OVERWRITES the hand edits (see docs/README.md).
+%   Compile: cmake --build <build> --target pdf, or tools/build_docs_pdf.py (figures, xelatex passes,
+%   makeindex with docs/common/latex/simcpp.ist); by hand, see docs/README.md. XeLaTeX, class
+%   docs/common/latex/simcpp.cls (packages: fontspec, tikz, xcolor, hyperref, listings, longtable, booktabs,
+%   titlesec, titletoc, fancyhdr, makeidx, preview, ...); fonts TeX Gyre Pagella, TeX Gyre Heros, DejaVu Sans
+%   Mono. The figures are built first from docs/{manual,translation}/figures/*.tex (preview.sty) into PDFs.
+\chapter{\texorpdfstring{Following upstream SIMC}{Following upstream SIMC}}\label{translation_report-07u5ffollowingu5fupstream}
+\simcabstract{SIMC++ follows the official Fortran SIMC, \href{https://github.com/JeffersonLab/simc_gfortran}{JeffersonLab/\allowbreak{}simc\_\allowbreak{}gfortran}.
+The file \code{UPSTREAM\_\allowbreak{}SIMC} at the top of the source tree records the upstream commit that \code{-{}-{}fortran-{}compat}\simcidx{Command-line options!fortran-compat@\code{-{}-{}fortran-{}compat}} reproduces,
+together with the deliberate exceptions. The translation itself (chapters 1-6) was made and proved against commit
+294f662 (2026-01-16). This chapter describes the first update, to commit 59ccdf6 (2026-10-01; decisions D-080 to
+D-082), and the procedure for the next updates.}
+\section{\texorpdfstring{The update 294f662 → 59ccdf6}{The update 294f662 → 59ccdf6}}\label{translation_report-07u5ffollowingu5fupstream:71-the-update-294f662--59ccdf6}
+Upstream added 27 commits between the two versions (D-080). The Fortran impact analysis (\code{reference/\allowbreak{}U.\allowbreak{}F1\_\allowbreak{}report.\allowbreak{}md}) built the
+new version in a separate checkout (\code{simc\_\allowbreak{}gfortran\_\allowbreak{}upstream}), ran it on the existing inputs and on new ones, and
+classified each commit. The frozen tree \code{simc\_\allowbreak{}gfortran} stays at 294f662: all the references of chapters 1-6 depend on
+it.
+
+\begin{simctable}{footnotesize}{4}{>{\raggedright\arraybackslash}p{\dimexpr 0.194\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.314\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.181\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.231\linewidth-2\tabcolsep\relax}}
+\caption{The update 294f662 → 59ccdf6}\\%
+\toprule\rowcolor{simchead}\simcth{upstream commit(s)} & \simcth{change} & \simcth{effect on existing inputs} & \simcth{SIMC++ (task)} \\\midrule\endfirsthead
+\multicolumn{4}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{upstream commit(s)} & \simcth{change} & \simcth{effect on existing inputs} & \simcth{SIMC++ (task)} \\\midrule\endhead
+\midrule\multicolumn{4}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+a26f085, f48a112, 75b5586, 5a71480, b93f558, 805083c, e9895ec & first nuclear-elastic attempt, reverted & none & nothing to port \\
+4df7351, 60c2047 & A(e,e')A nuclear elastic (\code{doing\_\allowbreak{}nuc\_\allowbreak{}elast}\simcidx{Parameters!doing_nuc_elast@\code{doing\_nuc\_elast}}, nuclear\_\allowbreak{}elastic.\allowbreak{}f); new \code{.\allowbreak{}hist} line \code{doing\_\allowbreak{}nuc\_\allowbreak{}elast=\ F} & \code{.\allowbreak{}hist} line only & ported as at 20d46fc (U.1; findings U-A1, U-B2, U-DEV1) \\
+7f252d6, 4fa5ae1, ddbbb3e, e3f70c5 & CTP portability,\allowbreak{} .gitignore & none & nothing to port \\
+20d46fc & the STOP for H which\_pion = 3 also tests \code{doing\_\allowbreak{}pizero}\simcidx{Parameters!doing_pizero@\code{doing\_pizero}} (dbase.\allowbreak{}f:\allowbreak{}832) & H(e,\allowbreak{}e'π−)Δ++ runs & already corrected (D-038 F1); compat follows it (U.R) \\
+e4dd175, d693325 & one ntuple layout for exclusive, SIDIS and rho; vertex z/pt² always computed; pfermi guard & layout of every tree & upstream layout = default, \code{-{}-{}tree-{}layout\ legacy}\simcidx{Command-line options!tree-layout@\code{-{}-{}tree-{}layout}} (U.2); z/pt², pfermi (U.1) \\
+4446170, 3df944d & STOP if \code{worksim/} is missing & none (SIMC++ creates the output directory) & nothing to port \\
+a85dc6b, 40e2867, e189bda & Benhar spectral function for Cu-64 (\code{benharsf\_\allowbreak{}64.\allowbreak{}dat}) & A = 64 runs that use the SF table & ported (U.1) \\
+39d7de0, 73f5134 & which\_pion 2/3: Z/N factors; \code{tgtweight} only for which\_pion 0/10 and 1/11 & A ≥ 3 which\_pion 2/3: weight × 1/Z & not followed (U-A3, issue \#75) \\
+1fae2d7, 26521e4 & transp.\allowbreak{}f:\allowbreak{}158: K → ππ daughter mass Mk → Mpi & kaon runs with decay & already corrected (D-006); compat follows it (U.R) \\
+65d140b, 59ccdf6 & util/\allowbreak{}recon\_\allowbreak{}hcana: \code{W\_\allowbreak{}recon} sentinel 1e38 & not SIMC output & nothing to port \\
+\end{simctable}
+\subsection*{\texorpdfstring{What changed in SIMC++}{What changed in SIMC++}}\label{translation_report-07u5ffollowingu5fupstream:what-changed-in-simc}
+\begin{itemize}
+\item \textbf{U.1}: the Cu-64 spectral function, the nuclear-elastic reaction (\code{doing\_\allowbreak{}nuc\_\allowbreak{}elast}\simcidx{Parameters!doing_nuc_elast@\code{doing\_nuc\_elast}}, user manual chapter 5), the
+\code{.\allowbreak{}hist} line, z/pt² for every reaction, the SIDIS z > 1 warning, pfermi = 0 instead of NaN in both modes.
+\item \textbf{U.2}: the 59ccdf6 tree layout is the default; \code{-{}-{}tree-{}layout\ legacy}\simcidx{Command-line options!tree-layout@\code{-{}-{}tree-{}layout}} (JSON \code{"output":\ \{"layout":\ "legacy"\}}) writes
+the 294f662 layout (user manual chapter 7).
+\item \textbf{U.R}: \code{-{}-{}fortran-{}compat}\simcidx{Command-line options!fortran-compat@\code{-{}-{}fortran-{}compat}} now reproduces 59ccdf6 (\code{UPSTREAM\_\allowbreak{}SIMC}). The option \code{-{}-{}compat-{}target\ 294f662}\simcidx{Command-line options!compat-target@\code{-{}-{}compat-{}target}} (JSON
+\code{"run":\ \{"compat\_\allowbreak{}target":\ "294f662"\}}) keeps the old behaviour of the two findings that upstream fixed, so the
+references of the frozen tree can still be reproduced bit for bit. The test harnesses choose the target from the
+reference: a \code{.\allowbreak{}hist} with the line \code{doing\_\allowbreak{}nuc\_\allowbreak{}elast=} is a 59ccdf6 reference, otherwise 294f662
+(\code{tests/\allowbreak{}l1/\allowbreak{}ranlux\_\allowbreak{}fullrun.\allowbreak{}sh}, \code{validation/\allowbreak{}scripts/\allowbreak{}p15\_\allowbreak{}shipped\_\allowbreak{}regression.\allowbreak{}sh}); the compat regression baselines are
+in the 294f662 behaviour (\code{tests/\allowbreak{}regression/\allowbreak{}output\_\allowbreak{}identity.\allowbreak{}sh} adds \code{-{}-{}compat-{}target\ 294f662}\simcidx{Command-line options!compat-target@\code{-{}-{}compat-{}target}}).
+\end{itemize}
+\subsection*{\texorpdfstring{Findings fixed upstream}{Findings fixed upstream}}\label{translation_report-07u5ffollowingu5fupstream:findings-fixed-upstream}
+Three findings of the translation were fixed by upstream itself (D-081). The catalogue marks them "fixed upstream in
+\&lt;commit\&gt;" (chapter 6, §6.5).
+
+\begin{simctable}{footnotesize}{6}{>{\raggedright\arraybackslash}p{\dimexpr 0.111\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.123\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.094\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.106\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.229\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.220\linewidth-2\tabcolsep\relax}}
+%
+\toprule\rowcolor{simchead}\simcth{finding} & \simcth{294f662} & \simcth{fixed in} & \simcth{SIMC++ default} & \simcth{\code{-{}-{}fortran-{}compat} (59ccdf6)} & \simcth{\code{-{}-{}compat-{}target\ 294f662}} \\\midrule\endfirsthead
+\multicolumn{6}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{finding} & \simcth{294f662} & \simcth{fixed in} & \simcth{SIMC++ default} & \simcth{\code{-{}-{}fortran-{}compat} (59ccdf6)} & \simcth{\code{-{}-{}compat-{}target\ 294f662}} \\\midrule\endhead
+\midrule\multicolumn{6}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+D-006 kaon decay mass & transp.\allowbreak{}f:\allowbreak{}158 \code{m\_\allowbreak{}final\ =\ Mk} & 1fae2d7 & Mpi & Mpi & Mk \\
+D-038 F1 Δ++ STOP & dbase.\allowbreak{}f:\allowbreak{}823-826 STOP without \code{doing\_\allowbreak{}pizero}\simcidx{Parameters!doing_pizero@\code{doing\_pizero}} & 20d46fc & runs & runs & STOP \\
+D-051 F3 SIDIS pfermi NaN & results\_\allowbreak{}write.\allowbreak{}f:\allowbreak{}208-209 0/0 & e4dd175 & 0 & 0 & 0 (since U.1) \\
+\end{simctable}
+\subsection*{\texorpdfstring{New findings in the upstream code}{New findings in the upstream code}}\label{translation_report-07u5ffollowingu5fupstream:new-findings-in-the-upstream-code}
+\begin{simctable}{small}{4}{>{\raggedright\arraybackslash}p{\dimexpr 0.084\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.136\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.476\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.216\linewidth-2\tabcolsep\relax}}
+\caption{New findings in the upstream code}\\%
+\toprule\rowcolor{simchead}\simcth{id} & \simcth{Category} & \simcth{what} & \simcth{SIMC++} \\\midrule\endfirsthead
+\multicolumn{4}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{id} & \simcth{Category} & \simcth{what} & \simcth{SIMC++} \\\midrule\endhead
+\midrule\multicolumn{4}{r@{}}{\simccontinues}\\\endfoot
+\bottomrule\endlastfoot
+U-A1 & A & e4dd175 rebuilt event.\allowbreak{}f/\allowbreak{}NtupleInit.\allowbreak{}f/\allowbreak{}results\_\allowbreak{}write.\allowbreak{}f from a copy older than 4df7351 and lost the nuclear-elastic lines: the shipped \code{ee\_\allowbreak{}calcium48.\allowbreak{}inp} never succeeds & the complete 20d46fc code is kept, in both modes \\
+U-A2 & A & kaon with Nntu = 1 STOPs at the first event (66 values written, 65 tags) & no STOP: the kaon tree has 66 columns \\
+U-A4 & A (latent) & π0 with the target field writes 84 values into arrays of 80 & the tree is sized from the layout \\
+U-A3 & B & 39d7de0: for A ≥ 3, which\_pion 2/3 lose the factor Z (weight × 1/Z) & old weight kept in both modes, pending the author's answer \\
+U-B1 & B & the new eep columns Wi and epsiloni are always 0 & kept \\
+U-B2 & B & the nuclear-elastic model (W1 = 0, Gaussian form factor, W with Mp) & kept \\
+U-D1 & D & \code{.\allowbreak{}hist} line, z/pt² always computed, SIDIS z > 1 warning, dead init.f:344 clause & kept \\
+U-DEV1 & DEV & \code{doing\_\allowbreak{}nuc\_\allowbreak{}elast}\simcidx{Parameters!doing_nuc_elast@\code{doing\_nuc\_elast}} combined with another reaction & refused at set-up \\
+\end{simctable}
+U-A1, U-A2, U-A3 and U-A4 were reported upstream in
+\href{https://github.com/JeffersonLab/simc_gfortran/issues/75}{JeffersonLab/\allowbreak{}simc\_\allowbreak{}gfortran\#75} (2026-11-19). The pion 1/Z
+decision (U-A3) waits for the answer there; the user decides when it comes.
+
+\subsection*{\texorpdfstring{Exceptions: where \code{-{}-{}fortran-{}compat} does not reproduce 59ccdf6}{Exceptions: where -{}-fortran-compat does not reproduce 59ccdf6}}\label{translation_report-07u5ffollowingu5fupstream:exceptions-where---fortran-compat-does-not-reproduce-59ccdf6}
+\begin{itemize}
+\item \textbf{U-A1 nuclear elastic}: SIMC++ keeps the complete 20d46fc code (the 59ccdf6 code never produces an event). Reference:
+\code{reference/\allowbreak{}runs/\allowbreak{}up\_\allowbreak{}ee\_\allowbreak{}calcium48\_\allowbreak{}20d46fc}.
+\item \textbf{U-A2, U-A4}: no STOP and no overflow; SIMC++ writes the tree.
+\item \textbf{U-A3 pion 1/Z}: the 294f662 weight for A ≥ 3, which\_pion 2/3 (the runs \code{up\_\allowbreak{}upf1\_\allowbreak{}pion\_\allowbreak{}c12\_\allowbreak{}wp\{2,\allowbreak{}3\}\_\allowbreak{}A} differ by the
+factor 1/6 for C-12 and are not identity tests).
+\end{itemize}
+\subsection*{\texorpdfstring{Validation of the compat target}{Validation of the compat target}}\label{translation_report-07u5ffollowingu5fupstream:validation-of-the-compat-target}
+RANLUX + \code{-{}-{}fortran-{}compat}\simcidx{Command-line options!fortran-compat@\code{-{}-{}fortran-{}compat}} full runs against the 59ccdf6 runs (\code{l1\_\allowbreak{}simcrun\_\allowbreak{}ranlux\_\allowbreak{}up\_\allowbreak{}*}, label \code{upstream\_\allowbreak{}layout}):
+\code{.\allowbreak{}hist} (except the time lines), \code{.\allowbreak{}geni}, \code{.\allowbreak{}gen} text-identical and the whole tree bitwise identical. U.R added
+\code{up\_\allowbreak{}upf1\_\allowbreak{}pion\_\allowbreak{}h\_\allowbreak{}wp3\_\allowbreak{}A} (H(e,\allowbreak{}e'π−)Δ++,\allowbreak{} which 294f662 STOPs) and \code{up\_\allowbreak{}upf1\_\allowbreak{}kaon\_\allowbreak{}h\_\allowbreak{}k1\_\allowbreak{}rad\_\allowbreak{}dec1\_\allowbreak{}nontu} (kaon decay in
+flight, Nntu = 0 because of U-A2: \code{.\allowbreak{}hist}/\code{.\allowbreak{}geni}/\code{.\allowbreak{}gen} only). The 294f662 references keep passing with
+\code{-{}-{}compat-{}target\ 294f662}\simcidx{Command-line options!compat-target@\code{-{}-{}compat-{}target}}.
+
+\section{\texorpdfstring{How to follow the next upstream changes}{How to follow the next upstream changes}}\label{translation_report-07u5ffollowingu5fupstream:72-how-to-follow-the-next-upstream-changes}
+\begin{enumerate}
+\item \textbf{Check.} \code{tools/\allowbreak{}check\_\allowbreak{}upstream\_\allowbreak{}simc.\allowbreak{}sh} lists the upstream commits after the one in \code{UPSTREAM\_\allowbreak{}SIMC} and the files
+they touch ("Up to date." when there are none).
+\item \textbf{Fortran impact analysis} (fortran-reference): update the upstream checkout, build it, run the existing inputs with
+the old and the new binary, and classify each commit: no effect, new feature, changed behaviour, fix of a known
+finding, new finding. Produce the references (\code{reference/\allowbreak{}runs/\allowbreak{}up\_\allowbreak{}*}, L1 tables) and a report like
+\code{reference/\allowbreak{}U.\allowbreak{}F1\_\allowbreak{}report.\allowbreak{}md}.
+\item \textbf{Port} (one coherent group per task): follow the new Fortran; keep the corrections of the catalogue. Upstream fixes
+of known findings: mark the finding "fixed upstream in \&lt;commit\&gt;" (D-081) and make \code{-{}-{}fortran-{}compat}\simcidx{Command-line options!fortran-compat@\code{-{}-{}fortran-{}compat}} follow the fix,
+keeping the old behaviour behind \code{-{}-{}compat-{}target}\simcidx{Command-line options!compat-target@\code{-{}-{}compat-{}target}} when old references need it. New upstream bugs: new findings in
+FORTRAN\_\allowbreak{}DIFFERENCES.md (\code{U-{}*}), reported upstream.
+\item \textbf{Validate}: RANLUX full-run identity against the new references, L1 tables, the regression baselines (regenerate
+them only when the change is proved), \code{ctest\ -{}L\ docs}, \code{tools/\allowbreak{}check\_\allowbreak{}all.\allowbreak{}sh}.
+\item \textbf{Record}: update \code{UPSTREAM\_\allowbreak{}SIMC} (full sha, date, the exceptions); \code{tools/\allowbreak{}check\_\allowbreak{}upstream\_\allowbreak{}simc.\allowbreak{}sh} must then report
+0 newer commits. Update this chapter, the catalogue and the manuals (both editions) and rebuild the PDFs.
+\end{enumerate}

@@ -39,6 +39,14 @@ simc++ --fortran-compat  |  JSON "run": {"fortran_compat": true}
                                       (NtupleLayout, FortranHistSink, GenHistSink: report-level corrections)
 ```
 
+**Which Fortran** (task U.R, D-080): `--fortran-compat` reproduces the upstream commit recorded in `UPSTREAM_SIMC`
+(59ccdf6). Where upstream fixed a finding itself (D-006 kaon decay mass, D-038 F1 Δ++ STOP; chapter 7) the compat
+mode follows the fix; `--compat-target 294f662` (JSON `"run": {"compat_target": "294f662"}`; `RunSetup::compat_target`,
+`RunSetup::compat294f662()`, `CosyEngine::setCompat294f662`) restores the frozen 294f662 behaviour for the old
+references. Exceptions that compat does not reproduce at 59ccdf6: U-A1 nuclear elastic (the 20d46fc code is kept),
+U-A2/U-A4 (no STOP, no ntuple overflow), U-A3 pion 1/Z (old weight, pending JeffersonLab/simc_gfortran#75); see
+chapter 7.
+
 The run log prints the mode (` SIMC++: fortran_compat = true/false ...`), and the summary JSON records it
 (`run.fortran_compat`, D-054), which `simc_compare` uses to choose the pass_cuts window (chapter 2).
 `--fortran-compat` also refuses `--threads N > 1` (the exact reproduction needs one stream in the Fortran order).

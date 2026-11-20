@@ -33,7 +33,14 @@ included:
 | use it for | physics | reproducing or checking an existing legacy SIMC result |
 
 In a JSON input: `"run": {"fortran_compat": true}`. The log says which mode is active
-(` SIMC++: fortran_compat = true (exact Fortran behaviour, known Fortran bugs kept)`).
+(` SIMC++: fortran_compat = true (exact Fortran behaviour of upstream 59ccdf6, known Fortran bugs kept)`).
+
+**Which legacy SIMC.** The legacy-compatible mode reproduces the official Fortran SIMC at commit 59ccdf6 (2026-10-01;
+the file `UPSTREAM_SIMC`). That version fixed two of the known bugs itself (the kaon decay-product mass and the
+H(e,e'π−)Δ++ stop), so the mode follows the fix. To reproduce a run of the older version 294f662 (2026-01-16) exactly,
+add `--compat-target 294f662` (JSON `"run": {"compat_target": "294f662"}`; it has no effect without
+`--fortran-compat`). A few 59ccdf6 problems are not reproduced in either target (the nuclear-elastic code removed by
+mistake, the kaon ntuple stop, the pion 1/Z weight for A ≥ 3): see the translation report, chapter 7.
 
 > **Legacy SIMC:** what each correction changes in the results, and which run types are affected, is listed in
 > `docs/translation/markdown/user_differences.md`; how to compare SIMC++ with legacy SIMC runs statistically is in

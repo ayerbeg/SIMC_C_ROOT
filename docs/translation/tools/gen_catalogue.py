@@ -89,7 +89,13 @@ def norm(cls, header, d):
     g = lambda *keys: next((d[k] for k in d if any(k.startswith(x) for x in keys)), "")
     rid, loc = g("id"), g("fortran")
     if cls == "A":
-        return rid, loc, g("original", "bug"), g("c++ default", "c++ now"), "Fortran (original behaviour)", \
+        compat = "Fortran (original behaviour)"
+        m = re.search(r"fixed upstream in ([0-9a-f]{7})", rid)
+        if m:   # D-081 (task U.R): the compat target 59ccdf6 has the upstream fix
+            compat = "**fixed upstream** in %s: as the default (upstream 59ccdf6)" % m.group(1)
+            if "--compat-target 294f662" in " ".join(d.values()):
+                compat += "; the 294f662 Fortran with `--compat-target 294f662`"
+        return rid, loc, g("original", "bug"), g("c++ default", "c++ now"), compat, \
             g("effect", "to do"), g("test")
     if cls == "A-NP":
         return rid, loc, g("bug"), g("c++ now"), "-", g("to do"), ""
@@ -207,6 +213,18 @@ def main():
             o.append("")
     else:
         o.append("(DECISIONS.md not found: cross-check skipped.)\n")
+    # D-081 (task U.R): the findings fixed by upstream SIMC
+    fixed = [it for it in items if "fixed upstream in" in it[1]]
+    o.append("## 6.5 Findings fixed upstream\n")
+    o.append("Findings that the newer JLab SIMC (JeffersonLab/simc_gfortran, followed commit in the file UPSTREAM_SIMC) "
+             "has fixed itself (D-081). They keep their Category; `--fortran-compat` reproduces the fixed upstream "
+             "behaviour (translation report chapter 7).\n")
+    o.append("| id | Category | Fortran location (294f662) | upstream fix |\n|---|---|---|---|")
+    for it in fixed:
+        m = re.search(r"fixed upstream in ([0-9a-f]{7})", it[1])
+        o.append("| %s | %s | %s | commit %s |" % (it[1], it[0], it[2], m.group(1)))
+    o.append("")
+
     with open(a.out, "w", encoding="utf-8") as f:
         f.write("\n".join(o) + "\n")
     print("wrote %s: %d entries (%s)" % (a.out, len(items), ", ".join("%s %d" % kv for kv in sorted(counts.items()))))

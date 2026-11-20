@@ -47,7 +47,14 @@ with \code{ranlux}: identical output files to a legacy SIMC run of the same inpu
 use it for & physics & reproducing or checking an existing legacy SIMC result \\
 \end{simctable}
 In a JSON input: \code{"run":\ \{"fortran\_\allowbreak{}compat":\ true\}}. The log says which mode is active
-(\code{\ SIMC++:\ fortran\_\allowbreak{}compat\ =\ true\ (\allowbreak{}exact\ Fortran\ behaviour,\ known\ Fortran\ bugs\ kept)}).
+(\code{\ SIMC++:\ fortran\_\allowbreak{}compat\ =\ true\ (\allowbreak{}exact\ Fortran\ behaviour\ of\ upstream\ 59ccdf6,\ known\ Fortran\ bugs\ kept)}).
+
+\textbf{Which legacy SIMC.} The legacy-compatible mode reproduces the official Fortran SIMC at commit 59ccdf6 (2026-10-01;
+the file \code{UPSTREAM\_\allowbreak{}SIMC}). That version fixed two of the known bugs itself (the kaon decay-product mass and the
+H(e,\allowbreak{}e'π−)Δ++ stop), so the mode follows the fix. To reproduce a run of the older version 294f662 (2026-01-16) exactly,
+add \code{-{}-{}compat-{}target\ 294f662}\simcidx{Command-line options!compat-target@\code{-{}-{}compat-{}target}} (JSON \code{"run":\ \{"compat\_\allowbreak{}target":\ "294f662"\}}; it has no effect without
+\code{-{}-{}fortran-{}compat}\simcidx{Command-line options!fortran-compat@\code{-{}-{}fortran-{}compat}}). A few 59ccdf6 problems are not reproduced in either target (the nuclear-elastic code removed by
+mistake, the kaon ntuple stop, the pion 1/Z weight for A ≥ 3): see the translation report, chapter 7.
 
 \begin{simclegacy}
 what each correction changes in the results, and which run types are affected, is listed in
