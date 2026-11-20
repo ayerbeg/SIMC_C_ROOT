@@ -37,9 +37,10 @@ one() {   # folder
   # reference has neither, so simc++ writes the legacy layout for it (--tree-layout legacy).
   local layout=legacy; grep -q 'doing_nuc_elast=' "$d/$run.hist" && layout=upstream
   [[ -n ${LAYOUT-} ]] && layout=$LAYOUT
-  "$SIMC" "$d/$run.inp" -o "$w" --fortran-compat --pipeline "$OUT/ranlux.json" --tree-layout "$layout" --quiet > "$w/run.log" 2>&1
+  local target=59ccdf6; grep -q 'doing_nuc_elast=' "$d/$run.hist" || target=294f662   # U.R: compat target of the reference
+  "$SIMC" "$d/$run.inp" -o "$w" --fortran-compat --compat-target "$target" --pipeline "$OUT/ranlux.json" --tree-layout "$layout" --quiet > "$w/run.log" 2>&1
   rc=$?
-  { echo "== $f ($run): simc++ RANLUX --fortran-compat --tree-layout $layout, exit $rc, $(( $(date +%s) - t0 )) s"
+  { echo "== $f ($run): simc++ RANLUX --fortran-compat --compat-target $target --tree-layout $layout, exit $rc, $(( $(date +%s) - t0 )) s"
     if [[ $rc -ne 0 ]]; then tail -3 "$w/run.log"; fi
     if [[ $rc -eq 0 ]]; then
       # U.1: a 294f662 reference has no `doing_nuc_elast= F` line (upstream simc.f:894) and its tree no upstream z/pt2 and

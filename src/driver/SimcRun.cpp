@@ -93,6 +93,7 @@ void SimcRun::initialise() {
         so.data_dir = opt_.data_dir.empty() ? DataDir("spectral") : opt_.data_dir;   // (data tree: core/DataPath.h)
         so.fortran_compat = opt_.fortran_compat;
         so.tree_layout = opt_.tree_layout;   // task U.2
+        so.compat_target = opt_.compat_target;   // task U.R
         // D/A(e,e'p): a spectral function named in the JSON (D-033 F1) reaches the set-up, which reads the
         // theory file / chooses the Benhar file: "theory"/"benhar" set use_benhar_sf, "file" the file.
         const PipelineConfig::SpectralFunctionSpec sf = PipelineConfig::SpectralFunction(pipelineJson_);
@@ -116,7 +117,8 @@ void SimcRun::initialise() {
     setup_.run_name = opt_.run_name;
     setup_.output_dir = opt_.output_dir;
     log(" Use random seed = " + std::to_string(params_.random_seed));
-    log(setup_.fortran_compat ? " SIMC++: fortran_compat = true (exact Fortran behaviour, known Fortran bugs kept)"
+    log(setup_.fortran_compat ? std::string(" SIMC++: fortran_compat = true (exact Fortran behaviour of upstream ") +
+                                    (setup_.compat294f662() ? "294f662" : "59ccdf6") + ", known Fortran bugs kept)"
                               : " SIMC++: fortran_compat = false (clear legacy-SIMC bugs corrected, docs/translation/markdown/06_catalogue.md)");
     if (!params_.random_state_file.empty() && params_.random_state_file.find_first_not_of(' ') != std::string::npos)
         log(" NOTE: random_state_file '" + params_.random_state_file +

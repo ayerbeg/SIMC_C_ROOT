@@ -2,7 +2,7 @@
 // links extra plug-ins can reuse it: tools/simc_main.cpp, examples/out_of_tree_plugin).
 //
 //   simc++ <file.inp | file.json> [-o OUTDIR] [--seed N] [--ngen N] [--pipeline overrides.json]
-//          [--run-name NAME] [--data-dir DIR] [--infiles-dir DIR] [--quiet] [--print-pipeline] [--fortran-compat]
+//          [--run-name NAME] [--data-dir DIR] [--infiles-dir DIR] [--quiet] [--print-pipeline] [--fortran-compat] [--compat-target C]
 //          [--threads N] [--print-data-dir] [--tree-layout upstream|legacy]
 //
 // Input:
@@ -47,9 +47,12 @@ namespace {
 void usage() {
     std::cerr << "usage: simc++ <file.inp|file.json> [-o OUTDIR] [--seed N] [--ngen N] [--pipeline FILE]\n"
                  "               [--run-name NAME] [--data-dir DIR] [--infiles-dir DIR] [--quiet] [--print-pipeline]\n"
-                 "               [--fortran-compat] [--threads N] [--print-data-dir] [--tree-layout upstream|legacy]\n"
+                 "               [--fortran-compat] [--compat-target 59ccdf6|294f662] [--threads N] [--print-data-dir]\n"
+                 "               [--tree-layout upstream|legacy]\n"
                  "  --print-pipeline  print the resolved pipeline (JSON), then run\n"
                  "  --fortran-compat  exact Fortran behaviour (known Fortran bugs kept; bitwise validation)\n"
+                 "  --compat-target C upstream Fortran commit reproduced by --fortran-compat: 59ccdf6 (default) or\n"
+                 "                    294f662 (frozen tree: kaon decay daughter mass Mk, H which_pion=3 STOP)\n"
                  "  --threads N       event loop on N threads (independent mt64 streams per thread; a given seed and N\n"
                  "                    always give the same output; not with --fortran-compat or rng ranlux). Default 1.\n"
                  "  --tree-layout L   tree h10 column layout: upstream (default, upstream SIMC 59ccdf6) or legacy (SIMC 294f662)\n"
@@ -73,6 +76,13 @@ bool parseLayout(const std::string& v, TreeLayout& out) {
     return false;
 }
 
+// task U.R: "59ccdf6" / "294f662" -> the compat target; false for anything else
+bool parseCompatTarget(const std::string& v, CompatTarget& out) {
+    if (v == "59ccdf6") { out = CompatTarget::U59ccdf6; return true; }
+    if (v == "294f662") { out = CompatTarget::U294f662; return true; }
+    return false;
+}
+
 bool readJson(const std::string& path, Json& j) {
     std::ifstream f(path);
     if (!f) return false;
@@ -92,7 +102,8 @@ bool readJson(const std::string& path, Json& j) {
 // (a Fortran STOP, a refused feature or any other error during the run).
 int CommandLineMain(int argc, char** argv) {
     std::string input, outdir = ".", pipelineFile, runName, dataDir, infilesDir;
-    bool quiet = false, printPipeline = false, compatFlag = false, layoutFlag = false;
+    bool quiet = false, printPipeline = false, compatFlag = false, layoutFlag = false, targetFlag = false;
+    CompatTarget targetCli = CompatTarget::U59ccdf6;
     TreeLayout layoutCli = TreeLayout::Upstream;
     driver::RunOptions opt;
     // --- 1. the options
@@ -113,6 +124,14 @@ int CommandLineMain(int argc, char** argv) {
         else if (a == "--quiet") quiet = true;
         else if (a == "--print-pipeline") printPipeline = true;
         else if (a == "--fortran-compat") compatFlag = true;
+        else if (a == "--compat-target") {   // task U.R
+            next(v);
+            if (!parseCompatTarget(v, targetCli)) {
+                std::cerr << "simc++: --compat-target: expected '59ccdf6' or '294f662', got '" << v << "'\n";
+                return 1;
+            }
+            targetFlag = true;
+        }
         else if (a == "--tree-layout") {
             next(v);
             if (!parseLayout(v, layoutCli)) {
@@ -160,6 +179,14 @@ int CommandLineMain(int argc, char** argv) {
             if (runName.empty()) runName = j["run"].value("name", std::string());
             if (outdir == ".") outdir = j["run"].value("output_dir", outdir);
             opt.fortran_compat = j["run"].value("fortran_compat", false);
+            if (j["run"].contains("compat_target")) {   // task U.R
+                const Json& t = j["run"]["compat_target"];
+                if (!t.is_string() || !parseCompatTarget(t.get<std::string>(), opt.compat_target)) {
+                    std::cerr << "simc++: input error: " << input
+                              << ": \"run\": {\"compat_target\"} must be \"59ccdf6\" or \"294f662\"\n";
+                    return 2;
+                }
+            }
         }
         if (j.contains("output")) {   // task U.2: "output": {"layout": "upstream" | "legacy"}
             const Json& o = j["output"];
@@ -215,6 +242,7 @@ int CommandLineMain(int argc, char** argv) {
     opt.data_dir = dataDir;
     opt.quiet_stages = quiet;
     if (compatFlag) opt.fortran_compat = true;   // the CLI flag wins over the JSON
+    if (targetFlag) opt.compat_target = targetCli;   // task U.R
     if (layoutFlag) opt.tree_layout = layoutCli;   // idem (task U.2)
     if (opt.threads > 1 && opt.fortran_compat) {  // refused before the run starts (also SimcRun::threadsRefusal)
         std::cerr << "simc++: --threads " << opt.threads

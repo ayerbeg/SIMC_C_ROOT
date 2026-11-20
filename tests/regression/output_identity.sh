@@ -21,6 +21,9 @@ shift 7; EXTRA=("$@")
 # U.2 (D-082): the stored baselines hold the legacy (294f662) tree layout; unless the caller names a layout, the run
 # uses --tree-layout legacy (the upstream default layout is validated against the Fortran itself, tests/l1/eep.cmake).
 [[ " ${EXTRA[*]-} " == *" --tree-layout "* ]] || EXTRA+=(--tree-layout legacy)
+# U.R: the compat baselines were written with the 294f662 behaviour (D-006 Mk kaon decay); --fortran-compat now targets
+# 59ccdf6, so unless the caller names a target the run uses --compat-target 294f662 (no effect without --fortran-compat).
+[[ " ${EXTRA[*]-} " == *" --compat-target "* ]] || EXTRA+=(--compat-target 294f662)
 
 if [[ ! -d "$BASE" || ! -f "$INPUT" ]]; then echo "SKIP: baseline $BASE or input $INPUT missing"; exit 77; fi
 rm -rf "$WORK"; mkdir -p "$WORK"

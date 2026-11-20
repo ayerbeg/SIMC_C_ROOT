@@ -57,8 +57,9 @@ endforeach()
 # U.2 (D-082): the upstream 59ccdf6 tree layout (the default) against the 59ccdf6 runs of task U.F1, the WHOLE h10 tree
 # bitwise (every column), .hist/.geni/.gen text-identical; RANLUX + --fortran-compat. ranlux_fullrun.sh selects
 # --tree-layout upstream from the reference .hist. Short runs (< 1 min) in the default set, the others "slow".
-# Not here: kaon (59ccdf6 STOPs at the first event, U-A2: no reference tree); pion C-12 which_pion 2/3 and H which_pion 3
-# (39d7de0 / 20d46fc physics changes, not ported in U.1/U.2).
+# U.R: H which_pion 3 (20d46fc: runs in compat mode now) and the kaon decay with Nntu = 0 (1fae2d7 transp.f:158 Mpi;
+# .hist/.geni/.gen only, the kaon tree STOPs at 59ccdf6, U-A2). Not here: pion C-12 which_pion 2/3 (39d7de0 1/Z, U-A3,
+# old weight kept pending JeffersonLab/simc_gfortran#75).
 foreach(_r "up_upf1_rho_h_k1_rad_A_s;upf1_rho_h_k1_rad_A_s;fast"
            "up_upf1_pion_c12_wp0_A;upf1_pion_c12_wp0_A;fast"
            "up_eep_h_elastic_rad_A;eep_h_elastic_rad_A;slow" "up_eep_h_elastic_norad_A;eep_h_elastic_norad_A;slow"
@@ -66,7 +67,9 @@ foreach(_r "up_upf1_rho_h_k1_rad_A_s;upf1_rho_h_k1_rad_A_s;fast"
            "up_upf1_eep_cu64_bh_rad_A;upf1_eep_cu64_bh_rad_A;slow"
            "up_pion_h_k1_rad_dec0_A;pion_h_k1_rad_dec0_A;slow" "up_delta_h_d1_rad_A;delta_h_d1_rad_A;slow"
            "up_p14f2_excl_h_ng2_A;p14f2_excl_h_ng2_A;slow" "up_sidis_h_k1_pip_rad_A;sidis_h_k1_pip_rad_A;slow"
-           "up_u_nps_5p639;u_nps_5p639;slow")
+           "up_u_nps_5p639;u_nps_5p639;slow"
+           "up_upf1_pion_h_wp3_A;upf1_pion_h_wp3_A;slow"
+           "up_upf1_kaon_h_k1_rad_dec1_nontu;upf1_kaon_h_k1_rad_dec1_nontu;slow")
     list(GET _r 0 _dir)
     list(GET _r 1 _run)
     list(GET _r 2 _speed)

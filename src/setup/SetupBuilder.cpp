@@ -36,6 +36,7 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
     RunSetup s = RunSetup::FromParameters(p, opt.run_name);
     s.built = true;
     s.fortran_compat = opt.fortran_compat;
+    s.compat_target = opt.compat_target;   // task U.R
     s.tree_layout = opt.tree_layout;   // task U.2   // D-031 run option (docs/translation/markdown/FORTRAN_DIFFERENCES.md)
     auto stop = [&](const std::string& why) { s.stops.push_back("STOP " + why); };
     auto msg = [&](const std::string& m) { s.messages.push_back(m); };
@@ -114,8 +115,10 @@ RunSetup BuildRunSetup(const SimcParameters& p, const SetupOptions& opt, ITarget
         // `if(doing_hydpi .and. which_pion.eq.3) stop 'Can''t do Delta+ production from neutron for pi0'` does not test
         // doing_pizero, so charged H(e,e'pi-)Delta++ (set up at dbase.f:361-364, weighted 0.55 at event.f:1479-1484;
         // infiles/fpi12_deltapp.inp) can never run; corrected because the message and the physics only exclude the pi0
-        // (gamma* n -> pi0 Delta0 needs a neutron): the STOP is limited to doing_pizero. fortran_compat keeps the STOP.
-        if (p.which_pion == 3 && ff.doing_hydpi && (s.fortran_compat || ff.doing_pizero)) {
+        // (gamma* n -> pi0 Delta0 needs a neutron): the STOP is limited to doing_pizero. Fixed upstream in 20d46fc
+        // (dbase.f:832 tests doing_pizero, D-081): fortran_compat follows 59ccdf6 (no STOP for the charged pion); only
+        // the compat target 294f662 (--compat-target 294f662) keeps the old STOP.
+        if (p.which_pion == 3 && ff.doing_hydpi && (s.compat294f662() || ff.doing_pizero)) {
             stop("Can't do Delta+ production from neutron for pi0");
             return s;
         }

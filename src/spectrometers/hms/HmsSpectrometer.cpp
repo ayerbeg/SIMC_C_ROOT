@@ -31,6 +31,7 @@ void HmsSpectrometer::configure(const Json& config, const SimcParameters& params
 
 void HmsSpectrometer::init(const StageContext& ctx) {
     k_->setFortranCompat(ctx.setup.fortran_compat);   // D-031 run option
+    k_->setCompat294f662(ctx.setup.compat294f662());   // task U.R (D-006)
     k_->loadMaps();
 }
 

@@ -7,18 +7,22 @@
 # U.2: the tree layout follows the reference: upstream (59ccdf6) for a reference whose .hist has the upstream line
 # `doing_nuc_elast=` (reference/runs/up_*), legacy (294f662) otherwise; env LAYOUT=upstream|legacy overrides (the 20d46fc
 # nuclear-elastic references have the line but the 46-column legacy tree).
+# U.R: --fortran-compat reproduces upstream 59ccdf6 by default; a 294f662 reference (no `doing_nuc_elast=` line) is run
+# with --compat-target 294f662 (D-006 kaon decay mass Mk, D-038 F1 STOP kept as in the frozen tree). A reference with
+# Nntu = 0 (no .root, only .hist/.geni/.gen) is accepted: the tree comparison is replaced by "no .root written".
 # usage: ranlux_fullrun.sh <simc++> <simc_root_identity> <ref_run_dir> <run> <workdir>
 # Exit: 0 pass, 1 fail, 77 reference missing.
 set -u
 simc=$1; ident=$2; ref=$3; run=$4; work=$5
-[ -f "$ref/$run.inp" ] && [ -f "$ref/$run.root" ] || { echo "reference $ref/$run.* missing: SKIP"; exit 77; }
+[ -f "$ref/$run.inp" ] && { [ -f "$ref/$run.root" ] || [ -f "$ref/$run.hist" ]; } || { echo "reference $ref/$run.* missing: SKIP"; exit 77; }
 rm -rf "$work"; mkdir -p "$work/compat" "$work/corrected"
 echo '{"pipeline": {"rng": {"type": "ranlux"}}}' > "$work/ranlux.json"
 fail=0
 layout=legacy; grep -q 'doing_nuc_elast=' "$ref/$run.hist" && layout=upstream
 [ -n "${LAYOUT:-}" ] && layout=$LAYOUT
-echo "  tree layout: $layout"
-"$simc" "$ref/$run.inp" -o "$work/compat" --fortran-compat --pipeline "$work/ranlux.json" --tree-layout "$layout" --quiet > "$work/compat.log" 2>&1 \
+target=59ccdf6; grep -q 'doing_nuc_elast=' "$ref/$run.hist" || target=294f662
+echo "  tree layout: $layout, compat target: $target"
+"$simc" "$ref/$run.inp" -o "$work/compat" --fortran-compat --compat-target "$target" --pipeline "$work/ranlux.json" --tree-layout "$layout" --quiet > "$work/compat.log" 2>&1 \
     || { echo "simc++ (compat) failed:"; tail -5 "$work/compat.log"; exit 1; }
 # U.1: the .hist of SIMC++ has the line `doing_nuc_elast= F` of upstream simc.f:894 (4df7351); a reference of the frozen
 # 294f662 Fortran does not have it, so the line is dropped from the C++ .hist only when the reference lacks it.
@@ -35,7 +39,10 @@ done
 identopt=(); [ "${COMMON_LEAVES:-0}" = 1 ] && identopt=(--common-leaves)
 # U.1: a 294f662 reference (no doing_nuc_elast line): accept the upstream z/pt2 and pfermi changes (tests/l1/Upstream294.h)
 grep -q 'doing_nuc_elast=' "$ref/$run.hist" || identopt+=(--u1-upstream)
-if "$ident" "${identopt[@]}" "$work/compat/$run.root" "$ref/$run.root" > "$work/identity.log" 2>&1; then
+if [ ! -f "$ref/$run.root" ]; then   # U.R: Nntu = 0 reference
+    if [ -f "$work/compat/$run.root" ]; then echo "  $run.root written but the reference has none"; fail=1
+    else echo "  $run.root: none (Nntu = 0), as the reference"; fi
+elif "$ident" "${identopt[@]}" "$work/compat/$run.root" "$ref/$run.root" > "$work/identity.log" 2>&1; then
     grep -E "common leaves|U.1 upstream" "$work/identity.log"
     echo "  $run.root: $(tail -1 "$work/identity.log")"
 else echo "  $run.root: DIFFERENT"; tail -10 "$work/identity.log"; fail=1; fi

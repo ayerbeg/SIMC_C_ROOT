@@ -54,10 +54,15 @@ for f in test_eep_fe test_eep_fe_bh test_hms_shms_validation; do
         "convert_inputfile.sh" && echo "ok   $f: runs, 20 ignored names listed"
 done
 # 3. fpi12_deltapp
+# U.R: D-038 F1 fixed upstream in 20d46fc: --fortran-compat (target 59ccdf6) runs; target 294f662 keeps the STOP
+log=$WORK/deltapp_compat294.log
+"$SIMCPP" "$INF/fpi12_deltapp.inp" -o "$WORK/deltapp_compat294" --quiet --fortran-compat --compat-target 294f662 > "$log" 2>&1; rc=$?
+check "fpi12_deltapp (compat 294f662)" 3 $rc "$log" "STOP Can't do Delta+ production from neutron for pi0" \
+    && echo "ok   fpi12_deltapp --fortran-compat --compat-target 294f662: Fortran STOP (294f662 dbase.f:823-826)"
 log=$WORK/deltapp_compat.log
-"$SIMCPP" "$INF/fpi12_deltapp.inp" -o "$WORK/deltapp_compat" --quiet --fortran-compat > "$log" 2>&1; rc=$?
-check "fpi12_deltapp (compat)" 3 $rc "$log" "STOP Can't do Delta+ production from neutron for pi0" \
-    && echo "ok   fpi12_deltapp --fortran-compat: Fortran STOP (dbase.f:823-826)"
+"$SIMCPP" "$INF/fpi12_deltapp.inp" -o "$WORK/deltapp_compat" --quiet --ngen 20 --seed 4242 --fortran-compat > "$log" 2>&1; rc=$?
+check "fpi12_deltapp (compat 59ccdf6)" 0 $rc "$log" \
+    && echo "ok   fpi12_deltapp --fortran-compat (59ccdf6): runs (20d46fc dbase.f:832)"
 log=$WORK/deltapp_corrected.log
 "$SIMCPP" "$INF/fpi12_deltapp.inp" -o "$WORK/deltapp_corrected" --quiet --ngen 20 --seed 4242 > "$log" 2>&1; rc=$?
 check "fpi12_deltapp (corrected)" 0 $rc "$log" && echo "ok   fpi12_deltapp corrected: runs (D-038 F1)"

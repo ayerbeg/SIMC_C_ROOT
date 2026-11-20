@@ -304,6 +304,12 @@ struct RadSetup {
 /// Legacy: the layout of SIMC 294f662 (and 20d46fc for doing_nuc_elast). CLI --tree-layout, JSON "output": {"layout"}.
 enum class TreeLayout { Upstream /**< upstream 59ccdf6 (default) */, Legacy /**< 294f662 */ };
 
+/// Task U.R (D-080): the upstream Fortran SIMC commit that `fortran_compat` reproduces. U59ccdf6 (default) = JeffersonLab
+/// master 59ccdf6, where upstream fixed D-006 (transp.f:158, 1fae2d7) and D-038 F1 (dbase.f:832, 20d46fc); U294f662 = the
+/// frozen 294f662 behaviour (kaon K->pi pi daughter mass Mk in the first half of an element; the H which_pion = 3 STOP
+/// without doing_pizero), for the references of the frozen tree. No effect without fortran_compat.
+enum class CompatTarget { U59ccdf6 /**< upstream 59ccdf6 (default) */, U294f662 /**< frozen 294f662 */ };
+
 /**
  * @brief Every constant of a run, derived from the input before the event loop (see the file description).
  *
@@ -323,6 +329,10 @@ struct RunSetup {
     /// Ntuple layout of the tree h10 (task U.2): upstream 59ccdf6 (default) or legacy 294f662. Set from
     /// SetupOptions::tree_layout by BuildRunSetup.
     TreeLayout tree_layout{TreeLayout::Upstream};
+    /// Task U.R: upstream commit reproduced by fortran_compat (CompatTarget). Set from SetupOptions::compat_target.
+    CompatTarget compat_target{CompatTarget::U59ccdf6};
+    /// True for fortran_compat with compat_target = U294f662 (the frozen-tree behaviour of D-006 and D-038 F1).
+    bool compat294f662() const { return fortran_compat && compat_target == CompatTarget::U294f662; }
 
     // dbase.f:239-244 (kept for the P1.4 sinks; identical to spec.e/p.theta, sin_th, cos_th)
     double e_theta{0} /**< @copydoc e_cos_th */, e_sin_th{0} /**< @copydoc e_cos_th */, e_cos_th{0};   ///< rad

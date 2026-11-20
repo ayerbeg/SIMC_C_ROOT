@@ -241,6 +241,10 @@ public:
     /// truncated raddeg of rotate_*axis.f, D-015 F9, used by the chains). Default false (corrected).
     /// @param b true for the Fortran behaviour.
     void setFortranCompat(bool b) { fortranCompat_ = b; }
+    /// Task U.R: true = with fortran_compat, the frozen 294f662 transp.f:158 (K->pi pi daughter mass Mk, D-006);
+    /// false (default) = upstream 59ccdf6 (Mpi, fixed in 1fae2d7).
+    /// @param b true for the compat target 294f662.
+    void setCompat294f662(bool b) { kaonDecayMk_ = b; }
     /// @return the D-031 run option.
     bool fortranCompat() const { return fortranCompat_; }
 
@@ -251,6 +255,7 @@ private:
     std::map<int, std::array<int, 5>> recMaxExpon_;   ///< largest exponent of each hut variable (P15.4 power tables)
     std::ostream* log_;
     bool fortranCompat_{false};
+    bool kaonDecayMk_{false};   ///< task U.R: compat target 294f662 (D-006 Mk kept); see setCompat294f662
 };
 
 namespace detail {

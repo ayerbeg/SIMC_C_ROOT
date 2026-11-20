@@ -654,8 +654,9 @@ double CosyEngine::transp(int spectr, int cls, Track& t, double zd, double& path
             recordAt(rec, t, d, pathlen, z_decay);
             // FORTRAN-BUG(D-006): original Fortran shared/transp.f:158: `m_final = Mk` for the K -> pi pi mode of a decay
             // in the first half of an element; corrected because the decay product is a pion (pr uses Mpi, and the
-            // second half transp.f:251 and project.f:84 set m_final = Mpi). fortran_compat keeps Mk.
-            DecayOut o = decayProducts(d, fortranCompat_ ? constants::Mk : constants::Mpi, beta, gamma, t.dxdzs, t.dydzs,
+            // second half transp.f:251 and project.f:84 set m_final = Mpi). Fixed upstream in 1fae2d7 (transp.f:158
+            // m_final = Mpi, D-081): fortran_compat follows 59ccdf6; only the compat target 294f662 keeps Mk.
+            DecayOut o = decayProducts(d, (fortranCompat_ && kaonDecayMk_) ? constants::Mk : constants::Mpi, beta, gamma, t.dxdzs, t.dydzs,
                                        false, rec);
             t.dxdzs = o.pxf / o.pzf;
             t.dydzs = o.pyf / o.pzf;

@@ -404,12 +404,14 @@ int testHmsCollSlitCounters() {
 }
 
 // ------------------------------------------------------------------------------------------------ D-006 transp.f:158
-// K -> pi pi decay in the first half of a transp element: m_final = Mk (Fortran) vs Mpi (corrected).
+// K -> pi pi decay in the first half of a transp element: m_final = Mk (Fortran 294f662) vs Mpi (corrected, and upstream
+// 59ccdf6 after 1fae2d7). U.R: mode 0 corrected, 1 compat target 294f662, 2 compat target 59ccdf6 (default).
 int testKaonDecayMass() {
-    double m2[2], ph[2];
-    for (int compat = 0; compat < 2; ++compat) {
+    double m2[3], ph[3];
+    for (int compat = 0; compat < 3; ++compat) {
         optics::CosyEngine eng;
-        eng.setFortranCompat(compat == 1);
+        eng.setFortranCompat(compat != 0);
+        eng.setCompat294f662(compat == 1);
         std::ostringstream log;
         eng.setLog(&log);
         eng.initForward(1, hms::McHms::defaultMatrixDir());
@@ -431,7 +433,10 @@ int testKaonDecayMass() {
         expect(d.dflag && rng.uniformsLeft() == 0, std::string("decay in the first half, 2-pion mode, compat=") +
                                                        (compat ? "1" : "0"));
     }
-    expect(sameBits(m2[1], constants::Mk * constants::Mk), "compat: the decay product gets the kaon mass (transp.f:158)");
+    expect(sameBits(m2[1], constants::Mk * constants::Mk),
+           "compat 294f662: the decay product gets the kaon mass (294f662 transp.f:158)");
+    expect(sameBits(m2[2], constants::Mpi * constants::Mpi) && sameBits(ph[2], ph[0]),
+           "compat 59ccdf6: the decay product is a pion, as corrected (fixed upstream in 1fae2d7)");
     expect(sameBits(m2[0], constants::Mpi * constants::Mpi), "corrected: the decay product is a pion (Mpi^2)");
     expect(ph[0] != ph[1], "the decay momenta differ (" + std::to_string(ph[1]) + " vs " + std::to_string(ph[0]) + " MeV/c)");
     return 0;
@@ -1084,21 +1089,24 @@ std::string specDir() { return std::string(SIMC_SOURCE_DIR) + "/data/spectral"; 
 int testDeltaPPStop() {
     SimcParameters p, q;
     if (!loadPionInp("l1s_h_delta3", p) || !loadPionInp("l1s_h_pi0delta3", q)) return 77;
-    for (int compat = 0; compat < 2; ++compat) {
+    // U.R: mode 0 corrected, 1 compat target 294f662 (STOP), 2 compat target 59ccdf6 (fixed upstream in 20d46fc: runs)
+    for (int compat = 0; compat < 3; ++compat) {
         SetupOptions so;
-        so.fortran_compat = compat == 1;
+        so.fortran_compat = compat != 0;
+        so.compat_target = compat == 1 ? CompatTarget::U294f662 : CompatTarget::U59ccdf6;
         so.data_dir = specDir();
         const RunSetup s = BuildRunSetup(p, so);
         const RunSetup s0 = BuildRunSetup(q, so);
         const bool stopped = !s.ok() && s.stops.front() == "STOP Can't do Delta+ production from neutron for pi0";
         const bool stopped0 = !s0.ok() && s0.stops.front() == "STOP Can't do Delta+ production from neutron for pi0";
-        if (compat)
-            expect(stopped, "compat: charged H(e,e'pi-)Delta++ (which_pion = 3) STOPs as the Fortran (dbase.f:823-826)");
+        if (compat == 1)
+            expect(stopped, "compat 294f662: charged H(e,e'pi-)Delta++ (which_pion = 3) STOPs as the Fortran (dbase.f:823-826)");
         else
             expect(!stopped && s.ok() && s.targ.Mtar_struck == constants::Mp && s.targ.Mrec_struck == constants::MDelta,
-                   "corrected: charged H(e,e'pi-)Delta++ is set up (Mtar_struck = Mp, Mrec_struck = MDelta)");
-        expect(stopped0, std::string("pi0 Delta0 from the neutron on H STOPs in both modes, compat=") +
-                             (compat ? "1" : "0"));
+                   std::string(compat ? "compat 59ccdf6" : "corrected") +
+                       ": charged H(e,e'pi-)Delta++ is set up (Mtar_struck = Mp, Mrec_struck = MDelta)");
+        expect(stopped0, std::string("pi0 Delta0 from the neutron on H STOPs in every mode, mode=") +
+                             std::to_string(compat));
     }
     // corrected: the configuration runs (50 events) and the weight carries the 0.55 factor of event.f:1479-1484
     driver::RunOptions opt;

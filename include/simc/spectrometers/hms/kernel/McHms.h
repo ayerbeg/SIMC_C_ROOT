@@ -220,6 +220,9 @@ public:
     /// Call it after setEngine().
     /// @param b true for the Fortran behaviour.
     void setFortranCompat(bool b) { eng_->setFortranCompat(b); }
+    /// Task U.R: compat target 294f662 for transp (D-006 kaon decay daughter mass Mk); see CosyEngine::setCompat294f662.
+    /// @param b true for the compat target 294f662.
+    void setCompat294f662(bool b) { eng_->setCompat294f662(b); }
     /// @return the D-031 run option.
     bool fortranCompat() const { return eng_->fortranCompat(); }
     /// Where the Fortran write(6,*) messages go (default std::cout; nullptr = silent). Also used by the

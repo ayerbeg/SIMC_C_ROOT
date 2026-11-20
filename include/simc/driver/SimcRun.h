@@ -70,6 +70,9 @@ struct RunOptions {
     /// Task U.2 (D-082): layout of the tree h10. Upstream (default) = upstream SIMC 59ccdf6; Legacy = SIMC 294f662
     /// (--tree-layout legacy, JSON "output": {"layout": "legacy"}). Passed to RunSetup::tree_layout.
     TreeLayout tree_layout{TreeLayout::Upstream};
+    /// Task U.R: upstream commit reproduced by fortran_compat (--compat-target 59ccdf6|294f662, JSON
+    /// "run": {"compat_target": ...}); default 59ccdf6. Passed to RunSetup::compat_target.
+    CompatTarget compat_target{CompatTarget::U59ccdf6};
     /// P15.4: worker threads of the event loop (--threads N); 0 = from the pipeline "threads" (default 1). N > 1:
     /// runThreaded() (docs/manual/markdown/reference/PERFORMANCE.md); refused with fortran_compat and with an rng other than mt64.
     int threads{0};
