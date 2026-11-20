@@ -191,6 +191,7 @@ std::unique_ptr<Process> makeProcess(const std::string& inp, const std::string& 
     }
     SetupOptions opt;
     opt.fortran_compat = true;   // D-031: Fortran references -> exact Fortran behaviour
+    opt.compat_target = CompatTarget::U294f662;   // U.R: 294f662 references (frozen tree)
     opt.data_dir = fortran_dir;
     P->setup = BuildRunSetup(P->params, opt);
     if (!P->setup.ok()) {

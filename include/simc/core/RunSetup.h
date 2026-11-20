@@ -332,6 +332,7 @@ struct RunSetup {
     /// Task U.R: upstream commit reproduced by fortran_compat (CompatTarget). Set from SetupOptions::compat_target.
     CompatTarget compat_target{CompatTarget::U59ccdf6};
     /// True for fortran_compat with compat_target = U294f662 (the frozen-tree behaviour of D-006 and D-038 F1).
+    /// @return fortran_compat && compat_target == CompatTarget::U294f662.
     bool compat294f662() const { return fortran_compat && compat_target == CompatTarget::U294f662; }
 
     // dbase.f:239-244 (kept for the P1.4 sinks; identical to spec.e/p.theta, sin_th, cos_th)

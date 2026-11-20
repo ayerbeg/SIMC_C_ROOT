@@ -68,6 +68,7 @@ struct Kernels {
         if (!p) {
             p = std::make_unique<McHrs>(s);
             p->setFortranCompat(true);
+            p->setCompat294f662(true);   // U.R: 294f662 reference (D-006 kaon decay mass Mk)
             p->setLog(&log);
         }
         return *p;
@@ -200,6 +201,7 @@ int runMc(const std::string& dir, double tol) {
 int runTransp(const std::string& dir, double tol) {
     optics::CosyEngine eng;
     eng.setFortranCompat(true);
+    eng.setCompat294f662(true);   // U.R: 294f662 reference (D-006 kaon decay mass Mk)
     std::ostringstream log;
     eng.setLog(&log);
     for (int sp : {3, 4}) eng.loadForward(sp, McHrs::defaultMatrixDir() + "/hrs/hrs_forward_cosy.dat");
@@ -520,6 +522,7 @@ int runSelftest() {
         std::ostringstream logc;
         kc.setLog(&logc);
         kc.setFortranCompat(true);
+        kc.setCompat294f662(true);   // U.R: 294f662 reference (D-006 kaon decay mass Mk)
         McHrsArgs c = ray(1500., 0.5, 0.05, -0.02, 0.003, -0.004, kMe2);
         rng.load({}, {});
         kc.mcHrs(c, rng);

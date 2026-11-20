@@ -206,6 +206,7 @@ int replay(const std::string& capdir, const std::string& rundir, const std::stri
     }
     SetupOptions opt;
     opt.fortran_compat = true;   // D-031: Fortran references -> exact Fortran behaviour
+    opt.compat_target = CompatTarget::U294f662;   // U.R: 294f662 references (frozen tree)
     opt.run_name = runName;
     opt.data_dir = fdir;
     RunSetup setup = BuildRunSetup(p, opt);

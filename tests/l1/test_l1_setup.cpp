@@ -110,6 +110,7 @@ int runTargetInitNonLoss(const std::string& dir, double tol, const std::string& 
         p.using_Coulomb = r["using_Coulomb"] != 0;
         SetupOptions opt;
         opt.fortran_compat = true;   // D-031: Fortran references -> exact Fortran behaviour
+        opt.compat_target = CompatTarget::U294f662;   // U.R: 294f662 references (frozen tree)
         opt.data_dir = data_dir;   // theory files for the C12 rows (dbase.f:555-558)
         const RunSetup s = BuildRunSetup(p, opt);
         if (!s.ok()) std::printf("  row %zu: setup stopped: %s\n", r.number(), s.stops.front().c_str());

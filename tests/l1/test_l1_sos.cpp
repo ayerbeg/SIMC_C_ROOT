@@ -62,6 +62,7 @@ int runMc(const std::string& dir, double tol) {
     SosSpectrometer plugin;
     McSos& sos = plugin.kernel();
     sos.setFortranCompat(true);   // D-031: Fortran tables -> exact Fortran behaviour
+    sos.setCompat294f662(true);   // U.R: 294f662 reference (D-006 kaon decay mass Mk)
     std::ostringstream log;
     sos.setLog(&log);
     ScriptedRandom rng(ScriptedRandom::GaussMode::Scripted);
@@ -207,6 +208,7 @@ std::vector<ColumnSpec> present(const std::string& dir, const std::vector<Column
 int runTransp(const std::string& dir, double tol) {
     optics::CosyEngine eng;
     eng.setFortranCompat(true);
+    eng.setCompat294f662(true);   // U.R: 294f662 reference (D-006 kaon decay mass Mk)
     std::ostringstream log;
     eng.setLog(&log);
     eng.initForward(2, McSos::defaultMatrixDir());
@@ -243,6 +245,7 @@ int runTransp(const std::string& dir, double tol) {
 int runChain(const std::string& dir, double tol) {
     optics::CosyEngine eng;
     eng.setFortranCompat(true);
+    eng.setCompat294f662(true);   // U.R: 294f662 reference (D-006 kaon decay mass Mk)
     std::ostringstream log;
     eng.setLog(&log);
     eng.initForward(2, McSos::defaultMatrixDir());
@@ -345,6 +348,7 @@ int runRecon(const std::string& dir, double tol) {
 int runHut(const std::string& dir, double tol) {
     McSos sos;
     sos.setFortranCompat(true);
+    sos.setCompat294f662(true);   // U.R: 294f662 reference (D-006 kaon decay mass Mk)
     std::ostringstream log;
     sos.setLog(&log);
     ScriptedRandom rng(ScriptedRandom::GaussMode::Scripted);
@@ -481,6 +485,7 @@ int runSelftest() {
     std::ostringstream log;
     s.setLog(&log);
     s.setFortranCompat(true);
+    s.setCompat294f662(true);   // U.R: 294f662 reference (D-006 kaon decay mass Mk)
     ScriptedRandom rng;
     {
         McSosArgs a = ray(1000., 1.0, 0.1, -0.05, 0.002, -0.003, kMe2);
@@ -529,6 +534,7 @@ int runSelftest() {
         McSos k;
         k.setLog(&log);
         k.setFortranCompat(true);
+        k.setCompat294f662(true);   // U.R: 294f662 reference (D-006 kaon decay mass Mk)
         Mt64Random mt(20261030);
         std::map<int, long> tally;
         double s2d = 0, s2x = 0, s2y = 0;

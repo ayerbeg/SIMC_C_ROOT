@@ -61,6 +61,7 @@ bool loadEngine(CosyEngine& eng, const std::string& mdir, bool recon) {
 int runTransp(const std::string& mdir, const std::string& dir) {
     CosyEngine eng;
     eng.setFortranCompat(true);   // D-031: Fortran tables -> exact Fortran behaviour
+    eng.setCompat294f662(true);   // U.R: 294f662 reference (D-006 kaon decay mass Mk)
     std::ostringstream log;
     eng.setLog(&log);
     if (!loadEngine(eng, mdir, false)) return 1;
@@ -100,6 +101,7 @@ int runTransp(const std::string& mdir, const std::string& dir) {
 int runChain(const std::string& mdir, const std::string& dir) {
     CosyEngine eng;
     eng.setFortranCompat(true);   // D-031: Fortran tables -> exact Fortran behaviour
+    eng.setCompat294f662(true);   // U.R: 294f662 reference (D-006 kaon decay mass Mk)
     std::ostringstream log;
     eng.setLog(&log);
     if (!loadEngine(eng, mdir, false)) return 1;
@@ -149,6 +151,7 @@ int runChain(const std::string& mdir, const std::string& dir) {
 int runRecon(const std::string& mdir, const std::string& dir) {
     CosyEngine eng;
     eng.setFortranCompat(true);   // D-031: Fortran tables -> exact Fortran behaviour
+    eng.setCompat294f662(true);   // U.R: 294f662 reference (D-006 kaon decay mass Mk)
     if (!loadEngine(eng, mdir, true)) return 1;
     std::vector<ColumnSpec> c;
     for (const char* n : {"dpp_recon", "dph_recon", "dth_recon", "y_recon"}) c.push_back({n, g_tol, 0.0});
@@ -220,6 +223,7 @@ int runSelftest(const std::string& mdir) {
     }
     CosyEngine eng;
     eng.setFortranCompat(true);   // D-031: Fortran tables -> exact Fortran behaviour
+    eng.setCompat294f662(true);   // U.R: 294f662 reference (D-006 kaon decay mass Mk)
     std::ostringstream log;
     eng.setLog(&log);
     bool loaded = loadEngine(eng, mdir, true);

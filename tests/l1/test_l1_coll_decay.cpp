@@ -543,6 +543,7 @@ int runTp(const std::string& dir) {
     std::ostringstream log;
     eng->setLog(&log);
     eng->setFortranCompat(true);
+    eng->setCompat294f662(true);   // U.R: 294f662 reference (D-006 kaon decay mass Mk)
     const std::string mdir = hms::McHms::defaultMatrixDir();
     eng->initForward(1, mdir);
     eng->initForward(5, mdir);
@@ -623,6 +624,7 @@ int runPionDecayStep(const std::string& dir) {
     std::ostringstream log;
     eng->setLog(&log);
     eng->setFortranCompat(true);
+    eng->setCompat294f662(true);   // U.R: 294f662 reference (D-006 kaon decay mass Mk)
     const std::string mdir = hms::McHms::defaultMatrixDir();
     eng->initForward(1, mdir);
     eng->initForward(5, mdir);

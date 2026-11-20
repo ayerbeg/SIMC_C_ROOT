@@ -56,6 +56,7 @@ int runMc(const std::string& dir, double tol) {
     HmsSpectrometer plugin;
     McHms& hms = plugin.kernel();
     hms.setFortranCompat(true);   // D-031: Fortran tables -> exact Fortran behaviour
+    hms.setCompat294f662(true);   // U.R: 294f662 reference (D-006 kaon decay mass Mk)
     std::ostringstream log;
     hms.setLog(&log);
     ScriptedRandom rng(ScriptedRandom::GaussMode::Scripted);
@@ -185,6 +186,7 @@ int runP12(const std::string& dir, double tol) {
     }
     McHms hms;
     hms.setFortranCompat(true);   // D-031: Fortran tables -> exact Fortran behaviour
+    hms.setCompat294f662(true);   // U.R: 294f662 reference (D-006 kaon decay mass Mk)
     Mt64Random rng(12345);
     const char* cols[8] = {"hsdelta", "hsyptar", "hsxptar", "hsytar", "hsxfp", "hsxpfp", "hsyfp", "hsypfp"};
     std::vector<simcl1::ColumnResult> res(8);
@@ -260,6 +262,7 @@ int runDist(const std::string& refdir, const std::string& cfg, long nray, std::u
 
     McHms hms;
     hms.setFortranCompat(true);   // D-031: Fortran tables -> exact Fortran behaviour
+    hms.setCompat294f662(true);   // U.R: 294f662 reference (D-006 kaon decay mass Mk)
     Mt64Random rng(seed);
     std::map<std::string, std::vector<double>> v;
     std::map<simcl1::dist::CodeKey, long> ncode;
@@ -359,7 +362,7 @@ int runSelftest() {
         SimcParameters p;
         Json cfg = {{"using_HMScoll", true}, {"ms_flag", false}};
         s->configure(cfg, p);
-        { RunSetup rs; rs.fortran_compat = true; s->init(rs); }   // D-031: exact Fortran behaviour
+        { RunSetup rs; rs.fortran_compat = true; rs.compat_target = CompatTarget::U294f662; s->init(rs); }   // D-031: exact Fortran behaviour
         Mt64Random rng(7);
         SpecInput in;
         in.p_spec = 3035.585;
@@ -374,6 +377,7 @@ int runSelftest() {
     {   // collimator (using_HMScoll, pions): smoke test, no Fortran table yet
         McHms h;
         h.setFortranCompat(true);   // D-031: Fortran tables -> exact Fortran behaviour
+        h.setCompat294f662(true);   // U.R: 294f662 reference (D-006 kaon decay mass Mk)
         std::ostringstream log;
         h.setLog(&log);
         Mt64Random rng(11);
@@ -399,6 +403,7 @@ int runSelftest() {
     {   // decay: pions with a short ctau decay (optics::project decay branch) and change m2
         McHms h;
         h.setFortranCompat(true);   // D-031: Fortran tables -> exact Fortran behaviour
+        h.setCompat294f662(true);   // U.R: 294f662 reference (D-006 kaon decay mass Mk)
         Mt64Random rng(13);
         const double mpi2 = 139.57018 * 139.57018;
         long decayed = 0;

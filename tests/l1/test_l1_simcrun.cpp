@@ -244,6 +244,7 @@ int replay(const std::string& capdir, const std::string& rundir, const std::stri
     }
     driver::RunOptions opt;
     opt.fortran_compat = true;   // D-031: replay of a Fortran capture -> exact Fortran behaviour
+    opt.compat_target = CompatTarget::U294f662;   // U.R: 294f662 references (frozen tree)
     // U.2: the tree layout of the reference: upstream 59ccdf6 if its .hist has the upstream line `doing_nuc_elast=`,
     // else the legacy 294f662 layout (env LAYOUT=legacy|upstream overrides, as tests/l1/ranlux_fullrun.sh)
     {

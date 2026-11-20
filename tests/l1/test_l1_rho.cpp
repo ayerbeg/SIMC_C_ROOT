@@ -496,6 +496,7 @@ struct SetupCache {
         if (!rd.loadRun(cfgInp(inpdir, cfg))) throw std::runtime_error("cannot read " + cfgInp(inpdir, cfg));
         SetupOptions so;
         so.fortran_compat = true;
+        so.compat_target = CompatTarget::U294f662;   // U.R: 294f662 references (frozen tree)
         so.data_dir = spectral;
         RunSetup s = BuildRunSetup(p, so);
         if (!s.ok()) throw std::runtime_error("cfg " + std::to_string(cfg) + ": " + s.stops.front());

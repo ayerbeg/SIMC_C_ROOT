@@ -757,6 +757,7 @@ int runPeepix(const std::string& dir, const std::string& stateDir, const std::st
         if (!rd.loadRun(inp)) throw std::runtime_error("cannot read " + inp);
         SetupOptions so;
         so.fortran_compat = true;
+        so.compat_target = CompatTarget::U294f662;   // U.R: 294f662 references (frozen tree)
         so.data_dir = spectralDir;
         P->setup = BuildRunSetup(p, so);
         if (!P->setup.ok()) throw std::runtime_error(inp + ": setup STOP " + P->setup.stops.front());

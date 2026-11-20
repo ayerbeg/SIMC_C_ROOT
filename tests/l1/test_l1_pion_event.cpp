@@ -870,6 +870,7 @@ int runPionState(const std::string& dir, const std::string& inpdir, double tol) 
         if (!rd.loadRun(cfgInp(inpdir, cfg))) throw std::runtime_error("cannot read cfg " + std::to_string(cfg));
         driver::RunOptions opt;
         opt.fortran_compat = true;
+        opt.compat_target = CompatTarget::U294f662;   // U.R: 294f662 references (frozen tree)
         opt.data_dir = gSpectral;
         opt.quiet_stages = true;
         opt.run_name = "pion_state_cfg" + std::to_string(cfg);
@@ -1085,6 +1086,7 @@ int runPionState(const std::string& dir, const std::string& inpdir, double tol) 
                 rd.loadRun(cfgInp(inpdir, cfg));
                 SetupOptions so;
                 so.fortran_compat = true;
+                so.compat_target = CompatTarget::U294f662;   // U.R: 294f662 references (frozen tree)
                 so.data_dir = gSpectral;
                 it = st.emplace(cfg, BuildRunSetup(p, so)).first;
             }
@@ -1145,6 +1147,7 @@ int runPionState(const std::string& dir, const std::string& inpdir, double tol) 
         } else {
             SetupOptions so;
             so.fortran_compat = true;
+            so.compat_target = CompatTarget::U294f662;   // U.R: 294f662 references (frozen tree)
             so.data_dir = gSpectral;
             const RunSetup s = BuildRunSetup(p, so);
             got = s.stops.empty() ? "<no STOP>" : s.stops.front();

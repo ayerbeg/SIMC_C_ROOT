@@ -118,6 +118,7 @@ RunSetup setupFor(const std::string& inpdir, int cfg, const std::string& data_di
     if (!rd.loadRun(inp)) throw std::runtime_error("cannot read " + inp);
     SetupOptions opt;
     opt.fortran_compat = true;
+    opt.compat_target = CompatTarget::U294f662;   // U.R: 294f662 references (frozen tree)
     opt.data_dir = data_dir;
     RunSetup s = BuildRunSetup(p, opt);
     if (!s.ok()) throw std::runtime_error("cfg " + std::to_string(cfg) + ": setup STOP " + s.stops.front());
@@ -750,6 +751,7 @@ int runEepState(const std::string& dir, const std::string& inpdir, const std::st
         if (!rd.loadRun(cfgInp(inpdir, cfg))) throw std::runtime_error("cannot read cfg " + std::to_string(cfg));
         driver::RunOptions opt;
         opt.fortran_compat = true;
+        opt.compat_target = CompatTarget::U294f662;   // U.R: 294f662 references (frozen tree)
         opt.data_dir = dataDir;
         opt.quiet_stages = true;
         opt.run_name = "eep_state_cfg" + std::to_string(cfg);
