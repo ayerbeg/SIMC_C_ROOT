@@ -73,6 +73,7 @@ public:
             h_ = std::make_unique<hms::McHms>();
             h_->setEngine(eng);
             h_->setFortranCompat(compat);
+            h_->setCompat294f662(compat);   // U.R: 294f662 tables (D-006 Mk)
             h_->setLog(&log_);
             h_->setTransportTrace(&tt_);
             h_->setCollTrace(&ct_);
@@ -80,6 +81,7 @@ public:
             s_ = std::make_unique<shms::McShms>();
             s_->setEngine(eng);
             s_->setFortranCompat(compat);
+            s_->setCompat294f662(compat);   // U.R: 294f662 tables (D-006 Mk)
             s_->setLog(&log_);
             s_->setTransportTrace(&tt_);
             s_->setCollTrace(&ct_);
