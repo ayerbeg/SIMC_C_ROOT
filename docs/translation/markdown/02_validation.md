@@ -83,6 +83,17 @@ The shipped-input suite (P15.2) applies the same to every Fortran reference of t
 `validation/scripts/p15_shipped_regression.sh` (one CTest `regression_shipped_<folder>` per `reference/runs/shipped_*`
 and `p15f1_*` folder, labels `regression_shipped;slow`), plus `tests/fortran_diff/cli_shipped_inputs.sh` for the inputs
 the Fortran itself does not run as shipped (legacy dotted names → the same STOP, spect_mode = 2, rho on A = 4, ...).
+
+The upstream suite (U.3) does the same against the 59ccdf6 reference set `reference/runs/u59_*` (the 294f662 reference
+inputs re-run with upstream SIMC 59ccdf6): `validation/scripts/u3_upstream_identity.sh` (compat target 59ccdf6, upstream
+tree layout) decides from each reference what can be compared — a full run (`.hist`, `.geni`, `.gen`, every tree column),
+an `Nntu = 0` copy (no tree), the π0 + target-field run whose 84 columns overflow upstream's arrays of 80 (U-A4/A5: the
+tree is compared with the `.bin` itself, `simc_root_identity --bin`, columns 1-80), the kaon `Nntu = 1` runs that STOP
+upstream (U-A2: SIMC++ runs; its `.hist/.geni/.gen` equal the `Nntu = 0` copy), the STOPs that SIMC++ reproduces (with the
+partial tree of a STOP compared through `--ngen`), and the legacy-name sweep. The CTest label `regression_upstream`
+(also `slow`) runs a representative subset; the 2-hour rho runs are checked as a prefix (`--ngen 2000`,
+`simc_root_identity --first 2000`). The L2 of the corrected mode against the same references is
+`validation/scripts/u3_l2_corrected.sh`.
 Policy (D-058): when an L2 comparison in compat mode flags something, the first check is a RANLUX same-seed run;
 bitwise identity proves the flag is a fluctuation.
 

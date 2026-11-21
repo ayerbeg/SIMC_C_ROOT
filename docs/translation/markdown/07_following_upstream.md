@@ -38,6 +38,10 @@ it.
   reference: a `.hist` with the line `doing_nuc_elast=` is a 59ccdf6 reference, otherwise 294f662
   (`tests/l1/ranlux_fullrun.sh`, `validation/scripts/p15_shipped_regression.sh`); the compat regression baselines are
   in the 294f662 behaviour (`tests/regression/output_identity.sh` adds `--compat-target 294f662`).
+* **U.3**: the whole 294f662 reference set re-run with 59ccdf6 (`reference/runs/u59_*`) is reproduced by
+  `--fortran-compat` (`validation/scripts/u3_upstream_identity.sh`, CTest label `regression_upstream`); the exceptions are
+  the U-A2 kaon STOP (SIMC++ runs, compared with the `Nntu = 0` copies) and the U-A4/A5 π0 + field run (compared with the
+  `.bin`, columns 1-80). Corrected-mode L2 against the same set: `validation/scripts/u3_l2_corrected.sh`.
 
 ### Findings fixed upstream
 

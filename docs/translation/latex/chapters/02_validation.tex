@@ -91,6 +91,17 @@ The shipped-input suite (P15.2) applies the same to every Fortran reference of t
 \code{validation/\allowbreak{}scripts/\allowbreak{}p15\_\allowbreak{}shipped\_\allowbreak{}regression.\allowbreak{}sh} (one CTest \code{regression\_\allowbreak{}shipped\_\allowbreak{}<folder>} per \code{reference/\allowbreak{}runs/\allowbreak{}shipped\_\allowbreak{}*}
 and \code{p15f1\_\allowbreak{}*} folder, labels \code{regression\_\allowbreak{}shipped;slow}), plus \code{tests/\allowbreak{}fortran\_\allowbreak{}diff/\allowbreak{}cli\_\allowbreak{}shipped\_\allowbreak{}inputs.\allowbreak{}sh} for the inputs
 the Fortran itself does not run as shipped (legacy dotted names → the same STOP, spect\_mode = 2, rho on A = 4, ...).
+
+The upstream suite (U.3) does the same against the 59ccdf6 reference set \code{reference/\allowbreak{}runs/\allowbreak{}u59\_\allowbreak{}*} (the 294f662 reference
+inputs re-run with upstream SIMC 59ccdf6): \code{validation/\allowbreak{}scripts/\allowbreak{}u3\_\allowbreak{}upstream\_\allowbreak{}identity.\allowbreak{}sh} (compat target 59ccdf6, upstream
+tree layout) decides from each reference what can be compared --- a full run (\code{.\allowbreak{}hist}, \code{.\allowbreak{}geni}, \code{.\allowbreak{}gen}, every tree column),
+an \code{Nntu\ =\ 0} copy (no tree), the π0 + target-field run whose 84 columns overflow upstream's arrays of 80 (U-A4/A5: the
+tree is compared with the \code{.\allowbreak{}bin} itself, \code{simc\_\allowbreak{}root\_\allowbreak{}identity\ -{}-{}bin}, columns 1-80), the kaon \code{Nntu\ =\ 1} runs that STOP
+upstream (U-A2: SIMC++ runs; its \code{.\allowbreak{}hist/\allowbreak{}.geni/\allowbreak{}.gen} equal the \code{Nntu\ =\ 0} copy), the STOPs that SIMC++ reproduces (with the
+partial tree of a STOP compared through \code{-{}-{}ngen}), and the legacy-name sweep. The CTest label \code{regression\_\allowbreak{}upstream}
+(also \code{slow}) runs a representative subset; the 2-hour rho runs are checked as a prefix (\code{-{}-{}ngen\ 2000},
+\code{simc\_\allowbreak{}root\_\allowbreak{}identity\ -{}-{}first\ 2000}). The L2 of the corrected mode against the same references is
+\code{validation/\allowbreak{}scripts/\allowbreak{}u3\_\allowbreak{}l2\_\allowbreak{}corrected.\allowbreak{}sh}.
 Policy (D-058): when an L2 comparison in compat mode flags something, the first check is a RANLUX same-seed run;
 bitwise identity proves the flag is a fluctuation.
 

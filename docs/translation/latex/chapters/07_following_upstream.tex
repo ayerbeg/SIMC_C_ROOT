@@ -48,6 +48,10 @@ references of the frozen tree can still be reproduced bit for bit. The test harn
 reference: a \code{.\allowbreak{}hist} with the line \code{doing\_\allowbreak{}nuc\_\allowbreak{}elast=} is a 59ccdf6 reference, otherwise 294f662
 (\code{tests/\allowbreak{}l1/\allowbreak{}ranlux\_\allowbreak{}fullrun.\allowbreak{}sh}, \code{validation/\allowbreak{}scripts/\allowbreak{}p15\_\allowbreak{}shipped\_\allowbreak{}regression.\allowbreak{}sh}); the compat regression baselines are
 in the 294f662 behaviour (\code{tests/\allowbreak{}regression/\allowbreak{}output\_\allowbreak{}identity.\allowbreak{}sh} adds \code{-{}-{}compat-{}target\ 294f662}\simcidx{Command-line options!compat-target@\code{-{}-{}compat-{}target}}).
+\item \textbf{U.3}: the whole 294f662 reference set re-run with 59ccdf6 (\code{reference/\allowbreak{}runs/\allowbreak{}u59\_\allowbreak{}*}) is reproduced by
+\code{-{}-{}fortran-{}compat} (\code{validation/\allowbreak{}scripts/\allowbreak{}u3\_\allowbreak{}upstream\_\allowbreak{}identity.\allowbreak{}sh}, CTest label \code{regression\_\allowbreak{}upstream}); the exceptions are
+the U-A2 kaon STOP (SIMC++ runs, compared with the \code{Nntu\ =\ 0} copies) and the U-A4/A5 π0 + field run (compared with the
+\code{.\allowbreak{}bin}, columns 1-80). Corrected-mode L2 against the same set: \code{validation/\allowbreak{}scripts/\allowbreak{}u3\_\allowbreak{}l2\_\allowbreak{}corrected.\allowbreak{}sh}.
 \end{itemize}
 \subsection*{\texorpdfstring{Findings fixed upstream}{Findings fixed upstream}}\label{translation_report-07u5ffollowingu5fupstream:findings-fixed-upstream}
 Three findings of the translation were fixed by upstream itself (D-081). The catalogue marks them "fixed upstream in

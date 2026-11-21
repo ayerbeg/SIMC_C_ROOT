@@ -231,6 +231,51 @@ foreach(_f ${SIMC_SHIPPED_FOLDERS})
                          ENVIRONMENT "REF=${SIMC_REFERENCE_DIR}/runs;JOBS=1" LABELS "regression_shipped;slow")
 endforeach()
 
+# U.3: label "regression_upstream" — full-run identity against the upstream SIMC 59ccdf6 reference set reference/runs/u59_*
+# (U.F2: the 294f662 reference inputs re-run with simc_gfortran 59ccdf6): simc++ RANLUX + --fortran-compat (compat target
+# 59ccdf6) + --tree-layout upstream, one u59 folder per test through validation/scripts/u3_upstream_identity.sh (which
+# decides from the reference what is compared: FULL .hist/.geni/.gen/tree, NONTU, A5 tree vs .bin, STOP_A2, STOP, SWEEP).
+# A representative subset (one per reaction / spectrometer / feature, ~15 min in total); the sweep over all 132 folders is
+# the script itself, its result is on disk (simc_runs/*_U.3_upstream_identity/summary.tsv). The rho runs take ~2 h each,
+# so rho is checked as a prefix: --ngen 2000 and the first 2000 entries of the 100000-entry reference tree (NGEN_PREFIX).
+# The 294f662 tests above (regression_shipped, compat target 294f662 chosen from the reference .hist) are unchanged.
+# Labels "regression_upstream;slow"; skipped (77) without reference.
+set(SIMC_U59_FOLDERS
+    u59_p14f1_eep_sos_A                    # SOS (eep)
+    u59_p14f1_hrs_LeRp_rad_A               # HRS-L electron, HRS-R proton
+    u59_p14f2_eep_caloe_A                  # calorimeter electron arm
+    u59_p15f2_poltar_bphi0                 # polarized-target field
+    u59_p15f2_poltar_pi0                   # A5: pi0 + field, 84 columns, tree vs .bin columns 1-80
+    u59_p15f1_eep_sm1_A u59_p15f1_pion_sm1_A   # spect_mode
+    u59_p15f1_pi0_hms_A u59_p15f1_pi0_shms_A   # pi0 -> 2 gamma, HMS / SHMS hadron arm
+    u59_kaon_d_k1_sigm_rad_dec1_A_nontu    # kaon decay ON (1fae2d7 transp.f:158), Nntu = 0
+    u59_shipped_test_kaon_d_pct            # kaon Nntu = 1: upstream STOP (A2), simc++ U-A2 runs, vs the _nontu copy
+    u59_shipped_fpi12_deltapp              # H which_pion=3 (20d46fc dbase.f:832), runs since 59ccdf6
+    u59_eep_h_test_pctnames                # toolchain-only class (glibc 2.43 Weight)
+    u59_shipped_mc_neg_h_z37_ptbin         # SIDIS (pfermi refill)
+    u59_shipped_test_pion_d_pct            # pion D
+    u59_shipped_test_delta_h2_pct          # Delta
+    u59_sidis_d_k1_pip_fermi_rad_A         # STOP as before (Ctq5Pdf), partial tree of 182 events
+    u59_delta_d_d1_rad_A                   # STOP as before (dbase)
+    u59_shipped_sweep)                     # 18 legacy inputs: same STOP and not-registered list; temp
+foreach(_f ${SIMC_U59_FOLDERS})
+    add_test(NAME regression_upstream_${_f}
+             COMMAND ${CMAKE_SOURCE_DIR}/validation/scripts/u3_upstream_identity.sh $<TARGET_FILE:simcpp>
+                     $<TARGET_FILE:simc_root_identity> ${CMAKE_CURRENT_BINARY_DIR}/upstream_${_f} ${_f})
+    set_tests_properties(regression_upstream_${_f} PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 1800
+                         ENVIRONMENT "REF=${SIMC_REFERENCE_DIR}/runs;JOBS=1" LABELS "regression_upstream;slow")
+endforeach()
+add_test(NAME regression_upstream_u59_rho_h_k1_norad_A_prefix2000
+         COMMAND ${CMAKE_SOURCE_DIR}/validation/scripts/u3_upstream_identity.sh $<TARGET_FILE:simcpp>
+                 $<TARGET_FILE:simc_root_identity> ${CMAKE_CURRENT_BINARY_DIR}/upstream_rho_prefix u59_rho_h_k1_norad_A)
+set_tests_properties(regression_upstream_u59_rho_h_k1_norad_A_prefix2000 PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 1800
+                     ENVIRONMENT "REF=${SIMC_REFERENCE_DIR}/runs;JOBS=1;NGEN_PREFIX=2000" LABELS "regression_upstream;slow")
+# simc_root_identity --first / --bin (U.3) on a small known case: the A5 run above exercises --bin; --first on itself
+add_test(NAME simc_root_identity_modes
+         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/root_identity_modes.sh $<TARGET_FILE:simc_root_identity>
+                 ${SIMC_REFERENCE_DIR}/runs ${CMAKE_CURRENT_BINARY_DIR}/root_identity_modes)
+set_tests_properties(simc_root_identity_modes PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 120 LABELS "regression")
+
 # P15.4: the parallel event loop (--threads N; docs/manual/markdown/reference/PERFORMANCE.md). Reproducibility: two runs with the same (seed, N) are
 # identical (H(e,e'p) rad: HMS+SHMS; the polarized-target pion example: target field + pion + SHMS); --threads 1 is the
 # sequential loop bit for bit; --threads > 1 is refused with --fortran-compat and with the rng "ranlux".

@@ -106,6 +106,7 @@ Tests are grouped by directory and labelled:
 | `fortran_diff` | tests/fortran_diff | one test per behaviour that differs between the default and the `fortran_compat` mode, both modes; input refusals | 47 |
 | `regression` | tests/regression | before/after output identity against the C++ baselines (both modes, every family) | 30 |
 | `regression_shipped` | tests/regression | full-run identity of `simc++` (`ranlux`, `--fortran-compat`) against the reference run of every shipped input (also `slow`) | 41 |
+| `regression_upstream` | tests/regression | full-run identity against the upstream 59ccdf6 references `reference/runs/u59_*` (`validation/scripts/u3_upstream_identity.sh`, a representative subset; also `slow`) | 20 |
 | `threads` | tests/regression | `--threads N` reproducibility, `--threads 1` = sequential, refusals | 4 |
 | `examples` | examples | the example plug-ins through the complete driver | 5 |
 | `package` | examples | install into a temporary prefix, out-of-tree plug-in build with `find_package(SIMC)`, run | 1 |
