@@ -27,6 +27,9 @@ namespace simc {
 namespace driver {
 
 namespace {
+// gfortran MAX of two reals: the second argument wins when the first is NaN (not std::max, which returns the NaN;
+// docs/translation/markdown/04_numerics.md §4.4). U.3: simc.f:1651 below.
+inline double fmaxF(double a, double b) { return (b > a || std::isnan(a)) ? b : a; }
 constexpr double beta_electron = 1.;   // simc.f:1329
 constexpr double zero = 0.0e0;         // simc.f:1347
 }  // namespace
@@ -323,7 +326,11 @@ bool MonteCarlo::run(const Event& orig, MainEvent& main, Event& recon, IRandom& 
             target_.tripThruTarget(ITarget::kHadron, zero, recon.p.E, recon.p.theta, Mh, ITarget::kMostProbable, rng)
                 .eloss;
         recon.p.E = recon.p.E + eloss_P_arm;
-        recon.p.E = std::max(recon.p.E, std::sqrt(Mh2 + 0.000001));
+        // Fortran: simc.f:1651 (294f662: l.1641) recon%p%E = max(recon%p%E,sqrt(Mh2+0.000001)). A hadron ray whose
+        // reconstruction failed (recon%p%delta NaN, e.g. a rho event outside the hadron-arm matrix range) has
+        // recon%p%E = NaN here; gfortran MAX then returns sqrt(Mh2+1e-6), i.e. recon%p%P = 1e-3 MeV, and Em, t, z, pt2
+        // are finite (U.3: entry 57257 of u59_rho_h_k1_rad_A was NaN with std::max).
+        recon.p.E = fmaxF(recon.p.E, std::sqrt(Mh2 + 0.000001));
         recon.p.P = std::sqrt(recon.p.E * recon.p.E - Mh2);
     }
 

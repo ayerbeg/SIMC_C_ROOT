@@ -279,6 +279,7 @@ bool EepReactionBase::completeRecon(Event& recon) {
     py = recon.up.x;
     pz = recon.up.z;
     dummy = std::sqrt((sq(qx) + sq(qy)) * (sq(qx) + sq(qy) + sq(qz)));
+    const double dummy_x = dummy;
     new_x_x = -qx * qz / dummy;
     new_x_y = -qy * qz / dummy;
     new_x_z = (sq(qx) + sq(qy)) / dummy;
@@ -286,7 +287,11 @@ bool EepReactionBase::completeRecon(Event& recon) {
     new_y_x = qy / dummy;
     new_y_y = -qx / dummy;
     new_y_z = 0.0;
-    p_new_x = px * new_x_x + py * new_x_y + pz * new_x_z;
+    // U.3: gfortran -O folds the two signs of px*new_x_x = (-up%y)*(-qx*qz/dummy) into up%y*(qx*qz/dummy)
+    // (objdump of event.o, complete_recon_ev 0x4587/0x45d7). For a finite up%y the product is the same number; for a
+    // failed hadron reconstruction (recon%up NaN) the NaN of p_new_x, and so of phi_pq, keeps the sign of up%y instead
+    // of the flipped one (u59_rho_h_k1_rad_A entry 57257: phipq +nan in the Fortran).
+    p_new_x = recon.up.y * (qx * qz / dummy_x) + py * new_x_y + pz * new_x_z;
     p_new_y = px * new_y_x + py * new_y_y + pz * new_y_z;
     if ((sq(p_new_x) + sq(p_new_y)) == 0.)
         recon.phi_pq = 0.0;
