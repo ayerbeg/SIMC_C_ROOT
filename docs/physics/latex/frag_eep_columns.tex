@@ -1,0 +1,35 @@
+% docs/physics/latex/frag_eep_columns.tex - the (e,e'p) tree layout, \input by the notes 01, 02 and 03.
+% Source: upstream results_write.f:28-313 (59ccdf6) and src/output/NtupleLayout.cpp (UpstreamEepColumns,
+% EepNtupleColumns). No displayed equations here (the lint of build_physics_pdf.py checks the notes that input it).
+The tree \code{h10} has one entry per successful event \fsrc{simc.f:346} and, in the default (upstream 59ccdf6) layout,
+53 columns \fsrc{results\_write.f:42-313}; \code{-{}-tree-layout legacy} gives the 46 columns of SIMC 294f662 (without
+\code{xbj}, the vertex block \code{qi}\ldots\code{Pmi}, and with \code{thetapq}, \code{phipq} instead).
+Columns 1--12 belong to the arm on the beam right (prefix \code{hs}), 13--24 to the arm on the beam left (\code{ss}),
+whatever particle it detects \fsrc{results\_write.f:42-129}.
+
+\begin{simctable}{footnotesize}{L{0.07\linewidth}L{0.22\linewidth}L{0.5\linewidth}L{0.15\linewidth}}
+\caption{The (e,e$'$p) columns of the tree \code{h10} (default layout).}\label{tab:eepcolumns}\\
+\toprule\rowcolor{simchead}\simcth{\#} & \simcth{name} & \simcth{content} & \simcth{unit}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{\#} & \simcth{name} & \simcth{content} & \simcth{unit}\\\midrule\endhead
+\bottomrule\endlastfoot
+1--4 & \code{hsdelta}, \code{hsyptar}, \code{hsxptar}, \code{hsytar} & reconstructed $\delta$, slopes, $y_\mathrm{tar}$ of the right arm & \%, rad, cm\\
+5--8 & \code{hsxfp}, \code{hsxpfp}, \code{hsyfp}, \code{hsypfp} & focal-plane track & cm, rad\\
+9--11 & \code{hsdeltai}, \code{hsyptari}, \code{hsxptari} & \code{orig} values (true, after radiation) & \%, rad\\
+12 & \code{hsytari} & $z_t\sin\theta_0$ & cm\\
+13--24 & \code{ss}\ldots & the same for the left arm (24: $-z_t\sin\theta_0$) & \\
+25--28 & \code{q}, \code{nu}, \code{Q2}, \code{W} & reconstructed $|\vec q|$, $\nu$, $Q^2$, $W$ ($W$ with $M_p$) & GeV, GeV$^2$\\
+29--32 & \code{xbj}, \code{epsilon}, \code{Em}, \code{Pm} & reconstructed $x$, $\varepsilon$, $E_m$, $P_m$ & --, GeV\\
+33--35 & \code{qi}, \code{nui}, \code{Q2i} & vertex $|\vec q|$, $\nu$, $Q^2$ & GeV, GeV$^2$\\
+36, 38 & \code{Wi}, \code{epsiloni} & \code{main\%W}, \code{main\%epsilon}: always 0 for (e,e$'$p) and (e,e$'$)A (\finding{U-B1}) & \\
+37 & \code{xbji} & vertex $x$ & \\
+39--40 & \code{Emi}, \code{Pmi} & vertex $E_\mathrm{miss}=\nu+M_A-E_p$ and $P_\mathrm{miss}$ & GeV\\
+41 & \code{corrsing} & $P_e^\mathrm{rec} - M_pE_\mathrm{beam}/(2E_\mathrm{beam}\sin^2(\theta_e^\mathrm{rec}/2)+M_p)$ \fsrc{results\_write.f:33-34} & GeV\\
+42--44 & \code{Pmx}, \code{Pmy}, \code{Pmz} & $\vec P_m$ in the frame of \fsrc{results\_write.f:35-39}: $-P_{m,x}$,
+  $(P_{m,z}\hat q_y-P_{m,y}\hat q_z)/n$, $-(P_{m,y}\hat q_y+P_{m,z}\hat q_z)/n$, $n=\sqrt{\hat q_y^2+\hat q_z^2}$ & GeV\\
+45--47 & \code{PmPar}, \code{PmPer}, \code{PmOop} & reconstructed components of $\vec P_m$ & GeV\\
+48 & \code{fry} & $-$\code{main\%target\%rastery} & cm\\
+49 & \code{radphot} & $E_{\gamma1}+E_{\gamma2}+E_{\gamma3}$ & GeV\\
+50 & \code{sigcc} & $\sigma$ at the vertex (with the Coulomb factor) & see \secr{sec:xsec}\\
+51 & \code{Weight} & the event weight $w$ & see \secr{sec:xsec}\\
+52, 53 & \code{theta\_e}, \code{theta\_p} & reconstructed polar angles & rad\\
+\end{simctable}

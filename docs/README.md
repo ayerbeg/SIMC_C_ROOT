@@ -28,6 +28,9 @@ docs/
 │   ├── figures/              TikZ sources and PNG exports (compat_switch, validation_ladder; also used by the manuals)
 │   └── tools/                gen_catalogue.py (06_catalogue.md from FORTRAN_DIFFERENCES.md),
 │                             gen_fortran_map.py (fortran_routine_map.md)
+├── physics/                  the physics notes, one PDF per reaction + a common note (LaTeX only): latex/ (sources,
+│                             simcnote.cls, notes.json), pdf/ (masters), build_physics_pdf.py, CMakeLists.txt (target
+│                             physics_pdf); README.md. Generated copies of the reaction notes in src/physics/<reaction>/
 └── doxygen/                  Doxygen configuration: mainpage.md, groups.dox, CMakeLists.txt (target doc),
                               check_doc_coverage.py, run_doxygen.py; the Doxyfile.in is at the top of the source tree
 ```
@@ -68,7 +71,7 @@ Without `--chapter` every chapter of the book is rewritten; `--skeleton` also re
 
 ## Ready-made PDFs
 
-Release copies of the four PDFs are committed so they can be read without building anything:
+Release copies of the PDFs are committed so they can be read without building anything:
 
 | PDF | path |
 |---|---|
@@ -76,6 +79,7 @@ Release copies of the four PDFs are committed so they can be read without buildi
 | Developer Manual | `docs/manual/pdf/SIMCpp_Developer_Manual.pdf` |
 | Translation Report | `docs/translation/pdf/SIMC_Fortran_to_SIMCpp_Translation_Report.pdf` |
 | API Reference (Doxygen) | `docs/doxygen/pdf/SIMCpp_API_Reference.pdf` |
+| Physics notes (one per reaction) | `docs/physics/pdf/SIMCpp_Physics_*.pdf` ([physics/README.md](physics/README.md); target `physics_pdf`) |
 
 They were built from the commit that added them. When the sources change, rebuild them (targets `pdf` and
 `doc_pdf`, below) and commit the new copies. The Doxygen HTML reference is not committed: build it with

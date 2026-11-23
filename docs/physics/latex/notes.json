@@ -1,0 +1,29 @@
+{
+  "comment": "Manifest of the SIMC++ physics notes (docs/physics/README.md). Built in this order by docs/physics/build_physics_pdf.py: 00_common first (the reaction notes reference its labels through xr-hyper). 'copies': source-tree directories that receive a generated copy of the PDF when the notes are published (target physics_pdf).",
+  "notes": [
+    {
+      "source": "00_common.tex",
+      "output": "SIMCpp_Physics_00_common",
+      "title": "Common elements: frames, kinematics, weighting, event chain, radiation, energy loss, Coulomb",
+      "copies": []
+    },
+    {
+      "source": "01_hydrogen_elastic.tex",
+      "output": "SIMCpp_Physics_01_hydrogen_elastic",
+      "title": "H(e,e'p) elastic scattering (reaction hydrogen_elastic, model sigep)",
+      "copies": ["src/physics/proton"]
+    },
+    {
+      "source": "02_quasielastic_eep.tex",
+      "output": "SIMCpp_Physics_02_quasielastic_eep",
+      "title": "D(e,e'p) and A(e,e'p) quasi-elastic knock-out (reactions deuterium_eep, nucleus_eep, model deforest)",
+      "copies": ["src/physics/nuclear"]
+    },
+    {
+      "source": "03_nuclear_elastic.tex",
+      "output": "SIMCpp_Physics_03_nuclear_elastic",
+      "title": "A(e,e')A nuclear elastic scattering (reaction nuclear_elastic, model nuc_elastic)",
+      "copies": ["src/physics/nuclear"]
+    }
+  ]
+}

@@ -155,6 +155,7 @@ add_subdirectory(tests/user_manual)    # P15.D2: user-manual checks (parameter r
 add_subdirectory(tests/developer_manual)   # P15.D1: developer-manual checks (header coverage, verbatim snippets, links), label "docs"
 add_subdirectory(docs/doxygen)             # P15.D3: Doxygen API reference: target `doc`, tests docs_doc_coverage / docs_doxygen (label "docs")
 add_subdirectory(docs/common/latex)        # P15.D5/D6: PDF manuals from the committed LaTeX editions: target `pdf`, test docs_pdf_build (label "docs")
+add_subdirectory(docs/physics)             # PHYS.1: physics notes per reaction: target `physics_pdf`, tests docs_physics_pdf_build/_copies (label "docs")
 
 # ============================================================================
 # Installation

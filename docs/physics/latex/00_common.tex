@@ -1,0 +1,761 @@
+% docs/physics/latex/00_common.tex - SIMC++ physics note 00: the elements common to every reaction.
+% Source of the PDF docs/physics/pdf/SIMCpp_Physics_00_common.pdf (build: docs/physics/README.md).
+% Every displayed formula is a feq/feqa environment whose argument cites the Fortran (upstream 59ccdf6) line it
+% transcribes. Labels prefixed sec:/eq:/tab: are referenced by the reaction notes as C-sec:..., C-eq:... (xr-hyper).
+\documentclass{simcnote}
+\simcnotemeta{00}{Common elements}{Common elements of the SIMC++ physics}%
+  {Frames and sign conventions, kinematic variables, the event chain, Monte Carlo weighting and normalisation,
+   radiative corrections, energy loss, multiple scattering and the Coulomb correction}
+
+\begin{document}
+\simcnotemaketitle
+\simcabstract{This note collects what every reaction of SIMC++ shares: the coordinate systems, the kinematic
+variables, the order in which an event is built, how the event weight and the normalisation are formed, and the
+models of radiation, energy loss, multiple scattering and Coulomb distortion. The reaction notes (01 onwards) refer to
+the sections and equations of this note instead of repeating them. Every formula is transcribed from the code; the
+citation under each equation names the Fortran line of SIMC (\texttt{simc\_gfortran}, upstream commit
+\texttt{59ccdf6}), which SIMC++ reproduces in its default and in its \code{-{}-fortran-compat} mode unless a section
+says otherwise.}
+\simcnotetoc
+
+% =====================================================================================================================
+\section{How to read these notes}\label{sec:reading}
+
+\paragraph{Specification.} SIMC++ is a translation of the Fortran SIMC. The Fortran source is the specification: a
+formula in these notes is the formula the Fortran evaluates, with its constants and its order of operations, and
+SIMC++ evaluates the same formula (the C++ function is named in the Fortran$\leftrightarrow$C++ maps). Where the code
+differs from the paper it cites, or contains an approximation or a hard-coded number, the text says so. Fortran
+locations are written \fsrc{file.f:line} and refer to the upstream commit \texttt{59ccdf6} of
+\texttt{simc\_gfortran} (\texttt{\$SIMC\_FORTRAN} in the SIMC++ documentation); C++ locations are written
+\csrc{src/dir/File.cpp:Function}.
+
+\paragraph{Two modes.} SIMC++ corrects the clear Fortran bugs by default and restores the Fortran behaviour with the
+run option \code{-{}-fortran-compat}. Every difference is a numbered finding of
+\texttt{docs/translation/markdown/FORTRAN\_DIFFERENCES.md} (ids such as \finding{D-033 F3} or \finding{U-A1}). The
+reaction notes list, in their last section, the findings that touch the reaction and what each mode does.
+
+\paragraph{Units.} Internal SIMC units are used throughout unless stated otherwise \fsrc{constants.inc:3-9}:
+energies, momenta and masses in MeV (MeV/$c$), lengths in cm, angles in rad, densities in g/cm$^3$, thicknesses in
+g/cm$^2$, the relative momentum \code{delta} in percent. The spectrometer slopes \code{xptar} and \code{yptar} are
+dimensionless ($\mathrm{d}x/\mathrm{d}z$, $\mathrm{d}y/\mathrm{d}z$) and are \emph{entered} in mrad (input limits) but
+\emph{used} in rad; the ntuple columns of the slopes are also in rad. Cross sections come out of the physics
+routines in $\mu$b per (sr and MeV) powers given in each reaction note. The ntuple writes GeV for $q$, $\nu$, $E_m$,
+$P_m$ and (GeV/$c$)$^2$ for $Q^2$.
+
+\paragraph{Constants.} \tabr{tab:constants} gives the values of \fsrc{constants.inc}. Some routines carry their own
+copies (brem.f uses GeV and its own $\alpha$, $m_e$ and proton mass; \secr{sec:brem}).
+
+\begin{simctable}{small}{L{0.22\linewidth}L{0.3\linewidth}L{0.42\linewidth}}
+\caption{Constants of \fsrc{constants.inc:11-47} used in these notes.}\label{tab:constants}\\
+\toprule\rowcolor{simchead}\simcth{symbol} & \simcth{value} & \simcth{name in the code}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{symbol} & \simcth{value} & \simcth{name in the code}\\\midrule\endhead
+\bottomrule\endlastfoot
+$m_e$ & 0.51099906 MeV & \code{Me}\\
+$M_p$, $M_n$ & 938.27231, 939.56563 MeV & \code{Mp}, \code{Mn}\\
+$M_d$ & 1875.613 MeV & \code{Md}\\
+$u$ (atomic mass unit) & 931.49432 MeV & \code{amu}\\
+$\hbar c$ & 197.327053 MeV\,fm & \code{hbarc}\\
+$\alpha$ & 1/137.0359895 & \code{alpha}; $\alpha/\pi$ is \code{alpi}\\
+$\gamma_E$ & 0.577215665 & \code{euler} (radc.f has a local copy \code{eul})\\
+$\pi$ & 3.141592653589793 & \code{pi}\\
+\end{simctable}
+
+% =====================================================================================================================
+\section{Coordinate systems and sign conventions}\label{sec:frames}
+
+\subsection{The laboratory frame of SIMC}\label{sec:labframe}
+The SIMC laboratory frame has $z$ along the beam (downstream), $x$ pointing \emph{down} and $y$ pointing to the
+\emph{left} looking downstream \fsrc{event.f:501}. A direction is given by its polar angle $\theta$ to the beam and its
+azimuth $\varphi$ in the $x$--$y$ plane counted from $x$ (down):
+\begin{feq}{event.f:504-506 (electron), 508-510 (hadron)}
+\hat u = (\sin\theta\cos\varphi,\ \sin\theta\sin\varphi,\ \cos\theta).
+\label{eq:unitvector}
+\end{feq}
+A spectrometer on the beam right (HMS, HRS-R, calorimeter code 7) has its central azimuth $\varphi_0 = 3\pi/2$, one on
+the beam left (SOS, HRS-L, SHMS, calorimeter code 8) has $\varphi_0 = \pi/2$ \fsrc{dbase.f:250-268}; the central polar
+angle $\theta_0$ is the input angle (degrees) converted to rad and made positive \fsrc{dbase.f:243-248}.
+
+The beam spot and the vertex are written in \code{main\%target\%x,y,z}. The code comment says that
+\code{main\%target\%y} is positive when the beam is high and \code{main\%target\%x} positive when the beam is to the
+right looking downstream \fsrc{event.f:151-154}, which is not the orientation of the frame above; the comment is the
+code's own and is quoted here as it stands. The ntuple column \code{fry} is $-$\code{main\%target\%rastery}
+\fsrc{results\_write.f:303}.
+
+\subsection{Spectrometer variables}\label{sec:specvars}
+Each arm reports its event in TRANSPORT-like variables relative to its central ray: the relative momentum
+\begin{feq}{event.f:296, 315; radc.f:501, 509}
+\delta = 100\,\frac{P - P_0}{P_0}\quad[\%],
+\label{eq:delta}
+\end{feq}
+the vertical slope \code{xptar} $= \mathrm{d}x/\mathrm{d}z$ ($x$ down, the dispersive direction) and the horizontal
+slope \code{yptar} $= \mathrm{d}y/\mathrm{d}z$, both at the target. For an electron $P = E$ (the electron mass is
+neglected in the kinematics: \code{vertex\%e\%P = vertex\%e\%E}, \fsrc{event.f:314}).
+
+\paragraph{From slopes to physics angles.} With $\Delta x =$ \code{xptar}, $\Delta y =$ \code{yptar}, $r =
+\sqrt{1+\Delta x^2+\Delta y^2}$, the routine \code{physics\_angles} gives
+\begin{feqa}{event.f:1594-1614 (physics\_angles)}
+\theta &= \arccos\frac{\cos\theta_0 - \Delta y\,\sin\theta_0\sin\varphi_0}{r},\label{eq:physang}\\
+\varphi &= \arctan\frac{\Delta y\cos\theta_0 + \sin\theta_0\sin\varphi_0}{\Delta x}
+ \quad(+\pi \text{ if } \varphi\le 0,\ +\pi \text{ more if } \sin\varphi_0<0;\ \varphi=\varphi_0 \text{ if } \Delta x=0).
+\nonumber
+\end{feqa}
+The formula assumes $\varphi_0 = \pi/2$ or $3\pi/2$ (the code prints a warning otherwise, \fsrc{event.f:1600-1603});
+all spectrometers satisfy it.
+
+\paragraph{From physics angles to slopes.} \code{spectrometer\_angles} inverts the mapping with the unit vectors
+$\hat u$ of the event and $\hat u_0$ of the spectrometer:
+\begin{feqa}{event.f:1636-1648 (spectrometer\_angles)}
+\cos\Delta\theta &= \hat u\cdot\hat u_0,\qquad \Delta x = \frac{u_x}{\cos\Delta\theta},\qquad
+|\Delta y| = \sqrt{\frac{1}{\cos^2\Delta\theta}-1-\Delta x^2},\label{eq:specang}
+\end{feqa}
+with $\Delta y$ negative when $u_y/\cos\Delta\theta < u_{0,y}$. The square root of a rounding-negative argument gives
+NaN in the Fortran; SIMC++ clamps it to 0 in the default mode (\finding{D-028 F2}).
+
+\paragraph{Transport coordinates at the target.} Before a spectrometer model is called, the vertex is expressed in
+the arm's frame ($x$ down, $y$ horizontal, $z$ along the central ray) and drifted back to the plane $z=0$ through the
+target centre:
+\begin{feqa}{simc.f:1421-1431 and 1448-1453 (hadron arm), 1690-1700 and 1715-1720 (electron arm)}
+x_\mathrm{arm} &= -y_t - x_\mathrm{off},\qquad
+y_\mathrm{arm} = -x_t\cos\theta_0 - z_t\sin\theta_0\sin\varphi_0 - y_\mathrm{off},\nonumber\\
+z_\mathrm{arm} &= z_t\cos\theta_0 + x_t\sin\theta_0\sin\varphi_0 - z_\mathrm{off},\nonumber\\
+x_\mathrm{arm} &\leftarrow x_\mathrm{arm} - z_\mathrm{arm}\,\Delta x,\qquad
+y_\mathrm{arm} \leftarrow y_\mathrm{arm} - z_\mathrm{arm}\,\Delta y,\qquad z_\mathrm{arm}\leftarrow 0,
+\label{eq:transport}
+\end{feqa}
+where $(x_t,y_t,z_t)$ = \code{main\%target\%x,y,z} and the offsets are the \code{spec\%e(p)\%offset} inputs (the
+slope offsets are subtracted from the slopes). The value $y_\mathrm{arm}$ after the drift is stored as
+\code{main\%SP\%e(p)\%z}.
+
+\subsection{The replay frame and the angle \texorpdfstring{$\varphi_{pq}$}{phi\_pq}}\label{sec:phipq}
+The out-of-plane angle $\varphi_{pq}$ is defined in the Hall C replay frame, $x_\mathrm{rep} = -y$,
+$y_\mathrm{rep} = x$, $z_\mathrm{rep} = z$ \fsrc{event.f:741-748}. With $\hat q$ and $\hat p$ the unit vectors of
+$\vec q$ and of the hadron in that frame, a frame with $z'\parallel\hat q$, $y' = \hat q\times\hat z$ (normalised) and
+$x' = y'\times\hat q$ is built and
+\begin{feqa}{event.f:750-771 (vertex, meson reactions); event.f:1161-1188 (recon, every reaction)}
+p'_x &= \hat p\cdot\hat x',\qquad p'_y = \hat p\cdot\hat y',\qquad
+\varphi_{pq} = \operatorname{atan2}(p'_y,p'_x)\ \in[0,2\pi).
+\label{eq:phipq}
+\end{feqa}
+$\varphi_{pq}=0$ for a hadron in the scattering plane on the downstream side of $\vec q$. The reconstructed value is
+computed with $\arccos(p'_x/\sqrt{p_x'^2+p_y'^2})$ and $2\pi-\varphi$ for $p'_y<0$ (the same number;
+\fsrc{event.f:1181-1188}), and is 0 when $p'_x=p'_y=0$. The vertex value is computed only for the meson reactions
+(\secr{sec:kinvars}).
+
+% =====================================================================================================================
+\section{Kinematic variables}\label{sec:kinvars}
+
+The same formulas are applied to the vertex event (in \code{complete\_ev}) and to the reconstructed event (in
+\code{complete\_recon\_ev}); they differ in the beam energy used and in a few definitions noted below.
+
+\paragraph{Beam energy.} At the vertex $E_\mathrm{in}$ is the generated beam energy after the energy loss and the
+Coulomb acceleration of the incoming electron (\eqr{eq:ein}), reduced by the photon of radiative tail 1 if there is
+one. In the reconstruction the beam energy is fixed:
+\begin{feq}{event.f:1089, 1098; init.f:281}
+E_\mathrm{in}^\mathrm{rec} = E_\mathrm{beam} + V_C - \Delta E_1^\mathrm{mp} - V_C = E_\mathrm{beam}-\Delta E_1^\mathrm{mp},
+\label{eq:einrec}
+\end{feq}
+where $\Delta E_1^\mathrm{mp}$ is the most probable energy loss of the beam in the target (\code{targ\%Eloss(1)\%ave},
+\secr{sec:eloss}) and $V_C$ the Coulomb energy (\secr{sec:coulomb}): the reconstruction does not correct for the
+Coulomb acceleration (code comment \fsrc{event.f:1094-1097}).
+
+\paragraph{Electron side.} With $E$ = \code{e\%E} the scattered energy and $\hat u_e$ its direction,
+\begin{feqa}{event.f:530-537 (vertex); event.f:1112-1117 (recon)}
+\nu &= E_\mathrm{in} - E,\qquad Q^2 = 2E_\mathrm{in}E\,(1-\cos\theta_e),\qquad |\vec q| = \sqrt{Q^2+\nu^2},
+\label{eq:nuq2}\\
+\hat q &= \bigl(-E\,u_{e,x},\ -E\,u_{e,y},\ E_\mathrm{in}-E\,u_{e,z}\bigr)/|\vec q|,
+\label{eq:qhat}\\
+x &= Q^2/(2M_p\nu).\label{eq:xbj}
+\end{feqa}
+$\hat q$ is checked to be a unit vector to 1\,\% (the run STOPs otherwise, \fsrc{event.f:538-539}). $x$ always uses
+$M_p$ \fsrc{event.f:533, 1129}.
+
+\paragraph{Invariant mass and photon polarisation.}
+\begin{feqa}{event.f:724-726 (vertex, meson reactions only); event.f:1126-1128, 1142 (recon)}
+W^2_\mathrm{vertex} &= M_\mathrm{struck}^2+2M_\mathrm{struck}\nu-Q^2,\qquad
+W^2_\mathrm{recon} = M_p^2 + 2M_p\nu - Q^2,\qquad W = \operatorname{sign}(W^2)\sqrt{|W^2|},\label{eq:w}\\
+\varepsilon &= \Bigl[1+2\bigl(1+\nu^2/Q^2\bigr)\tan^2(\theta_e/2)\Bigr]^{-1}.\label{eq:epsilon}
+\end{feqa}
+The reconstructed $W$ always uses the proton mass (code comment: ``everyone else in the world calculates W using the
+proton mass'', \fsrc{event.f:1125}). The vertex $W$, $\varepsilon$, $\theta_{pq}$, $\varphi_{pq}$ and $t$ are set only in
+the meson block of \code{complete\_ev} \fsrc{event.f:723-903}; for (e,e$'$p) and (e,e$'$)A they keep 0, so the ntuple
+columns \code{Wi} and \code{epsiloni} are 0 (\finding{U-B1}, \finding{D-024 H elastic W}).
+
+\paragraph{Hadron side.} $\theta_{pq} = \arccos(\hat p\cdot\hat q)$ (recon: the argument is clamped to $\le 1$,
+\fsrc{event.f:1143}). The missing-momentum vector is
+\begin{feqa}{event.f:914-918 (vertex); event.f:1312-1315 (recon)}
+\vec P_m &= P\,\hat p - |\vec q|\,\hat q,\qquad P_\mathrm{miss}=|\vec P_m|,\qquad
+E_\mathrm{miss} = \nu + M_A - E_p\ \ (\text{vertex only}),\label{eq:pm}
+\end{feqa}
+i.e.\ $\vec P_m = \vec p\,' - \vec q$ is the momentum of the struck nucleon \emph{before} the collision in the impulse
+approximation (the recoil momentum is $-\vec P_m$). Its components along $\hat q$, along the out-of-plane direction
+$(-\hat q_y,\hat q_x,0)/\sqrt{\hat q_x^2+\hat q_y^2}$ and the remainder are
+\begin{feqa}{event.f:922-926 (vertex); event.f:1319-1323 (recon)}
+P_{m,\parallel} &= \vec P_m\cdot\hat q,\qquad
+P_{m,\mathrm{oop}} = \frac{-P_{m,x}\hat q_y + P_{m,y}\hat q_x}{\sqrt{\hat q_x^2+\hat q_y^2}},\qquad
+P_{m,\perp} = \sqrt{\max\bigl(0,\ P_m^2-P_{m,\parallel}^2-P_{m,\mathrm{oop}}^2\bigr)},\label{eq:pmcomp}
+\end{feqa}
+``looking along $\vec q$, out of plane is down, perpendicular is left'' \fsrc{event.f:907-912}; the sign of
+$P_{m,\perp}$ is not determined (code comment ``STILL NEED SIGN FOR PmPer'', \fsrc{event.f:920}). The definitions of
+$E_m$, $P_m$ (the signed scalar used by the reactions) and $T_\mathrm{rec}$ depend on the reaction and are given in each
+reaction note.
+
+\paragraph{Meson variables (reference).} For completeness, the meson block computes $t = Q^2 - M_h^2 + 2\nu E_h -
+2P_h|\vec q|\cos\theta_{pq}$ and $t_\mathrm{min}$ with $\cos\theta_{pq}=1$ \fsrc{event.f:728-731}, and every reaction
+computes $z = E_h/\nu$ and $p_T^2 = P_h^2(1-\cos^2\theta_{pq})$ \fsrc{event.f:991-992, 1340-1341}. They are described
+in the meson notes.
+
+% =====================================================================================================================
+\section{The event chain}\label{sec:chain}
+
+\subsection{Event records}
+SIMC keeps several records of the same event \fsrc{init.f:110-133}:
+\begin{description}
+\item[vertex] the kinematics at the scattering vertex used for the cross section and the spectral function: after the
+  photon of tail 1 has been emitted, before those of tails 2 and 3;
+\item[orig] the true kinematics of the particles leaving the vertex: \code{vertex} with the photons of tails 2 and 3
+  removed from the scattered electron and hadron, and with the beam energy before tail 1 \fsrc{radc.f:485-509};
+\item[main\%SP] the particles at the spectrometer entrance, after energy loss, Coulomb deceleration and multiple
+  scattering in the target and windows;
+\item[main\%FP, main\%RECON] the focal-plane track of the spectrometer model and its reconstruction to the target;
+\item[recon] the reconstructed event: \code{main\%RECON} turned into momenta and angles, corrected for the most probable
+  energy loss, and completed by \code{complete\_recon\_ev}.
+\end{description}
+Without radiation \code{orig} = \code{vertex} \fsrc{event.f:412}; without a spectrometer model \code{main\%RECON} =
+\code{main\%SP} \fsrc{simc.f:1625-1629, 1821-1825}.
+
+\subsection{One try}\label{sec:onetry}
+The main loop \fsrc{simc.f:176-358} repeats the following steps until \code{ngen} successes (or |\code{ngen}|
+tries for \code{ngen}$<0$) are reached. A failed step ends the try; the try still counts in \code{ntried}.
+
+\begin{center}
+\begin{tikzpicture}[node distance=4.2mm and 3mm, every node/.style={simc/stage, text width=29mm, font=\sffamily\scriptsize}]
+\node (g) {\textbf{generate}\\beam, vertex, generated variables (event.f:126)};
+\node[right=of g] (c) {\textbf{complete\_ev}\\solve the kinematics, jacobian, $\Delta E$, $t_\mathrm{eff}$ (event.f:432)};
+\node[right=of c] (r) {\textbf{generate\_rad}\\tails 1--3, \code{orig} (radc.f:120)};
+\node[below=of r] (m) {\textbf{montecarlo}\\target effects, arms, recon (simc.f:1320)};
+\node[left=of m] (cr) {\textbf{complete\_recon\_ev}\\recon kinematics (event.f:1058)};
+\node[left=of cr] (cm) {\textbf{complete\_main}\\SF, $\sigma$, weight (event.f:1366)};
+\node[below=of cm, simc/ok] (p) {\textbf{pass\_cuts}, sums, ntuple (simc.f:236-346)};
+\draw[simc/flow] (g) -- (c); \draw[simc/flow] (c) -- (r); \draw[simc/flow] (r) -- (m);
+\draw[simc/flow] (m) -- (cr); \draw[simc/flow] (cr) -- (cm); \draw[simc/flow] (cm) -- (p);
+\end{tikzpicture}
+\end{center}
+
+\begin{enumerate}
+\item \textbf{Beam and vertex} \fsrc{event.f:156-212}: the beam spot is a Gaussian truncated at $3\sigma$
+  (\code{gen\%xwid}, \code{gen\%ywid}, plus the target offsets), plus the raster:
+  \begin{feqa}{event.f:163-187}
+  \text{pattern 1:}&\quad (x_r,y_r) = (f_1\cos\pi\xi_1,\ f_2\cos\pi\xi_2),\nonumber\\
+  \text{pattern 2:}&\quad (x_r,y_r)=\rho\,(\cos2\pi\xi_1,\ \sin2\pi\xi_1),\quad \rho=\sqrt{\xi_2}\,(f_2-f_1)+f_1,\nonumber\\
+  \text{pattern 3:}&\quad (x_r,y_r) = \bigl(f_1(2\xi_1-1),\ f_2(2\xi_2-1)\bigr),\nonumber\\
+  &\quad z_t = (0.5-\xi_3)\,L + z_\mathrm{off},\label{eq:raster}
+  \end{feqa}
+  with $\xi_i$ uniform random numbers, $f_{1,2}$ = \code{targ\%fr1,fr2}, $L$ the target length. The beam energy at the
+  vertex is
+  \begin{feq}{event.f:194-205, 211-212}
+  E_\mathrm{in} = E_\mathrm{beam} + (\xi-0.5)\,\Delta E_\mathrm{beam} + V_C - \Delta E_1,
+  \label{eq:ein}
+  \end{feq}
+  where $\Delta E_\mathrm{beam}$ = \code{Ebeam}$\cdot$\code{dEbeam}/100 is the full width of a flat distribution
+  \fsrc{dbase.f:242}, $\Delta E_1$ the sampled energy loss of the beam up to $z_t$ (0 without \code{using\_Eloss}) and
+  $V_C$ the Coulomb energy (0 without \code{using\_Coulomb}). The random number for $\Delta E_\mathrm{beam}$ and the
+  energy-loss Gaussians are drawn even when not used (\finding{D-024}).
+\item \textbf{Reaction generation} \fsrc{event.f:217-373}: the reaction draws its generated variables
+  (\secr{sec:generation} and the reaction notes) and converts the slopes to physics angles (\eqr{eq:physang}).
+\item \textbf{complete\_ev} \fsrc{event.f:432-1054}: solves for the variables that are not generated, computes the
+  kinematic variables of \secr{sec:kinvars}, the jacobian (\secr{sec:jacobian}), the energy losses and effective
+  thicknesses of the scattered particles (\secr{sec:eloss}) and the radiative constants of the event
+  (\code{radc\_init\_ev}, \secr{sec:radiation}).
+\item \textbf{Radiation} \fsrc{event.f:398-414}: with \code{using\_rad} \code{generate\_rad} chooses and radiates the
+  tails and builds \code{orig}; without it \code{orig} = \code{vertex}, and A(e,e$'$p) checks the vertex $E_m$, $P_m$
+  limits.
+\item \textbf{montecarlo} \fsrc{simc.f:1320-1862}: target effects (\secr{sec:spquantities}), the spectrometer models,
+  the reconstruction and the most-probable energy-loss correction.
+\item \textbf{complete\_recon\_ev} \fsrc{event.f:1058-1362} and \textbf{complete\_main} \fsrc{event.f:1366-1572}: the
+  reconstructed kinematics, the spectral-function weight, the cross section and the event weight
+  (\secr{sec:weight}).
+\item \textbf{Cuts and sums} \fsrc{simc.f:236-346}: \code{pass\_cuts} tests the reconstructed spectrometer variables
+  against the acceptance (\code{SPedge}) shrunk by the Monte Carlo slops; with \code{hard\_cuts} a failing event is
+  rejected, and (e,e$'$p) events with $E_m^\mathrm{rec} > $ \code{cuts\%Em\%max} too. Only events passing the cuts enter
+  \code{wtcontribute}; every successful event is written to the ntuple.
+\end{enumerate}
+
+The Fortran \code{pass\_cuts} compares the hadron $\delta$ with the \emph{electron} upper limit \fsrc{simc.f:244};
+SIMC++ uses the hadron limit by default (\finding{D-006 pass\_cuts}).
+
+\subsection{Random numbers}
+The Fortran draws uniform numbers from RANLUX (luxury level 3, \code{grnd}) and Gaussian numbers with the polar method
+truncated at $n_\mathrm{max}$ standard deviations:
+\begin{feq}{gauss1.f:102-112}
+v_{1,2}=2u_{1,2}-1,\quad s=v_1^2+v_2^2\in(0,1],\quad g = v_1\sqrt{-2\ln s/s},\quad\text{redrawn while } |g|>n_\mathrm{max}.
+\label{eq:gauss1}
+\end{feq}
+SIMC++ uses a 64-bit Mersenne Twister by default and a bit-exact RANLUX port on request (\finding{D-002}); with RANLUX
+and \code{-{}-fortran-compat} it draws the same numbers in the same order as the Fortran.
+
+% =====================================================================================================================
+\section{Generation limits}\label{sec:generation}
+
+\subsection{Edges and slops}\label{sec:edges}
+The generation ranges are derived once at start-up \fsrc{init.f:91-572} from the spectrometer acceptances
+(\code{SPedge}, inputs \code{SPedge\%e(p)\%delta/yptar/xptar\%min,max}, slopes converted from mrad,
+\fsrc{dbase.f:483-492}) by propagating them back to the vertex:
+\begin{feqa}{init.f:209-232, 260-271}
+\mathrm{SPedge} &\leftarrow \mathrm{SPedge}\pm\mathrm{slop}_\mathrm{MC}\quad(\text{only for an arm whose model is on}),
+\nonumber\\
+\mathrm{edge}_e^{E,\mathrm{min}} &= (1+\delta^\mathrm{SP}_\mathrm{min}/100)P_e^0 + V_C^\mathrm{min} - d_E + \Delta E_2^\mathrm{min},\nonumber\\
+\mathrm{edge}_e^{E,\mathrm{max}} &= (1+\delta^\mathrm{SP}_\mathrm{max}/100)P_e^0 + V_C^\mathrm{max} + d_E + \Delta E_2^\mathrm{max},\nonumber\\
+\mathrm{edge}_p^{E,\mathrm{min,max}} &= \sqrt{p_\mathrm{min,max}^2+M_h^2}+\Delta E_3^\mathrm{min,max},\nonumber\\
+p_\mathrm{min,max}&=(1+\delta^\mathrm{SP}_\mathrm{min,max}/100)P_p^0\mp d_E,\quad p_\mathrm{min}\ge0.001,\nonumber\\
+\mathrm{edge}^{x',y'} &= \mathrm{SPedge}^{x',y'}\pm\theta^\mathrm{ms}_\mathrm{max},
+\label{eq:edges}
+\end{feqa}
+with $d_E$ = \code{dE\_edge\_test} (an energy margin, input), $\Delta E_i^\mathrm{min,max}$ the extreme energy
+losses of particle $i$ (\code{extreme\_trip\_thru\_target}, \fsrc{target.f:310-544}) and $\theta^\mathrm{ms}_\mathrm{max}$
+the $3.5\sigma$ multiple-scattering angle for the extreme thickness \fsrc{target.f:581-588}. The slops
+$\mathrm{slop}_\mathrm{MC}$ are the hard-coded resolution margins of each spectrometer (\code{slop\_param\_d/t/p\_HMS},
+\ldots, \fsrc{init.f:159-204}). The \emph{generation} limits of the slopes are the edges:
+$\mathrm{gen}^{x',y'} = \mathrm{edge}^{x',y'}$ \fsrc{init.f:492-495, 514-517}.
+
+The limits on energies at the vertex (\code{VERTEXedge}), on the total generated energy (\code{gen\%sumEgen}), on the
+generated electron and hadron energies (\code{gen\%e\%E}, \code{gen\%p\%E}) and on the radiated photon energies
+(\code{Egamma\_tot\_max}) follow from energy conservation and depend on the reaction \fsrc{init.f:321-517}; each
+reaction note writes them out. The beam-energy extremes used there are
+\begin{feq}{init.f:281, 285-286}
+E_\mathrm{beam}^\mathrm{max,min} = E_\mathrm{beam}\pm\Delta E_\mathrm{beam}/2 - \Delta E_1^\mathrm{min,max} +
+V_C^\mathrm{max,min},\qquad
+E_\mathrm{beam}^\mathrm{vertex,ave} = E_\mathrm{beam}+V_C-\Delta E_1^\mathrm{mp}.
+\label{eq:ebeamlimits}
+\end{feq}
+
+\subsection{Flat generation, the generation volume and the generation weight}
+Every generated variable $v$ is drawn flat in its range, $v = v_\mathrm{min}+\xi(v_\mathrm{max}-v_\mathrm{min})$
+\fsrc{event.f:276-315}. When the range of an energy is narrowed event by event (by the energy-sum limits), the event
+gets the generation weight
+\begin{feq}{event.f:293, 312}
+w_\mathrm{gen} \leftarrow w_\mathrm{gen}\,\frac{E_\mathrm{max}-E_\mathrm{min}}{\mathrm{gen}^E_\mathrm{max}-\mathrm{gen}^E_\mathrm{min}},
+\label{eq:genweight}
+\end{feq}
+so that the generation volume can be the product of the \emph{full} ranges:
+\begin{feqa}{simc.f:383-401}
+\Delta\Omega_e &= (y'^\mathrm{max}_e-y'^\mathrm{min}_e)(x'^\mathrm{max}_e-x'^\mathrm{min}_e),\nonumber\\
+\Delta\Omega_p &= (y'^\mathrm{max}_p-y'^\mathrm{min}_p)(x'^\mathrm{max}_p-x'^\mathrm{min}_p)\quad(4\pi\text{ for }\rho),
+\nonumber\\
+V_\mathrm{gen} &= \Delta\Omega_e\ [\times\ \Delta\Omega_p\,\Delta E_e]\ [\times\ \Delta E_p],
+\label{eq:genvol}
+\end{feqa}
+where the first bracket applies to every reaction except H(e,e$'$p) and A(e,e$'$)A, and the second to A(e,e$'$p) and
+SIDIS. $\Delta\Omega$ is in sr (slopes in rad), $\Delta E$ in MeV.
+
+\subsection{The solid-angle jacobian}\label{sec:jacobian}
+The slopes are generated flat, but the cross sections are per unit solid angle. The element of solid angle is
+$\mathrm{d}\Omega = \mathrm{d}x'\,\mathrm{d}y'/r^3$ with $r = \sqrt{1+x'^2+y'^2}$, so each generated pair of slopes
+contributes the factor
+\begin{feq}{event.f:1015-1025}
+J_\Omega = r_e^{-3}\ [\times\ r_p^{-3}],\qquad r = \sqrt{1+x'^2+y'^2} = 1/\cos(\theta-\theta_0),
+\label{eq:jacomega}
+\end{feq}
+the hadron factor being applied for A(e,e$'$p) and the meson reactions, not for D(e,e$'$p)
+(\finding{D-033 F4}, Category B) and not for the reactions where the hadron angles are not generated. Reaction-specific
+jacobians (D(e,e$'$p): $|\mathrm{d}E_p/\mathrm{d}E_m|$) multiply into the same \code{main\%jacobian}.
+
+% =====================================================================================================================
+\section{Weighting and normalisation}\label{sec:weight}
+
+\subsection{The event weight}
+\code{complete\_main} forms the weight of a successful event:
+\begin{feq}{event.f:1561-1564}
+w = S\cdot J\cdot w_\mathrm{gen}\cdot\sigma\cdot n_\mathrm{tgt}\ [\cdot P_\mathrm{surv}],
+\label{eq:weight}
+\end{feq}
+with $S$ = \code{main\%SF\_weight} the spectral-function weight (1 for reactions without one), $J$ =
+\code{main\%jacobian}, $w_\mathrm{gen}$ = \code{main\%gen\_weight} (the generation weight of \eqr{eq:genweight} times the
+radiative weight of \eqr{eq:radweight}), $\sigma$ = \code{main\%sigcc} the cross section at the vertex kinematics
+(times the Coulomb focusing factor, \eqr{eq:coulombfocus}), $n_\mathrm{tgt}$ = \code{tgtweight} the number of
+nucleons for the meson reactions (1 for (e,e$'$p)), and $P_\mathrm{surv}$ the kaon survival probability when decay is
+not simulated. An event with $S\le0$ is rejected before the cross section is evaluated, except for the central event
+\fsrc{event.f:1438}. The ntuple column \code{Weight} is $w$ \fsrc{results\_write.f:309}; \code{sigcc} is $\sigma$.
+
+\subsection{Luminosity and normalisation}\label{sec:norm}
+\begin{feqa}{simc.f:101-108; dbase.f:455-456}
+f_\mathrm{tgt} &= \frac{A_\mathrm{amu}}{3.75914\times10^{6}\cdot(a/100)}\cdot\frac{|\cos\theta_\mathrm{tgt}|}{t\,[\mathrm{mg/cm^2}]},
+\qquad \mathcal{L} = \frac{Q\,[\mathrm{mC}]}{f_\mathrm{tgt}}\quad[\mu\mathrm{b}^{-1}],
+\label{eq:lumi}
+\end{feqa}
+where $A_\mathrm{amu}$ = \code{targ\%mass\_amu}, $a$ = \code{targ\%abundancy} (\%), $t$ = \code{targ\%thick} (input in
+mg/cm$^2$, stored in g/cm$^2$, multiplied back by 1000 here), $\theta_\mathrm{tgt}$ = \code{targ\%angle} and $Q$ =
+\code{EXPER\%charge}. The constant $3.75914\times10^6$ is (electrons per mC) $\times$ $N_A$ $\times$ (mg$\to$g) $\times$
+(cm$^2\to\mu$b); with CODATA 2018 values this product is $3.758724\times10^6$, so the hard-coded value is
+$1.1\times10^{-4}$ (relative) larger. The quotient is evaluated in quadruple precision by the Fortran build and by
+SIMC++ (\finding{P8.2 targetfac}). The target length is $L = t/\rho$ \fsrc{dbase.f:456}.
+
+After the loop
+\begin{feqa}{simc.f:375, 403-405}
+\mathrm{normfac} &= \frac{\mathcal{L}\,V_\mathrm{gen}\,N_\mathrm{event}}{N_\mathrm{tried}}\quad(=1\text{ for phase space}),
+\nonumber\\ \mathrm{wtcontr} &= \frac{\mathrm{normfac}}{N_\mathrm{event}}\sum_{\text{pass\_cuts}} w_i
+= \frac{\mathcal{L}\,V_\mathrm{gen}}{N_\mathrm{tried}}\sum_{\text{pass\_cuts}} w_i,
+\label{eq:normfac}
+\end{feqa}
+(\code{wtcontr} is printed as \code{wtcontribute/nevent}, \fsrc{simc.f:930}). It is the expected number of counts of
+the simulated experiment inside the cuts: $\sum_i w_i/N_\mathrm{tried}$ is the Monte Carlo estimate of the mean of
+$\sigma\cdot J\cdots$ over the generation volume. A histogram of the ntuple weighted with
+$\code{Weight}\cdot\mathrm{normfac}/N_\mathrm{event}$ is a yield in counts for the charge \code{EXPER\%charge}.
+
+% =====================================================================================================================
+\section{Target effects on the scattered particles}\label{sec:spquantities}
+In \code{montecarlo} the true (\code{orig}) particles are turned into the quantities at the spectrometer entrance:
+\begin{feqa}{simc.f:1389-1397, 1408-1409 (hadron); simc.f:1665-1666, 1677-1678 (electron)}
+\delta_p^\mathrm{SP} &= 100\,\frac{\sqrt{|(E_p-\Delta E_3)^2-M_h^2|}-P_p^0}{P_p^0}\ \ (\delta_p\text{ if not using\_Eloss}),\nonumber\\
+\delta_e^\mathrm{SP} &= 100\,\frac{E_e-\Delta E_2-V_C-P_e^0}{P_e^0},\nonumber\\
+y'^\mathrm{SP} &= y' + \theta^\mathrm{ms}_1 + \theta^\mathrm{ms,beam}_1,\qquad
+x'^\mathrm{SP} = x' + \theta^\mathrm{ms}_2 + \theta^\mathrm{ms,beam}_2\cos\theta_0,
+\label{eq:sp}
+\end{feqa}
+with $\Delta E_{2,3}$ the energy losses sampled in \code{complete\_ev} and $\theta^\mathrm{ms}$ the multiple-scattering
+angles (\eqr{eq:musc}, only with \code{mc\_smear}). The beam multiple-scattering angles are drawn with the beam
+thickness \code{teff(1)} and added to both arms. The electron is decelerated by $V_C$ when it leaves the nucleus; the
+hadron is not affected by the Coulomb field.
+
+After the spectrometer model the reconstruction rebuilds the momenta from the reconstructed $\delta$ and slopes, and
+with \code{correct\_Eloss} adds back the most probable energy loss for the reconstructed angle at the target centre
+($z=0$):
+\begin{feqa}{simc.f:1633-1655 (hadron); simc.f:1829-1853 (electron)}
+P^\mathrm{rec} &= P^0(1+\delta^\mathrm{rec}/100),\nonumber\\
+E_p^\mathrm{rec} &= \max\Bigl(\sqrt{P_p^{\mathrm{rec}\,2}+M_h^2}+\Delta E_3^\mathrm{mp},\ \sqrt{M_h^2+10^{-6}}\Bigr),\qquad
+E_e^\mathrm{rec} = E_e + \Delta E_2^\mathrm{mp}.
+\label{eq:recon}
+\end{feqa}
+$\delta^\mathrm{rec}$ itself is not corrected (code comment ``delta is a SPECTROMETER variable''), and the electron
+energy is not corrected for $V_C$ \fsrc{simc.f:1850-1852}.
+
+% =====================================================================================================================
+\section{Energy loss, radiation length and multiple scattering}\label{sec:eloss}
+
+\subsection{Materials and paths}
+\code{trip\_thru\_target(narm, z, E, $\theta$, \ldots)} returns the energy loss and the thickness in radiation lengths
+seen by the beam (narm 1), the scattered electron (2) or the hadron (3), for a vertex at $z$ relative to the target
+centre. The target is ``liquid'' when $Z<2.4$ \fsrc{target.f:21}. The paths are:
+\begin{itemize}
+\item beam: $s = (L/2+z)/|\cos\theta_\mathrm{tgt}|$ in the target, plus the cell entrance window for liquid targets
+  (Al: 2.8 mil for \code{targ\%can}=1, 5 mil for 2, 0.013 cm for 3) \fsrc{target.f:34-51};
+\item scattered particles: $s = (L/2-z)/|\cos(\theta\pm\theta_\mathrm{tgt})|$ (sign $+$ for the HMS, $-$ for the other
+  arms), the exit windows of the scattering chamber and of the spectrometer and the air gap of the arm
+  (\tabr{tab:windows}); for a liquid target the path to the side wall of the cell when it is shorter (beer can: radius
+  1.325$''$, 5 mil Al wall; pudding can and the 2017 10-cm cell: the intersections computed in the code)
+  \fsrc{target.f:72-168, 188-287}.
+\end{itemize}
+
+\begin{simctable}{small}{L{0.17\linewidth}L{0.17\linewidth}L{0.12\linewidth}L{0.14\linewidth}L{0.14\linewidth}L{0.17\linewidth}}
+\caption{Windows and air of each arm in \fsrc{target.f:73-103, 189-223} (1 mil = $2.54\times10^{-3}$ cm).}\label{tab:windows}\\
+\toprule\rowcolor{simchead}\simcth{arm} & \simcth{Al} & \simcth{air} & \simcth{kevlar} & \simcth{mylar} & \simcth{path angle}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{arm} & \simcth{Al} & \simcth{air} & \simcth{kevlar} & \simcth{mylar} & \simcth{path angle}\\\midrule\endhead
+\bottomrule\endlastfoot
+HMS (1) & 16 mil & 15 cm & 15 mil & 5 mil & $\theta+\theta_\mathrm{tgt}$\\
+SOS (2) & 8 mil & 15 cm & 5 mil & 3 mil & $\theta-\theta_\mathrm{tgt}$\\
+HRS-R/L (3/4) & 13 mil & 15 cm & -- & 10 mil & $\theta-\theta_\mathrm{tgt}$\\
+SHMS (5) & 20 + 10 mil & 57.27 cm & -- & -- & $\theta-\theta_\mathrm{tgt}$\\
+\end{simctable}
+The material constants are those of \fsrc{target.inc:5-29} (Al: $\rho=2.70$, $Z=13$, $A=26.98$, $X_0=24.01$
+g/cm$^2$; mylar 1.39/4.545/8.735/39.95; kevlar 0.74/2.67/4.67/55.2; air 0.00121/7.2/14.4/36.66). The calorimeter arms 7/8
+have no window branch (\finding{D-012 F4}).
+
+\subsection{Radiation length of the target}\label{sec:x0}
+\begin{feqa}{init.f:19-44}
+L_1 &= \ln 184.15 - \tfrac13\ln Z,\qquad L_2 = \ln 1194 - \tfrac23\ln Z\qquad (Z=1:\ L_1=5.31,\ L_2=6.144),\nonumber\\
+f_c &= a^2\Bigl(1.202 + a^2\bigl(-1.0369 + \tfrac{1.008\,a^2}{a^2+1}\bigr)\Bigr),\quad a = Z\alpha,\qquad
+X_0 = \frac{716.405\,A}{Z\,\bigl(Z(L_1-f_c)+L_2\bigr)}\ \ [\mathrm{g/cm^2}],
+\label{eq:x0}
+\end{feqa}
+except $X_0 = 61.28$, 122.4 and 94.32 g/cm$^2$ for $A=1$, 2, 4 (``PDB values (1999)'', \fsrc{init.f:28-37}). The
+thickness in radiation lengths, $t_\mathrm{eff}$ = \code{radlen}, is the sum of $s_i/X_{0,i}^\mathrm{cm}$ over the
+materials crossed \fsrc{target.f:47, 171-172, 291-292}; $t_\mathrm{eff}(1,2,3)$ enter the external radiation and the
+multiple scattering.
+
+\subsection{Ionisation energy loss}\label{sec:enerloss}
+For each material (thickness $x = s\rho$ in g/cm$^2$, particle of energy $E$ and mass $m$, $\gamma=E/m$,
+$\beta=\sqrt{1-\gamma^{-2}}$) \code{enerloss\_new} computes
+\begin{feqa}{enerloss\_new.f:19-72}
+I &= 21.8\ \mathrm{eV}\ (Z=1),\quad I = 16\,Z^{0.9}\ \mathrm{eV}\ (\text{otherwise}),\nonumber\\
+\hbar\omega_p & = 28.816\sqrt{\rho Z/A}\ \mathrm{eV},\qquad C_0 = \ln(\hbar\omega_p/I)+0.5,\nonumber\\
+\delta_d &= \begin{cases} 0 & \log_{10}\beta\gamma<0\\
+C_0 + \ln10\,\log_{10}\beta\gamma + \bigl|C_0/27\bigr|\,(3-\log_{10}\beta\gamma)^3 & 0\le\log_{10}\beta\gamma<3\\
+C_0+\ln10\,\log_{10}\beta\gamma & 3\le\log_{10}\beta\gamma<4.7\\ C_0+4.7\ln10 & \text{above}\end{cases}\nonumber\\
+\Delta_\mathrm{mp} &= 0.1536\,\frac{Z}{A}\frac{x}{\beta^2}\Bigl[\ln\frac{m_e}{I^2}+1.063+2\ln\beta\gamma\nonumber\\
+&\qquad+\ln\Bigl(0.1536\,\frac{Z}{A}\frac{x}{\beta^2}\Bigr)-\beta^2-\delta_d\Bigr]\ \ [\mathrm{MeV}],\nonumber\\
+\xi &= \frac{0.307075}{2}\frac{Z}{A}\frac{x}{\beta^2},\nonumber\\
+\Delta E &= \Delta_\mathrm{mp} + \lambda\,\xi,\qquad \lambda = -2\ln X,
+\label{eq:enerloss}
+\end{feqa}
+($I$ and $m_e$ in MeV inside the logarithm) with $X = |g|$ for a Gaussian $g$ truncated at $10\sigma$ when the loss
+is sampled (typeflag 1), $X=3$ for the minimum (typeflag 2, $\lambda=-2.197$), $X=0.0067$ for the maximum (3,
+$\lambda = 9.99$) and $X=1$ for the most probable value (4, $\lambda = 0$); $X=0$ gives $\lambda=10^5$. A loss larger
+than the kinetic energy is clipped to $E-m-10^{-7}$ \fsrc{enerloss\_new.f:75-82}. Remarks: $\Delta_\mathrm{mp}$ has the
+form of the Landau most-probable loss $\xi[\ln(2m_e\beta^2\gamma^2/I)+\ln(\xi/I)+j-\beta^2-\delta]$, but the constant
+is $1.063$ where $\ln2 + j = 0.893$ with the usual $j=0.200$, and $\delta_d$ has the form of a density-effect correction; the code does not cite its source (``I got this from JV'',
+\fsrc{enerloss\_new.f:33}). The sampled distribution of $\lambda=-2\ln|g|$ is an approximation of the Landau tail, not
+the Landau function. A first, older formula for $\Delta_\mathrm{mp}$ is computed and discarded
+\fsrc{enerloss\_new.f:48-49, 56}.
+
+The energy losses enter at three places: the beam loss up to the vertex (\eqr{eq:ein}), the sampled losses $\Delta
+E_{2,3}$ of the scattered particles \fsrc{event.f:1033-1042}, and the most-probable corrections of the reconstruction
+(\eqr{eq:recon}). With \code{using\_Eloss}=0 all are 0 (the Gaussians are still drawn), and \code{correct\_Eloss}
+is forced off \fsrc{dbase.f:546-549}.
+
+\subsection{Multiple scattering in the target}
+\begin{feq}{target.f:569-575}
+\theta_0^\mathrm{ms} = \frac{13.6\ \mathrm{MeV}}{p\,\beta}\sqrt{t_\mathrm{eff}}\,\Bigl(1+0.088\log_{10}\frac{t_\mathrm{eff}}{\beta^2}\Bigr),
+\qquad \theta^\mathrm{ms}_{1,2} = \theta_0^\mathrm{ms}\,g_{1,2},
+\label{eq:musc}
+\end{feq}
+two independent Gaussians truncated at $3.5\sigma$, applied to \code{yptar} and \code{xptar}; the form is that of Lynch
+and Dahl \cite{lynch} as the code comment says. The electron uses $\beta=1$ \fsrc{simc.f:1340}.
+
+% =====================================================================================================================
+\section{Coulomb correction}\label{sec:coulomb}
+With \code{using\_Coulomb} (forced off for $Z=1$, \fsrc{dbase.f:551}) the electron gains the potential energy at the
+centre of a uniformly charged sphere, scaled by 0.75 following Aste et al.\ \cite{aste} (code comment
+\fsrc{init.f:71-74}):
+\begin{feq}{init.f:75-78}
+V_C = 0.75\cdot\frac{3}{2}\,\frac{(Z-1)\,\alpha\hbar c}{R},\qquad R = 1.1\,A^{1/3}+0.86\,A^{-1/3}\ \mathrm{fm},
+\label{eq:coulomb}
+\end{feq}
+the same value for the average, minimum and maximum (a constant shift, \code{targ\%Coulomb\_constant}). The effects are
+\begin{itemize}
+\item the vertex beam energy is raised by $V_C$ (\eqr{eq:ein}) and the scattered electron loses $V_C$ on its way
+  out
+  (\eqr{eq:sp}): the electron-arm acceptance edges are shifted accordingly (\eqr{eq:edges});
+\item the reconstruction uses $E_\mathrm{beam}-\Delta E_1^\mathrm{mp}$ and does not correct $E'$ (\eqr{eq:einrec},
+  \eqr{eq:recon}), as the Hall C analysis usually does;
+\item the cross section is multiplied by the focusing factor
+\begin{feq}{event.f:1536-1538}
+\sigma \leftarrow \sigma\,\bigl(1+V_C/E_\mathrm{beam}\bigr)^2.
+\label{eq:coulombfocus}
+\end{feq}
+\end{itemize}
+The hadron is not decelerated or deflected.
+
+% =====================================================================================================================
+\section{Radiative corrections}\label{sec:radiation}
+
+\subsection{Model and switches}
+SIMC radiates in the peaking approximation: each of the three charged legs (tail 1 the incoming electron, tail 2 the
+scattered electron, tail 3 the outgoing hadron) emits real photons collinear with it, internal (the vertex
+bremsstrahlung) and external (bremsstrahlung in the target material before or after the vertex) combined into one
+power-law spectrum per tail. The formalism is that of N.\ Makins' thesis (cited at \fsrc{radc.f:161}); its published
+description is Ent et al.\ \cite{ent} (not cited by the code). The vertex kinematics are those after the photon of tail
+1, so the cross section is evaluated at the reduced beam energy.
+
+\begin{description}
+\item[using\_rad] radiation on/off; without it no tail is radiated and no correction factor is applied.
+\item[rad\_flag] 0: ``best'' formulas (the weight of the chosen photon energy uses the exact internal soft-photon
+  factor of \code{brem}); 1: BASICRAD only; both choose ONE tail per event (the peaked basis). 2: one tail chosen with
+  equal probability; 3: all three tails radiate independently (BASICRAD) \fsrc{radc.f:145-161}.
+\item[extrad\_flag] the external correction function $\phi$: 1 none, 2 the linear form, 3 Friedrich; 0 = 3 for
+  rad\_flag 0 and 1 otherwise \fsrc{init.f:621-629}.
+\item[one\_tail] restricts radiation to some tails (\code{doing\_tail(1:3)}, \fsrc{dbase.f:498-516}); the code warns
+  that switching off tails 1 or 2 is ``not well defined''.
+\item[intcor\_mode] 0: the hard correction from the Schwinger formula; otherwise from \code{brem}.
+\item[use\_offshell\_rad] use \code{bremos} (initial proton off shell) instead of \code{brem}.
+\item[use\_expon] exponentiate the soft factor in \code{brem}/\code{schwinger}.
+\item[Egamma\_gen\_max] if $>0.01$ MeV, a hard-wired upper limit for every photon energy \fsrc{dbase.f:518-522}.
+\end{description}
+
+\subsection{Per-event constants}\label{sec:radconst}
+At the end of \code{complete\_ev} (\code{radc\_init\_ev}) the constants are computed from the vertex kinematics. The
+external radiator thicknesses use the factor $b$ (named \code{etatzai}):
+\begin{feqa}{init.f:634 (radc\_init); init.f:682-688}
+b &= \frac{1}{9}\Bigl(12 + \frac{Z+1}{Z L_1+L_2}\Bigr),\qquad bt_i = b\,t_\mathrm{eff}(i)\quad(i=1,2),
+\label{eq:bt}
+\end{feqa}
+($t_\mathrm{eff}(1)$ is the material before the vertex, $t_\mathrm{eff}(2)$ after it on the electron side; the hadron
+has no external radiation). The internal ``equivalent radiators'' (the extended peaking approximation) are
+\begin{feqa}{radc.f:792-827 (lambda\_dave), called at init.f:692-696}
+\lambda_1 &= \frac{\alpha}{\pi}\Bigl[2\ln\frac{2E_\mathrm{in}}{m_e}-1+\ln\frac{1-\cos\theta_e}{2}+2\ln\frac{E_\mathrm{in}}{E'}\cdot[\text{tail 3 on}]\Bigr],\nonumber\\
+\lambda_2 &= \frac{\alpha}{\pi}\Bigl[2\ln\frac{2E'}{m_e}-1+\ln\frac{1-\cos\theta_e}{2}+2\ln\frac{E_\mathrm{in}}{E'}\cdot[\text{tail 3 on}]\Bigr],\nonumber\\
+\lambda_3 &= \frac{\alpha}{\pi}\Bigl[\frac{E_p}{P_p}\ln\frac{E_p+P_p}{E_p-P_p}-2\Bigr]\ \ (\text{tail 3 on; set to 0 if negative}),
+\label{eq:lambda}
+\end{feqa}
+where ``tail 3 on'' is \code{doing\_tail(3)} (the input \code{lambda} values are overwritten, \finding{D-005}).
+\code{rad\_proton\_this\_ev} = $(\lambda_3>0)$. The exponents and normalisations of the BASICRAD spectra
+$c\,E_\gamma^{g-1}$ are
+\begin{feqa}{init.f:758-810 (basicrad\_init\_ev)}
+g_1 &= \lambda_1+bt_1,\quad g_2=\lambda_2+bt_2,\quad g_3=\lambda_3,\quad g_0=g_1+g_2+g_3,\nonumber\\
+c^\mathrm{int}_{1,2} &= \frac{\lambda_{1,2}}{(E_\mathrm{in}E')^{\lambda_{1,2}/2}}\frac{e^{-\gamma_E\lambda_{1,2}}}{\Gamma(1+\lambda_{1,2})},\qquad
+c^\mathrm{int}_3 = \frac{\lambda_3}{(M_pE_p)^{\lambda_3/2}}\frac{e^{-\gamma_E\lambda_3}}{\Gamma(1+\lambda_3)},\nonumber\\
+c^\mathrm{ext}_{1,2} & = \frac{bt_{1,2}}{E_{1,2}^{bt_{1,2}}\,\Gamma(1+bt_{1,2})}\ (E_1=E_\mathrm{in},E_2=E'),\nonumber\\
+c_{i} &= c^\mathrm{int}_ic^\mathrm{ext}_i\,\frac{g_i}{\lambda_i\,bt_i}\,\frac{\Gamma(1+\lambda_i)\Gamma(1+bt_i)}{\Gamma(1+g_i)}\quad (i=1,2),\nonumber\\ c_3 &= c^\mathrm{int}_3,
+\label{eq:basicconst}
+\end{feqa}
+together with the combined constants $c^\mathrm{int}_0$ ($g_\mathrm{int}=\lambda_1+\lambda_2+\lambda_3$), $c^\mathrm{ext}_0$
+($g_\mathrm{ext}=bt_1+bt_2$) and $c_0$ built with the same convolution rule
+$c_ac_b\,\frac{g_a+g_b}{g_ag_b}\frac{\Gamma(1+g_a)\Gamma(1+g_b)}{\Gamma(1+g_a+g_b)}$ \fsrc{init.f:774-808}. The code comment
+notes that the mass in $c_3^\mathrm{int}$ ``s/b Mp'' \fsrc{init.f:768}: it is $M_p$ for every reaction, whatever the
+hadron. The hard correction and the exponent of the ``total'' tail are
+\begin{feqa}{init.f:700-715}
+\mathrm{hardcorfac} &= \frac{1}{1-\delta_\mathrm{hard}},\qquad
+g_4 = -E_c\,\frac{\mathrm{d}\delta_\mathrm{soft}}{\mathrm{d}E}\Big|_{E_c} + bt_1+bt_2,\quad E_c = 450\ \mathrm{MeV},\nonumber\\
+c_4 &= \frac{g_4}{(E_\mathrm{in}E')^{g_4}\,\Gamma(1+g_4)}\ \bigl[/E_p^{g_4}\ \text{if } g_3>0\bigr],\qquad
+f_i = g_i/g_0\ (i=1,2,3),
+\label{eq:hardcor}
+\end{feqa}
+with $\delta_\mathrm{hard}$ and $\mathrm{d}\delta_\mathrm{soft}/\mathrm{d}E$ from \code{brem} (or \code{bremos}, or
+the Schwinger formula, \secr{sec:brem}); $f_i$ are the probabilities of the tails in the peaked basis.
+
+\subsection{Generating the photons}\label{sec:basicrad}
+For each radiating tail a photon energy is drawn between limits $E_\gamma^\mathrm{min}$, $E_\gamma^\mathrm{max}$
+(the reaction notes give them; they keep the radiated event inside the acceptance edges and the energy budget) from
+the normalised power law of exponent $g$:
+\begin{feqa}{radc.f:61-84 (basicrad)}
+y &= y_\mathrm{min}+\xi(1-y_\mathrm{min}),\quad y_\mathrm{min} = (E_\gamma^\mathrm{min}/E_\gamma^\mathrm{max})^g,\quad
+E_\gamma = y^{1/g}E_\gamma^\mathrm{max},\nonumber\\
+w_\mathrm{basic} &= \frac{c}{g}\Bigl[(E^\mathrm{max}_\gamma)^g-(E^\mathrm{min}_\gamma)^g\Bigr],
+\label{eq:basicrad}
+\end{feqa}
+($E_\gamma^\mathrm{min}\le0$ counts as 0; the try fails if $E_\gamma^\mathrm{max}\le\max(0,E_\gamma^\mathrm{min})$;
+$w=1$ and no photon if $g\le0$). In the peaked basis (rad\_flag $\le1$) one tail is chosen with probabilities $f_i$
+\fsrc{radc.f:198-208} and the photon is drawn with $(g_4,c_4)$ (\code{basicrad} is called with \code{itail}=0, which
+it maps to 4). With rad\_flag 2/3 each tail uses its own $(g_i,c_i)$.
+
+The photon of tail 1 lowers the vertex beam energy and \code{complete\_ev} is called again
+\fsrc{radc.f:331-337}, so the vertex kinematics, the jacobian and the radiative constants are recomputed. Tails 2 and 3
+only change \code{orig}: $E'_\mathrm{orig} = E' - E_{\gamma2}$ (fails if $\le0$) and $E_{p,\mathrm{orig}}=E_p-E_{\gamma3}$
+(fails if $\le M_h$) \fsrc{radc.f:495-509}.
+
+\subsection{The radiative weight}\label{sec:radweight}
+For rad\_flag $\ge2$ the weight is the product of $w_\mathrm{basic}\,\phi$ of the radiated tails, with the external
+correction
+\begin{feqa}{radc.f:692-713 (extrad\_phi)}
+\phi^{(2)}_i &= 1-\frac{bt_i}{E_i\,g_i}E_\gamma,\qquad
+\phi^{(3)}_i = \Bigl(1-x+\frac{x^2}{b}\Bigr)\exp\Bigl[\frac{bt_i}{b}\Bigl(b-\tfrac12-bx+\tfrac{x^2}{2}\Bigr)\Bigr]\Gamma(1+bt_i),
+\ x = E_\gamma/E_i,
+\label{eq:phi}
+\end{feqa}
+for extrad\_flag 2 and 3 ($\phi=1$ for extrad\_flag 1 and for tail 3). For rad\_flag 1 the weight is
+$w_\mathrm{basic}\,\phi^{(2)}_0$ with $\phi^{(2)}_0 = 1-(bt_1/E_1+bt_2/E_2)E_\gamma/(g_1+g_2)$ if extrad\_flag $\le2$
+\fsrc{radc.f:575-581}; with rad\_flag 1 and extrad\_flag 3 the code falls through to \eqr{eq:peaked} with
+\code{dsoft\_intmin/max} never set in that call (SAVEd values, \finding{D-019 Q4 dsoft\_int}). For rad\_flag 0 (the default) the weight of the chosen tail does not depend on the drawn
+$E_\gamma$:
+\begin{feqa}{radc.f:599-652 (peaked\_rad\_weight)}
+w_\mathrm{peak} &= \frac{c^\mathrm{ext}_0}{g_\mathrm{ext}}\Bigl[e^{-\delta_\mathrm{soft}(E_\gamma^\mathrm{max})}(E_\gamma^\mathrm{max})^{g_\mathrm{ext}}
+ - e^{-\delta_\mathrm{soft}(E_\gamma^\mathrm{min})}(E_\gamma^\mathrm{min})^{g_\mathrm{ext}}\Bigr]\nonumber\\
+ &\quad\times\frac{e^{-\gamma_E g_4}}{\Gamma(1+g_4)}\,\frac{\Gamma(1+g_4-bt_1-bt_2)\,\Gamma(1+bt_1)\,\Gamma(1+bt_2)}{\Gamma(1+g_4)},
+\label{eq:peaked}
+\end{feqa}
+with $\delta_\mathrm{soft}(E)$ = \code{bsoft} of \code{brem} (or \code{bremos}) at the cut-off $E$ (the term with
+$E_\gamma^\mathrm{min}$ is dropped when $E_\gamma^\mathrm{min}\le0$; a negative result is set to 0). $w_\mathrm{peak}$ is
+the probability that the total radiated energy lies between the limits, $e^{-\delta_\mathrm{soft}(E)}$ playing the role
+of the integrated internal spectrum $c^\mathrm{int}_0E^{g_\mathrm{int}}/g_\mathrm{int}$ (compare the BASICRAD form
+\fsrc{radc.f:637}). The extrad\_flag 3 terms (Friedrich, \fsrc{radc.f:588-594}) are computed and not used
+(\finding{D-019 Q4}). Note that $\Gamma(1+g_4)$ appears twice in the denominator; with $g_4\approx0.05$--$0.15$ the
+Gamma-function factor is $1+O(g^2)$. The final generation weight is
+\begin{feq}{radc.f:521-522}
+w_\mathrm{gen}\leftarrow w_\mathrm{gen}\cdot\frac{w_\mathrm{rad}}{\mathrm{hardcorfac}} = w_\mathrm{gen}\,w_\mathrm{rad}\,(1-\delta_\mathrm{hard}),
+\label{eq:radweight}
+\end{feq}
+where $w_\mathrm{rad}$ is the last assigned weight: in the peaked basis the peaked weight replaces the product
+(\finding{D-019 rad\_weight}), and if tail 1 radiated, \code{hardcorfac} is the one recomputed by the second
+\code{complete\_ev} (\finding{D-019 tail-1 COMMON}). Events without a photon (when a disabled tail is chosen, or
+$g\le0$) keep $w_\mathrm{rad}=1$ (\finding{D-019 one\_tail}). The ntuple column \code{radphot} is
+$E_{\gamma1}+E_{\gamma2}+E_{\gamma3}$ in GeV.
+
+\subsection{Internal soft and hard factors: brem.f}\label{sec:brem}
+\code{brem(E$_\mathrm{in}$, E$'$, E$_c$, rad\_proton, $\delta_\mathrm{soft}$, $\delta_\mathrm{hard}$,
+$\delta'_\mathrm{soft}$)} works in GeV with its own constants $M = 0.93827231$, $m_e = 0.00051099906$,
+$\alpha=1/137.0359895$. It reconstructs the electron angle and the proton from \emph{elastic e--p kinematics}:
+\begin{feqa}{brem.f:32-46}
+k &= E_\mathrm{in}/1000,\ k'=E'/1000,\ \Delta=E_c/1000,\nonumber\\
+\theta &= 2\arcsin\sqrt{\frac{M}{2k}\Bigl(\frac{k}{k'}-1\Bigr)},\qquad
+Q^2 = 4kk'\sin^2(\theta/2),\nonumber\\
+E_p &= M+k-k',\qquad p=\sqrt{E_p^2-M^2},\nonumber\\ \theta_p & = \arccos\frac{k-k'\cos\theta}{p}.
+\label{eq:bremkin}
+\end{feqa}
+This is exact for H(e,e$'$p) only; for every other reaction the angle and $Q^2$ used for the soft and hard factors are
+those of an elastic e--p event with the same $E_\mathrm{in}$, $E'$ (\finding{P5.F1 Q8}). The soft factor is the sum of
+the direct and interference terms of the electron (and, if \code{rad\_proton}, of the proton) currents,
+\begin{feqa}{brem.f:64-83, 165-183}
+b_{ei} &= -\frac{1}{2\pi}\ln\frac{k}{\Delta},\quad b_{ef} = -\frac{1}{2\pi}\ln\frac{k'}{\Delta},\quad
+b_{ee} = -(kk'(1-\cos\theta))\,I(\ldots),\qquad
+\nonumber\\ \delta_\mathrm{soft} &= 2\alpha\bigl(b_{ei}+b_{ef}+b_{ee}\bigr)+[\text{proton terms}],\nonumber\\
+\delta_\mathrm{hard} &= -\frac{\alpha}{\pi}\Bigl(-\frac{28}{9}+\frac{13}{6}\ln\frac{Q^2}{m_e^2}\Bigr),\nonumber\\
+\delta'_\mathrm{soft} & = \frac{\mathrm{d}\delta_\mathrm{soft}}{\mathrm{d}\Delta}\Big/1000\ [\mathrm{MeV}^{-1}],
+\label{eq:brem}
+\end{feqa}
+where $I$ is the integral of \code{inter} \fsrc{brem.f:218-247}: logarithms plus Spence functions, the latter replaced
+by the approximation $\mathrm{Sp}(x) = 0$ for $|x|\le1$ and $-\frac12\ln^2|x|$ otherwise (``saves a WHALE of CPU'',
+\fsrc{brem.f:298-317}). The proton terms (direct initial/final, p--p, and the four e--p interferences) are written in
+\fsrc{brem.f:88-162} with the same structure. \code{bremos} \fsrc{brem.f:344-574} takes the four-vectors instead and
+sets the initial proton at rest with mass $M_p$ (``offshell'' is only the final proton mass). The Schwinger form used
+for intcor\_mode 0 is
+\begin{feqa}{radc.f:732-745}
+\delta_\mathrm{soft}^\mathrm{S} &= \frac{\alpha}{\pi}\Bigl(\ln\frac{Q^2}{m_e^2}-1\Bigr)\ln\frac{E_\mathrm{in}E'\,b_\eta}{\eta^2E_c^2},\quad
+b_\eta = 1+\frac{2\nu\sin^2(\theta/2)}{A u},\nonumber\\
+\delta_\mathrm{hard}^\mathrm{S} &= -\frac{\alpha}{\pi}\Bigl[2.166666\Bigl(\ln\frac{Q^2}{m_e^2}-1\Bigr)+\mathrm{Sp}(1-\sin^2\tfrac\theta2)-2.5893784-\tfrac12\ln^2\frac{E_\mathrm{in}}{E'}\Bigr],
+\label{eq:schwinger}
+\end{feqa}
+with $\eta=1$ \fsrc{init.f:682} and \code{spen} the series of Abramowitz and Stegun 27.7.2 truncated when a term is below
+$10^{-4}$ of the sum (at most 101 terms) \fsrc{radc.f:762-770}. In that mode \code{dsoft\_prime} is not set and $g_4$
+uses a stale value (\finding{D-019 intcor\_mode 0}).
+
+% =====================================================================================================================
+\section{Fortran \texorpdfstring{$\leftrightarrow$}{<->} C++ map of the common parts}\label{sec:map}
+\begin{simctable}{footnotesize}{L{0.42\linewidth}L{0.55\linewidth}}
+\toprule\rowcolor{simchead}\simcth{Fortran (59ccdf6)} & \simcth{C++ (src/...)}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{Fortran (59ccdf6)} & \simcth{C++ (src/...)}\\\midrule\endhead
+\bottomrule\endlastfoot
+simc.f main loop l.176-358, pass\_cuts l.236-253 & \csrc{driver/SimcRun.cpp: SimcRun::step, PassCuts}\\
+simc.f:101-108 targetfac, luminosity & \csrc{setup/SetupBuilder.cpp: BuildRunSetup}\\
+simc.f:375-405 normfac, genvol & \csrc{driver/RunReport.cpp: Normalise}; \csrc{reactions/EepReactionBase.cpp: genVolume}\\
+simc.f:1153-1316 calculate\_central & \csrc{driver/Central.cpp: calculateCentral}\\
+simc.f:1320-1862 montecarlo & \csrc{driver/MonteCarlo.cpp: MonteCarlo::run}\\
+event.f:126-428 generate (beam part l.147-212) & \csrc{reactions/StandardBeam.cpp: StandardBeam::generate}; reaction part:
+ the \code{IReaction::generate} of each reaction; \csrc{reactions/EventChain.cpp: generateEvent}\\
+event.f:432-1054 complete\_ev & \csrc{reactions/EepReactionBase.cpp: EepReactionBase::completeEv} ((e,e$'$p), (e,e$'$)A, phase space)\\
+event.f:1058-1362 complete\_recon\_ev & \csrc{reactions/EepReactionBase.cpp: EepReactionBase::completeRecon}\\
+event.f:1366-1572 complete\_main & \csrc{EepReactionBase::completeMain}, \csrc{reactions/EventChain.cpp: assembleWeight}\\
+event.f:1-120 limits\_update, update\_range & \csrc{reactions/EventChain.cpp: limitsUpdate, updateRange, updateSlopRange}\\
+event.f:1575-1651 physics\_angles, spectrometer\_angles & \csrc{setup/KinematicsUtils.cpp: PhysicsAngles, SpectrometerAngles}\\
+init.f:91-572 limits\_init & \csrc{setup/SetupLimits.cpp: BuildLimits}\\
+init.f:1-87 target\_init & \csrc{material/HallCCryoTarget.cpp: HallCCryoTarget::targetInit}\\
+target.f:1-306, 310-544, 548-589 & \csrc{material/HallCCryoTarget.cpp: trip, extremeTripThruTarget, targetMusc, extremeTargetMusc}\\
+enerloss\_new.f & \csrc{material/SimcMaterial.cpp: SimcMaterial::energyLoss}\\
+gauss1.f, call\_ranlux.f, cern/ranlux.f & \csrc{core/random/Gauss1.cpp, RanluxRandom.cpp} (default \csrc{Mt64Random.cpp})\\
+init.f:576-651 radc\_init; 655-728 radc\_init\_ev; 732-813 basicrad\_init\_ev & \csrc{radiation/RadcInit.cpp: radcInit, radcInitEv, basicradInitEv}\\
+radc.f basicrad, generate\_rad, peaked\_rad\_weight, extrad\_friedrich, extrad\_phi, schwinger, spen, lambda\_dave &
+ \csrc{radiation/Radc.cpp: basicrad, generateRad, peakedRadWeight, extradFriedrich, extradPhi, schwinger, spen, lambdaDave}\\
+brem.f brem, inter, spence, bremos, inter\_prime & \csrc{radiation/Brem.cpp: brem, inter, spence, bremos, interPrime}\\
+dbase.f:136-235 reaction flags, 293-300 masses & \csrc{core/RunSetup.cpp: DeriveReactionFlags}; \csrc{setup/SetupReaction.cpp: BuildReactionAndKinematics}\\
+\end{simctable}
+
+% =====================================================================================================================
+\section{Findings that concern every reaction}\label{sec:findings}
+\begin{simctable}{footnotesize}{L{0.2\linewidth}L{0.46\linewidth}L{0.3\linewidth}}
+\toprule\rowcolor{simchead}\simcth{id} & \simcth{Fortran behaviour} & \simcth{default / compat}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{id} & \simcth{Fortran behaviour} & \simcth{default / compat}\\\midrule\endhead
+\bottomrule\endlastfoot
+\finding{D-006 pass\_cuts} & hadron $\delta$ upper cut against the electron limit (simc.f:244) & hadron limit / Fortran\\
+\finding{D-028 F2} & NaN \code{yptar} from \code{spectrometer\_angles} (event.f:1645) & clamped / Fortran\\
+\finding{D-017} & hadron extreme trip uses the electron angle (target.f:501) & hadron angle / Fortran\\
+\finding{D-024} & random numbers drawn for unused $\Delta E_\mathrm{beam}$ and energy losses; stale \code{orig} after a failed
+  \code{generate\_rad} & kept (B)\\
+\finding{D-019} (several) & radiation: overwritten \code{rad\_weight}, \code{hardcorfac} after tail 1, intcor\_mode 0,
+  unused $\phi_\mathrm{ext}$, \code{one\_tail} & kept (B)\\
+\finding{P5.F1 Q8} & brem/bremos use elastic e--p kinematics for every reaction & kept (D)\\
+\finding{D-012 F*} & energy-loss guards and Gaussian truncations & kept (D)\\
+\finding{P8.2 targetfac} & quadruple-precision \code{targetfac} & reproduced (D)\\
+\finding{D-002} & RANLUX & \code{mt64} default, RANLUX on request\\
+\end{simctable}
+
+\begin{thebibliography}{9}
+\bibitem{ent} R.~Ent et al., ``Radiative corrections for (e,e$'$p) reactions at GeV energies'', Phys.\ Rev.\ C
+  \textbf{64}, 054610 (2001). Not cited in the code; the published account of the formalism of radc.f.
+\bibitem{lynch} G.~R.~Lynch and O.~I.~Dahl, Nucl.\ Instrum.\ Meth.\ B \textbf{58}, 6 (1991), Eq.~6 (cited at
+  \fsrc{target.f:568}).
+\bibitem{aste} A.~Aste, K.~Hencken, J.~Jourdan, I.~Sick, D.~Trautmann, Eur.\ Phys.\ J.\ A \textbf{26}, 167 (2005)
+  (cited at \fsrc{init.f:71}).
+\bibitem{makins} N.~C.~R.~Makins, Ph.D.\ thesis, MIT (1994), Sect.~4.5.6 (cited at \fsrc{radc.f:161}).
+\bibitem{mo} L.~W.~Mo and Y.~S.~Tsai, Rev.\ Mod.\ Phys.\ \textbf{41}, 205 (1969) (the ``Mo-Tsai'' formalism named in
+  nuclear\_elastic.f; also the origin of the $b$ factor and of the radiation-length formula).
+\bibitem{as} M.~Abramowitz and I.~A.~Stegun, \emph{Handbook of Mathematical Functions}, formula 27.7.2 (cited at
+  \fsrc{radc.f:759-760}).
+\end{thebibliography}
+\end{document}
