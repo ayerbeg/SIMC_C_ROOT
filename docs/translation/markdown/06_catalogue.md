@@ -21,7 +21,7 @@ Columns: `id` (decision and finding id, `D-xxx Fn`; the decision text is in DECI
 
 | # | id | Fortran location | Fortran behaviour | default (corrected) mode | `--fortran-compat` | effect | test |
 |---|---|---|---|---|---|---|---|
-| 1 | D-006 pass_cuts | simc.f:237 | the hadron delta upper cut uses `SPedge%e%delta%max` | `SPedge%p%delta%max` (`driver::PassCuts`) | Fortran (original behaviour) | `pass_cuts` → npasscuts, `wtcontribute` (.hist wtcontr), resolution sums; with `hard_cuts` also the accepted events. Only events with recon hadron delta between the two limits are affected. K3 (HMS hadron at 423 MeV/c, limits 10 % vs 22 %): 42 of 200000 accepted events (norad) and 722 of 200000 (rad) no longer pass, .hist wtcontr −0.013 % / −0.230 % and the RECON SUMMARY resolutions change in the 4th digit (the Fortran trees give the same fractions: 27 and 755 events). P1.2, K2, K4: 0 events (no hadron recon delta in the window; in K2 the hadron limit is the larger one). | `fortran_diff_D006_pass_cuts` |
+| 1 | D-006 pass_cuts | simc.f:237 (59ccdf6: simc.f:244); wtcontr sum simc.f:311-313 (59ccdf6: 318-320) | the hadron delta upper cut uses `SPedge%e%delta%max` | `SPedge%p%delta%max` (`driver::PassCuts`) | Fortran (original behaviour) | `pass_cuts` → npasscuts, `wtcontribute` (.hist wtcontr), resolution sums; with `hard_cuts` also the accepted events. Only events with recon hadron delta between the two limits are affected. K3 (HMS hadron at 423 MeV/c, limits 10 % vs 22 %): 42 of 200000 accepted events (norad) and 722 of 200000 (rad) no longer pass, .hist wtcontr −0.013 % / −0.230 % and the RECON SUMMARY resolutions change in the 4th digit (the Fortran trees give the same fractions: 27 and 755 events). P1.2, K2, K4: 0 events (no hadron recon delta in the window; in K2 the hadron limit is the larger one). **Fortran under-count** when `SPedge%e%delta%max` < `SPedge%p%delta%max` and accepted hadrons reach the window, also with `hard_cuts = 0`: Fortran wtcontr 1.755 % (norad) / 1.488 % (rad) low in the HMS+SOS RealTests H(e,e'p) benchmark (size, rule and slops: note below this table). | `fortran_diff_D006_pass_cuts` |
 | 2 | D-006 kaon decay, fixed upstream in 1fae2d7 (D-081) | shared/transp.f:158 | K → ππ decay in the first half of an element gives the product the kaon mass (`m_final = Mk`) | `Mpi`, as transp.f:251 and project.f:88. Since U.R `--fortran-compat` follows upstream 59ccdf6 (Mpi too); the 294f662 `Mk` only with `--fortran-compat --compat-target 294f662` | **fixed upstream** in 1fae2d7: as the default (upstream 59ccdf6); the 294f662 Fortran with `--compat-target 294f662` | kaons with `doing_decay` only (P10): mass and momentum of the decay product. No effect on H(e,e'p). | `fortran_diff_D006_kaon_decay_mass` |
 | 3 | D-011 .geni Q3 | simc.f:519-520 | the SHMS "Q3 … mid" column prints `shmsSTOP_q2_mid` | prints `shmsSTOP_q3_mid` | Fortran (original behaviour) | `.geni` text only (the summary JSON keeps `q2_mid_dup` for the comparison with Fortran .geni files). 0 = 0 in the P1.2 runs. | `fortran_diff_D011_D018_report_formats` |
 | 4 | D-011/D-060/D-061 F8 .geni SOS slit | simc.f:477 | the SOS "Slit hor/vert/corners" line prints `sSTOP_slit_vert, sSTOP_slit_hor, sSTOP_slit_oct` (horizontal and vertical swapped against the label and the HMS/SHMS lines) | prints slit_hor, slit_vert, slit_oct (`FormatGeni`, P14.1) | Fortran (original behaviour) | `.geni` text of SOS runs only (eep_h_test_pctnames: "1313 18 21" → "18 1313 21") | `l1_simcrun_ranlux_sos_eep_h_test_pctnames` (both modes) |
@@ -377,7 +377,7 @@ The Category B items are the open physics questions for the user and an expert (
 
 ## 6.4 Cross-check with the decisions
 
-Every finding id (`F`, `G`, `T`, `R`, `S` + number) named in a DECISIONS.md entry about findings was searched in FORTRAN_DIFFERENCES.md together with its decision number: 182 ids checked, 42 without an entry of their own.
+Every finding id (`F`, `G`, `T`, `R`, `S` + number) named in a DECISIONS.md entry about findings was searched in FORTRAN_DIFFERENCES.md together with its decision number: 183 ids checked, 43 without an entry of their own.
 
 Ids without an entry of their own (most are documentation-only findings, Category D, described in the decision text, or ids of the provisional numbering that a later decision superseded, e.g. D-056 R-ids → D-057 F-ids; see the decision for each):
 
@@ -399,6 +399,7 @@ Ids without an entry of their own (most are documentation-only findings, Categor
 | D-061 | F9, F10 |
 | D-062 | F2 |
 | D-067 | F2, T8, T9, T10, T11 |
+| D-083 | F2 |
 
 ## 6.5 Findings fixed upstream
 

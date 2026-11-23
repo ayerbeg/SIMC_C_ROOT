@@ -8,6 +8,12 @@ Every stage of the event chain is a plug-in that can be chosen from a JSON confi
 the polarized-target field of the Fortran are ported. Clear Fortran bugs are corrected by default; `--fortran-compat`
 restores the exact Fortran behaviour, and with the RANLUX generator SIMC++ then reproduces Fortran runs file for file.
 
+**Which Fortran SIMC.** SIMC++ reproduces the official Fortran SIMC ([JeffersonLab/simc_gfortran](https://github.com/JeffersonLab/simc_gfortran))
+at master commit **59ccdf6** (2026-10-01), as recorded in [UPSTREAM_SIMC](UPSTREAM_SIMC). The default column layout of the
+`h10` tree follows 59ccdf6; `--tree-layout legacy` writes the layout of the older version 294f662, and
+`--fortran-compat --compat-target 294f662` reproduces the behaviour of 294f662. The release that reproduced 294f662 is
+the git tag `v1.0-fortran294f662` (`git checkout v1.0-fortran294f662`).
+
 ## Features
 
 - **Reactions:** H(e,e'p) elastic, D/A(e,e'p) quasi-elastic (spectral functions, Benhar SF), exclusive pion (π±, π0 → 2γ, Δ final states, coherent), kaon (Λ, Σ0, Σ−, hypernuclei), Delta, SIDIS, exclusive ρ0, and phase-space mode.
@@ -52,7 +58,8 @@ their yields are not physical rates.
 ## In short
 
 ```bash
-export SIMCPP_SRC=~/src/simcpp SIMCPP_BUILD=~/build/simcpp ROOTSYS=~/opt/root LD_LIBRARY_PATH=~/opt/root/lib
+source ~/opt/root/bin/thisroot.sh          # ROOT's set-up script (ROOTSYS, PATH, LD_LIBRARY_PATH), in every new shell
+export SIMCPP_SRC=~/src/simcpp SIMCPP_BUILD=~/build/simcpp
 cmake -S $SIMCPP_SRC -B $SIMCPP_BUILD -DCMAKE_PREFIX_PATH=$ROOTSYS -DCMAKE_BUILD_TYPE=Release
 cmake --build $SIMCPP_BUILD -j8
 $SIMCPP_BUILD/bin/simc++ $SIMCPP_SRC/docs/manual/markdown/user/examples/h_elastic_rad.inp -o out --ngen 5000
@@ -60,6 +67,8 @@ $SIMCPP_BUILD/bin/simc++ $SIMCPP_SRC/docs/manual/markdown/user/examples/h_elasti
 ```
 
 The Fortran SIMC is not needed. Requirements: a C++20 compiler, CMake ≥ 3.15, ROOT ≥ 6.40 built with C++20, nlohmann/json ≥ 3.9 (fetched if absent).
+Source ROOT's `thisroot.sh` before configuring, building and running (setting `ROOTSYS` and `LD_LIBRARY_PATH=$ROOTSYS/lib`
+by hand works too).
 See [chapter 2 of the user manual](docs/manual/markdown/user/02_installation.md) for the options, installation, data directory and
 test labels.
 

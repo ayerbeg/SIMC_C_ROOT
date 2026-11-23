@@ -335,6 +335,13 @@ Reconstructed events inside the unwidened limits count in the `.hist` wtcontr (p
 also the only accepted events. The defaults (±1e10) are wide open: **set them** in every input. A delta minimum
 ≤ −100 % is changed to −99.99 %.
 
+> **Legacy SIMC:** the legacy program (and `--fortran-compat`) tests the hadron delta against the **electron**
+> `SPedge%e%delta%max` (finding D-006). When the electron delta maximum is the smaller one, its `wtcontr` is too low as
+> soon as accepted hadrons reach the hadron window: 1.755 % (no radiation) and 1.488 % (radiation) for an H(e,e'p) run
+> with the HMS electron arm at ±10 % and the SOS proton arm at ±15 %, `hard_cuts = 0`. To avoid it in a legacy run, set
+> `SPedge%e%delta%max` ≥ `SPedge%p%delta%max` (0.5 % more for an SOS hadron arm). The default mode of SIMC++ uses the
+> hadron limit; all cases are in `docs/translation/markdown/user_differences.md`.
+
 | Name | Units | Default | Meaning | Used by |
 |---|---|---|---|---|
 | `SPedge%e%delta%min` | % | −1e10 | electron arm delta lower limit | all |

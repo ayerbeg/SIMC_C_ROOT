@@ -32,6 +32,13 @@ accepted event, text reports and a JSON run summary (\hyperref[user_manual-07u5f
 (SIMC++ is a translation of the Fortran SIMC, \code{simc\_\allowbreak{}gfortran}. The Fortran code is not needed to build or run it. How the
 translation was validated is described in \code{docs/\allowbreak{}translation/}.)
 
+\textbf{Which Fortran SIMC.} SIMC++ reproduces the official Fortran SIMC of Jefferson Lab (\code{Jefferson\allowbreak{}Lab/\allowbreak{}simc\_\allowbreak{}gfortran}) at
+master commit \textbf{59ccdf6} (2026-10-01),\allowbreak{} the version recorded in the file \code{UPSTREAM\_\allowbreak{}SIMC} of the source tree. The default
+column layout of the ROOT tree follows 59ccdf6; \code{-{}-{}tree-{}layout\ legacy}\simcidx{Command-line options!tree-layout@\code{-{}-{}tree-{}layout}} writes the layout of the older version 294f662
+(\hyperref[user_manual-07u5foutputs]{7.1}), and \code{-{}-{}fortran-{}compat\ -{}-{}compat-{}target\ 294f662}\simcidx{Command-line options!fortran-compat@\code{-{}-{}fortran-{}compat}} reproduces the behaviour of 294f662
+(\hyperref[user_manual-08u5frunningu5fandu5freproducibility:83-default-and-legacy-compatible-mode]{8.3}). The SIMC++ release that reproduced
+294f662 is the git tag \code{v1.\allowbreak{}0-{}fortran294f662} (\code{git\ checkout\ v1.\allowbreak{}0-{}fortran294f662}, \hyperref[user_manual-02u5finstallation:21-directory-layout-used-in-this-manual]{2.1}).
+
 \begin{figure}[htbp]
 \simcfigure{run_flow}
 \caption[A run of SIMC++]{A run of SIMC++: the inputs are read into SimcParameters and RunSetup, the pipeline creates the stages by name, the event loop calls them once per try, and finish() normalises and writes the outputs through the sinks}\label{fig:runu5fflow}
@@ -55,14 +62,14 @@ Spectrometers: HMS, SHMS, SOS, HRS-R, HRS-L and an NPS-like calorimeter arm with
 magnetic field of a polarized target (\hyperref[user_manual-06u5fspectrometers]{chapter 6}).
 
 \section{\texorpdfstring{Run modes}{Run modes}}\label{user_manual-01u5fintroduction:13-run-modes}
-\begin{simctable}{small}{3}{>{\raggedright\arraybackslash}p{\dimexpr 0.209\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.393\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.330\linewidth-2\tabcolsep\relax}}
+\begin{simctable}{small}{3}{>{\raggedright\arraybackslash}p{\dimexpr 0.209\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.324\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.399\linewidth-2\tabcolsep\relax}}
 %
 \toprule\rowcolor{simchead}\simcth{mode} & \simcth{how} & \simcth{use} \\\midrule\endfirsthead
 \multicolumn{3}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{mode} & \simcth{how} & \simcth{use} \\\midrule\endhead
 \midrule\multicolumn{3}{r@{}}{\simccontinues}\\\endfoot
 \bottomrule\endlastfoot
 default & nothing to do & physics runs \\
-legacy-compatible & \code{-{}-{}fortran-{}compat}\simcidx{Command-line options!fortran-compat@\code{-{}-{}fortran-{}compat}}, optionally with the \code{ranlux} random-number generator & reproduce results of the legacy Fortran SIMC exactly, including its known bugs \\
+legacy-compatible & \code{-{}-{}fortran-{}compat}\simcidx{Command-line options!fortran-compat@\code{-{}-{}fortran-{}compat}}, optionally with the \code{ranlux} random-number generator & reproduce results of the legacy Fortran SIMC (59ccdf6; 294f662 with \code{-{}-{}compat-{}target\ 294f662}\simcidx{Command-line options!compat-target@\code{-{}-{}compat-{}target}}) exactly, including its known bugs \\
 \end{simctable}
 Both modes and the other run options (seeds, generators, threads) are described in
 \hyperref[user_manual-08u5frunningu5fandu5freproducibility]{chapter 8}. The log line \code{\ SIMC++:\ fortran\_\allowbreak{}compat\ =\ false\ (\allowbreak{}.\allowbreak{}.\allowbreak{}.\allowbreak{})} tells which mode a run

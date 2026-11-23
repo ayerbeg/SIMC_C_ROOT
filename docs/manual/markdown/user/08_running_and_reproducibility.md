@@ -21,7 +21,9 @@ A given input, seed, mode and number of threads always produce the same files.
 ## 8.3 Default and legacy-compatible mode
 
 SIMC++ is a translation of the legacy Fortran SIMC. The legacy program has a number of known bugs (for example, the cut
-that decides whether an event counts in the `.hist` yield uses the electron delta limit for the hadron). **The default
+that decides whether an event counts in the `.hist` yield uses the electron delta limit for the hadron: with an HMS
+electron arm at ±10 % and an SOS proton arm at ±15 %, the legacy `wtcontr` of an H(e,e'p) run is 1.5 % to 1.8 % too low,
+even with `hard_cuts = 0`). **The default
 mode corrects them. The legacy-compatible mode, `--fortran-compat`, reproduces the legacy behaviour exactly**, bugs
 included:
 

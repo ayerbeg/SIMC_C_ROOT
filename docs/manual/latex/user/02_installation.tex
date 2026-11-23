@@ -28,10 +28,21 @@ All commands of this manual use these locations (adapt them to your machine):
 \code{\$SIMC\_\allowbreak{}REFERENCE} & \code{\textasciitilde{}/\allowbreak{}simc\_\allowbreak{}reference} & optional: reference runs and tables of the legacy program, only for validation \\
 \code{\$ROOTSYS} & \code{\textasciitilde{}/\allowbreak{}opt/\allowbreak{}root} & the ROOT 6.40 installation \\
 \end{simctable}
-\begin{simcshell}[basicstyle=\ttfamily\footnotesize]
+\begin{simcshell}[basicstyle=\ttfamily\scriptsize]
+source ~/opt/root/bin/thisroot.sh       # ROOT's set-up script: sets ROOTSYS, PATH and LD_LIBRARY_PATH
 export SIMCPP_SRC=~/src/simcpp SIMCPP_BUILD=~/build/simcpp SIMCPP_PREFIX=~/opt/simcpp
-export ROOTSYS=~/opt/root LD_LIBRARY_PATH=$ROOTSYS/lib
-export PATH=$SIMCPP_PREFIX/bin:$ROOTSYS/bin:$PATH
+export PATH=$SIMCPP_PREFIX/bin:$PATH
+\end{simcshell}
+Source ROOT's \code{thisroot.\allowbreak{}sh} in every new shell before configuring,\allowbreak{} building or running SIMC++ (it is the usual ROOT
+set-up). Setting \code{ROOTSYS}, \code{LD\_\allowbreak{}LIBRARY\_\allowbreak{}PATH=\allowbreak{}\$ROOTSYS/\allowbreak{}lib} and \code{PATH=\allowbreak{}\$ROOTSYS/\allowbreak{}bin:\allowbreak{}\$PATH} by hand works too.
+
+\textbf{Which version to check out.} The \code{main} branch reproduces the Fortran SIMC at master commit 59ccdf6 (the file
+\code{UPSTREAM\_\allowbreak{}SIMC}; the default tree layout is that of 59ccdf6, \code{-{}-{}tree-{}layout\ legacy}\simcidx{Command-line options!tree-layout@\code{-{}-{}tree-{}layout}} gives the 294f662 layout). The
+release that reproduced the older Fortran version 294f662 is the tag \code{v1.\allowbreak{}0-{}fortran294f662}:
+
+\begin{simcshell}[basicstyle=\ttfamily\scriptsize]
+git -C $SIMCPP_SRC checkout v1.0-fortran294f662   # the release for Fortran SIMC 294f662
+git -C $SIMCPP_SRC checkout main                  # back to the current version (Fortran SIMC 59ccdf6)
 \end{simcshell}
 \section{\texorpdfstring{Requirements}{Requirements}}\label{user_manual-02u5finstallation:22-requirements}
 \begin{simctable}{small}{3}{>{\raggedright\arraybackslash}p{\dimexpr 0.154\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.393\linewidth-2\tabcolsep\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.385\linewidth-2\tabcolsep\relax}}

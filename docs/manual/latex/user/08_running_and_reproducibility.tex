@@ -31,7 +31,9 @@ A given input, seed, mode and number of threads always produce the same files.
 \end{simctable}
 \section{\texorpdfstring{Default and legacy-compatible mode}{Default and legacy-compatible mode}}\label{user_manual-08u5frunningu5fandu5freproducibility:83-default-and-legacy-compatible-mode}
 SIMC++ is a translation of the legacy Fortran SIMC. The legacy program has a number of known bugs (for example, the cut
-that decides whether an event counts in the \code{.\allowbreak{}hist} yield uses the electron delta limit for the hadron). \textbf{The default
+that decides whether an event counts in the \code{.\allowbreak{}hist} yield uses the electron delta limit for the hadron: with an HMS
+electron arm at ±10 \% and an SOS proton arm at ±15 \%, the legacy \code{wtcontr} of an H(e,e'p) run is 1.5 \% to 1.8 \% too low,
+even with \code{hard\_\allowbreak{}cuts\ =\ 0}). \textbf{The default
 mode corrects them. The legacy-compatible mode, \code{-{}-{}fortran-{}compat}\simcidx{Command-line options!fortran-compat@\code{-{}-{}fortran-{}compat}}, reproduces the legacy behaviour exactly}, bugs
 included:
 

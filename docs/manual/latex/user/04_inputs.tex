@@ -330,6 +330,14 @@ Reconstructed events inside the unwidened limits count in the \code{.\allowbreak
 also the only accepted events. The defaults (±1e10) are wide open: \textbf{set them} in every input. A delta minimum
 ≤ −100 \% is changed to −99.99 \%.
 
+\begin{simclegacy}
+the legacy program (and \code{-{}-{}fortran-{}compat}\simcidx{Command-line options!fortran-compat@\code{-{}-{}fortran-{}compat}}) tests the hadron delta against the \textbf{electron}
+\hyperref[param:SPedgeu25eu25deltau25max]{\code{SPedge\%\allowbreak{}e\%\allowbreak{}delta\%\allowbreak{}max}}\simcidx{Parameters!SPedge.e.delta.max@\code{SPedge\%e\%delta\%max}} (finding D-006). When the electron delta maximum is the smaller one, its \code{wtcontr} is too low as
+soon as accepted hadrons reach the hadron window: 1.755 \% (no radiation) and 1.488 \% (radiation) for an H(e,e'p) run
+with the HMS electron arm at ±10 \% and the SOS proton arm at ±15 \%, \code{hard\_\allowbreak{}cuts\ =\ 0}. To avoid it in a legacy run, set
+\hyperref[param:SPedgeu25eu25deltau25max]{\code{SPedge\%\allowbreak{}e\%\allowbreak{}delta\%\allowbreak{}max}}\simcidx{Parameters!SPedge.e.delta.max@\code{SPedge\%e\%delta\%max}} ≥ \hyperref[param:SPedgeu25pu25deltau25max]{\code{SPedge\%\allowbreak{}p\%\allowbreak{}delta\%\allowbreak{}max}}\simcidx{Parameters!SPedge.p.delta.max@\code{SPedge\%p\%delta\%max}} (0.5 \% more for an SOS hadron arm). The default mode of SIMC++ uses the
+hadron limit; all cases are in \code{docs/\allowbreak{}translation/\allowbreak{}markdown/\allowbreak{}user\_\allowbreak{}differences.\allowbreak{}md}.
+\end{simclegacy}
 \begin{simcparams}
 \simcparam{SPedge\%\allowbreak{}e\%\allowbreak{}delta\%\allowbreak{}min}{param:SPedgeu25eu25deltau25min}{\%}{−1e10}{all}{electron arm delta lower limit}{SPedge.e.delta.min@\code{SPedge\%e\%delta\%min}}
 \simcparam{SPedge\%\allowbreak{}e\%\allowbreak{}delta\%\allowbreak{}max}{param:SPedgeu25eu25deltau25max}{\%}{1e10}{all}{electron arm delta upper limit}{SPedge.e.delta.max@\code{SPedge\%e\%delta\%max}}

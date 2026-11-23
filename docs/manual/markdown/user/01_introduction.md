@@ -24,6 +24,13 @@ accepted event, text reports and a JSON run summary ([chapter 7](07_outputs.md))
 (SIMC++ is a translation of the Fortran SIMC, `simc_gfortran`. The Fortran code is not needed to build or run it. How the
 translation was validated is described in `docs/translation/`.)
 
+**Which Fortran SIMC.** SIMC++ reproduces the official Fortran SIMC of Jefferson Lab (`JeffersonLab/simc_gfortran`) at
+master commit **59ccdf6** (2026-10-01), the version recorded in the file `UPSTREAM_SIMC` of the source tree. The default
+column layout of the ROOT tree follows 59ccdf6; `--tree-layout legacy` writes the layout of the older version 294f662
+([7.1](07_outputs.md)), and `--fortran-compat --compat-target 294f662` reproduces the behaviour of 294f662
+([8.3](08_running_and_reproducibility.md#83-default-and-legacy-compatible-mode)). The SIMC++ release that reproduced
+294f662 is the git tag `v1.0-fortran294f662` (`git checkout v1.0-fortran294f662`, [2.1](02_installation.md#21-directory-layout-used-in-this-manual)).
+
 ![A run of SIMC++: the inputs are read into SimcParameters and RunSetup, the pipeline creates the stages by name, the event loop calls them once per try, and finish() normalises and writes the outputs through the sinks](../../figures/run_flow.png)
 
 ## 1.2 What it simulates
@@ -46,7 +53,7 @@ magnetic field of a polarized target ([chapter 6](06_spectrometers.md)).
 | mode | how | use |
 |---|---|---|
 | default | nothing to do | physics runs |
-| legacy-compatible | `--fortran-compat`, optionally with the `ranlux` random-number generator | reproduce results of the legacy Fortran SIMC exactly, including its known bugs |
+| legacy-compatible | `--fortran-compat`, optionally with the `ranlux` random-number generator | reproduce results of the legacy Fortran SIMC (59ccdf6; 294f662 with `--compat-target 294f662`) exactly, including its known bugs |
 
 Both modes and the other run options (seeds, generators, threads) are described in
 [chapter 8](08_running_and_reproducibility.md). The log line ` SIMC++: fortran_compat = false (...)` tells which mode a run

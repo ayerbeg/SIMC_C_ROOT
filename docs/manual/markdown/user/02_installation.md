@@ -19,9 +19,21 @@ All commands of this manual use these locations (adapt them to your machine):
 | `$ROOTSYS` | `~/opt/root` | the ROOT 6.40 installation |
 
 ```bash
+source ~/opt/root/bin/thisroot.sh       # ROOT's set-up script: sets ROOTSYS, PATH and LD_LIBRARY_PATH
 export SIMCPP_SRC=~/src/simcpp SIMCPP_BUILD=~/build/simcpp SIMCPP_PREFIX=~/opt/simcpp
-export ROOTSYS=~/opt/root LD_LIBRARY_PATH=$ROOTSYS/lib
-export PATH=$SIMCPP_PREFIX/bin:$ROOTSYS/bin:$PATH
+export PATH=$SIMCPP_PREFIX/bin:$PATH
+```
+
+Source ROOT's `thisroot.sh` in every new shell before configuring, building or running SIMC++ (it is the usual ROOT
+set-up). Setting `ROOTSYS`, `LD_LIBRARY_PATH=$ROOTSYS/lib` and `PATH=$ROOTSYS/bin:$PATH` by hand works too.
+
+**Which version to check out.** The `main` branch reproduces the Fortran SIMC at master commit 59ccdf6 (the file
+`UPSTREAM_SIMC`; the default tree layout is that of 59ccdf6, `--tree-layout legacy` gives the 294f662 layout). The
+release that reproduced the older Fortran version 294f662 is the tag `v1.0-fortran294f662`:
+
+```bash
+git -C $SIMCPP_SRC checkout v1.0-fortran294f662   # the release for Fortran SIMC 294f662
+git -C $SIMCPP_SRC checkout main                  # back to the current version (Fortran SIMC 59ccdf6)
 ```
 
 ## 2.2 Requirements
