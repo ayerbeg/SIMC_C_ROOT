@@ -1,295 +1,325 @@
 % docs/physics/latex/01_hydrogen_elastic.tex - SIMC++ physics note 01: H(e,e'p) elastic scattering.
-% Source of docs/physics/pdf/SIMCpp_Physics_01_hydrogen_elastic.pdf (copied to src/physics/proton/ by the build).
-% Every displayed formula is a feq/feqa environment citing the Fortran (upstream 59ccdf6) line it transcribes.
+% Standalone PDF docs/physics/pdf/SIMCpp_Physics_01_hydrogen_elastic.pdf (copied to src/physics/proton/); a chapter of
+% the book SIMC++ Physics Reference. Rules: docs/physics/README.md; structure: template_reaction.tex.
 \documentclass{simcnote}
 \simccommon
-\simcnotemeta{01}{H(e,e$'$p) elastic}{H(e,e$'$p) elastic scattering}%
-  {Reaction \texttt{hydrogen\_elastic}, physics model \texttt{sigep}: kinematics, generation, the Rosenbluth cross
-   section with the Bosted form factors, radiation and outputs}
-
 \begin{document}
+\simcnotemeta{01}{H(e,e\pr p) elastic}{H(e,e\pr p) elastic scattering}%
+  {Reaction plug-in \texttt{hydrogen\_elastic} with the physics model \texttt{sigep}: elastic electron--proton
+   scattering with both particles detected}
 \simcnotemaketitle
-\simcabstract{Elastic electron--proton scattering detected in coincidence: the electron in one spectrometer and the
-recoil proton in the other. Only the electron direction is generated; the electron energy and the proton follow from
-two-body kinematics. The weight is the Rosenbluth cross section with the 1995 Bosted fit of the proton form factors,
-times the solid-angle jacobian and, with radiation on, the radiative weight. The common elements (frames, weighting,
-radiation, energy loss) are in note 00.}
+\simcabstract{Elastic electron--proton scattering detected in coincidence: the electron in one spectrometer, the recoil
+proton in the other. Only the electron direction is generated; the electron energy and the proton follow from
+two-body kinematics. The weight is the Rosenbluth cross section with the Bosted fit of the proton form factors, the
+solid-angle jacobian and, with radiation on, the radiative weight. Notation, glossary and common physics: note 00.}
 \simcnotetoc
 
 % =====================================================================================================================
-\section{The process and what SIMC simulates}\label{sec:process}
-The reaction is $e + p \to e' + p'$ on a hydrogen target. SIMC selects it when no reaction flag is set
-(\code{doing\_pion}, \code{doing\_kaon}, \code{doing\_delta}, \code{doing\_semi}, \code{doing\_rho},
-\code{doing\_nuc\_elast} all 0) and $\mathrm{nint}(A)=1$: then \code{doing\_eep} and \code{doing\_hyd\_elast} are true
-and the hadron mass is $M_h = M_p$ \fsrc{dbase.f:220-226}. The target mass is forced to $M_p$ and the recoil mass to 0
-\fsrc{dbase.f:279-283}; the struck mass is $M_p$ \fsrc{dbase.f:297-300}. In SIMC++ the reaction plug-in is
-\code{hydrogen\_elastic} with the physics model \code{sigep} (user manual \S5.1).
+\section{The reaction in SIMC++}\lbl{sec:reaction}
 
-What is simulated: the beam (energy spread, spot, raster), the vertex along the target, energy loss and multiple
-scattering of the three particles, radiation in the peaking approximation on all three legs (\csecr{sec:radiation}),
-the two spectrometers and the reconstruction, and the weight with the cross section below.
+\subsection{Process and scope}
+The reaction is $e + p \to e' + p$ on a hydrogen target. What is simulated: the beam (energy spread, spot, raster), the
+vertex along the target, energy loss and multiple scattering of the three particles, radiation in the peaking
+approximation on all three legs, both spectrometers and the reconstruction, and the weight of \secr{sec:xsec}. What is
+not: two-photon exchange, any form-factor model other than the fixed fit, a Coulomb correction (switched off for $Z=1$),
+and any inelastic process (the only events away from the elastic line are the radiative ones). The proton does not
+decay.
 
-What is not simulated: two-photon exchange, any form-factor model other than the fixed fit of \secr{sec:xsec}, a
-Coulomb correction ($Z=1$ switches it off, \fsrc{dbase.f:551}), and any inelastic process (the only events away from
-the elastic line are the radiative ones). The hadron does not decay (SIMC++ refuses \code{doing\_decay} with a proton,
-\finding{D-037 F9}).
+\subsection{Components}
+\begin{simctable}{footnotesize}{L{0.17\linewidth}L{0.15\linewidth}L{0.17\linewidth}L{0.22\linewidth}L{0.29\linewidth}}
+\caption{The SIMC++ components of H(e,e\pr p) (one component per row).}\lbl{tab:components}\\
+\toprule\rowcolor{simchead}\simcth{role} & \simcth{interface} & \simcth{registered name} & \simcth{class} & \simcth{file}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{role} & \simcth{interface} & \simcth{registered name} & \simcth{class} & \simcth{file}\\\midrule\endhead
+\bottomrule\endlastfoot
+reaction & \code{IReaction} & \code{hydrogen\_elastic} & \code{HydrogenElastic} & \file{reactions/HydrogenElastic.cpp}\\
+event completion & (base class) & -- & \code{reactions::EepReactionBase} & \file{reactions/EepReactionBase.cpp}\\
+weight assembly & (function) & -- & \code{reactions::assembleWeight} & \file{reactions/EventChain.cpp}\\
+cross section & \code{IPhysicsModel} & \code{sigep} & \code{proton::SigEPModel} & \file{physics/proton/ProtonModels.cpp}\\
+cross-section kernels & (functions) & -- & \code{proton::sigep}, \code{sigMott}, \code{fofa\_best\_fit} & \file{physics/proton/ProtonCrossSections.cpp}\\
+beam & \code{IBeam} & \code{standard} & \code{StandardBeam} & \file{reactions/StandardBeam.cpp}\\
+target & \code{ITarget} & \code{hallc\_cryo} & \code{material::HallCCryoTarget} & \file{material/HallCCryoTarget.cpp}\\
+radiation & \code{IRadiator} & \code{simc\_rad} & \code{SimcRadiator} & \file{radiation/SimcRadiator.cpp}\\
+spectrometers & \code{ISpectrometer} & from the arm codes & e.g.\ \code{hms::HmsSpectrometer} & spectrometers/\\
+outputs & \code{IOutputSink} & \code{root\_tree} and the default sinks & \code{RootTreeSink}, \ldots & output/, driver/\\
+\end{simctable}
 
-\begin{simclegacy}
-With \code{doing\_phsp}=1 on hydrogen the flags keep \code{doing\_hyd\_elast}, so the event is generated with the elastic
-kinematics of this note but with $\sigma=1$ and normfac $=1$ (\finding{D-009}, Category C, kept in both modes).
-\end{simclegacy}
+\subsection{Selection and override}
+The pipeline selects \code{hydrogen\_elastic} with \code{sigep} when no reaction flag is set (\code{doing\_pion},
+\code{doing\_kaon}, \code{doing\_delta}, \code{doing\_semi}, \code{doing\_rho}, \code{doing\_nuc\_elast} all 0) and
+$\mathrm{nint}(A)=1$ (\ctabr{tab:defaults}). The set-up then forces $M_A=M_p$, $M_\mathrm{rec}=0$, $M_N=M_p$ and
+$M_h=M_p$ (core/RunSetup.cpp, setup/SetupReaction.cpp; \fsrc{dbase.f:220-226, 279-283, 297-300}). A JSON input can
+replace the cross section without touching the reaction, for example with the compiled test model of the developer
+manual:
+\begin{center}\code{\{"pipeline": \{"reaction": "hydrogen\_elastic", "physics": \{"type": "example\_flat", "value": 2.5\}\}\}}\end{center}
+A replacement model must return $\mathrm{d}\sigma/\mathrm{d}\Omega_e$ in $\mu$b/sr at the vertex kinematics
+(\secr{sec:xsec}). With \code{doing\_phsp}=1 on hydrogen the pipeline chooses \code{phase\_space}, which uses the
+kinematics of this note with $\sigma=1$ and normfac $=1$.
+
+\subsection{Event flow}
+\begin{simctable}{footnotesize}{L{0.05\linewidth}L{0.33\linewidth}L{0.62\linewidth}}
+\caption{One try of H(e,e\pr p) (one step per row; the general chain is \ctabr{tab:chain}).}\lbl{tab:flow}\\
+\toprule\rowcolor{simchead}\simcth{\#} & \simcth{C++ call} & \simcth{what is specific to this reaction}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{\#} & \simcth{C++ call} & \simcth{what is specific to this reaction}\\\midrule\endhead
+\bottomrule\endlastfoot
+1 & \code{StandardBeam::generate} & nothing\\
+2 & \code{HydrogenElastic::generate} & draws the two electron slopes only (\eqr{eq:genslopes})\\
+3 & \code{EepReactionBase::completeEv} & elastic $E'$, the proton along $\vec q$ (\eqsr{eq:eprime}{eq:proton})\\
+4 & \code{SimcRadiator::radiate} & tail-1 limits from the elastic relation (\eqr{eq:radlimits}); a tail-1 photon recomputes the elastic event at the lower beam energy\\
+5 & \code{MonteCarlo::run} & the proton crosses the hadron arm; its acceptance decides whether the try succeeds\\
+6 & \code{EepReactionBase::completeRecon} & $E_m^\mathrm{rec}$ with $M_A=M_p$ (\eqr{eq:recem})\\
+7 & \code{EepReactionBase::completeMain} & $S=1$; \code{SigEPModel::sigcc} (\eqr{eq:sigep})\\
+\end{simctable}
 
 % =====================================================================================================================
-\section{Kinematics, generated variables and generation volume}\label{sec:gen}
-\subsection{Generated variables}
-After the beam and vertex part common to all reactions (\csecr{sec:onetry}) the reaction draws only the two electron
-slopes, flat in their generation ranges \fsrc{event.f:276-277}:
-\begin{feq}{event.f:276-277}
-y'_e = y'^\mathrm{min}_e + \xi_1\,(y'^\mathrm{max}_e - y'^\mathrm{min}_e),\qquad
-x'_e = x'^\mathrm{min}_e + \xi_2\,(x'^\mathrm{max}_e - x'^\mathrm{min}_e),
-\label{eq:genslopes}
+\section{Kinematics, generated variables and generation volume}\lbl{sec:gen}
+After the beam part (\csecr{sec:beam}) the reaction draws only the two electron slopes, flat in the electron edges:
+\begin{feq}{reactions/HydrogenElastic.cpp: HydrogenElastic::generate}{event.f:276-277}
+y'_e = y'_{e,\mathrm{min}} + \xi_1\,(y'_{e,\mathrm{max}} - y'_{e,\mathrm{min}}),\qquad
+x'_e = x'_{e,\mathrm{min}} + \xi_2\,(x'_{e,\mathrm{max}} - x'_{e,\mathrm{min}}),
+\lbl{eq:genslopes}
 \end{feq}
-and converts them to $\theta_e$, $\varphi_e$ with \ceqr{eq:physang}. The hadron slopes, the electron energy and the
-hadron energy are not generated (\fsrc{event.f:240} table; the conditions at \fsrc{event.f:280, 289, 300} exclude
-H(e,e$'$p)). The call of \code{physics\_angles} for the hadron \fsrc{event.f:325} converts the previous try's hadron
-slopes and its result is overwritten by \code{complete\_ev} (\finding{P4.F1 Q4}, no effect).
-
-\subsection{Ranges}
-The electron slope ranges are the edges of \ceqr{eq:edges}. The vertex limits and the generated-energy limits are
-trivial for this reaction:
-\begin{feqa}{init.f:321-325, 374-379, 438-440, 474-476, 500-503}
-E_m^\mathrm{vertex} &= P_m^\mathrm{vertex} = M_\mathrm{rec} = T_\mathrm{rec} = 0,\qquad \mathrm{sumEgen} = [0,0],\nonumber\\
-\mathrm{gen}^{E}_e &= [\mathrm{edge}^{E,\mathrm{min}}_e,\ \mathrm{edge}^{E,\mathrm{max}}_e+E_{\gamma2}^\mathrm{max}],\qquad
-\mathrm{gen}^{E}_p = [\mathrm{edge}^{E,\mathrm{min}}_p,\ \mathrm{edge}^{E,\mathrm{max}}_p+E_{\gamma3}^\mathrm{max}],
-\label{eq:ranges}
+and converts them to $\theta_e$, $\varphi_e$ (\ceqr{eq:physang}). The hadron slopes and the energies are not generated.
+The vertex limits and the generated-energy limits are trivial:
+\begin{feqa}{setup/SetupLimits.cpp: BuildLimits}{init.f:321-325, 374-379, 438-440, 474-476, 500-503}
+E_m &= P_m = M_\mathrm{rec} = T_\mathrm{rec} = 0\ \ \text{at the vertex},\qquad [\Sigma_\mathrm{min},\Sigma_\mathrm{max}] = [0,0],\nonumber\\
+[E'^\mathrm{gen}_\mathrm{min},E'^\mathrm{gen}_\mathrm{max}] &= [E'_\mathrm{min},\ E'_\mathrm{max}+E_{\gamma2}^\mathrm{max}],\qquad
+[E^\mathrm{gen}_{h,\mathrm{min}},E^\mathrm{gen}_{h,\mathrm{max}}] = [E_{h,\mathrm{min}},\ E_{h,\mathrm{max}}+E_{\gamma3}^\mathrm{max}],
+\lbl{eq:ranges}
 \end{feqa}
-the energy ranges being defined only for the diagnostic histograms (``not used for doing\_hyd\_elast'',
-\fsrc{init.f:472}). The largest photon energy allowed by energy conservation is
-\begin{feq}{init.f:411-413, 421-425}
-E_\gamma^\mathrm{tot,max} = E_\mathrm{beam}^\mathrm{max} + M_p - \mathrm{edge}^{E,\mathrm{min}}_e - \mathrm{edge}^{E,\mathrm{min}}_p,
-\label{eq:egammatot}
+the energy ranges serving only the diagnostic histograms. The largest photon energy allowed by energy conservation is
+\begin{feq}{setup/SetupLimits.cpp: BuildLimits}{init.f:411-425}
+E_\gamma^\mathrm{tot,max} = E_b^\mathrm{max} + M_p - E'_\mathrm{min} - E_{h,\mathrm{min}},
+\lbl{eq:egammatot}
 \end{feq}
-(0 without radiation; \code{Egamma\_gen\_max} replaces it when set), and $E_{\gamma i}^\mathrm{max} =
-E_\gamma^\mathrm{tot,max}$ for each enabled tail.
-
-\subsection{Generation volume}
-\begin{feq}{simc.f:383, 390}
-V_\mathrm{gen} = \Delta\Omega_e = (y'^\mathrm{max}_e-y'^\mathrm{min}_e)(x'^\mathrm{max}_e-x'^\mathrm{min}_e)\quad[\mathrm{sr}],
-\label{eq:genvol}
+(0 without radiation; replaced by \code{Egamma\_gen\_max} when that is set); each enabled tail has
+$E_{\gamma i}^\mathrm{max} = E_\gamma^\mathrm{tot,max}$. The generation volume is the electron solid angle,
+\begin{feq}{reactions/EepReactionBase.cpp: EepReactionBase::genVolume}{simc.f:383, 390}
+V_\mathrm{gen} = \Delta\Omega_e = (y'_{e,\mathrm{max}}-y'_{e,\mathrm{min}})(x'_{e,\mathrm{max}}-x'_{e,\mathrm{min}})\quad[\mathrm{sr}],
+\lbl{eq:genvol}
 \end{feq}
-the electron solid angle only (\ceqr{eq:genvol}); no generation weight $w_\mathrm{gen}$ is applied by the reaction.
+and the reaction applies no generation weight.
 
 % =====================================================================================================================
-\section{Completing the event}\label{sec:complete}
-\subsection{At the vertex (complete\_ev)}
-The scattered electron energy is the elastic one for the vertex beam energy $E_\mathrm{in}$ (after energy loss and
-after the photon of tail 1, if any):
-\begin{feq}{event.f:518-522}
-E' = \frac{E_\mathrm{in}\,M_p}{M_p + E_\mathrm{in}(1-\cos\theta_e)},\qquad P'_e = E',\qquad
+\section{Completing the event}\lbl{sec:complete}
+\subsection{Vertex}
+The scattered electron has the elastic energy for the vertex beam energy $E_\mathrm{in}$ (after energy loss and after the
+photon of tail 1, if any):
+\begin{feq}{reactions/EepReactionBase.cpp: EepReactionBase::completeEv}{event.f:518-522}
+E' = \frac{E_\mathrm{in}\,M_p}{M_p + E_\mathrm{in}(1-\cos\theta_e)},\qquad
 \delta_e = 100\,(E'-P_e^0)/P_e^0,
-\label{eq:eprime}
+\lbl{eq:eprime}
 \end{feq}
-($M_h = M_p$ in the code) and the try fails if $E' > E_\mathrm{in}$ \fsrc{event.f:520}, which happens only by rounding
-at $\theta_e = 0$ (\finding{D-024 $\theta=0$}). $\nu$, $Q^2$, $|\vec q|$, $\hat q$, $x$ follow from
-Eqs.~(\ref{C-eq:nuq2})--(\ref{C-eq:xbj}) of note~00. The proton carries the whole momentum transfer:
-\begin{feqa}{event.f:546-562}
-E_m &= P_m = M_\mathrm{rec} = 0,\qquad \hat p = \hat q,\qquad P_p = |\vec q|,\nonumber\\
-\theta_p &= \arccos\hat p_z,\qquad \varphi_p = \operatorname{atan2}(\hat p_y,\hat p_x)\ \ (+2\pi\text{ if }<0),\nonumber\\
-E_p &= \sqrt{P_p^2+M_p^2},\qquad \delta_p = 100\,(P_p-P_p^0)/P_p^0,
-\label{eq:proton}
+and the try fails if $E' > E_\mathrm{in}$, which happens only by rounding at $\theta_e=0$. $\nu$, $Q^2$, $\vec q$ and $x$
+follow from \ceqsr{eq:nuq2}{eq:xbj}. The proton carries the whole momentum transfer:
+\begin{feqa}{reactions/EepReactionBase.cpp: EepReactionBase::completeEv}{event.f:546-562, 937-938}
+\hat p &= \hat q,\qquad P_p = |\vec q|,\qquad E_p = \sqrt{P_p^2+M_p^2},\qquad \delta_p = 100\,(P_p-P_h^0)/P_h^0,\nonumber\\
+\theta_p &= \arccos\hat p_z,\qquad \varphi_p = \operatorname{atan2}(\hat p_y,\hat p_x)\ (+2\pi\text{ if negative}),\qquad
+E_m = P_m = M_\mathrm{rec} = T_\mathrm{rec} = 0,
+\lbl{eq:proton}
 \end{feqa}
-and the proton slopes $x'_p$, $y'_p$ are obtained with \code{spectrometer\_angles} (\ceqr{eq:specang}). They are not
-limited by the generation: whether the proton reaches the hadron arm is decided by the spectrometer model. Then
-$T_\mathrm{rec}=0$ \fsrc{event.f:937-938}. The vertex $\vec P_m$ of \ceqr{eq:pm} is zero up to rounding, $E_\mathrm{miss}
-= \nu+M_p-E_p$, and $W$, $\varepsilon$, $\theta_{pq}$, $\varphi_{pq}$ are not computed at the vertex (\finding{D-024 H
-elastic W}).
+and the proton slopes follow from \ceqr{eq:specang}. They are not limited by the generation: whether the proton reaches
+the detectors is decided by the hadron-arm model. The vertex $\vec P_m$ is zero up to rounding and
+$E_\mathrm{miss}=\nu+M_p-E_p$; $W$, $\varepsilon$, $\theta_{pq}$ and $\varphi_{pq}$ are not computed at the vertex.
 
-Without radiation \code{orig} = \code{vertex} \fsrc{event.f:401-413}. The scalar \code{main\%Trec} keeps the vertex
-$T_\mathrm{rec}$ for the diagnostics \fsrc{event.f:391}.
-
-\subsection{Reconstruction (complete\_recon\_ev)}
-From the reconstructed electron and proton (\ceqr{eq:recon}) and $E_\mathrm{in}^\mathrm{rec}$ (\ceqr{eq:einrec}):
-\begin{feq}{event.f:1312-1315, 1347-1349}
+\subsection{Reconstruction}
+\begin{feq}{reactions/EepReactionBase.cpp: EepReactionBase::completeRecon}{event.f:1312-1315, 1347-1349}
 \vec P_m^\mathrm{rec} = P_p^\mathrm{rec}\hat p^\mathrm{rec} - |\vec q^\mathrm{rec}|\,\hat q^\mathrm{rec},\qquad
 T_\mathrm{rec}^\mathrm{rec} = 0,\qquad E_m^\mathrm{rec} = \nu^\mathrm{rec} + M_p - E_p^\mathrm{rec},
-\label{eq:recem}
+\lbl{eq:recem}
 \end{feq}
-($M_A = M_p$); the other reconstructed variables are those of \csecr{sec:kinvars}. For an ideal elastic event without
-radiation $E_m^\mathrm{rec}$ and $P_m^\mathrm{rec}$ peak at 0, broadened by resolution and energy-loss fluctuations;
-radiation produces the tail to positive $E_m$. With \code{hard\_cuts} the events with $E_m^\mathrm{rec} >$
-\code{cuts\%Em\%max} are rejected \fsrc{simc.f:252} (if \code{cuts\%Em\%min} = \code{cuts\%Em\%max} the cut is opened to
-$\pm10^6$ MeV, \fsrc{dbase.f:538-542}).
+with the other reconstructed variables of \csecr{sec:kinvars}. Without radiation $E_m^\mathrm{rec}$ and $P_m^\mathrm{rec}$
+peak at 0 with the width of the resolution and of the energy-loss fluctuations; radiation produces the tail to positive
+$E_m^\mathrm{rec}$. With hard cuts, events with $E_m^\mathrm{rec}$ above \code{cuts\%Em\%max} are not successes (when the
+input minimum equals the maximum the window is opened to $\pm10^6$ MeV).
 
 % =====================================================================================================================
-\section{Jacobians}\label{sec:jac}
-The cross section is differential in the electron solid angle only, $\mathrm{d}\sigma/\mathrm{d}\Omega_e$; the
-proton momentum and direction are fixed by the electron. The only jacobian is the one of the electron slopes:
-\begin{feq}{event.f:498, 1015-1016}
-J = \bigl(1+x_e'^2+y_e'^2\bigr)^{-3/2},
-\label{eq:jac}
+\section{Jacobians}\lbl{sec:jac}
+The cross section is differential in the electron solid angle only; the proton is fixed by the electron. The only
+jacobian is that of the electron slopes (\ceqr{eq:jacomega}):
+\begin{feq}{reactions/EepReactionBase.cpp: EepReactionBase::completeEv}{event.f:498, 1015-1016}
+J = \bigl(1+x_e'^2+y_e'^2\bigr)^{-3/2}.
+\lbl{eq:jac}
 \end{feq}
-the hadron factor of \ceqr{eq:jacomega} being applied only to reactions that generate the hadron slopes
-\fsrc{event.f:1021-1025}.
 
 % =====================================================================================================================
-\section{Cross-section model}\label{sec:xsec}
-\subsection{The Rosenbluth cross section}
-\code{complete\_main} sets $S=1$ \fsrc{event.f:1400-1401} and evaluates \code{sigep} at the vertex and at the
-reconstructed kinematics; only the vertex value enters the weight \fsrc{event.f:1453-1455}:
-\begin{feqa}{physics\_proton.f:11-18}
+\section{Cross-section model}\lbl{sec:xsec}
+\subsection{What the reaction requires from a model}
+\code{EepReactionBase::completeMain} sets $S=1$ and calls the run's \code{IPhysicsModel}: \code{sigcc(vertex)} enters
+the weight, \code{sigccRecon(recon)} is kept as a diagnostic. The model receives the completed vertex event and must
+return $\mathrm{d}\sigma/\mathrm{d}\Omega_e$ in $\mu$b/sr; it reads $E_\mathrm{in}$, $E'$, $\theta_e$ and $Q^2$. The
+default model \code{sigep} evaluates the Rosenbluth formula below; any model with the same interface and units can
+replace it (\csecr{sec:pipeline}).
+
+\subsection{The model \code{sigep}}
+\begin{feqa}{physics/proton/ProtonCrossSections.cpp: sigep}{physics\_proton.f:11-18}
 \tau &= \frac{Q^2}{4M_p^2},\qquad W_1 = \tau\,G_M^2,\qquad W_2 = \frac{G_E^2+\tau G_M^2}{1+\tau},\nonumber\\
 \sigma &= \sigma_\mathrm{Mott}(E',\theta_e,Q^2)\,\frac{E'}{E_\mathrm{in}}\,\Bigl[W_2 + 2W_1\tan^2\frac{\theta_e}{2}\Bigr]
 \quad[\mu\mathrm{b/sr}],
-\label{eq:sigep}
+\lbl{eq:sigep}
 \end{feqa}
-with the point Mott cross section
-\begin{feq}{physics\_proton.f:186-187}
-\sigma_\mathrm{Mott}(E',\theta,Q^2) = \Bigl(\frac{2\alpha\hbar c\,E'\cos(\theta/2)}{Q^2}\Bigr)^2\times10^4\quad
-[\mathrm{fm^2}\to\mu\mathrm{b}].
-\label{eq:mott}
-\end{feq}
-Inserting $Q^2 = 4E_\mathrm{in}E'\sin^2(\theta/2)$ gives $\sigma_\mathrm{Mott} = [\alpha\hbar c\cos(\theta/2)/
-(2E_\mathrm{in}\sin^2(\theta/2))]^2$, the Mott cross section for the incident energy, so that \eqr{eq:sigep} is the
-usual Rosenbluth formula with the recoil factor $E'/E_\mathrm{in}$. The arguments are those of the vertex record:
-$E'$, $\theta_e$, $Q^2$ and $E_\mathrm{in}$ after radiation of tail 1.
-
-\subsection{Form factors}
-The proton form factors are the fit of Bosted \cite{bosted}, ``Eqs.~4 and 5'' according to the code comment
-\fsrc{physics\_proton.f:139-141}, as a function of $Q = \sqrt{Q^2}$ in GeV:
-\begin{feqa}{physics\_proton.f:12, 150-163}
-Q^2[\mathrm{GeV^2}] &= Q^2[\mathrm{MeV^2}]\times10^{-6}\quad(\text{passed as } -Q^2/(\hbar c)^2 \text{ and converted back}),\nonumber\\
-Q &= \sqrt{\max(Q^2,0)},\qquad G_E = \frac{1}{1+0.62Q+0.68Q^2+2.8Q^3+0.83Q^4},\nonumber\\
-G_M &= \frac{\mu_p}{1+0.35Q+2.44Q^2+0.5Q^3+1.04Q^4+0.34Q^5},\qquad \mu_p = 2.793.
-\label{eq:bosted}
-\end{feqa}
-The alternative ``Eqs.~6'' (a common denominator $1+0.14Q+3.01Q^2+0.02Q^3+1.20Q^4+0.32Q^5$ for $G_E$ and $G_M/\mu_p$)
-is present as a comment \fsrc{physics\_proton.f:165-168} and is not used. The coefficients are transcribed from the code;
-they have not been compared with the paper for this note (the code is the specification).
-
-\begin{simctable}{small}{L{0.2\linewidth}L{0.12\linewidth}L{0.12\linewidth}L{0.12\linewidth}L{0.12\linewidth}L{0.12\linewidth}}
-\caption{Coefficients of the denominators in \eqr{eq:bosted} \fsrc{physics\_proton.f:160-162}.}\label{tab:bosted}\\
-\toprule\rowcolor{simchead}\simcth{} & \simcth{$Q$} & \simcth{$Q^2$} & \simcth{$Q^3$} & \simcth{$Q^4$} & \simcth{$Q^5$}\\\midrule\endfirsthead
-\bottomrule\endlastfoot
-$G_E$ & 0.62 & 0.68 & 2.8 & 0.83 & --\\
-$G_M/\mu_p$ & 0.35 & 2.44 & 0.5 & 1.04 & 0.34\\
-\end{simctable}
+with $\sigma_\mathrm{Mott}$ of \ceqr{eq:mott} and the Bosted form factors $G_E$, $G_M$ of \ceqr{eq:bosted}. Since
+$\sigma_\mathrm{Mott}$ is the point-charge cross section for the incident energy, \eqr{eq:sigep} is the usual Rosenbluth
+cross section with the recoil factor $E'/E_\mathrm{in}$. All arguments are those of the vertex record, after the photon
+of tail 1.
 
 \subsection{Weight and units}
-The weight of \ceqr{eq:weight} becomes
-\begin{feq}{event.f:1561-1562}
-w = J\cdot w_\mathrm{gen}\cdot\sigma\qquad(S = 1,\ n_\mathrm{tgt}=1,\ \text{no Coulomb factor for }Z=1),
-\label{eq:weight}
+\begin{feq}{reactions/EventChain.cpp: assembleWeight}{event.f:1561-1562}
+w = J\cdot w_\mathrm{gen}\cdot\sigma\qquad(S = 1,\ n_\mathrm{tgt}=1,\ \text{no Coulomb factor for }Z=1)\quad[\mu\mathrm{b/sr}],
+\lbl{eq:weight}
 \end{feq}
-in $\mu$b/sr, with $w_\mathrm{gen}$ = 1 without radiation and the radiative weight of \ceqr{eq:radweight} with it. With
-$V_\mathrm{gen}$ in sr and $\mathcal L$ in $\mu$b$^{-1}$, \code{wtcontr} (\ceqr{eq:normfac}) is a number of counts.
-The \code{.hist} line \code{CENTRAL.sigcc} is \code{sigep} at the central kinematics of \code{calculate\_central}:
-$E' = P_e^0$, $\theta_e=\theta_0$ and $E_\mathrm{in} = E_\mathrm{beam}^\mathrm{vertex,ave}$, which is in general not a
-point of the elastic line \fsrc{simc.f:1178-1191, 1245, 1295}.
+with $w_\mathrm{gen}=1$ without radiation and the radiative weight of \ceqr{eq:radweight} with it. With $V_\mathrm{gen}$ in
+sr and $\mathcal L$ in $\mu$b$^{-1}$, \code{wtcontr} is a number of counts. The \texttt{.hist} line
+\code{CENTRAL.sigcc} is \code{sigep} at the central kinematics, $E'=P_e^0$, $\theta_e=\theta_e^0$,
+$E_\mathrm{in}=E_b^\mathrm{ave}$, which is in general not a point of the elastic line.
 
 % =====================================================================================================================
-\section{Radiation, energy loss and decays}\label{sec:rad}
-\subsection{Radiative tails}
-All three tails can radiate (the proton tail when $\lambda_3>0$, \ceqr{eq:lambda}). The photon-energy limits of
-\code{generate\_rad} are, for this reaction:
-\begin{feqa}{radc.f:269-276, 306-308 (tail 1); 372-389 (tail 2); 428-446 (tail 3)}
-E_b^\mathrm{max,min} &= \frac{M_p\,\mathrm{edge}^{E,\mathrm{max,min}}_e}{M_p-\mathrm{edge}^{E,\mathrm{max,min}}_e(1-\hat u_{e,z})}
-\quad(E_b^\mathrm{max}=10^{10}\text{ if negative}),\nonumber\\
-E_{\gamma1} &\in \bigl[E_\mathrm{in}-E_b^\mathrm{max}-d_E,\ \min(E_\mathrm{in}-E_b^\mathrm{min},\ \mathrm{edge}^\mathrm{max}_{E_m},\ E_{\gamma1}^\mathrm{max})+d_E\bigr],\nonumber\\
-E_{\gamma2} &\in \bigl[E'-\mathrm{edge}^{E,\mathrm{max}}_e-d_E,\ \min(E'-\mathrm{edge}^{E,\mathrm{min}}_e,\ E_\gamma^\mathrm{tot,max}-E_{\gamma1})+d_E\bigr],\nonumber\\
-E_{\gamma3} &\in \bigl[E_p-\mathrm{edge}^{E,\mathrm{max}}_p-d_E,\ \min(E_p-\mathrm{edge}^{E,\mathrm{min}}_p,\ E_\gamma^\mathrm{tot,max}-E_{\gamma1}-E_{\gamma2})+d_E\bigr],
-\label{eq:radlimits}
+\section{Radiation, energy loss and decays}\lbl{sec:rad}
+All three tails radiate (the proton tail when $\lambda_3>0$, \ceqr{eq:lambda}). The photon limits specific to this
+reaction are, with $\hat u_{e,z}=\cos\theta_e$:
+\begin{feqa}{radiation/Radc.cpp: generateRad}{radc.f:269-276, 306-308, 372-389, 428-446}
+E_b^{(\mathrm{max})} &= \frac{M_p\,E'_\mathrm{max}}{M_p-E'_\mathrm{max}(1-\cos\theta_e)}\ \ (10^{10}\text{ if negative}),\qquad
+E_b^{(\mathrm{min})} = \frac{M_p\,E'_\mathrm{min}}{M_p-E'_\mathrm{min}(1-\cos\theta_e)},\nonumber\\
+E_{\gamma1} &\in \bigl[E_\mathrm{in}-E_b^{(\mathrm{max})}-d_E,\ \min(E_\mathrm{in}-E_b^{(\mathrm{min})},\ E_{\gamma1}^\mathrm{max})+d_E\bigr],\nonumber\\
+E_{\gamma2} &\in \bigl[E'-E'_\mathrm{max}-d_E,\ \min(E'-E'_\mathrm{min},\ E_\gamma^\mathrm{tot,max}-E_{\gamma1})+d_E\bigr],\nonumber\\
+E_{\gamma3} &\in \bigl[E_p-E_{h,\mathrm{max}}-d_E,\ \min(E_p-E_{h,\mathrm{min}},\ E_\gamma^\mathrm{tot,max}-E_{\gamma1}-E_{\gamma2})+d_E\bigr],
+\lbl{eq:radlimits}
 \end{feqa}
-$E_b$ being the beam energy that produces an elastic electron of energy $\mathrm{edge}_e^E$ at the event's angle
-(the code comment notes that this is not the true extreme of the beam energy at very large angles,
-\fsrc{radc.f:263-267}). The missing-energy constraints written for (e,e$'$p) in \fsrc{radc.f:379-385, 436-441} use
-\code{edge\%Em}, which is set only for A(e,e$'$p) \fsrc{init.f:297-302}; for hydrogen it keeps $\pm10^{10}$ MeV
-\fsrc{init.f:1002-1003} and these constraints are void, as is the \code{edge\%Em\%max} term of the tail-1 limit. After
-the photon of tail 1 the event is recomputed at the lower beam energy with \eqr{eq:eprime}, so a tail-1 event is an
-elastic event at $E_\mathrm{in}-E_{\gamma1}$ with the cross section evaluated there. For this reaction the elastic e--p
-kinematics assumed by \code{brem} (\ceqr{eq:bremkin}) are exact.
-
-\subsection{Energy loss and multiple scattering}
-The proton loses energy in the target and the windows like any hadron (\csecr{sec:eloss}), with its own mass in the
-Bethe--Bloch formula, and scatters with $\beta = P/E$ \fsrc{simc.f:1402-1403}. For a liquid-hydrogen cell the
-``liquid'' paths to the cell wall apply ($Z<2.4$). The reconstruction adds back the most probable losses
-(\ceqr{eq:recon}) with \code{correct\_Eloss}.
-
-\subsection{Decays}
-None: the proton is stable; \code{doing\_decay} is refused for a non-$\pi$/K hadron (\finding{D-037 F9}).
-
-% =====================================================================================================================
-\section{Input parameters and output columns}\label{sec:io}
-\begin{simctable}{footnotesize}{L{0.3\linewidth}L{0.66\linewidth}}
-\caption{Inputs that control H(e,e$'$p) (all other inputs are described in the user manual, chapter 4).}\label{tab:inputs}\\
-\toprule\rowcolor{simchead}\simcth{input} & \simcth{role in this reaction}\\\midrule\endfirsthead
-\toprule\rowcolor{simchead}\simcth{input} & \simcth{role in this reaction}\\\midrule\endhead
-\bottomrule\endlastfoot
-\code{targ\%A} = 1, no \code{doing\_*} flag & selects the reaction (\fsrc{dbase.f:220-226})\\
-\code{Ebeam}, \code{dEbeam} & beam energy (MeV) and full width of its flat spread (\%)\\
-\code{spec\%e\%P}, \code{spec\%e\%theta} & electron arm central momentum and angle: $P_e^0$, $\theta_0$\\
-\code{spec\%p\%P}, \code{spec\%p\%theta} & proton arm; the elastic proton must fall in its acceptance\\
-\code{SPedge\%e\%*}, \code{SPedge\%p\%*} & acceptances; the electron ones define the generated slopes\\
-\code{electron\_arm}, \code{hadron\_arm} & spectrometers (fix $\varphi_0$ and the windows)\\
-\code{targ\%thick}, \code{rho}, \code{angle}, \code{can}, \code{abundancy}, \code{mass\_amu} & target and luminosity
-  (\ceqr{eq:lumi}); the mass is forced to $M_p$ for the kinematics\\
-\code{EXPER\%charge} & luminosity\\
-\code{using\_rad}, \code{rad\_flag}, \code{extrad\_flag}, \code{one\_tail}, \code{intcor\_mode}, \code{use\_expon},
-  \code{use\_offshell\_rad}, \code{Egamma\_gen\_max}, \code{dE\_edge\_test} & radiation (\csecr{sec:radiation})\\
-\code{using\_Eloss}, \code{correct\_Eloss}, \code{mc\_smear} & energy loss, its correction, multiple scattering and
-  spectrometer smearing\\
-\code{hard\_cuts}, \code{cuts\%Em\%min/max} & optional cuts on the reconstructed event\\
-\code{ngen} & number of successes ($>0$) or tries ($<0$)\\
-\end{simctable}
-\code{deForest\_flag}, \code{use\_benhar\_sf}, \code{transparency} and \code{using\_Coulomb} have no effect for this
+$E_b^{(\mathrm{max,min})}$ being the beam energies that give an elastic electron at the electron edges at this angle (a code
+comment notes that this is not the true beam-energy extreme at very large angles). The missing-energy limits that the
+radiation code applies to (e,e\pr p)-type reactions are open for hydrogen (they are set only for A(e,e\pr p)). After a
+tail-1 photon the event is recomputed with \eqr{eq:eprime} at $E_\mathrm{in}-E_{\gamma1}$, and the cross section is
+evaluated there. The elastic kinematics assumed by the soft-photon calculation (\ceqr{eq:bremkin}) are exact for this
 reaction.
 
+The proton loses energy and scatters in the target and the windows like any hadron (\csecr{sec:eloss}), with
+$\beta=P_p/E_p$; for a liquid-hydrogen cell the path to the cell wall applies. With \code{correct\_Eloss} the
+reconstruction adds back the most probable losses. Nothing decays: SIMC++ refuses \code{doing\_decay} for a hadron
+that is not a pion or a kaon.
+
+% =====================================================================================================================
+\section{Inputs and outputs}\lbl{sec:io}
+\subsection{Inputs}
+\begin{simctable}{footnotesize}{L{0.24\linewidth}L{0.13\linewidth}L{0.08\linewidth}L{0.55\linewidth}}
+\caption{Inputs that control H(e,e\pr p) (one input per row; every input defaults to 0; the complete reference is in the
+user manual, chapter 4).}\lbl{tab:inputs}\\
+\toprule\rowcolor{simchead}\simcth{input} & \simcth{unit} & \simcth{default} & \simcth{meaning here}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{input} & \simcth{unit} & \simcth{default} & \simcth{meaning here}\\\midrule\endhead
+\bottomrule\endlastfoot
+\code{targ\%A} & -- & 0 & 1 selects this reaction (with no reaction flag)\\
+\code{targ\%Z} & -- & 0 & 1 (switches the Coulomb correction off)\\
+\code{targ\%mass\_amu} & u & 0 & target mass for the luminosity; the kinematics use $M_p$\\
+\code{targ\%thick} & mg/cm$^2$ & 0 & target thickness (luminosity, target length)\\
+\code{targ\%rho} & g/cm$^3$ & 0 & density (target length $L$)\\
+\code{targ\%angle} & deg & 0 & target angle (forced to 0 for a cryogenic target)\\
+\code{targ\%can} & code & 0 & cell type (\ctabr{tab:cells})\\
+\code{targ\%abundancy} & \% & 0 & purity (luminosity)\\
+\code{EXPER\%charge} & mC & 0 & beam charge (luminosity)\\
+\code{Ebeam} & MeV & 0 & nominal beam energy $E_b$\\
+\code{dEbeam} & \% & 0 & full width of the flat beam-energy spread\\
+\code{electron\_arm} & code & 0 & electron spectrometer (1 HMS, 2 SOS, 3 HRS-R, 4 HRS-L, 5 SHMS, 7/8 calorimeter)\\
+\code{hadron\_arm} & code & 0 & proton spectrometer (same codes)\\
+\code{spec\%e\%P} & MeV/$c$ & 0 & $P_e^0$\\
+\code{spec\%e\%theta} & deg & 0 & $\theta_e^0$\\
+\code{spec\%p\%P} & MeV/$c$ & 0 & $P_h^0$; the elastic proton must fall in its acceptance\\
+\code{spec\%p\%theta} & deg & 0 & $\theta_h^0$\\
+\code{SPedge\%e\%delta\%min} & \% & 0 & electron $\delta$ acceptance, lower limit (edges of $E'$)\\
+\code{SPedge\%e\%delta\%max} & \% & 0 & electron $\delta$ acceptance, upper limit (edges of $E'$)\\
+\code{SPedge\%e\%yptar\%min} & mrad & 0 & electron $y'$ acceptance, lower limit; generation range of $y'_e$\\
+\code{SPedge\%e\%yptar\%max} & mrad & 0 & electron $y'$ acceptance, upper limit; generation range of $y'_e$\\
+\code{SPedge\%e\%xptar\%min} & mrad & 0 & electron $x'$ acceptance, lower limit; generation range of $x'_e$\\
+\code{SPedge\%e\%xptar\%max} & mrad & 0 & electron $x'$ acceptance, upper limit; generation range of $x'_e$\\
+\code{SPedge\%p\%delta\%min} & \% & 0 & proton $\delta$ acceptance, lower limit (edges of $E_h$)\\
+\code{SPedge\%p\%delta\%max} & \% & 0 & proton $\delta$ acceptance, upper limit (edges of $E_h$)\\
+\code{SPedge\%p\%yptar\%min} & mrad & 0 & proton $y'$ acceptance, lower limit (cuts only)\\
+\code{SPedge\%p\%yptar\%max} & mrad & 0 & proton $y'$ acceptance, upper limit (cuts only)\\
+\code{SPedge\%p\%xptar\%min} & mrad & 0 & proton $x'$ acceptance, lower limit (cuts only)\\
+\code{SPedge\%p\%xptar\%max} & mrad & 0 & proton $x'$ acceptance, upper limit (cuts only)\\
+\code{using\_rad} & flag & 0 & radiative corrections (\ctabr{tab:radinputs})\\
+\code{using\_Eloss} & flag & 0 & energy loss in the target and windows\\
+\code{correct\_Eloss} & flag & 0 & most-probable energy-loss correction of the reconstruction\\
+\code{mc\_smear} & flag & 0 & multiple scattering and spectrometer resolution\\
+\code{hard\_cuts} & flag & 0 & cuts on the reconstructed event\\
+\code{cuts\%Em\%max} & MeV & 0 & upper $E_m^\mathrm{rec}$ cut with hard cuts\\
+\code{ngen} & events & 0 & successes ($>0$) or tries ($<0$)\\
+\code{Nntu} & flag & 0 & write the tree\\
+\end{simctable}
+The inputs \code{deForest\_flag}, \code{use\_benhar\_sf}, \code{transparency} and \code{using\_Coulomb} have no effect
+on this reaction.
+
+\subsection{Outputs}
 \input{frag_eep_columns}
-For H(e,e$'$p) the column \code{corrsing} (``corrected singles'') is the distance of the reconstructed electron
-momentum from the elastic momentum at its reconstructed angle; \code{Em}, \code{Pm} are those of \eqr{eq:recem};
-\code{sigcc} is $\sigma$ of \eqr{eq:sigep} in $\mu$b/sr and \code{Weight} = $w$ of \eqr{eq:weight}.
+For H(e,e\pr p), \code{Em} and \code{Pm} are those of \eqr{eq:recem}, \code{corrsing} measures the distance of the
+reconstructed electron from the elastic line, \code{sigcc} is $\sigma$ of \eqr{eq:sigep} in $\mu$b/sr and
+\code{Weight} is $w$ of \eqr{eq:weight}.
 
 % =====================================================================================================================
-\section{Fortran \texorpdfstring{$\leftrightarrow$}{<->} C++ map}\label{sec:map}
-\begin{simctable}{footnotesize}{L{0.42\linewidth}L{0.55\linewidth}}
-\toprule\rowcolor{simchead}\simcth{Fortran (59ccdf6)} & \simcth{C++ (src/...)}\\\midrule\endfirsthead
-\toprule\rowcolor{simchead}\simcth{Fortran (59ccdf6)} & \simcth{C++ (src/...)}\\\midrule\endhead
+\section{Validation in SIMC++}\lbl{sec:validation}
+\begin{simctable}{footnotesize}{L{0.42\linewidth}L{0.2\linewidth}L{0.38\linewidth}}
+\caption{CTest tests that cover H(e,e\pr p) (one test per row).}\lbl{tab:tests}\\
+\toprule\rowcolor{simchead}\simcth{test} & \simcth{labels} & \simcth{what it checks}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{test} & \simcth{labels} & \simcth{what it checks}\\\midrule\endhead
 \bottomrule\endlastfoot
-dbase.f:220-226, 279-283, 297-300 (flags, masses) & \csrc{core/RunSetup.cpp: DeriveReactionFlags}; \csrc{setup/SetupReaction.cpp: BuildReactionAndKinematics}\\
-event.f:generate l.217-414 (reaction part) & \csrc{reactions/HydrogenElastic.cpp: HydrogenElastic::generate}\\
-event.f:complete\_ev l.504-563, 914-938, 1015-1047 & \csrc{reactions/EepReactionBase.cpp: EepReactionBase::completeEv}\\
-event.f:complete\_recon\_ev l.1089-1349 & \csrc{EepReactionBase::completeRecon}\\
-event.f:complete\_main l.1400-1401 (SF), 1453-1455, 1536-1564 & \csrc{HydrogenElastic::spectralWeight}; \csrc{reactions/EventChain.cpp: assembleWeight}\\
-physics\_proton.f:sigep l.1-21 & \csrc{physics/proton/ProtonCrossSections.cpp: sigep}; model \code{sigep} in \csrc{physics/proton/ProtonModels.cpp}\\
-physics\_proton.f:fofa\_best\_fit l.137-171 & \csrc{ProtonCrossSections.cpp: fofa\_best\_fit}\\
-physics\_proton.f:sigMott l.176-190 & \csrc{ProtonCrossSections.cpp: sigMott}\\
-radc.f:269-276 (tail-1 limits, CASE 2) & \csrc{radiation/Radc.cpp: generateRad}\\
-results\_write.f:32-40, 287-313 & \csrc{output/NtupleLayout.cpp: FillUpstreamNtuple, FillEepNtuple}\\
-simc.f:390 (genvol) & \csrc{reactions/EepReactionBase.cpp: genVolume}\\
+\code{l1\_sigep} & l1 & \eqr{eq:sigep} against the Fortran table\\
+\code{l1\_sigmott} & l1 & the Mott cross section\\
+\code{l1\_fofa\_best\_fit} & l1 & the form factors\\
+\code{l1\_event\_capture\_norad} & l1, replay & every routine of captured non-radiative events\\
+\code{l1\_event\_capture\_rad} & l1, replay & the same with radiation\\
+\code{l1\_simcrun\_replay\_norad} & l1, replay & the complete run driven by a captured random stream, bitwise\\
+\code{l1\_simcrun\_replay\_rad} & l1, replay & the same with radiation\\
+\code{l1\_simcrun\_ranlux\_up\_eep\_h\_elastic\_rad\_A} & l1, replay, slow & full run with RANLUX, compat mode, against the upstream Fortran run\\
+\code{l1\_simcrun\_ranlux\_up\_eep\_h\_elastic\_norad\_A} & l1, replay, slow & the same without radiation\\
+\code{regression\_identity\_rad} & regression & compat-mode outputs against the stored baseline\\
+\code{regression\_corrected\_rad} & regression & default-mode outputs against the stored baseline\\
+\code{regression\_identity\_norad} & regression & the same without radiation\\
+\code{threads\_reproducibility\_eep} & regression, threads & reproducibility with several threads\\
 \end{simctable}
-The remaining common routines are mapped in \csecr{sec:map}.
+Statistical comparisons with the Fortran (\code{validation/simc\_compare}, seed 4242, $2\times10^5$ events) of the
+default mode, recorded in the validation ledger (\code{project\_control/VALIDATION\_LEDGER.md}, entries of 2026-10-01)
+and in FORTRAN\_DIFFERENCES.md \S7: \code{eep\_h\_elastic\_norad} 1 failed comparison of 206, \code{eep\_h\_elastic\_rad}
+0 of 214 (worst $p$ = 0.062, largest $|$pull$|$ 1.71), and the kinematics K2, K3, K4 at most 2 failed of 219.
 
 % =====================================================================================================================
-\section{Fortran findings and the two modes}\label{sec:findings}
-\begin{simctable}{footnotesize}{L{0.17\linewidth}L{0.5\linewidth}L{0.29\linewidth}}
-\toprule\rowcolor{simchead}\simcth{id} & \simcth{what} & \simcth{default / \code{-{}-fortran-compat}}\\\midrule\endfirsthead
-\toprule\rowcolor{simchead}\simcth{id} & \simcth{what} & \simcth{default / \code{-{}-fortran-compat}}\\\midrule\endhead
+\section{Fortran origin and Fortran findings}\lbl{sec:origin}
+\begin{simctable}{footnotesize}{L{0.42\linewidth}L{0.58\linewidth}}
+\caption{Fortran routine $\to$ C++ function (one routine per row; the common routines are in \ctabr{tab:map}).}\lbl{tab:map}\\
+\toprule\rowcolor{simchead}\simcth{Fortran (upstream 59ccdf6)} & \simcth{C++ (src/...)}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{Fortran (upstream 59ccdf6)} & \simcth{C++ (src/...)}\\\midrule\endhead
 \bottomrule\endlastfoot
-\finding{D-028 F2} (A) & \code{spectrometer\_angles} can return a NaN proton \code{yptar} by rounding
-  (event.f:1645); 1 try in 200000 in the reference runs & argument clamped (\code{yptar} = 0) / NaN as the Fortran\\
-\finding{D-006} (A) & \code{pass\_cuts} tests the proton $\delta$ against the electron upper limit & proton limit / Fortran\\
-\finding{D-024} (B) & $W$, $\varepsilon$, $\theta_{pq}$, $\varphi_{pq}$ never set at the vertex; vertex $P_m=0$ & kept in both\\
-\finding{D-024 $\theta=0$} (D) & $E'$ can exceed $E_\mathrm{in}$ by one ulp at $\theta_e=0$ & kept\\
-\finding{U-B1} (B) & ntuple \code{Wi}, \code{epsiloni} always 0 & kept\\
-\finding{D-009}, \finding{D-028 F1} (C) & \code{doing\_phsp} on hydrogen keeps the elastic kinematics and radiation, with
-  a wrong \code{Mtar\_struck}=0 in the photon limit & kept (acceptance mode open)\\
-\finding{D-019} (B) & radiative-weight items of note 00 & kept\\
-\finding{P1.6} (D) & real(16) return ABI of the real*8 functions; \code{fofa} for timelike $Q^2$ & reproduced\\
+\file{dbase.f:220}-226 (reaction flags) & \csrc{core/RunSetup.cpp: DeriveReactionFlags}\\
+\file{dbase.f:279}-300 (masses) & \csrc{setup/SetupReaction.cpp: BuildReactionAndKinematics}\\
+\file{event.f} generate, l.217-414 & \csrc{reactions/HydrogenElastic.cpp: HydrogenElastic::generate}\\
+\file{event.f} complete\_ev, l.504-563, 937-938 & \csrc{reactions/EepReactionBase.cpp: EepReactionBase::completeEv}\\
+\file{event.f} complete\_recon\_ev, l.1347-1349 & \csrc{reactions/EepReactionBase.cpp: EepReactionBase::completeRecon}\\
+\file{event.f} complete\_main, l.1400-1401 & \csrc{reactions/HydrogenElastic.cpp: HydrogenElastic::spectralWeight}\\
+\file{event.f} complete\_main, l.1453-1455, 1536-1564 & \csrc{reactions/EventChain.cpp: assembleWeight}\\
+\file{physics\_proton.f} sigep & \csrc{physics/proton/ProtonCrossSections.cpp: sigep}\\
+\file{physics\_proton.f} (call of sigep) & \csrc{physics/proton/ProtonModels.cpp: SigEPModel::sigcc}\\
+\file{radc.f:269}-276 & \csrc{radiation/Radc.cpp: generateRad}\\
+\file{results\_write.f:32}-40, 287-313 & \csrc{output/NtupleLayout.cpp: FillUpstreamNtuple}\\
+\file{simc.f:390} & \csrc{reactions/EepReactionBase.cpp: genVolume}\\
 \end{simctable}
-The validation of this reaction against the Fortran reference runs (\code{eep\_h\_elastic\_*}) is reported in the
-translation report (chapter 2 and FORTRAN\_DIFFERENCES.md \S7); this note makes no validation claim of its own.
 
-\begin{thebibliography}{9}
-\bibitem{bosted} P.~E.~Bosted, ``Empirical fit to the nucleon electromagnetic form factors'', Phys.\ Rev.\ C
-  \textbf{51}, 409 (1995), Eqs.~4 and 5 (cited at \fsrc{physics\_proton.f:139-141}).
-\end{thebibliography}
+\begin{simcfindings}{footnotesize}{L{0.18\linewidth}L{0.5\linewidth}L{0.32\linewidth}}
+\caption{Fortran findings that touch H(e,e\pr p) (one finding per row; the common ones are in \ctabr{tab:findings}).}\lbl{tab:findings}\\
+\toprule\rowcolor{simchead}\simcth{id} & \simcth{Fortran behaviour} & \simcth{default / compat}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{id} & \simcth{Fortran behaviour} & \simcth{default / compat}\\\midrule\endhead
+\bottomrule\endlastfoot
+\finding{D-028 F2} & a NaN proton $y'$ by rounding in \code{spectrometer\_angles} & $y'=0$ / NaN\\
+\finding{D-006 pass\_cuts} & the proton $\delta$ cut uses the electron upper limit & proton limit / Fortran\\
+\finding{D-024 H elastic W} & vertex $W$, $\varepsilon$, $\theta_{pq}$, $\varphi_{pq}$ never set & kept in both\\
+\finding{D-024 Pm} & vertex $P_m=0$, so $P_{m,\perp}=0$ & kept in both\\
+\finding{D-024 $\theta=0$} & $E'$ above $E_\mathrm{in}$ by one ulp at $\theta_e=0$ & kept in both\\
+\finding{P4.F1 Q4} & the hadron \code{physics\_angles} call uses the previous try's slopes (overwritten) & kept, no effect\\
+\finding{U-B1} & tree columns \code{Wi}, \code{epsiloni} always 0 & kept in both\\
+\finding{D-009 elastic in phsp} & phase space on hydrogen keeps the elastic kinematics & kept (open question)\\
+\finding{D-009 radiation in phsp} & phase space keeps the radiative tails & kept (open question)\\
+\finding{D-028 F1} & phase space: struck mass 0 in the photon limit & kept (open question)\\
+\finding{D-037 F9} & a decaying proton stops the Fortran run & refused at input / Fortran stop\\
+\finding{P1.6} & quadruple-precision return of the real*8 functions; form factors for timelike $Q^2$ & reproduced\\
+\end{simcfindings}
+
+\begin{simcrefs}
+\simcref{bosted} P.~E.~Bosted, Phys.\ Rev.\ C \textbf{51}, 409 (1995), Eqs.~4 and 5 (the form factors of
+  \ceqr{eq:bosted}).
+\end{simcrefs}
 \end{document}

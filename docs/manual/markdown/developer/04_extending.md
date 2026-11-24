@@ -61,6 +61,13 @@ struct for the run constants (and `fortran_compat` if the model has a compat beh
 model ported from the Fortran also needs a reference table (see the
 [translation report](../../../translation/markdown/02_validation.md#27-adding-a-new-fortran-reference-end-to-end)).
 
+**Physics note.** A new physics model comes with a physics note: a LaTeX note written from
+[docs/physics/latex/template_reaction.tex](../../../physics/latex/template_reaction.tex) (nine sections; section 5 gives
+every formula of the model, each display citing the C++ function and, for a ported model, the Fortran lines), added to
+`docs/physics/latex/notes.json` with the model's folder as copy folder, plus a `README.md` in that folder. The target
+`physics_pdf` builds it, copies it into the folder and binds it into the *SIMC++ Physics Reference*; the CTests
+`docs_physics_*` check it ([docs/physics/README.md](../../../physics/README.md)).
+
 ## 4.3 A new output sink (`IOutputSink`, `IParallelSink`)
 
 `fill` sees **every** try (use `success` to select contributing events, `main.weight` as their weight); `endRun` gets
@@ -192,6 +199,12 @@ A reaction is the largest plug-in: it owns the generation, the vertex completion
 10. **Tests**: a run through the driver (like `example_dev_manual_plugins`), tests of the kernels on fixed inputs (with a
     `ScriptedRandom`), a regression baseline in both modes (`tests/regression`) and a statistical comparison with
     `simc_compare`. A reaction ported from the Fortran needs the reference tests of the translation report.
+11. **Physics note**: write the reaction's note from
+    [docs/physics/latex/template_reaction.tex](../../../physics/latex/template_reaction.tex) (the reaction in SIMC++,
+    kinematics and generation, event completion, jacobians, cross-section model, radiation, inputs and outputs,
+    validation, Fortran origin), list it in `docs/physics/latex/notes.json` with its plug-in folders
+    (`src/reactions/<r>/`, `src/physics/<r>/`) as copy folders, give each folder a `README.md`, and run
+    `cmake --build <build> --target physics_pdf` ([docs/physics/README.md](../../../physics/README.md)).
 
 ## 4.6 Out of tree
 

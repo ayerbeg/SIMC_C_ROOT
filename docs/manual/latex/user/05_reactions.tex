@@ -39,10 +39,18 @@ normalisation. The generation volume \code{genvol} is the product of the generat
 hadron solid angle and the electron energy for every reaction except H(e,e'p); also the hadron energy for A(e,e'p) and
 SIDIS.
 
+\textbf{Physics notes.} Every formula behind a reaction (generated variables and ranges, event completion, jacobians,
+the cross-section model, radiation, inputs and tree columns, validation and Fortran origin) is in its physics note, one
+PDF per reaction, bound together as the \emph{SIMC++ Physics Reference}\footnote{\code{docs/physics/pdf/SIMCpp\_\allowbreak{}Physics\_\allowbreak{}Reference.\allowbreak{}pdf}; sources and build: \code{docs/physics/README.md}.}.
+The common elements (the plug-in architecture, notation and glossary, weighting and normalisation, energy loss, Coulomb
+correction, radiative corrections) are in note 00\footnote{\code{docs/physics/pdf/SIMCpp\_\allowbreak{}Physics\_\allowbreak{}00\_\allowbreak{}common.\allowbreak{}pdf}}. A
+copy of each reaction note sits in the source folder of its physics model (\code{src/\allowbreak{}physics/\allowbreak{}<reaction>/}).
+
 \section{\texorpdfstring{H(e,e'p) elastic, D(e,e'p), A(e,e'p) and A(e,e')A}{H(e,e'p) elastic, D(e,e'p), A(e,e'p) and A(e,e')A}}\label{user_manual-05u5freactions:52-heep-elastic-deep-aeep-and-aeea}
 \begin{itemize}
 \item \textbf{H(e,e'p)} (\code{hydrogen\_\allowbreak{}elastic}, model \code{sigep}): elastic scattering. Only the electron angles are generated; the
-proton follows from the kinematics. Elastic e-p cross section with a proton form-factor fit.
+proton follows from the kinematics. Elastic e-p cross section with a proton form-factor fit. Physics note 01, H(e,e'p)
+elastic\footnote{\code{docs/physics/pdf/SIMCpp\_\allowbreak{}Physics\_\allowbreak{}01\_\allowbreak{}hydrogen\_\allowbreak{}elastic.\allowbreak{}pdf}}.
 \item \textbf{D(e,e'p) and A(e,e'p)} (\code{deuterium\_\allowbreak{}eep}, \code{nucleus\_\allowbreak{}eep}, model \code{deforest}): quasi-elastic knock-out with the de Forest
 off-shell cross section (\hyperref[param:deForestu5fflag]{\code{deForest\_\allowbreak{}flag}}\simcidx{Parameters!deForest_flag@\code{deForest\_flag}}: σcc1, σcc2 or σcc1 on-shell) times a spectral function:
 
@@ -53,15 +61,15 @@ off-shell cross section (\hyperref[param:deForestu5fflag]{\code{deForest\_\allow
 SIMC a85dc6b), weighted by \hyperref[param:transparency]{\code{transparency}}\simcidx{Parameters!transparency@\code{transparency}}.
 \end{itemize}
 In a JSON input, \code{"pipeline":\ \{"reaction":\ \{"spectral\_\allowbreak{}function":\ \{"type":\ "benhar",\ "file":\ "benharsf\_\allowbreak{}12.\allowbreak{}dat",\ "transparency":\ 0.\allowbreak{}6\}\}\}} chooses the file explicitly (\code{-{}-{}data-{}dir}\simcidx{Command-line options!data-dir@\code{-{}-{}data-{}dir}} sets its directory). \code{cuts\%\allowbreak{}Em} limits the generated
-missing energy.
+missing energy. Physics note 02, D(e,e'p) and A(e,e'p)\footnote{\code{docs/physics/pdf/SIMCpp\_\allowbreak{}Physics\_\allowbreak{}02\_\allowbreak{}quasielastic\_\allowbreak{}eep.\allowbreak{}pdf}}.
 \item \textbf{A(e,e')A nuclear elastic} (\code{doing\_\allowbreak{}nuc\_\allowbreak{}elast\ =\ 1}, \code{nuclear\_\allowbreak{}elastic}, model \code{nuc\_\allowbreak{}elastic}; upstream SIMC commit
 4df7351): elastic scattering from the whole nucleus, the "hadron" is the recoiling nucleus (mass \hyperref[param:targu25massu5famu]{\code{targ\%\allowbreak{}mass\_\allowbreak{}amu}}\simcidx{Parameters!targ.mass_amu@\code{targ\%mass\_amu}}).
 Only the electron angles are generated, as for H(e,e'p). Cross section σ\_Mott · (Z·F(Q²))² · recoil factor with a
-Gaussian charge form factor F (R = 1.07 A\textasciicircum{}1/\allowbreak{}3 fm; de Vries radii for A = 27, 28, 56, 205) and no magnetic term (spin-0
+charge form factor F, a fixed Gaussian (2.4 fm) times a monopole in R (R = 1.07 A\textasciicircum{}1/\allowbreak{}3 fm; de Vries radii for A = 27, 28, 56, 205), and no magnetic term (spin-0
 nuclei). W and the ntuple columns \code{corrsing}, \code{Pmx/\allowbreak{}y/\allowbreak{}z} follow the (e,e'p) formulas with the proton mass (\code{corrsing}
 and \code{Pmx/\allowbreak{}y/\allowbreak{}z} are 0). \hyperref[param:doingu5fnucu5felast]{\code{doing\_\allowbreak{}nuc\_\allowbreak{}elast}}\simcidx{Parameters!doing_nuc_elast@\code{doing\_nuc\_elast}} cannot be combined with another \code{doing\_\allowbreak{}*} reaction flag or \hyperref[param:doingu5fphsp]{\code{doing\_\allowbreak{}phsp}}\simcidx{Parameters!doing_phsp@\code{doing\_phsp}}.
 Upstream SIMC 59ccdf6 lost this reaction in commit e4dd175 (0 successes); SIMC++ runs the code of commit 20d46fc
-(FORTRAN\_\allowbreak{}DIFFERENCES U-A1).
+(FORTRAN\_\allowbreak{}DIFFERENCES U-A1). Physics note 03, A(e,e')A nuclear elastic\footnote{\code{docs/physics/pdf/SIMCpp\_\allowbreak{}Physics\_\allowbreak{}03\_\allowbreak{}nuclear\_\allowbreak{}elastic.\allowbreak{}pdf}}.
 \end{itemize}
 Limitations: the D(e,e'p) weight has no hadron-angle jacobian while A(e,e'p) has one (a ≤ 1.5 \% effect at the corners of
 the generated solid angle); He-3 and He-4 use the C-12 spectral function unless you give a file.

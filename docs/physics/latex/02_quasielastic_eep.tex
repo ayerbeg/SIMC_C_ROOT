@@ -1,506 +1,593 @@
 % docs/physics/latex/02_quasielastic_eep.tex - SIMC++ physics note 02: D(e,e'p) and A(e,e'p) quasi-elastic knock-out.
-% Source of docs/physics/pdf/SIMCpp_Physics_02_quasielastic_eep.pdf (copied to src/physics/nuclear/ by the build).
-% Every displayed formula is a feq/feqa environment citing the Fortran (upstream 59ccdf6) line it transcribes.
+% Standalone PDF docs/physics/pdf/SIMCpp_Physics_02_quasielastic_eep.pdf (copied to src/physics/proton/ and
+% src/physics/nuclear/); a chapter of the book SIMC++ Physics Reference. Rules: docs/physics/README.md.
 \documentclass{simcnote}
 \simccommon
-\simcnotemeta{02}{D(e,e$'$p) and A(e,e$'$p)}{Quasi-elastic proton knock-out: D(e,e$'$p) and A(e,e$'$p)}%
-  {Reactions \texttt{deuterium\_eep} and \texttt{nucleus\_eep}, physics model \texttt{deforest}: generation, the
-   de Forest off-shell cross sections, spectral functions (theory files, Benhar tables, deuterium), transparency}
-
 \begin{document}
+\simcnotemeta{02}{D(e,e\pr p) and A(e,e\pr p)}{Quasi-elastic proton knock-out: D(e,e\pr p) and A(e,e\pr p)}%
+  {Reaction plug-ins \texttt{deuterium\_eep} and \texttt{nucleus\_eep}, physics model \texttt{deforest}, spectral
+   functions \texttt{theory} and \texttt{benhar}}
 \simcnotemaketitle
-\simcabstract{Proton knock-out from deuterium and heavier nuclei in the plane-wave impulse approximation: the
-six-fold cross section is the product of an off-shell electron--proton cross section (de Forest's $\sigma_{cc1}$ or
-$\sigma_{cc2}$) and a spectral function $S(E_m,P_m)$, which also carries the nuclear transparency as a constant factor.
+\simcabstract{Proton knock-out from deuterium and heavier nuclei in the plane-wave impulse approximation. The six-fold
+cross section is the product of an off-shell electron--proton cross section (de Forest's $\sigma_{cc1}$ or
+$\sigma_{cc2}$) and a spectral function $S(E_m,P_m)$ that also carries the nuclear transparency as a constant factor.
 For deuterium the missing energy is fixed and the proton energy is solved from the kinematics, with a jacobian; for
-$A\ge3$ both final energies are generated. This note gives every formula as the code evaluates it; the common elements
-are in note 00.}
+$A\ge3$ both final energies are generated. Notation, glossary and common physics: note 00.}
 \simcnotetoc
 
 % =====================================================================================================================
-\section{The process and what SIMC simulates}\label{sec:process}
-The reaction is $e + A \to e' + p + (A-1)$ with the proton detected in coincidence with the electron. It is selected
-when no reaction flag is set and $\mathrm{nint}(A)\ge2$: \code{doing\_deuterium} for $A=2$, \code{doing\_heavy} for
-$A\ge3$, $M_h = M_p$ \fsrc{dbase.f:220-226}. The struck nucleon is a proton, $M_\mathrm{struck}=M_p$, no recoil
-particle besides the residual system \fsrc{dbase.f:297-300}. Masses:
-\begin{itemize}
-\item $A=2$: $M_A = M_d$ (forced, \fsrc{dbase.f:284-285}) and $M_\mathrm{rec} = M_p+M_n-M_\mathrm{struck} = M_n$
-  \fsrc{dbase.f:446-452};
-\item $A\ge3$: $M_A$ = \code{targ\%mass\_amu}$\cdot u$ and $M_\mathrm{rec}$ = \code{targ\%mrec\_amu}$\cdot u$, replaced by
-  $M_A-M_p$ when the two differ by more than 100 MeV \fsrc{dbase.f:272-292}.
-\end{itemize}
-After the theory file is read, \code{doing\_deuterium} is recomputed as ``one momentum distribution and
-$E_\mathrm{Fermi}<1$ MeV'' \fsrc{init.f:889} (\finding{D-033 doing\_deuterium}). In SIMC++ the reaction plug-ins are
-\code{deuterium\_eep} and \code{nucleus\_eep} with the model \code{deforest}.
+\section{The reaction in SIMC++}\lbl{sec:reaction}
 
-What is simulated: the impulse-approximation cross section with a proton spectral function and a constant transparency
-factor, the full event chain of note 00 (radiation on the three legs, energy loss, Coulomb correction of the electron
-for $Z>1$, spectrometers). What is not: final-state interactions other than the constant attenuation, meson-exchange
-currents, knock-out of neutrons (the hadron is always a proton and the form factors are those of the proton),
-correlated two-nucleon emission beyond what the spectral function contains, and the Coulomb distortion of the proton.
+\subsection{Process and scope}
+The reaction is $e + A \to e' + p + (A-1)$ with the proton detected in coincidence with the electron. What is simulated:
+the impulse-approximation cross section with a proton spectral function and a constant transparency, and the event
+chain of note 00 (radiation on the three legs, energy loss, Coulomb correction of the electron for $Z>1$, both
+spectrometers). What is not: final-state interactions other than the constant attenuation, meson-exchange currents,
+neutron knock-out (the hadron is always a proton, with proton form factors), correlated two-nucleon emission beyond what
+the spectral function contains, and the Coulomb distortion of the proton.
+
+\subsection{Components}
+\begin{simctable}{footnotesize}{L{0.15\linewidth}L{0.2\linewidth}L{0.17\linewidth}L{0.23\linewidth}L{0.25\linewidth}}
+\caption{The SIMC++ components of D(e,e\pr p) and A(e,e\pr p) (one component per row).}\lbl{tab:components}\\
+\toprule\rowcolor{simchead}\simcth{role} & \simcth{interface} & \simcth{registered name} & \simcth{class} & \simcth{file}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{role} & \simcth{interface} & \simcth{registered name} & \simcth{class} & \simcth{file}\\\midrule\endhead
+\bottomrule\endlastfoot
+reaction, $A=2$ & \code{IReaction} & \code{deuterium\_eep} & \code{NuclearEep} & \file{reactions/NuclearEep.cpp}\\
+reaction, $A\ge3$ & \code{IReaction} & \code{nucleus\_eep} & \code{NuclearEep} & \file{reactions/NuclearEep.cpp}\\
+event completion & (base class) & -- & \code{reactions::EepReactionBase} & \file{reactions/EepReactionBase.cpp}\\
+weight assembly & (function) & -- & \code{reactions::assembleWeight} & \file{reactions/EventChain.cpp}\\
+cross section & \code{IPhysicsModel} & \code{deforest} & \code{proton::DeForestModel} & \file{physics/proton/ProtonModels.cpp}\\
+cross section, $\sigma_{cc1}$ & \code{IPhysicsModel} & \code{deforest\_cc1} & \code{proton::DeForestCC1} & \file{physics/proton/ProtonModels.cpp}\\
+cross section, $\sigma_{cc2}$ & \code{IPhysicsModel} & \code{deforest\_cc2} & \code{proton::DeForestCC2} & \file{physics/proton/ProtonModels.cpp}\\
+cross section, on shell & \code{IPhysicsModel} & \code{deforest\_cc1\_onshell} & \code{proton::DeForestCC1OnShell} & \file{physics/proton/ProtonModels.cpp}\\
+cross-section kernel & (function) & -- & \code{proton::deForest} & \file{physics/proton/ProtonCrossSections.cpp}\\
+spectral function, files & \code{ISpectralFunction} & \code{theory} & \code{nuclear::TheorySpectralFunction} & \file{physics/nuclear/SpectralFunctions.cpp}\\
+spectral function, tables & \code{ISpectralFunction} & \code{benhar} & \code{nuclear::BenharSpectralFunction} & \file{physics/nuclear/SpectralFunctions.cpp}\\
+table kernels & (functions) & -- & \code{nuclear::SfTable}, \code{TheorySfWeight} & \file{physics/nuclear/SpectralFunctionTables.cpp}\\
+theory-file reader & (function) & -- & \code{ReadTheoryFile} & \file{setup/SetupTheory.cpp}\\
+beam, target, radiation, arms, outputs & as in note 00 & \code{standard}, \code{hallc\_cryo}, \code{simc\_rad}, \ldots & & \ctabr{tab:plugins}\\
+\end{simctable}
+
+\subsection{Selection and override}
+With no reaction flag the pipeline selects \code{deuterium\_eep} for $\mathrm{nint}(A)=2$ and \code{nucleus\_eep} for
+$\mathrm{nint}(A)\ge3$, both with the model \code{deforest}, whose flavour follows the input \code{deForest\_flag}
+(\ctabr{tab:defaults}). The set-up uses $M_h=M_N=M_p$, $M_A=M_d$ and $M_\mathrm{rec}=M_n$ for $A=2$, and for $A\ge3$
+$M_A$ = \code{targ\%mass\_amu}$\cdot u$ and $M_\mathrm{rec}$ = \code{targ\%mrec\_amu}$\cdot u$, replaced by $M_A-M_p$
+when the two differ by more than 100 MeV. After the theory file has been read, the deuterium case is re-decided as ``one
+momentum distribution and $E_\mathrm{Fermi}<1$ MeV''. The spectral function is chosen in the reaction's
+\code{init()} from the input (\code{use\_benhar\_sf}) and the target $A$ (\secr{sec:theory}, \secr{sec:benhar}).
+JSON overrides (\tabr{tab:json}): the model flavour, and the spectral-function type, file and transparency.
+
+\begin{simctable}{footnotesize}{L{0.36\linewidth}L{0.3\linewidth}L{0.34\linewidth}}
+\caption{JSON keys of this reaction and its model (one key per row).}\lbl{tab:json}\\
+\toprule\rowcolor{simchead}\simcth{key} & \simcth{effect} & \simcth{example}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{key} & \simcth{effect} & \simcth{example}\\\midrule\endhead
+\bottomrule\endlastfoot
+\code{pipeline.physics} & a fixed flavour of the cross section & \code{"deforest\_cc2"}\\
+\code{pipeline.physics.deForest\_flag} & flavour of \code{deforest} ($-1$, 0, 1) & \code{\{"type": "deforest", "deForest\_flag": 1\}}\\
+\code{pipeline.reaction.spectral\_function.type} & \code{theory} or \code{benhar} & \code{"benhar"}\\
+\code{pipeline.reaction.spectral\_function.file} & the table file (in the data directory) & \code{"benharsf\_4.dat"}\\
+\code{pipeline.reaction.spectral\_function.transparency} & $T$ of the Benhar weight & \code{0.36}\\
+\end{simctable}
+
+\subsection{Event flow}
+\begin{simctable}{footnotesize}{L{0.05\linewidth}L{0.33\linewidth}L{0.62\linewidth}}
+\caption{One try of D/A(e,e\pr p) (one step per row; the general chain is \ctabr{tab:chain}).}\lbl{tab:flow}\\
+\toprule\rowcolor{simchead}\simcth{\#} & \simcth{C++ call} & \simcth{what is specific to this reaction}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{\#} & \simcth{C++ call} & \simcth{what is specific to this reaction}\\\midrule\endhead
+\bottomrule\endlastfoot
+1 & \code{StandardBeam::generate} & nothing\\
+2 & \code{NuclearEep::generate} & both slope pairs; for $A\ge3$ the proton energy then the electron energy, for D the electron energy (\eqr{eq:genheavy})\\
+3 & \code{EepReactionBase::completeEv} & D: proton energy and jacobian (\eqr{eq:dquad}, \eqr{eq:djac}); $A\ge3$: $E_m$, $P_m$ (\eqr{eq:heavyem})\\
+4 & \code{SimcRadiator::radiate} & photon limits of \eqsr{eq:tail1}{eq:tail23}; $A\ge3$: vertex $E_m$, $P_m$ tested against their limits\\
+5 & \code{MonteCarlo::run} & nothing\\
+6 & \code{EepReactionBase::completeRecon} & $E_m^\mathrm{rec}$ with the residual kinetic energy (\eqr{eq:recem})\\
+7 & \code{NuclearEep::spectralWeight}, \code{assembleWeight} & $S$ from the spectral function, $\sigma$ from \code{deforest}\\
+\end{simctable}
 
 % =====================================================================================================================
-\section{Kinematics, generated variables and generation volume}\label{sec:gen}
+\section{Kinematics, generated variables and generation volume}\lbl{sec:gen}
 \subsection{Generated variables}
-After the beam part (\csecr{sec:onetry}), with $\xi$ uniform random numbers \fsrc{event.f:276-316}:
-\begin{simctable}{small}{L{0.25\linewidth}L{0.33\linewidth}L{0.36\linewidth}}
-\caption{Generated variables (the table of \fsrc{event.f:236-249}).}\label{tab:generated}\\
-\toprule\rowcolor{simchead}\simcth{} & \simcth{D(e,e$'$p)} & \simcth{A(e,e$'$p), $A\ge3$}\\\midrule\endfirsthead
+\begin{simctable}{small}{L{0.3\linewidth}L{0.33\linewidth}L{0.37\linewidth}}
+\caption{Generated variables (one variable per row).}\lbl{tab:generated}\\
+\toprule\rowcolor{simchead}\simcth{variable} & \simcth{D(e,e\pr p)} & \simcth{A(e,e\pr p), $A\ge3$}\\\midrule\endfirsthead
 \bottomrule\endlastfoot
-electron $y'_e$, $x'_e$ & flat & flat\\
-proton $y'_p$, $x'_p$ & flat & flat\\
-proton energy $E_p$ & solved (\eqr{eq:dquad}) & flat, first\\
-electron energy $E'$ & flat & flat, after $E_p$\\
-$E_m$, $P_m$ & $E_m$ fixed, $P_m$ derived & derived\\
+electron slopes $y'_e$, $x'_e$ & flat & flat\\
+proton slopes $y'_p$, $x'_p$ & flat & flat\\
+proton energy $E_p$ & solved (\eqr{eq:dquad}) & flat, drawn first\\
+electron energy $E'$ & flat & flat, drawn after $E_p$\\
+missing energy $E_m$ & fixed (\eqr{eq:dem}) & derived (\eqr{eq:heavyem})\\
+missing momentum $P_m$ & derived & derived\\
 \end{simctable}
-For $A\ge3$ the proton energy is drawn first, in the part of its range compatible with the summed-energy limits, and
-then the electron energy in the range left by that proton:
-\begin{feqa}{event.f:289-297 (proton), 300-316 (electron)}
-E_p^\mathrm{lo} &= \max\bigl(\mathrm{gen}^{E,\mathrm{min}}_p,\ \Sigma^\mathrm{min}-\mathrm{gen}^{E,\mathrm{max}}_e\bigr),\qquad
-E_p^\mathrm{hi} = \min\bigl(\mathrm{gen}^{E,\mathrm{max}}_p,\ \Sigma^\mathrm{max}-\mathrm{gen}^{E,\mathrm{min}}_e\bigr),\nonumber\\
-E_p &= E_p^\mathrm{lo}+\xi\,(E_p^\mathrm{hi}-E_p^\mathrm{lo}),\qquad
-w_\mathrm{gen}\leftarrow w_\mathrm{gen}\frac{E_p^\mathrm{hi}-E_p^\mathrm{lo}}{\mathrm{gen}^{E,\mathrm{max}}_p-\mathrm{gen}^{E,\mathrm{min}}_p},\nonumber\\
-E'^\mathrm{lo} &= \max\bigl(\mathrm{gen}^{E,\mathrm{min}}_e,\ \Sigma^\mathrm{min}-E_p\bigr),\qquad
-E'^\mathrm{hi} = \min\bigl(\mathrm{gen}^{E,\mathrm{max}}_e,\ \Sigma^\mathrm{max}-E_p\bigr),\nonumber\\
-E' &= E'^\mathrm{lo}+\xi\,(E'^\mathrm{hi}-E'^\mathrm{lo}),\nonumber\\
-w_\mathrm{gen}&\leftarrow w_\mathrm{gen}\frac{E'^\mathrm{hi}-E'^\mathrm{lo}}{\mathrm{gen}^{E,\mathrm{max}}_e-\mathrm{gen}^{E,\mathrm{min}}_e},
-\qquad P_p = \sqrt{E_p^2-M_p^2},
-\label{eq:genheavy}
+For $A\ge3$ the proton energy is drawn in the part of its range compatible with the summed-energy limits, then the
+electron energy in the range left by that proton ($\Sigma$ the limits of $E'+E_p$, \eqr{eq:sumegen}):
+\begin{feqa}{reactions/NuclearEep.cpp: NuclearEep::generate}{event.f:289-316}
+E_p^\mathrm{lo} &= \max\bigl(E^\mathrm{gen}_{p,\mathrm{min}},\ \Sigma_\mathrm{min}-E'^\mathrm{gen}_\mathrm{max}\bigr),\qquad
+E_p^\mathrm{hi} = \min\bigl(E^\mathrm{gen}_{p,\mathrm{max}},\ \Sigma_\mathrm{max}-E'^\mathrm{gen}_\mathrm{min}\bigr),\nonumber\\
+E_p &= E_p^\mathrm{lo}+\xi_1(E_p^\mathrm{hi}-E_p^\mathrm{lo}),\qquad
+w_\mathrm{gen}\leftarrow w_\mathrm{gen}\,\frac{E_p^\mathrm{hi}-E_p^\mathrm{lo}}{E^\mathrm{gen}_{p,\mathrm{max}}-E^\mathrm{gen}_{p,\mathrm{min}}},\nonumber\\
+E'^\mathrm{lo} &= \max\bigl(E'^\mathrm{gen}_\mathrm{min},\ \Sigma_\mathrm{min}-E_p\bigr),\qquad
+E'^\mathrm{hi} = \min\bigl(E'^\mathrm{gen}_\mathrm{max},\ \Sigma_\mathrm{max}-E_p\bigr),\nonumber\\
+E' &= E'^\mathrm{lo}+\xi_2(E'^\mathrm{hi}-E'^\mathrm{lo}),\qquad
+w_\mathrm{gen}\leftarrow w_\mathrm{gen}\,\frac{E'^\mathrm{hi}-E'^\mathrm{lo}}{E'^\mathrm{gen}_\mathrm{max}-E'^\mathrm{gen}_\mathrm{min}},
+\lbl{eq:genheavy}
 \end{feqa}
-with $\Sigma$ = \code{gen\%sumEgen}; the try fails when a range is empty. For deuterium only the electron energy is
-drawn, in $[\max(\mathrm{gen}^{E,\mathrm{min}}_e,\Sigma^\mathrm{min}),\ \min(\mathrm{gen}^{E,\mathrm{max}}_e,\Sigma^\mathrm{max})]$
-with the same weight factor \fsrc{event.f:302-313}. The angles are converted with \ceqr{eq:physang}.
+with $P_p=\sqrt{E_p^2-M_p^2}$; the try fails when a range is empty. For deuterium only the electron energy is drawn, in
+$[\max(E'^\mathrm{gen}_\mathrm{min},\Sigma_\mathrm{min}),\ \min(E'^\mathrm{gen}_\mathrm{max},\Sigma_\mathrm{max})]$ with
+the same weight factor. The slopes are converted to angles with \ceqr{eq:physang}.
 
-\subsection{Ranges}
-\paragraph{Vertex limits} \fsrc{init.f:326-343, 381-386, 427-430}:
-\begin{feqa}{init.f:326-343, 381-386}
-\text{D:}\quad & E_m^\mathrm{V} = M_p+M_n-M_d\ (\text{fixed}),\qquad P_m^\mathrm{V}\in\bigl[0,\ \max(|P^\mathrm{th}_\mathrm{min}|,|P^\mathrm{th}_\mathrm{max}|)\bigr],\nonumber\\
-A\ge3:\quad & P_m^\mathrm{V}\in\bigl[0,\ \max_i\max(|P^\mathrm{th}_{i,\mathrm{min}}|,|P^\mathrm{th}_{i,\mathrm{max}}|)\bigr]\ \ (790\text{ MeV/}c\text{ with Benhar}),\qquad
-E_m^\mathrm{V}\in[E_\mathrm{Fermi},\ 1000],\nonumber\\
-& M_\mathrm{rec}^\mathrm{V} = M_A - M_p + E_m^\mathrm{V},\nonumber\\
-& T_\mathrm{rec}^\mathrm{V,min} = \sqrt{(M^\mathrm{V,max}_\mathrm{rec})^2+(P_m^\mathrm{V,min})^2}-M^\mathrm{V,max}_\mathrm{rec},\nonumber\\
-& T_\mathrm{rec}^\mathrm{V,max} = \sqrt{(M^\mathrm{V,min}_\mathrm{rec})^2+(P_m^\mathrm{V,max})^2}-M^\mathrm{V,min}_\mathrm{rec},
-\label{eq:vertexedge}
+\subsection{Limits}
+\paragraph{Vertex limits.} $P^\mathrm{th}_{i,\mathrm{min}}$, $P^\mathrm{th}_{i,\mathrm{max}}$ denote the edges of the
+momentum axis of distribution $i$ of the theory file (\secr{sec:theory}):
+\begin{feqa}{setup/SetupLimits.cpp: BuildLimits}{init.f:326-343, 381-386}
+\text{D:}\quad & E_m = M_p+M_n-M_d\ (\text{fixed}),\qquad 0\le P_m\le\max(|P^\mathrm{th}_\mathrm{min}|,|P^\mathrm{th}_\mathrm{max}|),\nonumber\\
+A\ge3:\quad & 0\le P_m\le\max_i\max(|P^\mathrm{th}_{i,\mathrm{min}}|,|P^\mathrm{th}_{i,\mathrm{max}}|)\ \ (790\ \text{MeV/}c\ \text{with Benhar tables}),\nonumber\\
+& E_\mathrm{Fermi}\le E_m\le1000\ \mathrm{MeV},\nonumber\\
+& M_\mathrm{rec}^{(\mathrm{min,max})} = M_A - M_p + E_m^{(\mathrm{min,max})},\nonumber\\
+& T_\mathrm{rec}^{(\mathrm{min})} = \sqrt{(M^{(\mathrm{max})}_\mathrm{rec})^2+(P_m^{(\mathrm{min})})^2}-M^{(\mathrm{max})}_\mathrm{rec},\nonumber\\
+& T_\mathrm{rec}^{(\mathrm{max})} = \sqrt{(M^{(\mathrm{min})}_\mathrm{rec})^2+(P_m^{(\mathrm{max})})^2}-M^{(\mathrm{min})}_\mathrm{rec},
+\lbl{eq:vertexedge}
 \end{feqa}
-where $P^\mathrm{th}_{i,\mathrm{min,max}}$ are the edges of the momentum axis of distribution $i$ of the theory file
-(\secr{sec:theory}); with Benhar tables $E_\mathrm{Fermi}=0$ (\finding{D-033 F8/F9}).
+where the superscripts (min), (max) denote the vertex limits; with Benhar tables $E_\mathrm{Fermi}=0$.
 
-\paragraph{Missing-energy edge ($A\ge3$).} The reconstructed $E_m$ cut is widened by the total slop
-\begin{feqa}{init.f:285-302}
-s_{E_m} &= \underbrace{\tfrac12\Delta E_\mathrm{beam} + (V_C^\mathrm{max}-V_C) + (\Delta E_1^\mathrm{max}-\Delta E_1^\mathrm{min})}_{\text{beam}}
-+\underbrace{\tfrac{\mathrm{slop}^\delta_e}{100}P_e^0 + (V_C^\mathrm{max}-V_C)+(\Delta E_2^\mathrm{max}-\Delta E_2^\mathrm{min})}_{\text{electron}}\nonumber\\
-&\quad+\underbrace{\sqrt{\bigl(r+\tfrac{\mathrm{slop}^\delta_p}{100}P_p^0\bigr)^2+M_p^2}-\mathrm{edge}^{E,\mathrm{max}}_p
- + (\Delta E_3^\mathrm{max}-\Delta E_3^\mathrm{min})}_{\text{proton}} + d_E,\nonumber\\
-r &= \sqrt{(\mathrm{edge}^{E,\mathrm{max}}_p)^2-M_p^2},\nonumber\\
-\mathrm{edge}_{E_m} &= \bigl[\max(0,\ \mathrm{cuts}^{E_m}_\mathrm{min}-s_{E_m}),\ \mathrm{cuts}^{E_m}_\mathrm{max}+s_{E_m}\bigr],
-\label{eq:emedge}
+\paragraph{Missing-energy edge ($A\ge3$).} The input window of $E_m^\mathrm{rec}$ (\code{cuts\%Em\%min/max}) is
+widened by the total slop $s_{E_m}$, the sum of the beam, electron and proton contributions:
+\begin{feqa}{setup/SetupLimits.cpp: BuildLimits}{init.f:285-302}
+s_\mathrm{beam} &= \tfrac12\Delta E_b + (\Delta E_1^\mathrm{max}-\Delta E_1^\mathrm{min}),\qquad
+s_e = \tfrac{\mathrm{slop}^\delta_e}{100}P_e^0 + (\Delta E_2^\mathrm{max}-\Delta E_2^\mathrm{min}),\nonumber\\
+s_p &= \sqrt{\bigl(r+\tfrac{\mathrm{slop}^\delta_p}{100}P_h^0\bigr)^2+M_p^2}-E_{h,\mathrm{max}} + (\Delta E_3^\mathrm{max}-\Delta E_3^\mathrm{min}),\qquad
+r = \sqrt{E_{h,\mathrm{max}}^2-M_p^2},\nonumber\\
+s_{E_m} &= s_\mathrm{beam}+s_e+s_p+d_E,\qquad
+[E_{m,\mathrm{min}}^\mathrm{edge},E_{m,\mathrm{max}}^\mathrm{edge}] = \bigl[\max(0,\ E^\mathrm{cut}_{m,\mathrm{min}}-s_{E_m}),\ E^\mathrm{cut}_{m,\mathrm{max}}+s_{E_m}\bigr],
+\lbl{eq:emedge}
 \end{feqa}
-with \code{cuts\%Em\%min/max} the input (opened to $\pm10^6$ MeV when min = max, \fsrc{dbase.f:538-542}). For
-deuterium \code{edge\%Em} keeps $\pm10^{10}$.
+($\mathrm{slop}^\delta$ the spectrometer slop in $\delta$; the Coulomb terms are 0 because $V_C$ is the same for every
+event). When the input minimum equals the maximum the window is opened to $\pm10^6$ MeV. For deuterium the missing-energy
+edge is open ($\pm10^{10}$ MeV).
 
-\paragraph{Photon and summed-energy limits.}
-\begin{feqa}{init.f:411-418, 427-430}
-E_\gamma^\mathrm{tot,max} &= E_\mathrm{beam}^\mathrm{max} + M_p - \mathrm{edge}^{E,\mathrm{min}}_e - \mathrm{edge}^{E,\mathrm{min}}_p
- - E_m^\mathrm{V,min} - T_\mathrm{rec}^\mathrm{V,min},\nonumber\\
-A\ge3:\quad E_\gamma^\mathrm{tot,max} &\leftarrow \min\bigl(E_\gamma^\mathrm{tot,max},\ (\mathrm{edge}^\mathrm{max}_{E_m}-E_m^\mathrm{V,min})
- + (T_\mathrm{rec}^\mathrm{V,max}-T_\mathrm{rec}^\mathrm{V,min})\bigr),\nonumber\\
-& E_m^\mathrm{V,min}\leftarrow\max(E_m^\mathrm{V,min},\ \mathrm{edge}^\mathrm{min}_{E_m}-E_\gamma^\mathrm{tot,max}),\qquad
-E_m^\mathrm{V,max}\leftarrow\min(E_m^\mathrm{V,max},\ \mathrm{edge}^\mathrm{max}_{E_m}),
-\label{eq:egammatot}
+\paragraph{Photon limit.}
+\begin{feqa}{setup/SetupLimits.cpp: BuildLimits}{init.f:411-430}
+E_\gamma^\mathrm{tot,max} &= E_b^\mathrm{max} + M_p - E'_\mathrm{min} - E_{h,\mathrm{min}} - E_m^{(\mathrm{min})} - T_\mathrm{rec}^{(\mathrm{min})},\nonumber\\
+A\ge3:\quad E_\gamma^\mathrm{tot,max} &\leftarrow \min\bigl(E_\gamma^\mathrm{tot,max},\ E^\mathrm{edge}_{m,\mathrm{max}}-E_m^{(\mathrm{min})}
+ + T_\mathrm{rec}^{(\mathrm{max})}-T_\mathrm{rec}^{(\mathrm{min})}\bigr),\nonumber\\
+& E_m^{(\mathrm{min})}\leftarrow\max\bigl(E_m^{(\mathrm{min})},\ E^\mathrm{edge}_{m,\mathrm{min}}-E_\gamma^\mathrm{tot,max}\bigr),\qquad
+E_m^{(\mathrm{max})}\leftarrow\min\bigl(E_m^{(\mathrm{max})},\ E^\mathrm{edge}_{m,\mathrm{max}}\bigr),
+\lbl{eq:egammatot}
 \end{feqa}
-($E_\gamma^\mathrm{tot,max}=0$ without radiation, \code{Egamma\_gen\_max} when set; each enabled tail gets
-$E^\mathrm{max}_{\gamma i}=E^\mathrm{tot,max}_\gamma$). The summed generated energy is the electron energy for D and
-the electron plus proton energy for $A\ge3$:
-\begin{feqa}{init.f:442-469 (A$\ge$3: l.442-448; D: l.456-464)}
-A\ge3:\quad \Sigma^\mathrm{max} &= \min\bigl(E_\mathrm{beam}^\mathrm{max}+M_p-T_\mathrm{rec}^\mathrm{V,min}-E_m^\mathrm{V,min},\
- \mathrm{edge}^{E,\mathrm{max}}_e+\mathrm{edge}^{E,\mathrm{max}}_p+E_\gamma^\mathrm{tot,max}\bigr),\nonumber\\
-\Sigma^\mathrm{min} &= \max\bigl(E_\mathrm{beam}^\mathrm{min}+M_p-T_\mathrm{rec}^\mathrm{V,max}-E_m^\mathrm{V,max}-E_{\gamma1}^\mathrm{max},\
- \mathrm{edge}^{E,\mathrm{min}}_e+\mathrm{edge}^{E,\mathrm{min}}_p\bigr),\nonumber\\
-\text{D:}\quad \Sigma^\mathrm{max} &= \min\bigl(E_\mathrm{beam}^\mathrm{max}+M_p-\mathrm{edge}^{E,\mathrm{min}}_p-E_m^\mathrm{V,min}-T_\mathrm{rec}^\mathrm{V,min},\
- \mathrm{edge}^{E,\mathrm{max}}_e+E_{\gamma2}^\mathrm{max}\bigr),\nonumber\\
-\Sigma^\mathrm{min} &= \max\bigl(E_\mathrm{beam}^\mathrm{min}+M_p-\mathrm{edge}^{E,\mathrm{max}}_p-E_m^\mathrm{V,max}-T_\mathrm{rec}^\mathrm{V,max}-E_\gamma^\mathrm{tot,max},\
- \mathrm{edge}^{E,\mathrm{min}}_e\bigr),\nonumber\\
-& \Sigma\leftarrow[\max(0,\Sigma^\mathrm{min}-d_E),\ \Sigma^\mathrm{max}+d_E],
-\label{eq:sumegen}
+(0 without radiation; \code{Egamma\_gen\_max} when set); every enabled tail has $E^\mathrm{max}_{\gamma i}=E^\mathrm{tot,max}_\gamma$.
+
+\paragraph{Summed generated energy.} $\Sigma$ limits $E'$ for D and $E'+E_p$ for $A\ge3$:
+\begin{feqa}{setup/SetupLimits.cpp: BuildLimits}{init.f:442-469}
+A\ge3:\quad \Sigma_\mathrm{max} &= \min\bigl(E_b^\mathrm{max}+M_p-T_\mathrm{rec}^{(\mathrm{min})}-E_m^{(\mathrm{min})},\
+ E'_\mathrm{max}+E_{h,\mathrm{max}}+E_\gamma^\mathrm{tot,max}\bigr),\nonumber\\
+\Sigma_\mathrm{min} &= \max\bigl(E_b^\mathrm{min}+M_p-T_\mathrm{rec}^{(\mathrm{max})}-E_m^{(\mathrm{max})}-E_{\gamma1}^\mathrm{max},\
+ E'_\mathrm{min}+E_{h,\mathrm{min}}\bigr),\nonumber\\
+\text{D:}\quad \Sigma_\mathrm{max} &= \min\bigl(E_b^\mathrm{max}+M_p-E_{h,\mathrm{min}}-E_m^{(\mathrm{min})}-T_\mathrm{rec}^{(\mathrm{min})},\
+ E'_\mathrm{max}+E_{\gamma2}^\mathrm{max}\bigr),\nonumber\\
+\Sigma_\mathrm{min} &= \max\bigl(E_b^\mathrm{min}+M_p-E_{h,\mathrm{max}}-E_m^{(\mathrm{max})}-T_\mathrm{rec}^{(\mathrm{max})}-E_\gamma^\mathrm{tot,max},\
+ E'_\mathrm{min}\bigr),\nonumber\\
+\Sigma &\leftarrow\bigl[\max(0,\Sigma_\mathrm{min}-d_E),\ \Sigma_\mathrm{max}+d_E\bigr],
+\lbl{eq:sumegen}
 \end{feqa}
-using the $E_m^\mathrm{V}$ limits after the update of \eqr{eq:egammatot}. The generation ranges of the energies are
-\begin{feqa}{init.f:477-488, 500-510}
-\text{D:}\quad & \mathrm{gen}^E_e = \Sigma\cap[\mathrm{edge}^{E,\mathrm{min}}_e,\ \mathrm{edge}^{E,\mathrm{max}}_e+E^\mathrm{max}_{\gamma2}],\nonumber\\
-& \mathrm{gen}^E_p = [\mathrm{edge}^{E,\mathrm{min}}_p,\ \mathrm{edge}^{E,\mathrm{max}}_p+E^\mathrm{max}_{\gamma3}]\ (\text{not used}),\nonumber\\
-A\ge3:\quad & \mathrm{gen}^E_e = [\Sigma^\mathrm{min}-\mathrm{edge}^{E,\mathrm{max}}_p-E^\mathrm{max}_{\gamma3},\ \Sigma^\mathrm{max}-\mathrm{edge}^{E,\mathrm{min}}_p]\nonumber\\
-&\qquad\cap[\mathrm{edge}^{E,\mathrm{min}}_e,\ \mathrm{edge}^{E,\mathrm{max}}_e+E^\mathrm{max}_{\gamma2}],\nonumber\\
-& \mathrm{gen}^E_p = [\Sigma^\mathrm{min}-\mathrm{edge}^{E,\mathrm{max}}_e-E^\mathrm{max}_{\gamma2},\ \Sigma^\mathrm{max}-\mathrm{edge}^{E,\mathrm{min}}_e]\nonumber\\
-&\qquad\cap[\mathrm{edge}^{E,\mathrm{min}}_p,\ \mathrm{edge}^{E,\mathrm{max}}_p+E^\mathrm{max}_{\gamma3}].
-\label{eq:genranges}
+with the vertex limits after \eqr{eq:egammatot}. The generation ranges of the energies are
+\begin{feqa}{setup/SetupLimits.cpp: BuildLimits}{init.f:477-510}
+\text{D:}\quad & [E'^\mathrm{gen}_\mathrm{min},E'^\mathrm{gen}_\mathrm{max}] = \Sigma\cap[E'_\mathrm{min},\ E'_\mathrm{max}+E^\mathrm{max}_{\gamma2}],\nonumber\\
+A\ge3:\quad & [E'^\mathrm{gen}_\mathrm{min},E'^\mathrm{gen}_\mathrm{max}] = [\Sigma_\mathrm{min}-E_{h,\mathrm{max}}-E^\mathrm{max}_{\gamma3},\ \Sigma_\mathrm{max}-E_{h,\mathrm{min}}]
+ \cap[E'_\mathrm{min},\ E'_\mathrm{max}+E^\mathrm{max}_{\gamma2}],\nonumber\\
+& [E^\mathrm{gen}_{p,\mathrm{min}},E^\mathrm{gen}_{p,\mathrm{max}}] = [\Sigma_\mathrm{min}-E'_\mathrm{max}-E^\mathrm{max}_{\gamma2},\ \Sigma_\mathrm{max}-E'_\mathrm{min}]
+ \cap[E_{h,\mathrm{min}},\ E_{h,\mathrm{max}}+E^\mathrm{max}_{\gamma3}].
+\lbl{eq:genranges}
 \end{feqa}
 
 \subsection{Generation volume}
-\begin{feq}{simc.f:390-401}
-V_\mathrm{gen}^\mathrm{D} = \Delta\Omega_e\,\Delta\Omega_p\,\Delta E_e\quad[\mathrm{sr^2\,MeV}],\qquad
-V_\mathrm{gen}^{A\ge3} = \Delta\Omega_e\,\Delta\Omega_p\,\Delta E_e\,\Delta E_p\quad[\mathrm{sr^2\,MeV^2}],
-\label{eq:genvol}
+\begin{feq}{reactions/EepReactionBase.cpp: EepReactionBase::genVolume}{simc.f:390-401}
+V_\mathrm{gen}^\mathrm{D} = \Delta\Omega_e\,\Delta\Omega_p\,\Delta E'\ \ [\mathrm{sr^2\,MeV}],\qquad
+V_\mathrm{gen}^{A\ge3} = \Delta\Omega_e\,\Delta\Omega_p\,\Delta E'\,\Delta E_p\ \ [\mathrm{sr^2\,MeV^2}],
+\lbl{eq:genvol}
 \end{feq}
-with the full ranges $\Delta E = \mathrm{gen}^{E,\mathrm{max}}-\mathrm{gen}^{E,\mathrm{min}}$ (the event-by-event
-narrowing is in $w_\mathrm{gen}$).
-
-\paragraph{Vertex acceptance.} Without radiation an $A\ge3$ event is kept only if its vertex $E_m$ and $P_m$ lie inside
-the vertex limits \fsrc{event.f:403-407}; with radiation the same test is made after tail 1 \fsrc{radc.f:351-363}.
+with the full ranges $\Delta E = E^\mathrm{gen}_\mathrm{max}-E^\mathrm{gen}_\mathrm{min}$; the event-by-event narrowing is in
+$w_\mathrm{gen}$. Without radiation an $A\ge3$ event is kept only if its vertex $E_m$ and $P_m$ lie inside the vertex
+limits; with radiation the same test is made after tail 1.
 
 % =====================================================================================================================
-\section{Completing the event}\label{sec:complete}
-\subsection{D(e,e\texorpdfstring{$'$}{'}p): solving for the proton energy}
-The missing energy is the deuteron binding energy and the residual mass is the neutron mass:
-\begin{feq}{event.f:567-568}
-E_m = M_p + M_\mathrm{rec} - M_d\ (=M_p+M_n-M_d = 2.2246\ \mathrm{MeV}),\qquad M_\mathrm{rec}^\mathrm{V} = M_d-M_p+E_m = M_n.
-\label{eq:dem}
+\section{Completing the event}\lbl{sec:complete}
+\subsection{D(e,e\pr p): the proton energy}
+The missing energy is the deuteron binding energy and the residual system is a neutron:
+\begin{feq}{reactions/EepReactionBase.cpp: EepReactionBase::completeEv}{event.f:567-568}
+E_m = M_p + M_n - M_d\ (=2.2246\ \mathrm{MeV}),\qquad M_\mathrm{rec} = M_d-M_p+E_m = M_n.
+\lbl{eq:dem}
 \end{feq}
-Energy conservation $\nu + M_d = E_p + \sqrt{M_\mathrm{rec}^2 + |\vec q-\vec p|^2}$ at fixed directions is solved for
-$E_p$. With $\cos\gamma = \hat q\cdot\hat p$ and
-\begin{feqa}{event.f:570-579}
+Energy conservation $\nu + M_d = E_p + \sqrt{M_\mathrm{rec}^2 + |\vec q-\vec p|^2}$ at fixed directions gives a quadratic
+equation for $E_p$. With $\cos\gamma = \hat q\cdot\hat p$:
+\begin{feqa}{reactions/EepReactionBase.cpp: EepReactionBase::completeEv}{event.f:570-579}
 a &= -|\vec q|\cos\gamma,\qquad b = |\vec q|^2,\qquad c = \nu+M_d,\qquad t = c^2-b+M_p^2-M_\mathrm{rec}^2,\nonumber\\
 Q_A &= 4(a^2-c^2),\qquad Q_B = 4ct,\qquad Q_C = -4a^2M_p^2-t^2,\qquad
 E_p = \frac{-Q_B-\sqrt{Q_B^2-4Q_AQ_C}}{2Q_A},
-\label{eq:dquad}
+\lbl{eq:dquad}
 \end{feqa}
-which is the squared form of $t-2cE_p = 2aP_p$ (subtract $E_p^2$ from both sides of the squared conservation law). Since
-$c^2-|a|^2\ge c^2-|\vec q|^2 = M_d^2+2M_d\nu-Q^2>0$, $Q_A<0$ and the chosen root is the larger one. The try fails if the discriminant is negative or $E_p\le M_p$
-\fsrc{event.f:578, 598}; the code does not check the sign condition $t-2cE_p = 2aP_p$ lost in the squaring. If the
-other root lies inside the hadron energy edges and \code{ntried} $\le5000$, a warning is printed (``Its the end of the
-world as we know it'', \fsrc{event.f:590-595}). Then $P_p=\sqrt{E_p^2-M_p^2}$, $\delta_p$, and
-\begin{feq}{event.f:939-941}
-P_m = P_\mathrm{miss} = |\vec P_m|,\qquad T_\mathrm{rec} = \sqrt{M_\mathrm{rec}^2+P_m^2}-M_\mathrm{rec}.
-\label{eq:dtrec}
+the squared form of $t-2cE_p = 2aP_p$. Since $c^2-a^2\ge c^2-|\vec q|^2 = M_d^2+2M_d\nu-Q^2>0$, $Q_A<0$ and the chosen
+root is the larger one. The try fails if the discriminant is negative or $E_p\le M_p$; the sign condition lost in the
+squaring is not checked. When the other root lies between the proton energy edges, a warning is printed for the first
+5000 tries. Then $P_p$, $\delta_p$ and
+\begin{feq}{reactions/EepReactionBase.cpp: EepReactionBase::completeEv}{event.f:939-941}
+P_m = P_\mathrm{miss},\qquad T_\mathrm{rec} = \sqrt{M_\mathrm{rec}^2+P_m^2}-M_\mathrm{rec}.
+\lbl{eq:dtrec}
 \end{feq}
 
-\subsection{A(e,e\texorpdfstring{$'$}{'}p): the missing energy}
-Both energies are generated, so the missing quantities follow directly:
-\begin{feqa}{event.f:914-918, 942-946}
-\vec P_m &= P_p\hat p-|\vec q|\hat q,\qquad P_m = |\vec P_m|,\qquad E_\mathrm{miss} = \nu + M_A - E_p,\nonumber\\
-M_\mathrm{rec}^* &= \sqrt{E_\mathrm{miss}^2-P_m^2},\qquad E_m = M_p + M^*_\mathrm{rec} - M_A,\qquad
+\subsection{A(e,e\pr p): the missing energy}
+Both energies are generated, so the missing quantities follow directly from \ceqr{eq:pm}:
+\begin{feq}{reactions/EepReactionBase.cpp: EepReactionBase::completeEv}{event.f:942-946}
+P_m = P_\mathrm{miss},\qquad M^*_\mathrm{rec} = \sqrt{E_\mathrm{miss}^2-P_m^2},\qquad E_m = M_p + M^*_\mathrm{rec} - M_A,\qquad
 T_\mathrm{rec} = \sqrt{M^{*2}_\mathrm{rec}+P_m^2}-M^*_\mathrm{rec},
-\label{eq:heavyem}
-\end{feqa}
-i.e.\ $E_m$ is defined through the invariant mass of the unobserved system. A negative $E_\mathrm{miss}^2-P_m^2$ gives NaN
-in the Fortran (and the NaN passes the vertex tests); SIMC++ fails the try in the default mode (\finding{D-033 F7}). The
-vertex $P_{m,\perp}$ of \ceqr{eq:pmcomp} is computed before $P_m$ is assigned, i.e.\ with the previous try's value
-(\finding{D-033 F5}, corrected by default, no effect on outputs).
+\lbl{eq:heavyem}
+\end{feq}
+i.e.\ $E_m$ is defined through the invariant mass $M^*_\mathrm{rec}$ of the unobserved system. When
+$E_\mathrm{miss}^2<P_m^2$ the Fortran produces NaN (which then passes the vertex tests); the default mode of SIMC++ fails
+the try. The vertex $P_{m,\perp}$ is computed by the Fortran before $P_m$ is assigned, i.e.\ with the previous try's
+value; the default mode uses the current value (no output depends on it).
 
 \subsection{Reconstruction}
 The reconstruction uses the nominal residual mass and the recoil kinetic energy:
-\begin{feq}{event.f:1350-1352}
-T_\mathrm{rec}^\mathrm{rec} = \sqrt{P_m^{\mathrm{rec}\,2}+M_\mathrm{rec}^2}-M_\mathrm{rec},\qquad
+\begin{feq}{reactions/EepReactionBase.cpp: EepReactionBase::completeRecon}{event.f:1350-1352}
+T_\mathrm{rec}^\mathrm{rec} = \sqrt{(P_m^\mathrm{rec})^2+M_\mathrm{rec}^2}-M_\mathrm{rec},\qquad
 E_m^\mathrm{rec} = \nu^\mathrm{rec}+M_p-E_p^\mathrm{rec}-T^\mathrm{rec}_\mathrm{rec},
-\label{eq:recem}
+\lbl{eq:recem}
 \end{feq}
-($M_\mathrm{rec}$ = \code{targ\%Mrec}); this is $\nu - T_p - T_\mathrm{rec}$, not the invariant-mass definition of
-\eqr{eq:heavyem}: the two agree when $M^*_\mathrm{rec}=M_\mathrm{rec}$ and differ otherwise (the
-reconstructed $E_m$ of an event generated at $E_m$ is not exactly $E_m$ even without radiation and resolution). With \code{hard\_cuts}, events with
-$E_m^\mathrm{rec}>$ \code{cuts\%Em\%max} are rejected \fsrc{simc.f:252}.
+that is $\nu - T_p - T_\mathrm{rec}$, not the invariant-mass definition of \eqr{eq:heavyem}; the two agree when
+$M^*_\mathrm{rec}=M_\mathrm{rec}$. With hard cuts, events with $E_m^\mathrm{rec}$ above \code{cuts\%Em\%max} are not
+successes.
 
 % =====================================================================================================================
-\section{Jacobians}\label{sec:jac}
-\paragraph{D(e,e$'$p).} Integrating the six-fold cross section over the $E_m$ delta function at fixed $E'$ and angles
-gives the factor $|\mathrm{d}E_p/\mathrm{d}E_m|$:
-\begin{feq}{event.f:603-605}
-J_{E} = \Bigl|\frac{t\,(c-E_p)+2cE_p(E_p-c)}{2(a^2-c^2)E_p+ct}\Bigr| = \frac{P_p\,E_\mathrm{rec}}{|c\,P_p+a\,E_p|},\qquad E_\mathrm{rec}=c-E_p,
-\label{eq:djac}
+\section{Jacobians}\lbl{sec:jac}
+\paragraph{D(e,e\pr p).} Integrating the six-fold cross section over the $E_m$ delta function at fixed $E'$ and
+angles gives the factor $|\mathrm{d}E_p/\mathrm{d}E_m|$:
+\begin{feq}{reactions/EepReactionBase.cpp: EepReactionBase::completeEv}{event.f:603-605}
+J_E = \Bigl|\frac{t\,(c-E_p)+2cE_p(E_p-c)}{2(a^2-c^2)E_p+ct}\Bigr| = \frac{P_p\,E_\mathrm{rec}}{|c\,P_p+a\,E_p|},\qquad E_\mathrm{rec}=c-E_p,
+\lbl{eq:djac}
 \end{feq}
-the second form follows from $t-2cE_p=2aP_p$. It equals $|\mathrm{d}E_p/\mathrm{d}E_m|$ for $E_m = \nu+M_d-E_p-\sqrt{M_\mathrm{rec}^2+P_m^2}+\mathrm{const}$
-(the recoil kinetic-energy definition of \eqr{eq:recem}). The full jacobian is
-\begin{feq}{event.f:603-605, 1015-1016}
+the second form following from $t-2cE_p=2aP_p$. It is $|\mathrm{d}E_p/\mathrm{d}E_m|$ for
+$E_m = \nu+M_d-E_p-\sqrt{M_\mathrm{rec}^2+P_m^2}+\mathrm{const}$, the residual-kinetic-energy definition of \eqr{eq:recem}.
+The full jacobian is
+\begin{feq}{reactions/EepReactionBase.cpp: EepReactionBase::completeEv}{event.f:603-605, 1015-1016}
 J^\mathrm{D} = J_E\,\bigl(1+x_e'^2+y_e'^2\bigr)^{-3/2},
-\label{eq:djactot}
+\lbl{eq:djactot}
 \end{feq}
-without the hadron solid-angle factor (\finding{D-033 F4}, Category B: the proton slopes are generated flat and
-$\Delta\Omega_p$ is in $V_\mathrm{gen}$, so $1/r_p^3$ would be expected; the effect is 0 at the centre to $-1.5$\,\% at
-the corners of a $\pm60\times\pm80$ mrad hadron range).
+without the proton solid-angle factor, although the proton slopes are generated flat and $\Delta\Omega_p$ is part of
+$V_\mathrm{gen}$; the factor $1/r_p^3$ would range from 1 at the centre to about 0.985 at the corners of a
+$\pm60\times\pm80$ mrad range. Both modes keep the Fortran (an open question).
 
-\paragraph{A(e,e$'$p).} Both solid angles carry their factor:
-\begin{feq}{event.f:1015-1025}
+\paragraph{A(e,e\pr p).}
+\begin{feq}{reactions/EepReactionBase.cpp: EepReactionBase::completeEv}{event.f:1015-1025}
 J^{A} = \bigl(1+x_e'^2+y_e'^2\bigr)^{-3/2}\bigl(1+x_p'^2+y_p'^2\bigr)^{-3/2}.
-\label{eq:hjac}
+\lbl{eq:hjac}
 \end{feq}
 
 % =====================================================================================================================
-\section{Cross-section model}\label{sec:xsec}
-The event weight is
-\begin{feq}{event.f:1561-1562, 1536-1538}
-w = S(E_m,P_m)\cdot J\cdot w_\mathrm{gen}\cdot\sigma_\mathrm{deF}\cdot\bigl(1+V_C/E_\mathrm{beam}\bigr)^2_{[\text{using\_Coulomb}]},
-\label{eq:weight}
+\section{Cross-section model}\lbl{sec:xsec}
+\subsection{What the reaction requires from a model and a spectral function}
+\code{EepReactionBase::completeMain} asks the reaction's \code{ISpectralFunction} for $S$ (\code{weight(vertex)}, from
+the vertex $E_m$ and $P_m$) and the run's \code{IPhysicsModel} for $\sigma$ (\code{sigcc(vertex)}), then forms
+\begin{feq}{reactions/EventChain.cpp: assembleWeight}{event.f:1536-1538, 1561-1562}
+w = S\cdot J\cdot w_\mathrm{gen}\cdot\sigma\cdot\bigl(1+V_C/E_b\bigr)^2\quad(\text{Coulomb factor with \code{using\_Coulomb}; }V_C=0\text{ for D}).
+\lbl{eq:weight}
 \end{feq}
-($n_\mathrm{tgt}=1$; $V_C=0$ for deuterium). The code comment \fsrc{physics\_proton.f:51-62} states the
-factorisation $\mathrm{d}^6\sigma = K\,S(E,p)\,\sigma_{eN}$: \code{deForest} returns $\mathrm{d}^6\sigma/S = K\sigma_{eN}
-= E'p'\sigma_\mathrm{Mott}\sum a_iW_i$, in $\mu$b\,MeV$^2$/sr$^2$ (``microbarn*(MeV/sr)**2'' in the code) with the
-$E'/\bar E$ of each $W_i$ combined with $K$ into an overall $p'/\bar E$. With $S$ in MeV$^{-4}$ ($A\ge3$) $w$ is in
-$\mu$b/(MeV$^2$\,sr$^2$); for deuterium $S$ is a momentum density in MeV$^{-3}$ and $J_E$ is dimensionless, giving
-$\mu$b/(MeV\,sr$^2$). Both match the units of $V_\mathrm{gen}$ (\eqr{eq:genvol}).
+The code factorises $\mathrm{d}^6\sigma = K\,S\,\sigma_{ep}$: the model returns $\mathrm{d}^6\sigma/S = K\sigma_{ep}
+= E'P_p\sigma_\mathrm{Mott}\sum a_iW_i$, in $\mu$b\,MeV$^2$/sr$^2$ (code comment \fsrc{physics\_proton.f:51-62}). A
+spectral function must return a density per proton momentum in MeV$^{-3}$ for D (the jacobian $J_E$ is dimensionless)
+and per momentum and missing energy in MeV$^{-4}$ for $A\ge3$; $w$ is then in $\mu$b/(MeV\,sr$^2$) for D and
+$\mu$b/(MeV$^2$\,sr$^2$) for $A\ge3$, the units of $V_\mathrm{gen}^{-1}$ (\eqr{eq:genvol}). Any model or spectral function
+with these units can replace the built-in ones.
 
-\subsection{de Forest off-shell cross sections}\label{sec:deforest}
-\code{deForest(ev)} is evaluated with the vertex record (and, for the ntuple-free diagnostic \code{sigcc\_recon}, with
-the reconstructed one). Its option \code{deForest\_flag} selects $\sigma_{cc1}$ (0), $\sigma_{cc2}$ (1) or
-$\sigma_{cc1}$ on shell ($-1$) \fsrc{physics\_proton.f:37-41}; other values STOP \fsrc{dbase.f:544}. The code writes
-the four-vector products with the $(+,-,-,-)$ metric and puts them into de Forest's formulas (metric $(-,+,+,+)$) with
-reversed signs \fsrc{physics\_proton.f:42-46}. The off-shell kinematics are
-\begin{feqa}{physics\_proton.f:64-72}
-q^2_\mu &= -Q^2,\qquad |\vec q|^2 = q^2,\nonumber\\
-\text{flag}\ge0:\quad &\bar E = \sqrt{P_m^2+M_p^2},\qquad \bar q^2 = (E_p-\bar E)^2-|\vec q|^2,\nonumber\\
-\text{flag}=-1:\quad &\bar E = E_p-\nu,\qquad \bar q^2 = q_\mu^2 = -Q^2,
-\label{eq:offshell}
+\subsection{The model \code{deforest}: de Forest off-shell cross sections}\lbl{sec:deforest}
+The flavour is set by \code{deForest\_flag} (0: $\sigma_{cc1}$, 1: $\sigma_{cc2}$, $-1$: $\sigma_{cc1}$ on shell; other
+values are refused) or by the registered names of \tabr{tab:components}. The literature reference is de Forest
+\citer{deforest}, whose names $\sigma_{cc1}$, $\sigma_{cc2}$ the code uses without citing the paper. The code writes the
+four-vector products with the metric $(+,-,-,-)$ and puts them into de Forest's formulas (metric $(-,+,+,+)$) with
+reversed signs. The off-shell kinematics ($q^2\equiv|\vec q|^2$, $q_\mu^2=-Q^2$):
+\begin{feqa}{physics/proton/ProtonCrossSections.cpp: deForest}{physics\_proton.f:64-72}
+\text{flavours }\sigma_{cc1},\sigma_{cc2}:\quad &\bar E = \sqrt{P_m^2+M_p^2},\qquad \bar q^2 = (E_p-\bar E)^2-q^2,\nonumber\\
+\text{on shell}:\quad &\bar E = E_p-\nu,\qquad \bar q^2 = q_\mu^2 = -Q^2,
+\lbl{eq:offshell}
 \end{feqa}
-($\bar E$ is the on-shell energy of the struck proton with momentum $\vec P_m$; $M_h=M_p$ in the code). The angle
-$\gamma$ between $\hat p$ and $\hat q$ and the azimuth $\phi$ of $\hat p$ around $\hat q$:
-\begin{feqa}{physics\_proton.f:74-88}
-\sin\gamma &= \sqrt{\max\bigl(0,\ 1-(\hat q\cdot\hat p)^2\bigr)},\nonumber\\
-\cos\phi &= \frac{\hat q_y(\hat q_y\hat p_z-\hat q_z\hat p_y)-\hat q_x(\hat q_z\hat p_x-\hat q_x\hat p_z)}{\sin\gamma\,\sqrt{1-\hat q_z^2}}
-\quad(0\text{ if }\sin\gamma=0;\ \text{clamped to }\pm1).
-\label{eq:cosphi}
+($\bar E$ is the on-shell energy of a proton of momentum $\vec P_m$). The angle $\gamma$ between $\hat p$ and $\hat q$ and
+the azimuth $\phi$ of $\hat p$ around $\hat q$ are
+\begin{feqa}{physics/proton/ProtonCrossSections.cpp: deForest}{physics\_proton.f:74-88}
+\sin\gamma &= \sqrt{\max\bigl(0,\ 1-(\hat q\cdot\hat p)^2\bigr)},\qquad
+\cos\phi = \frac{\hat q_y(\hat q_y\hat p_z-\hat q_z\hat p_y)-\hat q_x(\hat q_z\hat p_x-\hat q_x\hat p_z)}{\sin\gamma\,\sqrt{1-\hat q_z^2}},
+\lbl{eq:cosphi}
 \end{feqa}
-The nucleon form factors are those of \code{fofa\_best\_fit} (note 01, \S5.2), evaluated at $Q^2$ (not at
-$\bar q^2$):
-\begin{feqa}{physics\_proton.f:90-95}
-\tau &= Q^2/(4M_p^2),\qquad F_1 = \frac{G_E+\tau G_M}{1+\tau},\qquad \kappa F_2 = \frac{G_M-G_E}{1+\tau},\nonumber\\
-K_2 &= \kappa^2F_2^2/(4M^2)\ \ \text{with}\ M=M_h=M_p.
-\label{eq:f1f2}
-\end{feqa}
-(The code writes $\tau$ as \code{qmu4mp} $=q_\mu^2/4M_p^2=-\tau$.) The lepton factors, with $T=\tan^2(\theta_e/2)$:
-\begin{feqa}{physics\_proton.f:97-100}
-v_C &= \Bigl(\frac{Q^2}{q^2}\Bigr)^2,\qquad v_T = T+\frac{Q^2}{2q^2},\qquad v_S = T+\frac{Q^2}{q^2}\cos^2\phi,\qquad
+($\cos\phi=0$ if $\sin\gamma=0$, limited to $\pm1$). The nucleon form factors are those of \ceqr{eq:bosted}, at $Q^2$
+(not at $\bar q^2$):
+\begin{feq}{physics/proton/ProtonCrossSections.cpp: deForest}{physics\_proton.f:90-95}
+\tau = \frac{Q^2}{4M_p^2},\qquad F_1 = \frac{G_E+\tau G_M}{1+\tau},\qquad \kappa F_2 = \frac{G_M-G_E}{1+\tau},\qquad
+K_2 = \frac{\kappa^2F_2^2}{4M_p^2}.
+\lbl{eq:f1f2}
+\end{feq}
+The lepton factors, with $T=\tan^2(\theta_e/2)$:
+\begin{feq}{physics/proton/ProtonCrossSections.cpp: deForest}{physics\_proton.f:97-100}
+v_C = \Bigl(\frac{Q^2}{q^2}\Bigr)^2,\qquad v_T = T+\frac{Q^2}{2q^2},\qquad v_S = T+\frac{Q^2}{q^2}\cos^2\phi,\qquad
 v_I = \frac{Q^2}{q^2}\sqrt{T+\frac{Q^2}{q^2}}\,\cos\phi.
-\label{eq:leptonic}
-\end{feqa}
+\lbl{eq:leptonic}
+\end{feq}
 
-\paragraph{$\sigma_{cc1}$ (flags 0 and $-1$).}
-\begin{feqa}{physics\_proton.f:102-109, 128}
-\Sigma_1 &= (F_1+\kappa F_2)^2,\qquad \Sigma_2 = F_1^2-\frac{\bar q^2}{4M^2}\kappa^2F_2^2,\nonumber\\
+\paragraph{$\sigma_{cc1}$ (flavours 0 and $-1$).}
+\begin{feqa}{physics/proton/ProtonCrossSections.cpp: deForest}{physics\_proton.f:102-109, 128}
+\Sigma_1 &= (F_1+\kappa F_2)^2,\qquad \Sigma_2 = F_1^2-\bar q^2K_2,\nonumber\\
 W_C &= (\bar E+E_p)^2\,\Sigma_2 - q^2\,\Sigma_1,\qquad W_T = -2\bar q^2\,\Sigma_1,\nonumber\\
-W_S &= 4P_p^2\sin^2\gamma\;\Sigma_2,\qquad W_I = -4(\bar E+E_p)P_p\sin\gamma\;\Sigma_2,\nonumber\\
+W_S & = 4P_p^2\sin^2\gamma\;\Sigma_2,\qquad W_I = -4(\bar E+E_p)P_p\sin\gamma\;\Sigma_2,\nonumber\\
 \Sigma_W &= \tfrac14\bigl(v_CW_C+v_TW_T+v_SW_S+v_IW_I\bigr).
-\label{eq:cc1}
+\lbl{eq:cc1}
 \end{feqa}
 
-\paragraph{$\sigma_{cc2}$ (flag 1).} With the products ($\vec P_m$ the struck-proton momentum)
-\begin{feqa}{physics\_proton.f:111-115}
+\paragraph{$\sigma_{cc2}$ (flavour 1).} With the products of the struck-proton four-momentum $\bar p=(\bar E,\vec P_m)$:
+\begin{feqa}{physics/proton/ProtonCrossSections.cpp: deForest}{physics\_proton.f:111-115}
 \bar p\cdot p' &= \bar EE_p - P_p\,\hat p\cdot\vec P_m,\qquad \bar p\cdot q = \bar E\nu-|\vec q|\,\hat q\cdot\vec P_m,\nonumber\\
 p'\cdot q &= E_p\nu-P_p|\vec q|\cos\gamma,\qquad \bar q\cdot q = (E_p-\bar E)\nu - q^2,
-\label{eq:products}
+\lbl{eq:products}
 \end{feqa}
-and $K_2 = \kappa^2F_2^2/(4M^2)$, $q^2_\mu=-Q^2$:
-\begin{feqa}{physics\_proton.f:117-124}
-W_C &= \Bigl(\bar EE_p+\tfrac12(-\bar p\cdot p'+M^2)\Bigr)F_1^2-\tfrac12q^2F_1\kappa F_2\nonumber\\
-&\quad-\Bigl[\bigl(-\bar p\cdot q\,E_p-p'\cdot q\,\bar E\bigr)\nu+\bar EE_p\,q^2_\mu+\bar p\cdot q\;p'\cdot q-\tfrac12(-\bar p\cdot p'-M^2)\,q^2\Bigr]K_2,\nonumber\\
-W_T &= -(-\bar p\cdot p'+M^2)F_1^2-\bar q\cdot q\;F_1\kappa F_2+\bigl(2\,\bar p\cdot q\;p'\cdot q+(-\bar p\cdot p'-M^2)\,q^2_\mu\bigr)K_2,\nonumber\\
+\begin{feqa}{physics/proton/ProtonCrossSections.cpp: deForest}{physics\_proton.f:117-124, 128}
+W_C &= \Bigl(\bar EE_p+\tfrac12(-\bar p\cdot p'+M_p^2)\Bigr)F_1^2-\tfrac12q^2F_1\kappa F_2\nonumber\\
+&\quad-\Bigl[\bigl(-\bar p\cdot q\,E_p-p'\cdot q\,\bar E\bigr)\nu+\bar EE_p\,q^2_\mu+\bar p\cdot q\;p'\cdot q-\tfrac12(-\bar p\cdot p'-M_p^2)\,q^2\Bigr]K_2,\nonumber\\
+W_T &= -(-\bar p\cdot p'+M_p^2)F_1^2-\bar q\cdot q\;F_1\kappa F_2+\bigl(2\,\bar p\cdot q\;p'\cdot q+(-\bar p\cdot p'-M_p^2)\,q^2_\mu\bigr)K_2,\nonumber\\
 W_S &= (P_p\sin\gamma)^2\bigl(F_1^2-q^2_\mu K_2\bigr),\nonumber\\
 W_I &= P_p\sin\gamma\Bigl(-(\bar E+E_p)F_1^2+\bigl((-\bar p\cdot q-p'\cdot q)\nu+(\bar E+E_p)\,q^2_\mu\bigr)K_2\Bigr),\nonumber\\
 \Sigma_W &= v_CW_C+v_TW_T+v_SW_S+v_IW_I\quad(\text{no factor }1/4).
-\label{eq:cc2}
+\lbl{eq:cc2}
 \end{feqa}
 
 \paragraph{The cross section.}
-\begin{feq}{physics\_proton.f:129}
+\begin{feq}{physics/proton/ProtonCrossSections.cpp: deForest}{physics\_proton.f:129}
 \sigma_\mathrm{deF} = \sigma_\mathrm{Mott}(E',\theta_e,Q^2)\;\frac{P_p\,\Sigma_W}{\bar E}\qquad[\mu\mathrm{b\,MeV^2/sr^2}],
-\label{eq:deforest}
+\lbl{eq:deforest}
 \end{feq}
-with the point Mott cross section $\sigma_\mathrm{Mott}$ of \code{sigMott} (note 01, \S5.1). The literature reference for $\sigma_{cc1}$ and $\sigma_{cc2}$ is de
-Forest \cite{deforest}; the code names the prescriptions but does not cite the paper. The warning for $|\cos\phi|>1$ is
-tested after the clamp in the Fortran and never prints (\finding{D-014}; SIMC++ prints it in the default mode).
+with $\sigma_\mathrm{Mott}$ of \ceqr{eq:mott}. When $|\cos\phi|$ exceeds 1 by more than $10^{-10}$ the default mode prints
+a warning (the Fortran tests after limiting the value, so its warning never appears).
 
-\subsection{Spectral functions: the theory files}\label{sec:theory}
-Without \code{use\_benhar\_sf}, and always for deuterium, the spectral function is read from a ``theory file''
-selected by $\mathrm{nint}(A)$: \code{h2.theory} (2), \code{c12.theory} (12), \code{fe56.theory} (56),
-\code{au197.theory} (197); any other $A$ uses \code{c12.theory} \fsrc{init.f:839-851} (\finding{D-033 F1}, Category B:
-He-3 and He-4 get the carbon spectral function; SIMC++ warns and lets the JSON input name a file). The file contains
-\fsrc{init.f:856-886}: $n_\rho$ (number of shells), an absorption factor $\eta$ and $E_\mathrm{Fermi}$; for each shell
-the number of protons $n_i$, the centroid $E_i$, the width $\Gamma_i$ (\code{Emsig}) and a normalisation $N_i$; then
-the momentum distributions $\rho_i(p)$ on an equidistant grid (one block per shell, a block ending when $p$ stops
-increasing). At start-up
-\begin{feqa}{init.f:860, 872-875, 892-905}
+\subsection{Spectral function \code{theory}: the theory files}\lbl{sec:theory}
+Without \code{use\_benhar\_sf}, and always for deuterium, the spectral function is read from a theory file chosen by
+$\mathrm{nint}(A)$: \code{h2.theory} (2), \code{c12.theory} (12), \code{fe56.theory} (56), \code{au197.theory} (197).
+Any other $A$ uses \code{c12.theory}; SIMC++ prints a warning and lets the JSON input name another file. A file holds
+the number of shells $n_\rho$, an absorption factor $\eta$ and $E_\mathrm{Fermi}$; for each shell the number of protons
+$n_i$, the centroid $E_i$, the width $\Gamma_i$ and a normalisation $N_i$; then the momentum distributions $\rho_i(p)$
+on an equidistant grid. At start-up
+\begin{feqa}{setup/SetupTheory.cpp: ReadTheoryFile}{init.f:856-905}
 n_i &\leftarrow \eta\,n_i,\qquad \rho_i(p)\leftarrow\rho_i(p)/N_i,\qquad
-P^\mathrm{th}_{i,\mathrm{min}} = p_1-\tfrac12\Delta p,\quad P^\mathrm{th}_{i,\mathrm{max}} = p_{n}+\tfrac12\Delta p,\nonumber\\
+P^\mathrm{th}_{i,\mathrm{min}} = p_1-\tfrac12\Delta p,\qquad P^\mathrm{th}_{i,\mathrm{max}} = p_{n}+\tfrac12\Delta p,\nonumber\\
 I_i &= \frac{1}{\pi}\Bigl[\frac{\pi}{2}+\arctan\frac{E_i-E_\mathrm{Fermi}}{\Gamma_i/2}\Bigr]\quad(A\ge3),
-\label{eq:theoryinit}
+\lbl{eq:theoryinit}
 \end{feqa}
-$I_i$ being the fraction of a Lorentzian of FWHM $\Gamma_i$ centred at $E_i$ that lies above $E_\mathrm{Fermi}$. The
-spectral-function weight is
-\begin{feqa}{event.f:1405-1432}
-r &= (P_m-P^\mathrm{th}_{i,\mathrm{min}})/\Delta p,\quad k=\mathrm{nint}(r)\ (k\to1\text{ if }0,\ k\to n-1\text{ if }n),\quad
+$I_i$ being the fraction of a Lorentzian of full width $\Gamma_i$ centred at $E_i$ that lies above $E_\mathrm{Fermi}$. The
+weight is a linear interpolation between bin centres, times a Lorentzian in $E_m$ normalised above $E_\mathrm{Fermi}$:
+\begin{feqa}{physics/nuclear/SpectralFunctionTables.cpp: TheorySfWeight}{event.f:1405-1432}
+r &= (P_m-P^\mathrm{th}_{i,\mathrm{min}})/\Delta p,\quad k=\mathrm{nint}(r)\ (1\text{ if }0,\ n-1\text{ if }n),\quad
 f = r+\tfrac12-k,\nonumber\\
-\rho_i(P_m) & = \rho_{i,k}+f\,(\rho_{i,k+1}-\rho_{i,k})\ \ (0\le r\le n,\ \text{else }0),\nonumber\\
+\rho_i(P_m) & = \rho_{i,k}+f\,(\rho_{i,k+1}-\rho_{i,k})\ \ (0\le r\le n),\nonumber\\
 \text{D:}\quad S &= \sum_i n_i\,\rho_i(P_m),\nonumber\\
-A\ge3:\quad S &= \sum_i n_i\,\rho_i(P_m)\;\frac{1}{\pi I_i}\frac{\Gamma_i/2}{(E_m-E_i)^2+(\Gamma_i/2)^2}\;\Theta(E_m-E_\mathrm{Fermi}),
-\label{eq:theorysf}
+A\ge3:\quad S &= \sum_i n_i\,\rho_i(P_m)\,\frac{1}{\pi I_i}\,\frac{\Gamma_i/2}{(E_m-E_i)^2+(\Gamma_i/2)^2}\,\Theta(E_m-E_\mathrm{Fermi}),
+\lbl{eq:theorysf}
 \end{feqa}
-a linear interpolation between the bin centres (extrapolated in the first and last half bins), times, for $A\ge3$, a
-Lorentzian in $E_m$ normalised to 1 above $E_\mathrm{Fermi}$. The files tabulate $\rho_i$ from $-490$ to $+490$ MeV/$c$
-in 10 MeV/$c$ steps; only $P_m\ge0$ is used. Summing $\rho_i\,4\pi p^2\Delta p$ over the positive half of each block
-gives $N_i$ to 2.5\,\% or better (our check of the files: 0.9957 for h2; 0.9632/0.9718 for the two c12 shells against $N_i$ =
-0.960/0.972), so $\rho_i/N_i$ is a momentum density normalised to about 1 in the tabulated range and $S$ integrates to
-$\eta\sum_in_i$, the number of protons times the absorption factor.
+($\rho_i=0$ outside $0\le r\le n$). The files tabulate $\rho_i$ from $-490$ to $+490$ MeV/$c$ in steps of 10 MeV/$c$; only
+$P_m\ge0$ is used. Summing $\rho_i\,4\pi p^2\Delta p$ over the positive half of each block reproduces $N_i$ to 2.5\,\%
+or better (our check of the files: 0.9957 for \code{h2.theory}; 0.9632 and 0.9718 for the two shells of
+\code{c12.theory}, whose $N_i$ are 0.960 and 0.972), so $\rho_i/N_i$ is a density normalised to about 1 in the tabulated
+range and $S$ integrates to $\eta\sum_in_i$, the number of protons times the absorption factor.
 
-\begin{simctable}{footnotesize}{L{0.14\linewidth}L{0.09\linewidth}L{0.12\linewidth}L{0.6\linewidth}}
-\caption{Contents of the theory files (first lines; $n_i$ / $E_i$ [MeV] / $\Gamma_i$ [MeV] / $N_i$ per shell).}\label{tab:theory}\\
-\toprule\rowcolor{simchead}\simcth{file} & \simcth{$\eta$} & \simcth{$E_\mathrm{Fermi}$} & \simcth{shells}\\\midrule\endfirsthead
-\toprule\rowcolor{simchead}\simcth{file} & \simcth{$\eta$} & \simcth{$E_\mathrm{Fermi}$} & \simcth{shells}\\\midrule\endhead
+\begin{simctable}{footnotesize}{L{0.2\linewidth}L{0.1\linewidth}L{0.12\linewidth}L{0.15\linewidth}L{0.15\linewidth}L{0.14\linewidth}L{0.14\linewidth}}
+\caption{Shells of the theory files (one shell per row).}\lbl{tab:theory}\\
+\toprule\rowcolor{simchead}\simcth{file} & \simcth{$\eta$} & \simcth{$E_\mathrm{Fermi}$ [MeV]} & \simcth{$n_i$} & \simcth{$E_i$ [MeV]} & \simcth{$\Gamma_i$ [MeV]} & \simcth{$N_i$}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{file} & \simcth{$\eta$} & \simcth{$E_\mathrm{Fermi}$ [MeV]} & \simcth{$n_i$} & \simcth{$E_i$ [MeV]} & \simcth{$\Gamma_i$ [MeV]} & \simcth{$N_i$}\\\midrule\endhead
 \bottomrule\endlastfoot
-\code{h2.theory} & 1.0 & 0.0 & 1/2.2/0.0/1.0 (the $E_m$ columns are not used for D)\\
-\code{c12.theory} & 0.56 & 15.96 & 2/38.1/20/0.960;\ 4/16.2/5.0/0.972\\
-\code{fe56.theory} & 0.36 & 10.18 & 2/50/18/0.947;\ 6/37/14/0.967;\ 10/23/6/0.972;\ 2/16.7/3/0.946;\ 6/11.3/1.0/0.975\\
-\code{au197.theory} & 0.22 & 5.78 & 2/46/19/0.903;\ 6/41/17/0.950;\ 10/32/14/0.960;\ 2/28/12/0.942;\ 14/22.9/9.4/0.966;
- 6/17.2/7.9/0.954;\ 18/12.5/6.0/0.971;\ 12/7.7/4.0/0.974;\ 6/8.3/3.7/0.958;\ 3/6.2/1.5/0.957\\
+\code{h2.theory} & 1.0 & 0.0 & 1 & (2.2, unused) & (0.0, unused) & 1.0\\
+\code{c12.theory} & 0.56 & 15.96 & 2 & 38.1 & 20 & 0.960\\
+\code{c12.theory} & 0.56 & 15.96 & 4 & 16.2 & 5.0 & 0.972\\
+\code{fe56.theory} & 0.36 & 10.18 & 2 & 50 & 18 & 0.947\\
+\code{fe56.theory} & 0.36 & 10.18 & 6 & 37 & 14 & 0.967\\
+\code{fe56.theory} & 0.36 & 10.18 & 10 & 23 & 6 & 0.972\\
+\code{fe56.theory} & 0.36 & 10.18 & 2 & 16.7 & 3 & 0.946\\
+\code{fe56.theory} & 0.36 & 10.18 & 6 & 11.3 & 1.0 & 0.975\\
+\code{au197.theory} & 0.22 & 5.78 & 2 & 46 & 19 & 0.903\\
+\code{au197.theory} & 0.22 & 5.78 & 6 & 41 & 17 & 0.950\\
+\code{au197.theory} & 0.22 & 5.78 & 10 & 32 & 14 & 0.960\\
+\code{au197.theory} & 0.22 & 5.78 & 2 & 28 & 12 & 0.942\\
+\code{au197.theory} & 0.22 & 5.78 & 14 & 22.9 & 9.4 & 0.966\\
+\code{au197.theory} & 0.22 & 5.78 & 6 & 17.2 & 7.9 & 0.954\\
+\code{au197.theory} & 0.22 & 5.78 & 18 & 12.5 & 6.0 & 0.971\\
+\code{au197.theory} & 0.22 & 5.78 & 12 & 7.7 & 4.0 & 0.974\\
+\code{au197.theory} & 0.22 & 5.78 & 6 & 8.3 & 3.7 & 0.958\\
+\code{au197.theory} & 0.22 & 5.78 & 3 & 6.2 & 1.5 & 0.957\\
 \end{simctable}
-The proton counts of fe56 (26) and au197 (79) are the sums of the shells. The absorption factor $\eta$ is the nuclear
-transparency of this option: it is a constant read from the file, not an input.
+The absorption factor $\eta$ is the nuclear transparency of this option: a constant of the file, not an input.
 
-\subsection{Spectral functions: the Benhar tables}\label{sec:benhar}
-With \code{use\_benhar\_sf}=1 and $A\ge3$ the table \code{benharsf\_A.dat} is read \fsrc{dbase.f:597-627}: each line
-holds $P_m$, $E_m$, the proton and the neutron bin probabilities and the bin widths $\Delta P_m$, $\Delta E_m$
-\fsrc{sf\_lookup.f:3-11}; the proton column is chosen ($M_\mathrm{struck}=M_p$) and normalised to a total of 1
-\fsrc{sf\_lookup.f:63-78}. $A$ = 3, 4, 12, 56, 64, 197 have files; any other $A$ uses the C-12 table.
+\subsection{Spectral function \code{benhar}: the Benhar tables}\lbl{sec:benhar}
+With \code{use\_benhar\_sf}=1 and $A\ge3$ a table \code{benharsf\_A.dat} is read: each line holds $P_m$, $E_m$, the
+proton and the neutron bin probabilities and the bin widths $\Delta P_m$, $\Delta E_m$; the proton column is used and
+normalised to a total of 1. Any $A$ without its own table uses the C-12 table.
 
-\begin{simctable}{footnotesize}{L{0.2\linewidth}L{0.15\linewidth}L{0.2\linewidth}L{0.38\linewidth}}
-\caption{Benhar tables (first line and first record of each file).}\label{tab:benhar}\\
-\toprule\rowcolor{simchead}\simcth{file} & \simcth{$N_{P_m}\times N_{E_m}$} & \simcth{$\Delta P_m$, $\Delta E_m$} & \simcth{remark}\\\midrule\endfirsthead
+\begin{simctable}{footnotesize}{L{0.25\linewidth}L{0.08\linewidth}L{0.14\linewidth}L{0.13\linewidth}L{0.13\linewidth}L{0.27\linewidth}}
+\caption{Benhar tables (one file per row).}\lbl{tab:benhar}\\
+\toprule\rowcolor{simchead}\simcth{file} & \simcth{$A$} & \simcth{grid $P_m\times E_m$} & \simcth{$\Delta P_m$ [MeV/$c$]} & \simcth{$\Delta E_m$ [MeV]} & \simcth{remark}\\\midrule\endfirsthead
 \bottomrule\endlastfoot
-\code{benharsf\_3mod.dat} & 50$\times$35 & 19.733, 1 & $A=3$ (``mod version'', \fsrc{dbase.f:599-600})\\
-\code{benharsf\_4.dat} & 50$\times$35 & 19.733, 1 & $A=4$; one negative node\\
-\code{benharsf\_12.dat} & 40$\times$80 & 20, 5 & $A=12$ and the fallback\\
-\code{benharsf\_56.dat} & 40$\times$80 & 20, 5 & $A=56$\\
-\code{benharsf\_64.dat} & 49$\times$100 & 10, 2 & $A=64$ (upstream a85dc6b); proton = neutron columns\\
-\code{benharsf\_197.dat} & 40$\times$80 & 20, 5 & $A=197$\\
+\code{benharsf\_3mod.dat} & 3 & 50$\times$35 & 19.733 & 1 & ``mod'' version for $^3$He\\
+\code{benharsf\_4.dat} & 4 & 50$\times$35 & 19.733 & 1 & one negative node\\
+\code{benharsf\_12.dat} & 12 & 40$\times$80 & 20 & 5 & also the fallback\\
+\code{benharsf\_56.dat} & 56 & 40$\times$80 & 20 & 5 & \\
+\code{benharsf\_64.dat} & 64 & 49$\times$100 & 10 & 2 & proton and neutron columns equal\\
+\code{benharsf\_197.dat} & 197 & 40$\times$80 & 20 & 5 & \\
 \end{simctable}
 
-The lookup interpolates linearly in $P_m$ between the two bracketing nodes (constant beyond the first and last node)
-and linearly in $E_m$ (extrapolated linearly outside), and sets values below $10^{-20}$ to 0:
-\begin{feqa}{sf\_lookup.f:118-187}
-p_j\le P_m<p_{j+1}:&\quad w_2 = \frac{P_m-p_j}{p_{j+1}-p_j},\quad w_1 = 1-w_2,\nonumber\\
-s_{1,2} &= w_1\,s(E_{k,k+1},p_j)+w_2\,s(E_{k,k+1},p_{j+1}),\qquad
-\mathrm{SF} = s_1+(E_m-E_k)\frac{s_2-s_1}{E_{k+1}-E_k}.
-\label{eq:sflookup}
+The lookup interpolates linearly in $P_m$ between the two bracketing nodes $p_j$, $p_{j+1}$ (constant beyond the first
+and last node) and linearly in $E_m$ between $E_k$ and $E_{k+1}$ (extrapolated linearly outside), and sets values below
+$10^{-20}$ to 0:
+\begin{feqa}{physics/nuclear/SpectralFunctionTables.cpp: SfTable::interpolate}{sf\_lookup.f:118-187}
+w_2 &= \frac{P_m-p_j}{p_{j+1}-p_j},\quad w_1 = 1-w_2,\qquad s_{1,2} = w_1\,s(E_{k,k+1},p_j)+w_2\,s(E_{k,k+1},p_{j+1}),\nonumber\\
+\mathrm{SF} & = s_1+(E_m-E_k)\frac{s_2-s_1}{E_{k+1}-E_k}.
+\lbl{eq:sflookup}
 \end{feqa}
-(The variable is called \code{logsf} but no logarithm is taken, \finding{D-033 F6 logsf}.) The weight is
-\begin{feqa}{event.f:1403-1404; sf\_lookup.f:92-93}
-S &= Z\cdot T\cdot\mathrm{SF}_d,\qquad
-\mathrm{SF}_d^\mathrm{Fortran} = \frac{\mathrm{SF}(E_m,P_m)}{4\pi\,P_m^2\cdot5\cdot20},
-\label{eq:benhar}
-\end{feqa}
-with $T$ = \code{transparency} (input). The Fortran divides the interpolated bin probability by the event's own $P_m^2$
-and by fixed widths 5 MeV $\times$ 20 MeV/$c$ ($\pi$ as 3.1415926535): this diverges as $1/P_m^2$ below the first node,
-is infinite at $P_m=0$, and uses the wrong widths for the A = 3, 4, 64 tables. SIMC++ by default (\finding{D-033 F3})
-divides each node by the volume of its own bin and interpolates the densities with the same scheme,
-\begin{feq}{SpectralFunctionTables.cpp: SfTable::load, lookupDiff (corrected D-033 F3; Fortran sf\_lookup.f:93)}
-\mathrm{SF}_d^\mathrm{SIMC++} = \text{interpolation (\ref{eq:sflookup}) of } \frac{s(E_k,p_j)}{4\pi\,p_j^2\,\Delta P_{m,j}\,\Delta E_{m,k}},
-\label{eq:benharcorr}
+The Fortran weight divides the interpolated bin probability by the event's own $P_m^2$ and by fixed widths:
+\begin{feq}{physics/nuclear/SpectralFunctions.cpp: BenharSpectralFunction::weight; SpectralFunctionTables.cpp: SfTable::lookupDiff (compat)}{event.f:1403-1404; sf\_lookup.f:92-93}
+S = Z\cdot T\cdot\mathrm{SF}_d,\qquad \mathrm{SF}_d^\mathrm{compat} = \frac{\mathrm{SF}(E_m,P_m)}{4\pi\,P_m^2\cdot5\cdot20},
+\lbl{eq:benhar}
 \end{feq}
-and \code{-{}-fortran-compat} restores \eqr{eq:benhar}. In the Fortran an $E_m$ exactly on the last node uses the
-interpolation of the previous call (\finding{D-033 F6}, corrected by default). With Benhar tables $E_\mathrm{Fermi}=0$
-and the vertex $P_m$ limit is 790 MeV/$c$ for every file (\finding{D-033 F8/F9}).
+with $T$ = \code{transparency} (input). This diverges as $1/P_m^2$ below the first node, is infinite at $P_m=0$ and uses
+the wrong widths for the $A$ = 3, 4, 64 tables. The default mode divides each node by the volume of its own bin and
+interpolates the densities with the same scheme:
+\begin{feq}{physics/nuclear/SpectralFunctionTables.cpp: SfTable::load, SfTable::lookupDiff}{none (replaces sf\_lookup.f:93)}
+\mathrm{SF}_d^\mathrm{default} = \text{interpolation (\ref{N02-eq:sflookup}) of } \frac{s(E_k,p_j)}{4\pi\,p_j^2\,\Delta P_{m,j}\,\Delta E_{m,k}}.
+\lbl{eq:benharcorr}
+\end{feq}
+In the Fortran an $E_m$ exactly on the last node reuses the interpolation of the previous call; the default mode uses the
+last interval. With Benhar tables $E_\mathrm{Fermi}=0$ and the vertex $P_m$ limit is 790 MeV/$c$ for every file.
 
 \subsection{Fermi motion and transparency}
-There is no separate generation of Fermi motion in (e,e$'$p): the initial momentum of the struck proton is
-$\vec P_m$, fixed by the generated electron and proton, and its distribution enters only through the weight $S$. The
-nuclear transparency is a constant: $\eta$ of the theory file (\tabr{tab:theory}) or the input \code{transparency} with
-the Benhar tables (the input is ignored with theory files, and $\eta=1$ for deuterium).
+There is no separate generation of Fermi motion: the initial momentum of the struck proton is $\vec P_m$, fixed by the
+generated electron and proton, and its distribution enters only through $S$. The transparency is a constant: $\eta$ of
+the theory file (the input \code{transparency} is then ignored) or $T$ with the Benhar tables.
 
 % =====================================================================================================================
-\section{Radiation, energy loss and decays}\label{sec:rad}
-The three tails are radiated as in \csecr{sec:radiation}. The photon limits specific to these reactions are:
-\begin{feqa}{radc.f:229-230, 249-257 (A, tail 1); 289-291 (D, tail 1); 306-308}
-\Delta T &= \max\bigl(T_\mathrm{rec}-T_\mathrm{rec}^\mathrm{V,min},\ T_\mathrm{rec}^\mathrm{V,max}-T_\mathrm{rec}\bigr),\nonumber\\
-A\ge3:\quad E_{\gamma1} &\in \bigl[E_m-E_m^\mathrm{V,max}-\Delta T,\ \ E_m-E_m^\mathrm{V,min}+\Delta T\bigr]\nonumber\\
-&\qquad(\text{upper limit also}\le E_m-\mathrm{edge}^\mathrm{min}_{E_m}+\Delta T\text{ if ntail}\ne0),\nonumber\\
-\text{D:}\quad E_{\gamma1} &\in \bigl[\Sigma^\mathrm{min}-E',\ \ \min(E_{\gamma1}^\mathrm{max},\ \Sigma^\mathrm{max}-E')\bigr]
-\quad(\text{lower limit set only if ntail}\ne0),
-\label{eq:tail1}
+\section{Radiation, energy loss and decays}\lbl{sec:rad}
+With $\Delta T = \max(T_\mathrm{rec}-T_\mathrm{rec}^{(\mathrm{min})},\ T_\mathrm{rec}^{(\mathrm{max})}-T_\mathrm{rec})$ the
+photon limits specific to these reactions are (each then bounded by $E_{\gamma1}^\mathrm{max}$ and widened by $d_E$):
+\begin{feqa}{radiation/Radc.cpp: generateRad}{radc.f:229-257, 289-291}
+A\ge3:\quad E_{\gamma1} &\in \bigl[E_m-E_m^{(\mathrm{max})}-\Delta T,\ \ E_m-E_m^{(\mathrm{min})}+\Delta T\bigr]
+\nonumber\\ &\quad(\text{upper limit also}\le E_m-E^\mathrm{edge}_{m,\mathrm{min}}+\Delta T\text{ when one tail is chosen}),\nonumber\\
+\text{D:}\quad E_{\gamma1} &\in \bigl[\Sigma_\mathrm{min}-E',\ \ \min(E_{\gamma1}^\mathrm{max},\ \Sigma_\mathrm{max}-E')\bigr]\nonumber\\
+&\quad(\text{lower limit set only when one tail is chosen}),
+\lbl{eq:tail1}
 \end{feqa}
-then $\min(\cdot,E^\mathrm{max}_{\gamma1})$ and $\pm d_E$ as for every reaction. For deuterium with rad\_flag 3 (all tails
-at once) $E^\mathrm{min}_{\gamma1}$ is not set and keeps its previous value (\finding{D-019 Egamma\_min(1)}). Tails 2 and 3
-are limited by the acceptance edges and by the measured missing energy:
-\begin{feqa}{radc.f:372-389 (tail 2), 428-446 (tail 3)}
-E_{\gamma2} &\in\bigl[\max(E'-\mathrm{edge}^{E,\mathrm{max}}_e,\ \mathrm{edge}^\mathrm{min}_{E_m}-E_m-E_{\gamma1}-\Delta T),\nonumber\\
-&\qquad\ \min(E'-\mathrm{edge}^{E,\mathrm{min}}_e,\ \mathrm{edge}^\mathrm{max}_{E_m}-E_m-E_{\gamma1}+\Delta T,\ E^\mathrm{tot,max}_\gamma-E_{\gamma1})\bigr],\nonumber\\
-E_{\gamma3} &\in\bigl[\max(E_p-\mathrm{edge}^{E,\mathrm{max}}_p,\ \mathrm{edge}^\mathrm{min}_{E_m}-E_m-E_{\gamma1}-E_{\gamma2}-\Delta T),\nonumber\\
-&\qquad\ \min(E_p-\mathrm{edge}^{E,\mathrm{min}}_p,\ \mathrm{edge}^\mathrm{max}_{E_m}-E_m-E_{\gamma1}-E_{\gamma2}+\Delta T,\nonumber\\
-&\qquad\qquad E^\mathrm{tot,max}_\gamma-E_{\gamma1}-E_{\gamma2})\bigr],
-\label{eq:tail23}
+and for tails 2 and 3 the acceptance edges and the measured missing energy:
+\begin{feqa}{radiation/Radc.cpp: generateRad}{radc.f:372-389, 428-446}
+E_{\gamma2} &\in\bigl[\max(E'-E'_\mathrm{max},\ E^\mathrm{edge}_{m,\mathrm{min}}-E_m-E_{\gamma1}-\Delta T),\nonumber\\
+&\qquad\min(E'-E'_\mathrm{min},\ E^\mathrm{edge}_{m,\mathrm{max}}-E_m-E_{\gamma1}+\Delta T,\ E^\mathrm{tot,max}_\gamma-E_{\gamma1})\bigr],\nonumber\\
+E_{\gamma3} &\in\bigl[\max(E_p-E_{h,\mathrm{max}},\ E^\mathrm{edge}_{m,\mathrm{min}}-E_m-E_{\gamma1}-E_{\gamma2}-\Delta T),\nonumber\\
+&\qquad\min(E_p-E_{h,\mathrm{min}},\ E^\mathrm{edge}_{m,\mathrm{max}}-E_m-E_{\gamma1}-E_{\gamma2}+\Delta T,\nonumber\\
+&\qquad\quad E^\mathrm{tot,max}_\gamma-E_{\gamma1}-E_{\gamma2})\bigr],
+\lbl{eq:tail23}
 \end{feqa}
-each widened by $d_E$ (the tail-2 lower $E_m$ bound only when one tail radiates or the proton does not radiate,
-\fsrc{radc.f:382-384}); for deuterium \code{edge\%Em} is $\pm10^{10}$ and the $E_m$ terms are void. After tail 1 the
-event is recomputed at the lower beam energy (for D: a new proton energy and jacobian; for $A\ge3$: new $E_m$, $P_m$,
-checked against the vertex limits, \fsrc{radc.f:351-363}). \code{brem} uses elastic e--p kinematics for the soft and
-hard factors (\ceqr{eq:bremkin}, \finding{P5.F1 Q8}): for quasi-elastic events $E'$ is below the elastic value and the
-angle reconstructed in \code{brem} is not the event's angle.
+each widened by $d_E$ (the tail-2 lower missing-energy bound only when one tail is chosen or the proton does not
+radiate); for deuterium the missing-energy edge is open and these terms are void. When all tails radiate at once
+(\code{rad\_flag} 3), the deuterium tail-1 lower limit keeps the value of an earlier event. After a tail-1 photon the
+event is recomputed at the lower beam energy (D: new proton energy and jacobian; $A\ge3$: new $E_m$, $P_m$, tested
+against the vertex limits). The soft and hard factors use elastic electron--proton kinematics (\ceqr{eq:bremkin}): for a
+quasi-elastic event $E'$ is below the elastic value and the angle rebuilt there is not the event's angle.
 
-Energy loss and multiple scattering of the proton are those of note 00 with $M_h=M_p$; the Coulomb correction applies
-to the electron for $Z>1$ (\csecr{sec:coulomb}). No particle decays.
+The proton loses energy and scatters as in \csecr{sec:eloss} with $M_h=M_p$; the Coulomb correction applies to the
+electron for $Z>1$. Nothing decays.
 
 % =====================================================================================================================
-\section{Input parameters and output columns}\label{sec:io}
-\begin{simctable}{footnotesize}{L{0.32\linewidth}L{0.64\linewidth}}
-\caption{Inputs specific to D(e,e$'$p) and A(e,e$'$p) (the common inputs are in note 01, \S7, and the user manual).}\label{tab:inputs}\\
-\toprule\rowcolor{simchead}\simcth{input} & \simcth{role}\\\midrule\endfirsthead
-\toprule\rowcolor{simchead}\simcth{input} & \simcth{role}\\\midrule\endhead
+\section{Inputs and outputs}\lbl{sec:io}
+\subsection{Inputs}
+\begin{simctable}{footnotesize}{L{0.24\linewidth}L{0.12\linewidth}L{0.08\linewidth}L{0.56\linewidth}}
+\caption{Inputs specific to D/A(e,e\pr p) (one input per row; every input defaults to 0; the inputs common with
+H(e,e\pr p) are in note 01, \S7, and the user manual).}\lbl{tab:inputs}\\
+\toprule\rowcolor{simchead}\simcth{input} & \simcth{unit} & \simcth{default} & \simcth{meaning here}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{input} & \simcth{unit} & \simcth{default} & \simcth{meaning here}\\\midrule\endhead
 \bottomrule\endlastfoot
-\code{targ\%A}, \code{targ\%Z}, \code{targ\%mass\_amu}, \code{targ\%mrec\_amu} & reaction choice, masses, theory/Benhar
-  file, Coulomb energy\\
-\code{deForest\_flag} & $\sigma_{cc1}$ (0), $\sigma_{cc2}$ (1), $\sigma_{cc1}$ on shell ($-1$)\\
-\code{use\_benhar\_sf}, \code{transparency} & Benhar table and its constant transparency ($A\ge3$)\\
-\code{cuts\%Em\%min/max} & reconstructed $E_m$ window: the $E_m$ edge for $A\ge3$ (\eqr{eq:emedge}) and, with
-  \code{hard\_cuts}, a cut\\
-\code{using\_Coulomb} & Coulomb correction ($Z>1$)\\
-JSON \code{pipeline.reaction.} \code{spectral\_function} & SIMC++ only: type (\code{theory}/\code{benhar}), file, transparency\\
+\code{targ\%A} & -- & 0 & 2 selects \code{deuterium\_eep}, $\ge3$ \code{nucleus\_eep}; chooses the theory or Benhar file\\
+\code{targ\%Z} & -- & 0 & proton number (Benhar weight $Z$, Coulomb energy)\\
+\code{targ\%mass\_amu} & u & 0 & $M_A$ for $A\ge3$ (forced to $M_d$ for $A=2$)\\
+\code{targ\%mrec\_amu} & u & 0 & $M_\mathrm{rec}$ for $A\ge3$ (replaced by $M_A-M_p$ if more than 100 MeV off)\\
+\code{deForest\_flag} & code & 0 & 0 $\sigma_{cc1}$, 1 $\sigma_{cc2}$, $-1$ $\sigma_{cc1}$ on shell\\
+\code{use\_benhar\_sf} & flag & 0 & Benhar tables instead of theory files ($A\ge3$)\\
+\code{transparency} & -- & 0 & $T$ of the Benhar weight (no effect with theory files)\\
+\code{cuts\%Em\%min} & MeV & 0 & lower end of the $E_m^\mathrm{rec}$ window ($A\ge3$ edge)\\
+\code{cuts\%Em\%max} & MeV & 0 & upper end of the window; with hard cuts also a cut\\
+\code{using\_Coulomb} & flag & 0 & Coulomb correction ($Z>1$)\\
 \end{simctable}
 
+\subsection{Outputs}
 \input{frag_eep_columns}
-For these reactions \code{Em}, \code{Pm} are those of \eqr{eq:recem}, \code{Emi}/\code{Pmi} the vertex
-$E_\mathrm{miss}$ and $P_\mathrm{miss}$, \code{corrsing} is the hydrogen-elastic diagnostic of note 01 (not meaningful
-here), \code{sigcc} = $\sigma_\mathrm{deF}$ (with the Coulomb factor) in $\mu$b\,MeV$^2$/sr$^2$, and \code{Weight} = $w$ of
+For these reactions \code{Em} and \code{Pm} are those of \eqr{eq:recem}, \code{Emi} and \code{Pmi} the vertex
+$E_\mathrm{miss}$ and $P_\mathrm{miss}$, \code{corrsing} is the hydrogen-elastic diagnostic (without meaning here),
+\code{sigcc} is $\sigma_\mathrm{deF}$ (with the Coulomb factor) in $\mu$b\,MeV$^2$/sr$^2$ and \code{Weight} is $w$ of
 \eqr{eq:weight}.
 
 % =====================================================================================================================
-\section{Fortran \texorpdfstring{$\leftrightarrow$}{<->} C++ map}\label{sec:map}
-\begin{simctable}{footnotesize}{L{0.42\linewidth}L{0.55\linewidth}}
-\toprule\rowcolor{simchead}\simcth{Fortran (59ccdf6)} & \simcth{C++ (src/...)}\\\midrule\endfirsthead
-\toprule\rowcolor{simchead}\simcth{Fortran (59ccdf6)} & \simcth{C++ (src/...)}\\\midrule\endhead
+\section{Validation in SIMC++}\lbl{sec:validation}
+\begin{simctable}{footnotesize}{L{0.44\linewidth}L{0.17\linewidth}L{0.39\linewidth}}
+\caption{CTest tests that cover D/A(e,e\pr p) (one test per row).}\lbl{tab:tests}\\
+\toprule\rowcolor{simchead}\simcth{test} & \simcth{labels} & \simcth{what it checks}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{test} & \simcth{labels} & \simcth{what it checks}\\\midrule\endhead
 \bottomrule\endlastfoot
-dbase.f:220-226, 272-300, 446-452 & \csrc{core/RunSetup.cpp: DeriveReactionFlags}; \csrc{setup/SetupReaction.cpp: BuildReactionAndKinematics}\\
-dbase.f:555-627 (theory/Benhar choice) & \csrc{setup/SetupTheory.cpp: BuildTargetAndTheory}\\
-init.f:828-918 theory\_init & \csrc{setup/SetupTheory.cpp: ReadTheoryFile}\\
-init.f:297-302, 321-517 (limits) & \csrc{setup/SetupLimits.cpp: BuildLimits}\\
-event.f:generate l.276-316, 398-414 (D, A) & \csrc{reactions/NuclearEep.cpp: NuclearEep::generate} (\code{deuterium\_eep}, \code{nucleus\_eep})\\
-event.f:complete\_ev l.565-605, 914-946, 1015-1025 & \csrc{reactions/EepReactionBase.cpp: EepReactionBase::completeEv}\\
-event.f:complete\_recon\_ev l.1350-1352 & \csrc{EepReactionBase::completeRecon}\\
-event.f:complete\_main l.1402-1432 & \csrc{reactions/NuclearEep.cpp: spectralWeight}; \csrc{physics/nuclear/SpectralFunctionTables.cpp: TheorySfWeight};
- \csrc{physics/nuclear/SpectralFunctions.cpp: TheorySpectralFunction, BenharSpectralFunction::weight}\\
-sf\_lookup.f sf\_lookup\_init, sf\_lookup, sf\_lookup\_diff & \csrc{SpectralFunctionTables.cpp: SfTable::load, interpolate, lookup, lookupDiff}\\
-physics\_proton.f:deForest l.25-133 & \csrc{physics/proton/ProtonCrossSections.cpp: deForest}; model \code{deforest} in \csrc{ProtonModels.cpp}\\
-physics\_proton.f:fofa\_best\_fit, sigMott & \csrc{ProtonCrossSections.cpp: fofa\_best\_fit, sigMott}\\
+\code{l1\_deforest} & l1 & \eqsr{eq:offshell}{eq:deforest} against the Fortran table\\
+\code{l1\_theory\_init} & l1 & reading of the theory files (\eqr{eq:theoryinit})\\
+\code{l1\_spectral\_files} & l1 & the data files are the Fortran ones\\
+\code{l1\_sf\_lookup\_init} & l1 & reading of the Benhar tables\\
+\code{l1\_sf\_lookup} & l1 & \eqr{eq:sflookup}\\
+\code{l1\_eep\_state} & l1 & set-up values of the reaction\\
+\code{l1\_generate\_eepA\_fixedrng} & l1 & \eqr{eq:genheavy} with fixed random numbers\\
+\code{l1\_complete\_ev\_eepA} & l1 & the vertex completion\\
+\code{l1\_complete\_recon\_ev\_eepA} & l1 & the reconstruction\\
+\code{l1\_complete\_main\_eepA} & l1 & $S$, $\sigma$ and the weight\\
+\code{l1\_event\_capture\_eepA\_d} & l1, replay & every routine of captured D events\\
+\code{l1\_event\_capture\_eepA\_fe56} & l1, replay & every routine of captured Fe-56 events\\
+\code{l1\_simcrun\_replay\_eepA\_d} & l1, replay & complete D run from a captured random stream, bitwise\\
+\code{l1\_simcrun\_replay\_eepA\_fe56} & l1, replay & complete Fe-56 run, bitwise\\
+\code{l1\_simcrun\_ranlux\_up\_eep\_d\_rad\_A} & l1, replay, slow & full D run with RANLUX against the upstream Fortran\\
+\code{l1\_simcrun\_ranlux\_up\_eep\_c12\_rad\_A} & l1, replay, slow & full C-12 run against the upstream Fortran\\
+\code{l1\_simcrun\_ranlux\_up\_upf1\_eep\_cu64\_bh\_rad\_A} & l1, replay, slow & Cu-64 run with the Benhar table\\
+\code{regression\_identity\_eep\_d\_rad} & regression & compat-mode D outputs against the baseline\\
+\code{regression\_corrected\_eep\_d\_rad} & regression & default-mode D outputs against the baseline\\
+\code{regression\_identity\_eep\_fe56\_rad} & regression & compat-mode Fe-56 outputs\\
+\code{regression\_corrected\_eep\_fe56\_rad} & regression & default-mode Fe-56 outputs\\
+\code{fortran\_diff\_D033\_F3\_benhar\_sf\_diff} & fortran\_diff & \eqr{eq:benhar} and \eqr{eq:benharcorr} in both modes\\
+\code{fortran\_diff\_D033\_F5\_pmper\_stale\_pm} & fortran\_diff & the vertex $P_{m,\perp}$ in both modes\\
+\code{fortran\_diff\_D033\_F6\_sf\_lookup\_stale} & fortran\_diff & the last-node lookup in both modes\\
+\code{fortran\_diff\_D033\_F7\_heavy\_mrec\_guard} & fortran\_diff & the NaN guard of \eqr{eq:heavyem}\\
+\code{fortran\_diff\_D014\_deforest\_cos\_phi\_warning} & fortran\_diff & the $\cos\phi$ warning\\
+\end{simctable}
+Statistical comparisons with the Fortran (seed 4242, $2\times10^5$ events per run; validation ledger,
+\code{project\_control/VALIDATION\_LEDGER.md}, entry of 2026-10-05; FORTRAN\_DIFFERENCES.md \S8): every run passes in
+both modes (D, C-12, Fe-56, Au-197, He-4 with the C-12 spectral function, Fe-56 with the Benhar table), with at most 4
+failed comparisons of 230. The default-mode \code{wtcontr} is lower by 0.5 to 2.8\,\% because of the corrected hadron
+$\delta$ cut of \code{pass\_cuts}, the same shift as measured on the Fortran trees.
+
+% =====================================================================================================================
+\section{Fortran origin and Fortran findings}\lbl{sec:origin}
+\begin{simctable}{footnotesize}{L{0.42\linewidth}L{0.58\linewidth}}
+\caption{Fortran routine $\to$ C++ function (one routine per row; the common routines are in \ctabr{tab:map}).}\lbl{tab:map}\\
+\toprule\rowcolor{simchead}\simcth{Fortran (upstream 59ccdf6)} & \simcth{C++ (src/...)}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{Fortran (upstream 59ccdf6)} & \simcth{C++ (src/...)}\\\midrule\endhead
+\bottomrule\endlastfoot
+dbase.f:220-226 (reaction flags) & \csrc{core/RunSetup.cpp: DeriveReactionFlags}\\
+dbase.f:272-300, 446-452 (masses) & \csrc{setup/SetupReaction.cpp: BuildReactionAndKinematics}\\
+dbase.f:555-627 (spectral-function choice) & \csrc{setup/SetupTheory.cpp: BuildTargetAndTheory}\\
+init.f theory\_init & \csrc{setup/SetupTheory.cpp: ReadTheoryFile}\\
+init.f limits\_init, l.285-517 & \csrc{setup/SetupLimits.cpp: BuildLimits}\\
+event.f generate, l.276-414 & \csrc{reactions/NuclearEep.cpp: NuclearEep::generate}\\
+event.f complete\_ev, l.565-605, 914-946 & \csrc{reactions/EepReactionBase.cpp: EepReactionBase::completeEv}\\
+event.f complete\_recon\_ev, l.1350-1352 & \csrc{reactions/EepReactionBase.cpp: EepReactionBase::completeRecon}\\
+event.f complete\_main, l.1402-1404 & \csrc{physics/nuclear/SpectralFunctions.cpp: BenharSpectralFunction::weight}\\
+event.f complete\_main, l.1405-1432 & \csrc{physics/nuclear/SpectralFunctionTables.cpp: TheorySfWeight}\\
+sf\_lookup.f sf\_lookup\_init & \csrc{physics/nuclear/SpectralFunctionTables.cpp: SfTable::load}\\
+sf\_lookup.f sf\_lookup & \csrc{physics/nuclear/SpectralFunctionTables.cpp: SfTable::interpolate}\\
+sf\_lookup.f sf\_lookup\_diff & \csrc{physics/nuclear/SpectralFunctionTables.cpp: SfTable::lookupDiff}\\
+physics\_proton.f deForest & \csrc{physics/proton/ProtonCrossSections.cpp: deForest}\\
+physics\_proton.f (call of deForest) & \csrc{physics/proton/ProtonModels.cpp: DeForestModel::sigcc}\\
 radc.f:229-308, 351-363 & \csrc{radiation/Radc.cpp: generateRad}\\
 \end{simctable}
 
-% =====================================================================================================================
-\section{Fortran findings and the two modes}\label{sec:findings}
-\begin{simctable}{footnotesize}{L{0.2\linewidth}L{0.47\linewidth}L{0.29\linewidth}}
-\toprule\rowcolor{simchead}\simcth{id} & \simcth{what} & \simcth{default / \code{-{}-fortran-compat}}\\\midrule\endfirsthead
-\toprule\rowcolor{simchead}\simcth{id} & \simcth{what} & \simcth{default / \code{-{}-fortran-compat}}\\\midrule\endhead
+\begin{simcfindings}{footnotesize}{L{0.2\linewidth}L{0.48\linewidth}L{0.32\linewidth}}
+\caption{Fortran findings that touch D/A(e,e\pr p) (one finding per row; the common ones are in \ctabr{tab:findings}).}\lbl{tab:findings}\\
+\toprule\rowcolor{simchead}\simcth{id} & \simcth{Fortran behaviour} & \simcth{default / compat}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{id} & \simcth{Fortran behaviour} & \simcth{default / compat}\\\midrule\endhead
 \bottomrule\endlastfoot
-\finding{D-033 F3} (A) & Benhar $\mathrm{SF}_d$ divided by the event's $P_m^2$ and fixed $5\times20$ widths & node widths (\eqr{eq:benharcorr}) / Fortran\\
-\finding{D-033 F5} (A) & vertex $P_{m,\perp}$ from the previous try's $P_m$ & current $P_m$ / Fortran (no output effect)\\
-\finding{D-033 F6} (A) & \code{sf\_lookup} SAVEd state for $E_m$ on the last node & last interval / Fortran\\
-\finding{D-033 F7} (A) & NaN $M^*_\mathrm{rec}$ for $E_\mathrm{miss}^2<P_m^2$ accepted & try fails / Fortran\\
-\finding{D-014} (A) & $\cos\phi$ warning never printed & printed / not printed\\
-\finding{D-033 F4} (B) & no hadron solid-angle jacobian for D & kept in both\\
-\finding{D-033 F1} (B) & every $A\ne2,12,56,197$ uses \code{c12.theory} (Benhar: $\ne3,4,12,56,64,197$ use C-12) & kept; warning; JSON can name a file\\
-\finding{D-019 Egamma\_min(1)} (B) & stale tail-1 lower limit for D with rad\_flag 3 & kept\\
-\finding{D-033 F8/F9} (D) & Benhar: $E_\mathrm{Fermi}=0$, $P_m^\mathrm{max}=790$ MeV/$c$ & kept\\
-\finding{D-033 F12} (D) & D two-root warning only for \code{ntried}$\le5000$ & kept\\
-\finding{D-033 doing\_deuterium} (D) & \code{doing\_deuterium} reset from the theory file & kept\\
-\finding{D-033 F8 krel} (D) & \code{ntup\%krel} never set for (e,e$'$p) & not an output\\
-\finding{D-006}, \finding{D-017}, \finding{D-019}, \finding{P5.F1 Q8} & common findings (note 00, \S12) & see note 00\\
-\end{simctable}
-FORTRAN\_DIFFERENCES.md \S8 reports the L2 comparison of both modes with the Fortran D/A(e,e$'$p) references.
+\finding{D-033 F3} & Benhar weight divided by the event's $P_m^2$ and fixed widths & node widths / Fortran\\
+\finding{D-033 F5} & vertex $P_{m,\perp}$ from the previous try's $P_m$ & current $P_m$ / Fortran\\
+\finding{D-033 F6} & last-node lookup uses the previous call & last interval / Fortran\\
+\finding{D-033 F7} & NaN $M^*_\mathrm{rec}$ accepted & try fails / Fortran\\
+\finding{D-014} & $\cos\phi$ warning never printed & printed / not printed\\
+\finding{D-033 F4} & no proton solid-angle jacobian for D & kept in both (open question)\\
+\finding{D-033 F1} & other $A$ silently use the C-12 spectral function & kept, with a warning; JSON can name a file\\
+\finding{D-019 Egamma\_min(1)} & stale deuterium tail-1 lower limit with \code{rad\_flag} 3 & kept in both\\
+\finding{D-033 F8/F9} & Benhar: $E_\mathrm{Fermi}=0$, $P_m$ limit 790 MeV/$c$ & kept in both\\
+\finding{D-033 F12} & two-root warning only in the first 5000 tries & kept in both\\
+\finding{D-033 doing\_deuterium} & the deuterium case re-decided from the theory file & kept in both\\
+\finding{D-033 F6 logsf} & a linear interpolation stored in a variable called \code{logsf} & kept in both\\
+\finding{D-033 F8 krel} & \code{krel} never set for (e,e\pr p) & not an output\\
+\end{simcfindings}
 
-\begin{thebibliography}{9}
-\bibitem{deforest} T.~de Forest, Jr., ``Off-shell electron--nucleon cross sections: the impulse approximation'',
-  Nucl.\ Phys.\ A \textbf{392}, 232 (1983). Not cited in the code; the code uses its names $\sigma_{cc1}$, $\sigma_{cc2}$.
-\bibitem{bosted} P.~E.~Bosted, Phys.\ Rev.\ C \textbf{51}, 409 (1995) (cited at \fsrc{physics\_proton.f:139-141}).
-\end{thebibliography}
+\begin{simcrefs}
+\simcref{deforest} T.~de Forest, Jr., ``Off-shell electron--nucleon cross sections: the impulse approximation'',
+  Nucl.\ Phys.\ A \textbf{392}, 232 (1983). Not cited in the code, which uses its names $\sigma_{cc1}$ and $\sigma_{cc2}$.
+\end{simcrefs}
 \end{document}

@@ -1,0 +1,146 @@
+% docs/physics/latex/template_reaction.tex - TEMPLATE of a SIMC++ physics note for a reaction or physics-model plug-in.
+%
+% How to use it (docs/physics/README.md, "Writing a note"):
+%   1. copy this file to docs/physics/latex/NN_<name>.tex (NN = the next free number);
+%   2. add the note to docs/physics/latex/notes.json: {"source", "output": "SIMCpp_Physics_NN_<name>", "title",
+%      "copies": [the plug-in folders: "src/reactions/<r>" if it exists, "src/physics/<r>"]};
+%   3. add or update the README.md of every copy folder (it must name the PDF; test docs_physics_pdf_copies);
+%   4. replace every <...> below, keep the nine sections in this order, delete these instructions;
+%   5. build: python3 -I docs/physics/build_physics_pdf.py --source-root . --build-dir /tmp/p --note NN_<name>.tex,
+%      then cmake --build <build> --target physics_pdf to publish the PDF, its copies and the book.
+%
+% Rules (enforced by build_physics_pdf.py unless marked "review"):
+%   * every display: \begin{feq}{<C++ file: function>}{<Fortran file:lines>} ... \end{feq}, or feqa for an align
+%     block; C++ first, Fortran second; write "none" as the Fortran citation of a SIMC++-only formula;
+%   * labels with \lbl{eq:...}, \lbl{sec:...}, \lbl{tab:...}; references \eqr, \secr, \tabr; to note 00 \ceqr, \csecr,
+%     \ctabr; no \label;
+%   * literature in the simcrefs environment, cited with \citer{key};
+%   * finding ids of FORTRAN_DIFFERENCES.md only inside the simcfindings table of section 9;
+%   * (review) tables: ONE ITEM PER ROW (one input, one column, one routine, one finding, one test per row);
+%   * (review) physics notation in the text (E'_min, not edge%e%E%min); use the symbols and terms of note 00
+%     (tables "Symbols" and "Glossary"); define any new symbol where it first appears;
+%   * (review) the reaction prime is \pr: H(e,e\pr p);
+%   * (review) the text describes SIMC++ first; the Fortran appears in the citations and in section 9.
+\documentclass{simcnote}
+\simccommon            % the labels of the common note 00 (needed for \ceqr, \csecr, \ctabr)
+\begin{document}
+\simcnotemeta{NN}{<short title for the header>}{<Title with \pr where a prime is needed>}%
+  {Reaction plug-in \texttt{<registered name>} with the physics model \texttt{<registered name>}: <one line>}
+\simcnotemaketitle
+\simcabstract{<Three to five sentences: the process, what is generated, the cross-section model, what is special.>}
+\simcnotetoc
+
+% =====================================================================================================================
+\section{The reaction in SIMC++}\lbl{sec:reaction}
+\subsection{Process and scope}
+% The process; what is simulated; what is not simulated (approximations, missing channels).
+<text>
+
+\subsection{Components}
+% One row per component: reaction (IReaction), base class if any, physics model (IPhysicsModel), kernels, spectral
+% function or data tables, and the shared stages (refer to \ctabr{tab:plugins}).
+\begin{simctable}{footnotesize}{L{0.16\linewidth}L{0.17\linewidth}L{0.17\linewidth}L{0.24\linewidth}L{0.26\linewidth}}
+\caption{The SIMC++ components of <reaction> (one component per row).}\lbl{tab:components}\\
+\toprule\rowcolor{simchead}\simcth{role} & \simcth{interface} & \simcth{registered name} & \simcth{class} & \simcth{file}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{role} & \simcth{interface} & \simcth{registered name} & \simcth{class} & \simcth{file}\\\midrule\endhead
+\bottomrule\endlastfoot
+reaction & \code{IReaction} & \code{<name>} & \code{<Class>} & \file{reactions/<dir>/<File>.cpp}\\
+cross section & \code{IPhysicsModel} & \code{<name>} & \code{<ns::Class>} & \file{physics/<dir>/<File>.cpp}\\
+\end{simctable}
+
+\subsection{Selection and override}
+% Which input flags select the plug-ins (\ctabr{tab:defaults}), the masses and flags the set-up derives, and the JSON
+% keys of the reaction and the model (a table, one key per row) with an example.
+<text>
+
+\subsection{Event flow}
+% One row per step of \ctabr{tab:chain}: what is specific to this reaction.
+\begin{simctable}{footnotesize}{L{0.05\linewidth}L{0.33\linewidth}L{0.62\linewidth}}
+\caption{One try of <reaction> (one step per row).}\lbl{tab:flow}\\
+\toprule\rowcolor{simchead}\simcth{\#} & \simcth{C++ call} & \simcth{what is specific to this reaction}\\\midrule\endfirsthead
+\bottomrule\endlastfoot
+1 & \code{StandardBeam::generate} & <...>\\
+\end{simctable}
+
+% =====================================================================================================================
+\section{Kinematics, generated variables and generation volume}\lbl{sec:gen}
+% The generated variables (a table, one variable per row), their ranges and limits (equations), the generation weight
+% and the generation volume.
+\begin{feq}{reactions/<dir>/<File>.cpp: <Class>::generate}{event.f:<lines>}
+<\text{formula}>
+\lbl{eq:genvol}
+\end{feq}
+
+% =====================================================================================================================
+\section{Completing the event}\lbl{sec:complete}
+\subsection{Vertex}
+% How the unmeasured quantities are solved for (equations, roots, failure conditions).
+\subsection{Reconstruction}
+% The reconstructed quantities specific to the reaction (E_m, t, ...).
+
+% =====================================================================================================================
+\section{Jacobians}\lbl{sec:jac}
+% Every factor of J, with its derivation when it is not obvious.
+
+% =====================================================================================================================
+\section{Cross-section model}\lbl{sec:xsec}
+\subsection{What the reaction requires from a model}
+% The IPhysicsModel methods used, the vertex quantities read, the units of the returned cross section, and what a
+% replacement model must provide.
+\subsection{The model \code{<name>}}
+% ALL formulas evaluated, with parameter tables (one parameter per row), data files and interpolations; the literature
+% the code cites (\citer), and where the code differs from it.
+
+% =====================================================================================================================
+\section{Radiation, energy loss and decays}\lbl{sec:rad}
+% Only what is specific to the reaction: photon limits, the hadron's radiation, decays in flight.
+
+% =====================================================================================================================
+\section{Inputs and outputs}\lbl{sec:io}
+\subsection{Inputs}
+\begin{simctable}{footnotesize}{L{0.24\linewidth}L{0.12\linewidth}L{0.08\linewidth}L{0.56\linewidth}}
+\caption{Inputs specific to <reaction> (one input per row).}\lbl{tab:inputs}\\
+\toprule\rowcolor{simchead}\simcth{input} & \simcth{unit} & \simcth{default} & \simcth{meaning here}\\\midrule\endfirsthead
+\bottomrule\endlastfoot
+\code{<input>} & <unit> & <default> & <meaning>\\
+\end{simctable}
+\subsection{Outputs}
+% The tree layout: one column per row (# | name | unit | content); reuse a frag_*.tex if the layout is shared.
+\begin{simctable}{footnotesize}{L{0.06\linewidth}L{0.15\linewidth}L{0.12\linewidth}L{0.67\linewidth}}
+\caption{Tree columns of <reaction> (one column per row).}\lbl{tab:columns}\\
+\toprule\rowcolor{simchead}\simcth{\#} & \simcth{name} & \simcth{unit} & \simcth{content}\\\midrule\endfirsthead
+\bottomrule\endlastfoot
+1 & \code{<name>} & <unit> & <content>\\
+\end{simctable}
+
+% =====================================================================================================================
+\section{Validation in SIMC++}\lbl{sec:validation}
+% The CTest tests that cover the reaction (one test per row: name | labels | what it checks); numbers only when they can
+% be cited from the validation ledger or a test.
+\begin{simctable}{footnotesize}{L{0.44\linewidth}L{0.17\linewidth}L{0.39\linewidth}}
+\caption{CTest tests that cover <reaction> (one test per row).}\lbl{tab:tests}\\
+\toprule\rowcolor{simchead}\simcth{test} & \simcth{labels} & \simcth{what it checks}\\\midrule\endfirsthead
+\bottomrule\endlastfoot
+\code{<test>} & <labels> & <what>\\
+\end{simctable}
+
+% =====================================================================================================================
+\section{Fortran origin and Fortran findings}\lbl{sec:origin}
+\begin{simctable}{footnotesize}{L{0.42\linewidth}L{0.58\linewidth}}
+\caption{Fortran routine $\to$ C++ function (one routine per row).}\lbl{tab:map}\\
+\toprule\rowcolor{simchead}\simcth{Fortran (upstream 59ccdf6)} & \simcth{C++ (src/...)}\\\midrule\endfirsthead
+\bottomrule\endlastfoot
+<file.f routine> & \csrc{<dir/File.cpp: Function>}\\
+\end{simctable}
+
+\begin{simcfindings}{footnotesize}{L{0.18\linewidth}L{0.5\linewidth}L{0.32\linewidth}}
+\caption{Fortran findings that touch <reaction> (one finding per row).}\lbl{tab:findings}\\
+\toprule\rowcolor{simchead}\simcth{id} & \simcth{Fortran behaviour} & \simcth{default / compat}\\\midrule\endfirsthead
+\bottomrule\endlastfoot
+\finding{<id>} & <behaviour> & <default> / <compat>\\
+\end{simcfindings}
+
+\begin{simcrefs}
+\simcref{<key>} <reference> (cited at \fsrc{<file.f:line>}).
+\end{simcrefs}
+\end{document}

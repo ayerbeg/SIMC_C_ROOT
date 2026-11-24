@@ -1,35 +1,70 @@
-% docs/physics/latex/frag_eep_columns.tex - the (e,e'p) tree layout, \input by the notes 01, 02 and 03.
-% Source: upstream results_write.f:28-313 (59ccdf6) and src/output/NtupleLayout.cpp (UpstreamEepColumns,
-% EepNtupleColumns). No displayed equations here (the lint of build_physics_pdf.py checks the notes that input it).
-The tree \code{h10} has one entry per successful event \fsrc{simc.f:346} and, in the default (upstream 59ccdf6) layout,
-53 columns \fsrc{results\_write.f:42-313}; \code{-{}-tree-layout legacy} gives the 46 columns of SIMC 294f662 (without
-\code{xbj}, the vertex block \code{qi}\ldots\code{Pmi}, and with \code{thetapq}, \code{phipq} instead).
-Columns 1--12 belong to the arm on the beam right (prefix \code{hs}), 13--24 to the arm on the beam left (\code{ss}),
-whatever particle it detects \fsrc{results\_write.f:42-129}.
+% docs/physics/latex/frag_eep_columns.tex - the (e,e'p)-type tree layout, \input by the notes 01, 02 and 03.
+% C++: output/NtupleLayout.cpp (UpstreamEepColumns, FillUpstreamNtuple; legacy layout EepNtupleColumns, FillEepNtuple).
+% Fortran: results_write.f:28-313 (upstream 59ccdf6). One column per row. No displayed equations here.
+The sink \code{root\_tree} writes one entry of the tree \code{h10} per success, with the 53 columns of
+\tabr{tab:eepcolumns} (the layout of upstream SIMC 59ccdf6; \code{-{}-tree-layout legacy} gives the 46 columns of SIMC
+294f662, without \code{xbj} and the vertex columns 33--40, and with \code{thetapq}, \code{phipq} after \code{Pm}). The
+first twelve columns (prefix \code{hs}) describe the \emph{electron} arm when it is on the beam right (HMS, HRS-R,
+calorimeter 7) and the \emph{hadron} arm otherwise; columns 13--24 (prefix \code{ss}) describe the other arm. With the
+usual Hall C set-ups (HMS beam right, SHMS or SOS beam left) \code{hs} is therefore the HMS and \code{ss} the SHMS/SOS.
+Reconstructed quantities are those of the \code{recon} record, ``true'' ones those of the \code{orig} record.
 
-\begin{simctable}{footnotesize}{L{0.07\linewidth}L{0.22\linewidth}L{0.5\linewidth}L{0.15\linewidth}}
-\caption{The (e,e$'$p) columns of the tree \code{h10} (default layout).}\label{tab:eepcolumns}\\
-\toprule\rowcolor{simchead}\simcth{\#} & \simcth{name} & \simcth{content} & \simcth{unit}\\\midrule\endfirsthead
-\toprule\rowcolor{simchead}\simcth{\#} & \simcth{name} & \simcth{content} & \simcth{unit}\\\midrule\endhead
+\begin{simctable}{footnotesize}{L{0.06\linewidth}L{0.15\linewidth}L{0.12\linewidth}L{0.67\linewidth}}
+\caption{The (e,e\pr p)-type tree columns (one column per row).}\lbl{tab:eepcolumns}\\
+\toprule\rowcolor{simchead}\simcth{\#} & \simcth{name} & \simcth{unit} & \simcth{content}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{\#} & \simcth{name} & \simcth{unit} & \simcth{content}\\\midrule\endhead
 \bottomrule\endlastfoot
-1--4 & \code{hsdelta}, \code{hsyptar}, \code{hsxptar}, \code{hsytar} & reconstructed $\delta$, slopes, $y_\mathrm{tar}$ of the right arm & \%, rad, cm\\
-5--8 & \code{hsxfp}, \code{hsxpfp}, \code{hsyfp}, \code{hsypfp} & focal-plane track & cm, rad\\
-9--11 & \code{hsdeltai}, \code{hsyptari}, \code{hsxptari} & \code{orig} values (true, after radiation) & \%, rad\\
-12 & \code{hsytari} & $z_t\sin\theta_0$ & cm\\
-13--24 & \code{ss}\ldots & the same for the left arm (24: $-z_t\sin\theta_0$) & \\
-25--28 & \code{q}, \code{nu}, \code{Q2}, \code{W} & reconstructed $|\vec q|$, $\nu$, $Q^2$, $W$ ($W$ with $M_p$) & GeV, GeV$^2$\\
-29--32 & \code{xbj}, \code{epsilon}, \code{Em}, \code{Pm} & reconstructed $x$, $\varepsilon$, $E_m$, $P_m$ & --, GeV\\
-33--35 & \code{qi}, \code{nui}, \code{Q2i} & vertex $|\vec q|$, $\nu$, $Q^2$ & GeV, GeV$^2$\\
-36, 38 & \code{Wi}, \code{epsiloni} & \code{main\%W}, \code{main\%epsilon}: always 0 for (e,e$'$p) and (e,e$'$)A (\finding{U-B1}) & \\
-37 & \code{xbji} & vertex $x$ & \\
-39--40 & \code{Emi}, \code{Pmi} & vertex $E_\mathrm{miss}=\nu+M_A-E_p$ and $P_\mathrm{miss}$ & GeV\\
-41 & \code{corrsing} & $P_e^\mathrm{rec} - M_pE_\mathrm{beam}/(2E_\mathrm{beam}\sin^2(\theta_e^\mathrm{rec}/2)+M_p)$ \fsrc{results\_write.f:33-34} & GeV\\
-42--44 & \code{Pmx}, \code{Pmy}, \code{Pmz} & $\vec P_m$ in the frame of \fsrc{results\_write.f:35-39}: $-P_{m,x}$,
-  $(P_{m,z}\hat q_y-P_{m,y}\hat q_z)/n$, $-(P_{m,y}\hat q_y+P_{m,z}\hat q_z)/n$, $n=\sqrt{\hat q_y^2+\hat q_z^2}$ & GeV\\
-45--47 & \code{PmPar}, \code{PmPer}, \code{PmOop} & reconstructed components of $\vec P_m$ & GeV\\
-48 & \code{fry} & $-$\code{main\%target\%rastery} & cm\\
-49 & \code{radphot} & $E_{\gamma1}+E_{\gamma2}+E_{\gamma3}$ & GeV\\
-50 & \code{sigcc} & $\sigma$ at the vertex (with the Coulomb factor) & see \secr{sec:xsec}\\
-51 & \code{Weight} & the event weight $w$ & see \secr{sec:xsec}\\
-52, 53 & \code{theta\_e}, \code{theta\_p} & reconstructed polar angles & rad\\
+1 & \code{hsdelta} & \% & reconstructed $\delta$, \code{hs} arm\\
+2 & \code{hsyptar} & rad & reconstructed $y'$, \code{hs} arm\\
+3 & \code{hsxptar} & rad & reconstructed $x'$, \code{hs} arm\\
+4 & \code{hsytar} & cm & reconstructed horizontal target position, \code{hs} arm\\
+5 & \code{hsxfp} & cm & focal-plane $x$, \code{hs} arm\\
+6 & \code{hsxpfp} & rad & focal-plane $x'$, \code{hs} arm\\
+7 & \code{hsyfp} & cm & focal-plane $y$, \code{hs} arm\\
+8 & \code{hsypfp} & rad & focal-plane $y'$, \code{hs} arm\\
+9 & \code{hsdeltai} & \% & true $\delta$ after radiation, \code{hs} arm\\
+10 & \code{hsyptari} & rad & true $y'$, \code{hs} arm\\
+11 & \code{hsxptari} & rad & true $x'$, \code{hs} arm\\
+12 & \code{hsytari} & cm & $z_t\sin\theta^0$ of the \code{hs} arm\\
+13 & \code{ssdelta} & \% & reconstructed $\delta$, \code{ss} arm\\
+14 & \code{ssyptar} & rad & reconstructed $y'$, \code{ss} arm\\
+15 & \code{ssxptar} & rad & reconstructed $x'$, \code{ss} arm\\
+16 & \code{ssytar} & cm & reconstructed horizontal target position, \code{ss} arm\\
+17 & \code{ssxfp} & cm & focal-plane $x$, \code{ss} arm\\
+18 & \code{ssxpfp} & rad & focal-plane $x'$, \code{ss} arm\\
+19 & \code{ssyfp} & cm & focal-plane $y$, \code{ss} arm\\
+20 & \code{ssypfp} & rad & focal-plane $y'$, \code{ss} arm\\
+21 & \code{ssdeltai} & \% & true $\delta$ after radiation, \code{ss} arm\\
+22 & \code{ssyptari} & rad & true $y'$, \code{ss} arm\\
+23 & \code{ssxptari} & rad & true $x'$, \code{ss} arm\\
+24 & \code{ssytari} & cm & $-z_t\sin\theta^0$ of the \code{ss} arm\\
+25 & \code{q} & GeV/$c$ & $|\vec q^\mathrm{rec}|$\\
+26 & \code{nu} & GeV & $\nu^\mathrm{rec}$\\
+27 & \code{Q2} & (GeV/$c$)$^2$ & $(Q^\mathrm{rec})^2$\\
+28 & \code{W} & GeV & $W^\mathrm{rec}$ (proton mass)\\
+29 & \code{xbj} & -- & $x^\mathrm{rec}$\\
+30 & \code{epsilon} & -- & $\varepsilon^\mathrm{rec}$\\
+31 & \code{Em} & GeV & $E_m^\mathrm{rec}$ (definition in \secr{sec:complete})\\
+32 & \code{Pm} & GeV/$c$ & $P_m^\mathrm{rec}=|\vec P_m^\mathrm{rec}|$\\
+33 & \code{qi} & GeV/$c$ & vertex $|\vec q|$\\
+34 & \code{nui} & GeV & vertex $\nu$\\
+35 & \code{Q2i} & (GeV/$c$)$^2$ & vertex $Q^2$\\
+36 & \code{Wi} & GeV & vertex $W$: always 0 for these reactions (computed only by the meson reactions)\\
+37 & \code{xbji} & -- & vertex $x$\\
+38 & \code{epsiloni} & -- & vertex $\varepsilon$: always 0 for these reactions\\
+39 & \code{Emi} & GeV & vertex $E_\mathrm{miss}=\nu+M_A-E_h$\\
+40 & \code{Pmi} & GeV/$c$ & vertex $P_\mathrm{miss}$\\
+41 & \code{corrsing} & GeV & $P'^\mathrm{rec}_e - M_pE_b/(2E_b\sin^2(\theta^\mathrm{rec}_e/2)+M_p)$: distance from the H(e,e\pr p) elastic momentum at the reconstructed angle\\
+42 & \code{Pmx} & GeV/$c$ & $-P^\mathrm{rec}_{m,x}$\\
+43 & \code{Pmy} & GeV/$c$ & $(P^\mathrm{rec}_{m,z}\hat q_y-P^\mathrm{rec}_{m,y}\hat q_z)/\sqrt{\hat q_y^2+\hat q_z^2}$\\
+44 & \code{Pmz} & GeV/$c$ & $-(P^\mathrm{rec}_{m,y}\hat q_y+P^\mathrm{rec}_{m,z}\hat q_z)/\sqrt{\hat q_y^2+\hat q_z^2}$\\
+45 & \code{PmPar} & GeV/$c$ & $P^\mathrm{rec}_{m,\parallel}$\\
+46 & \code{PmPer} & GeV/$c$ & $P^\mathrm{rec}_{m,\perp}$\\
+47 & \code{PmOop} & GeV/$c$ & $P^\mathrm{rec}_{m,\mathrm{oop}}$\\
+48 & \code{fry} & cm & minus the vertical raster coordinate\\
+49 & \code{radphot} & GeV & $E_{\gamma1}+E_{\gamma2}+E_{\gamma3}$\\
+50 & \code{sigcc} & see \secr{sec:xsec} & $\sigma$ at the vertex, with the Coulomb factor\\
+51 & \code{Weight} & see \secr{sec:xsec} & the event weight $w$\\
+52 & \code{theta\_e} & rad & $\theta_e^\mathrm{rec}$\\
+53 & \code{theta\_p} & rad & $\theta_h^\mathrm{rec}$\\
 \end{simctable}

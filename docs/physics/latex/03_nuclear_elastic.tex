@@ -1,259 +1,306 @@
 % docs/physics/latex/03_nuclear_elastic.tex - SIMC++ physics note 03: A(e,e')A nuclear elastic scattering.
-% Source of docs/physics/pdf/SIMCpp_Physics_03_nuclear_elastic.pdf (copied to src/physics/nuclear/ by the build).
-% Every displayed formula is a feq/feqa environment citing the Fortran line it transcribes. The event.f lines of this
-% reaction are those of upstream commit 20d46fc (written event.f@20d46fc), because upstream 59ccdf6 lost them (U-A1).
+% Standalone PDF docs/physics/pdf/SIMCpp_Physics_03_nuclear_elastic.pdf (copied to src/physics/nuclear/); a chapter of
+% the book SIMC++ Physics Reference. Rules: docs/physics/README.md. The event.f lines of this reaction are those of
+% upstream commit 20d46fc (written event.f@20d46fc), because upstream 59ccdf6 lost them.
 \documentclass{simcnote}
 \simccommon
-\simcnotemeta{03}{A(e,e$'$)A elastic}{A(e,e$'$)A nuclear elastic scattering}%
-  {Reaction \texttt{nuclear\_elastic}, physics model \texttt{nuc\_elastic}: elastic scattering from the whole nucleus,
-   the charge form factor, radiation and outputs}
-
 \begin{document}
+\simcnotemeta{03}{A(e,e\pr)A elastic}{A(e,e\pr)A nuclear elastic scattering}%
+  {Reaction plug-in \texttt{nuclear\_elastic} with the physics model \texttt{nuc\_elastic}: elastic scattering from the
+   whole nucleus, with the recoil nucleus in the hadron arm}
 \simcnotemaketitle
 \simcabstract{Elastic scattering of the electron from the nucleus as a whole, with the recoiling nucleus as the
-``hadron''. The event is generated like H(e,e$'$p) (only the electron direction is drawn), with the nucleus mass in the
-elastic kinematics; the cross section is the Mott cross section times $Z^2F^2(Q^2)$ and the recoil factor, with a
-parametrised charge form factor and no magnetic term. The reaction was added to SIMC in upstream commit 4df7351 and
-lost from event.f in e4dd175; SIMC++ runs the code of commit 20d46fc in both modes.}
+``hadron''. The event is generated like H(e,e\pr p) (only the electron direction is drawn), with the nuclear mass in
+the elastic kinematics. The cross section is the Mott cross section times $Z^2F^2(Q^2)$ and the recoil factor, with a
+parametrised charge form factor and no magnetic term. The reaction was added to SIMC in upstream commit 4df7351 and lost
+from its event routine in commit e4dd175; SIMC++ implements it as in commit 20d46fc in both modes. Notation, glossary
+and common physics: note 00.}
 \simcnotetoc
 
 % =====================================================================================================================
-\section{The process and what SIMC simulates}\label{sec:process}
-The reaction is $e + A \to e' + A$ with the nucleus left in its ground state. It is selected with the input flag
-\code{doing\_nuc\_elast} = 1 \fsrc{dbase.f:1007, 1155}, which sets the hadron mass to the target mass and turns on
-\code{doing\_eep}, without any of \code{doing\_hyd\_elast}, \code{doing\_deuterium}, \code{doing\_heavy}
-\fsrc{dbase.f:216-219}:
-\begin{feq}{dbase.f:217, 228, 272}
-M_h = M_A = \text{\code{targ\%mass\_amu}}\cdot u,\qquad M_h^2 = M_h\cdot M_h.
-\label{eq:mh}
-\end{feq}
-Because \code{doing\_eep} is true the struck mass is still $M_\mathrm{struck}=M_p$ and $M_\mathrm{rec,struck}=0$
-\fsrc{dbase.f:297-300}; \code{targ\%Mrec} is the input \code{mrec\_amu}, replaced by $M_A-M_p$ if it is more than 100 MeV
-away \fsrc{dbase.f:286-292} (the shipped example \code{ee\_calcium48.inp} gives \code{mrec\_amu} = \code{mass\_amu} and
-is replaced, \finding{U-D1}). These two masses are used only in the limits (\secr{sec:gen}, \secr{sec:rad}) and in the
-reconstructed $W$; the kinematics use $M_A$. The \code{.hist} title is ``A(e,e$'$)A'' \fsrc{simc.f:682-683}.
+\section{The reaction in SIMC++}\lbl{sec:reaction}
+
+\subsection{Process and scope}
+The reaction is $e + A \to e' + A$ with the nucleus left in its ground state. What is simulated: the elastic
+kinematics with the nuclear mass, the charge form factor of \secr{sec:xsec}, and the beam, target, radiation and
+spectrometers of note 00, with the recoil nucleus transported through the hadron arm. What is not: magnetic scattering
+(the transverse structure function is 0, correct only for spin-0 nuclei), any nuclear-structure model beyond the
+two-parameter form factor, excited states, the quasi-elastic background, Coulomb distortion beyond the focusing factor of
+note 00 (the minima of the form factor are not filled), and an energy-loss model for heavy ions (the recoil nucleus uses
+the formula of singly charged particles).
 
 \begin{simcwarning}
-\textbf{Upstream status.} In upstream SIMC 59ccdf6 the \code{doing\_nuc\_elast} branches of event.f, NtupleInit.f and
-results\_write.f are missing (removed by e4dd175, which rebuilt the files from a copy older than 4df7351): the electron
-energy is never computed, every try fails in \code{generate\_rad} and the run does not end (\finding{U-A1}). SIMC++
-implements the reaction as in commit 20d46fc, in the default and in the \code{-{}-fortran-compat} mode, with the (e,e$'$p)
-tree layout. The event.f lines cited in this note are those of 20d46fc (\fsrc{event.f@20d46fc:line}); nuclear\_elastic.f,
-radc.f, init.f and dbase.f are cited at 59ccdf6 (unchanged for this reaction).
+\textbf{Status in the Fortran.} In upstream SIMC 59ccdf6 the nuclear-elastic branches of the event and output routines
+are missing (removed by commit e4dd175, which rebuilt the files from a copy older than commit 4df7351): the electron
+energy is never computed, every try fails in the radiation step and the run does not end. SIMC++ implements the
+reaction as in commit 20d46fc, in the default and in the compat mode, with the (e,e\pr p) tree layout. The event-routine
+lines cited in this note are those of 20d46fc (\fsrc{event.f@20d46fc:line}).
 \end{simcwarning}
 
-What is simulated: the elastic kinematics with the nuclear mass, the charge form factor of \secr{sec:xsec}, the beam,
-target, radiation and spectrometers of note 00, with the recoil nucleus transported through the hadron arm. What is not:
-magnetic scattering ($W_1=0$, correct only for spin-0 nuclei), any nuclear-structure model beyond the two-parameter form
-factor, excited states, the quasi-elastic background, Coulomb distortion of the cross section beyond the focusing factor
-of note 00 (no DWBA phase shifts; the form-factor minima are not filled), and the Coulomb or energy-loss effects on a slow
-recoil nucleus beyond the generic energy-loss model (which is not tuned for heavy ions). SIMC++ refuses
-\code{doing\_nuc\_elast} together with another reaction flag or \code{doing\_phsp} (\finding{U-DEV1}).
+\subsection{Components}
+\begin{simctable}{footnotesize}{L{0.16\linewidth}L{0.17\linewidth}L{0.16\linewidth}L{0.25\linewidth}L{0.26\linewidth}}
+\caption{The SIMC++ components of A(e,e\pr)A (one component per row).}\lbl{tab:components}\\
+\toprule\rowcolor{simchead}\simcth{role} & \simcth{interface} & \simcth{registered name} & \simcth{class} & \simcth{file}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{role} & \simcth{interface} & \simcth{registered name} & \simcth{class} & \simcth{file}\\\midrule\endhead
+\bottomrule\endlastfoot
+reaction & \code{IReaction} & \code{nuclear\_elastic} & \code{NuclearElastic} (derived from \code{HydrogenElastic}) & \file{reactions/HydrogenElastic.cpp}\\
+event completion & (base class) & -- & \code{reactions::EepReactionBase} & \file{reactions/EepReactionBase.cpp}\\
+weight assembly & (function) & -- & \code{reactions::assembleWeight} & \file{reactions/EventChain.cpp}\\
+cross section & \code{IPhysicsModel} & \code{nuc\_elastic} & \code{nuclear::NucElasticModel} & \file{physics/nuclear/NuclearElastic.cpp}\\
+cross-section kernels & (functions) & -- & \code{nuclear::SigNucElastic}, \code{NucFormFactor}, \code{Fgauss} & \file{physics/nuclear/NuclearElastic.cpp}\\
+beam, target, radiation, arms, outputs & as in note 00 & \code{standard}, \code{hallc\_cryo}, \code{simc\_rad}, \ldots & & \ctabr{tab:plugins}\\
+\end{simctable}
+
+\subsection{Selection and override}
+The input flag \code{doing\_nuc\_elast}=1 selects \code{nuclear\_elastic} with \code{nuc\_elastic}
+(\ctabr{tab:defaults}); SIMC++ refuses it together with another reaction flag or \code{doing\_phsp}. The set-up uses
+\begin{feq}{core/RunSetup.cpp: DeriveReactionFlags; setup/SetupReaction.cpp: BuildReactionAndKinematics}{dbase.f:216-228, 272}
+M_h = M_A = \text{\code{targ\%mass\_amu}}\cdot u,
+\lbl{eq:mh}
+\end{feq}
+while the struck-nucleon mass stays $M_N=M_p$ (the reaction belongs to the (e,e\pr p) family) and $M_\mathrm{rec}$ is
+the input \code{targ\%mrec\_amu}$\cdot u$, replaced by $M_A-M_p$ when it is more than 100 MeV away (the shipped example
+\code{ee\_calcium48.inp} gives \code{mrec\_amu} = \code{mass\_amu} and is replaced). $M_N$ and $M_\mathrm{rec}$ are used
+only in the limits (\secr{sec:gen}) and in the reconstructed $W$; the kinematics use $M_A$. A JSON input can replace the
+form factor by another \code{IPhysicsModel} returning $\mathrm{d}\sigma/\mathrm{d}\Omega_e$ in $\mu$b/sr
+(\code{"physics": "my\_model"}).
+
+\subsection{Event flow}
+\begin{simctable}{footnotesize}{L{0.05\linewidth}L{0.33\linewidth}L{0.62\linewidth}}
+\caption{One try of A(e,e\pr)A (one step per row; the general chain is \ctabr{tab:chain}).}\lbl{tab:flow}\\
+\toprule\rowcolor{simchead}\simcth{\#} & \simcth{C++ call} & \simcth{what is specific to this reaction}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{\#} & \simcth{C++ call} & \simcth{what is specific to this reaction}\\\midrule\endhead
+\bottomrule\endlastfoot
+1 & \code{StandardBeam::generate} & nothing\\
+2 & \code{HydrogenElastic::generate} & the two electron slopes only\\
+3 & \code{EepReactionBase::completeEv} & elastic $E'$ with $M_A$, the nucleus along $\vec q$ (\eqr{eq:kin})\\
+4 & \code{SimcRadiator::radiate} & tail-1 limits from the elastic relation with $M_A$ (\eqr{eq:tail1})\\
+5 & \code{MonteCarlo::run} & the recoil nucleus crosses the hadron arm\\
+6 & \code{EepReactionBase::completeRecon} & $E_m^\mathrm{rec}$ with $M_A$ (\eqr{eq:recem})\\
+7 & \code{EepReactionBase::completeMain} & $S=1$; \code{NucElasticModel::sigcc} (\eqr{eq:signuc})\\
+\end{simctable}
 
 % =====================================================================================================================
-\section{Kinematics, generated variables and generation volume}\label{sec:gen}
-As for H(e,e$'$p), only the electron slopes are generated, flat in the electron edges
-(\fsrc{event.f@20d46fc:276-277}); the
-hadron slopes and the energies are not (the conditions of \fsrc{event.f@20d46fc:280, 289, 300} do not include
-\code{doing\_nuc\_elast}). The vertex limits and the energy ranges are those of hydrogen elastic:
-\begin{feqa}{init.f:321-325, 374-379, 438-440, 474-476, 500-503}
-E_m^\mathrm{V} &= P_m^\mathrm{V} = M_\mathrm{rec}^\mathrm{V} = T_\mathrm{rec}^\mathrm{V} = 0,\qquad \mathrm{sumEgen}=[0,0],\nonumber\\
-\mathrm{gen}^E_e &= [\mathrm{edge}^{E,\mathrm{min}}_e,\ \mathrm{edge}^{E,\mathrm{max}}_e+E^\mathrm{max}_{\gamma2}],\qquad
-\mathrm{gen}^E_p = [\mathrm{edge}^{E,\mathrm{min}}_p,\ \mathrm{edge}^{E,\mathrm{max}}_p+E^\mathrm{max}_{\gamma3}],
-\label{eq:ranges}
+\section{Kinematics, generated variables and generation volume}\lbl{sec:gen}
+As for H(e,e\pr p), only the electron slopes are generated, flat in the electron edges; the hadron slopes and the
+energies are not. The vertex limits and the energy ranges are those of hydrogen elastic:
+\begin{feqa}{setup/SetupLimits.cpp: BuildLimits}{init.f:321-325, 374-379, 438-440, 474-476, 500-503}
+E_m &= P_m = M_\mathrm{rec} = T_\mathrm{rec} = 0\ \ \text{at the vertex},\qquad [\Sigma_\mathrm{min},\Sigma_\mathrm{max}]=[0,0],\nonumber\\
+[E'^\mathrm{gen}_\mathrm{min},E'^\mathrm{gen}_\mathrm{max}] &= [E'_\mathrm{min},\ E'_\mathrm{max}+E^\mathrm{max}_{\gamma2}],\qquad
+[E^\mathrm{gen}_{h,\mathrm{min}},E^\mathrm{gen}_{h,\mathrm{max}}] = [E_{h,\mathrm{min}},\ E_{h,\mathrm{max}}+E^\mathrm{max}_{\gamma3}],
+\lbl{eq:ranges}
 \end{feqa}
-where $\mathrm{edge}^E_p$ is computed with $M_h = M_A$ (\ceqr{eq:edges}). The generation volume is the electron solid
-angle,
-\begin{feq}{simc.f:383, 390 (doing\_nuc\_elast is not in the list of l.394)}
+where $E_{h,\mathrm{min/max}}$ are computed with $M_h = M_A$ (\ceqr{eq:edges}). The generation volume is the electron solid
+angle:
+\begin{feq}{reactions/EepReactionBase.cpp: EepReactionBase::genVolume}{simc.f:383, 390}
 V_\mathrm{gen} = \Delta\Omega_e\quad[\mathrm{sr}].
-\label{eq:genvol}
+\lbl{eq:genvol}
 \end{feq}
-
-\paragraph{Photon limit.} The energy-conservation limit of the radiated photons uses the struck mass $M_p$ but the hadron
-edge with the nuclear mass:
-\begin{feq}{init.f:411-413, 421-425}
-E_\gamma^\mathrm{tot,max} = E_\mathrm{beam}^\mathrm{max} + M_p - \mathrm{edge}^{E,\mathrm{min}}_e - \mathrm{edge}^{E,\mathrm{min}}_p,
-\qquad \mathrm{edge}^{E,\mathrm{min}}_p\approx M_A,
-\label{eq:egammatot}
+The largest photon energy uses the struck mass $M_p$ but the recoil edge computed with $M_A$:
+\begin{feq}{setup/SetupLimits.cpp: BuildLimits}{init.f:411-425}
+E_\gamma^\mathrm{tot,max} = E_b^\mathrm{max} + M_p - E'_\mathrm{min} - E_{h,\mathrm{min}},\qquad E_{h,\mathrm{min}}\approx M_A,
+\lbl{eq:egammatot}
 \end{feq}
-which is negative by about $M_A-M_p$ for every nucleus heavier than the proton. See \secr{sec:rad}: without
-\code{Egamma\_gen\_max} no radiative event can be generated.
+which is negative by about $M_A-M_p$ for every nucleus heavier than the proton (\secr{sec:rad}).
 
 % =====================================================================================================================
-\section{Completing the event}\label{sec:complete}
-\code{complete\_ev} treats \code{doing\_nuc\_elast} as \code{doing\_hyd\_elast} with $M_h=M_A$
-\fsrc{event.f@20d46fc:507, 517, 546, 937}:
-\begin{feqa}{event.f@20d46fc:517-523, 546-562, 937-938}
+\section{Completing the event}\lbl{sec:complete}
+\subsection{Vertex}
+The completion is that of H(e,e\pr p) with $M_h=M_A$:
+\begin{feqa}{reactions/EepReactionBase.cpp: EepReactionBase::completeEv}{event.f@20d46fc:517-523, 546-562, 937-938}
 E' &= \frac{E_\mathrm{in}\,M_A}{M_A+E_\mathrm{in}(1-\cos\theta_e)}\quad(\text{fail if }E'>E_\mathrm{in}),\qquad
 \hat p = \hat q,\qquad P_A = |\vec q|,\qquad E_A = \sqrt{P_A^2+M_A^2},\nonumber\\
 E_m &= P_m = M_\mathrm{rec} = T_\mathrm{rec} = 0,
-\label{eq:kin}
+\lbl{eq:kin}
 \end{feqa}
-with $\nu$, $Q^2$, $\vec q$ of \ceqr{eq:nuq2}, the recoil slopes from \code{spectrometer\_angles} and
-$\delta_A = 100(P_A-P_p^0)/P_p^0$. For a heavy nucleus $E'\approx E_\mathrm{in}$ and the recoil has a small momentum
-$|\vec q|\approx2E_\mathrm{in}\sin(\theta_e/2)$ at an angle near $90^\circ$ (in the shipped example, $\theta_e = 4.51^\circ$,
-$E_\mathrm{beam}=2118$ MeV: $|\vec q|\approx167$ MeV/$c$ at $87.6^\circ$, the input \code{spec\%p\%P} and
-\code{spec\%p\%theta}).
+with $\nu$, $Q^2$, $\vec q$ of \ceqr{eq:nuq2}, the recoil slopes from \ceqr{eq:specang} and $\delta_A =
+100(P_A-P_h^0)/P_h^0$. For a heavy nucleus $E'\approx E_\mathrm{in}$ and the recoil has a small momentum
+$|\vec q|\approx2E_\mathrm{in}\sin(\theta_e/2)$ at an angle near $90^\circ$; in the shipped example ($\theta_e^0 =
+4.51^\circ$, $E_b=2118$ MeV) $|\vec q|\approx167$ MeV/$c$ at $87.6^\circ$, the inputs \code{spec\%p\%P} and
+\code{spec\%p\%theta}.
 
-The reconstruction uses the target mass in the missing energy \fsrc{event.f@20d46fc:1344-1346}:
-\begin{feq}{event.f@20d46fc:1344-1346}
+\subsection{Reconstruction}
+\begin{feq}{reactions/EepReactionBase.cpp: EepReactionBase::completeRecon}{event.f@20d46fc:1344-1346}
 T^\mathrm{rec}_\mathrm{rec} = 0,\qquad E_m^\mathrm{rec} = \nu^\mathrm{rec}+M_A-E_A^\mathrm{rec},
-\label{eq:recem}
+\lbl{eq:recem}
 \end{feq}
-while $W^\mathrm{rec}$ uses $M_p$ (\ceqr{eq:w}) like every reaction.
+while $W^\mathrm{rec}$ uses $M_p$ like every reaction (\ceqr{eq:w}).
 
 % =====================================================================================================================
-\section{Jacobians}\label{sec:jac}
-\begin{feq}{event.f@20d46fc:498, 1013-1014}
+\section{Jacobians}\lbl{sec:jac}
+\begin{feq}{reactions/EepReactionBase.cpp: EepReactionBase::completeEv}{event.f@20d46fc:498, 1013-1014}
 J = \bigl(1+x_e'^2+y_e'^2\bigr)^{-3/2},
-\label{eq:jac}
+\lbl{eq:jac}
 \end{feq}
-the electron solid-angle factor only (the hadron factor is applied for the reactions listed in
-\fsrc{event.f@20d46fc:1019-1023}, not this one).
+the electron solid-angle factor only (the recoil direction is not generated).
 
 % =====================================================================================================================
-\section{Cross-section model}\label{sec:xsec}
-$S=1$ \fsrc{event.f@20d46fc:1399-1401} and the cross section is \code{sig\_nuc\_elastic}, evaluated at the vertex (and at
-the reconstructed event for \code{sigcc\_recon}) \fsrc{event.f@20d46fc:1457-1459}. The code names its source as the
-ASTRUC routine of the Mo--Tsai program \fsrc{nuclear\_elastic.f:4}:
-\begin{feqa}{nuclear\_elastic.f:16-22, 40-41}
+\section{Cross-section model}\lbl{sec:xsec}
+\subsection{What the reaction requires from a model}
+$S=1$; the run's model receives the vertex event and must return $\mathrm{d}\sigma/\mathrm{d}\Omega_e$ in $\mu$b/sr,
+reading $E_\mathrm{in}$, $E'$, $\theta_e$ and $Q^2$. The weight is
+\begin{feq}{reactions/EventChain.cpp: assembleWeight}{event.f@20d46fc:1540-1542, 1565-1566}
+w = J\cdot w_\mathrm{gen}\cdot\sigma\cdot\bigl(1+V_C/E_b\bigr)^2_{[\text{with \code{using\_Coulomb}}]}\quad[\mu\mathrm{b/sr}],
+\lbl{eq:weight}
+\end{feq}
+with $V_C$ of \ceqr{eq:coulomb}.
+
+\subsection{The model \code{nuc\_elastic}}
+The code names its source as the routine ASTRUC of the Mo--Tsai program \citer{mo}:
+\begin{feqa}{physics/nuclear/NuclearElastic.cpp: SigNucElastic, NucFormFactor}{nuclear\_elastic.f:16-22, 39-41}
 \sigma &= \bigl(W_2+2W_1\tan^2(\theta_e/2)\bigr)\,\sigma_\mathrm{Mott}(E',\theta_e,Q^2)\,\frac{M_A}{M_A+E_\mathrm{in}(1-\cos\theta_e)}
 \quad[\mu\mathrm{b/sr}],\nonumber\\
 W_1 &= 0,\qquad W_2 = \bigl(Z\,F(Q^2)\bigr)^2,
-\label{eq:signuc}
+\lbl{eq:signuc}
 \end{feqa}
-with $\sigma_\mathrm{Mott}$ the point-charge formula of note 01 (\code{sigMott}, physics\_proton.f:186-187). The recoil
-factor equals $E'/E_\mathrm{in}$ for the elastic $E'$ of \eqr{eq:kin}, so \eqr{eq:signuc} is the usual
-$\sigma = Z^2F^2\,\sigma_\mathrm{Mott}E'/E_\mathrm{in}$ of a spin-0 nucleus. The form factor is
-\begin{feqa}{nuclear\_elastic.f:53-64}
-R &= 1.07\,A^{1/3}\ \mathrm{fm}\quad(\text{except }A=205: 5.470,\ 56: 3.729,\ 28: 3.085,\ 27: 3.035\ \mathrm{fm}),\nonumber\\
-F(Q^2) &= \frac{\exp\bigl(-Q^2a^2/6\bigr)}{1+Q^2R^2/6}\quad\bigl(Q^2a^2/6<80;\ 0\text{ otherwise}\bigr),\nonumber\\
-a &= 2.4\ \mathrm{fm},\qquad Q^2\ \text{in fm}^{-2} = Q^2[\mathrm{MeV^2}]/(\hbar c)^2,
-\label{eq:fgauss}
+with $\sigma_\mathrm{Mott}$ of \ceqr{eq:mott}. The recoil factor equals $E'/E_\mathrm{in}$ for the elastic $E'$ of
+\eqr{eq:kin}, so \eqr{eq:signuc} is $Z^2F^2\,\sigma_\mathrm{Mott}E'/E_\mathrm{in}$, the cross section of a spin-0 nucleus.
+The form factor is
+\begin{feqa}{physics/nuclear/NuclearElastic.cpp: Fgauss}{nuclear\_elastic.f:53-64}
+R &= 1.07\,A^{1/3}\ \mathrm{fm}\quad(\text{special values in \tabr{tab:radii}}),\nonumber\\
+F(Q^2) &= \frac{\exp\bigl(-Q^2a^2/6\bigr)}{1+Q^2R^2/6}\quad\bigl(0\text{ if }Q^2a^2/6\ge80\bigr),\qquad a = 2.4\ \mathrm{fm},
+\qquad Q^2[\mathrm{fm}^{-2}] = Q^2[\mathrm{MeV^2}]/(\hbar c)^2.
+\lbl{eq:fgauss}
 \end{feqa}
-$A$ being compared with \code{nint(A)}. The radii of the four special cases are attributed to de Vries et al.\
-\cite{devries} \fsrc{nuclear\_elastic.f:55-61}. The function is called \code{Fgauss}, but only the $A$-independent factor
-$\exp(-Q^2a^2/6)$ is a Gaussian; the radius $R$ enters through a monopole factor.
-
-\begin{simcfinding}
-\textbf{Radius of the form factor.} At small $Q^2$, $F\simeq1-Q^2(R^2+a^2)/6$, i.e.\ the charge distribution of
-\eqr{eq:fgauss} has $\langle r^2\rangle = R^2 + a^2 = R^2 + 5.76$ fm$^2$. If the special values of $R$ are meant as the
-r.m.s.\ charge radii of the de Vries compilation that the code cites (for example 3.729 fm for $^{56}$Fe), the form
-factor corresponds to an r.m.s.\ radius $\sqrt{R^2+a^2}$ (4.44 fm for $^{56}$Fe), and for the default $R=1.07A^{1/3}$ to
-$\sqrt{1.145A^{2/3}+5.76}$ fm (4.57 fm for $A=48$). Whether $R$ is meant as an r.m.s.\ radius, and what the fixed
-$a=2.4$ fm stands for, is not documented in the code (nuclear\_elastic.f:53-64). Kept in both modes; reported for the
-director, not part of FORTRAN\_DIFFERENCES.md.
-\end{simcfinding}
-
-The weight is
-\begin{feq}{event.f@20d46fc:1540-1542, 1565-1566}
-w = J\cdot w_\mathrm{gen}\cdot\sigma\cdot\bigl(1+V_C/E_\mathrm{beam}\bigr)^2_{[\text{using\_Coulomb}]}\quad[\mu\mathrm{b/sr}],
-\label{eq:weight}
-\end{feq}
-the Coulomb energy $V_C$ being that of note 00, \ceqr{eq:coulomb} (the electron energies are shifted by $V_C$ as for every
-reaction). \code{wtcontr} is a number of counts (\ceqr{eq:normfac}). In the example \code{ee\_calcium48} the hadron arm
-(HMS, \code{spec\%p\%P} = 166.76 MeV/$c$) is used without its spectrometer model (\code{spect\_mode}) and every event fails
-\code{pass\_cuts}, so \code{wtcontr} = 0 (\finding{U-B2}).
-
-% =====================================================================================================================
-\section{Radiation, energy loss and decays}\label{sec:rad}
-\paragraph{Tail limits.} Tail 1 has its own case, the H(e,e$'$p) formula with the target mass:
-\begin{feqa}{radc.f:278-285}
-E_b^\mathrm{max,min} &= \frac{M_A\,\mathrm{edge}^{E,\mathrm{max,min}}_e}{M_A-\mathrm{edge}^{E,\mathrm{max,min}}_e(1-\hat u_{e,z})}\quad(E_b^\mathrm{max}=10^{10}\text{ if negative}),\nonumber\\
-E_{\gamma1} &\in\bigl[E_\mathrm{in}-E_b^\mathrm{max},\ \min(E_\mathrm{in}-E_b^\mathrm{min},\ \mathrm{edge}^\mathrm{max}_{E_m})\bigr],
-\label{eq:tail1}
-\end{feqa}
-then, as for all reactions, $\min(\cdot,E^\mathrm{max}_{\gamma1})$ and $\pm d_E$ \fsrc{radc.f:306-308}. Tails 2 and 3 follow
-\fsrc{radc.f:372-389, 428-446}, with the (e,e$'$p) missing-energy terms void (\code{edge\%Em} = $\pm10^{10}$), and every
-upper limit is bounded by $E_\gamma^\mathrm{tot,max}$ (\eqr{eq:egammatot}).
-
-\begin{simcfinding}
-\textbf{Negative photon limit.} With \code{doing\_nuc\_elast} the struck mass is $M_p$ (dbase.f:297-300) but the recoil
-edge is computed with $M_A$, so $E_\gamma^\mathrm{tot,max}\approx E_\mathrm{beam}+M_p-E'-M_A<0$ (init.f:411-413), and
-$E^\mathrm{max}_{\gamma1,2,3}$ are negative. \code{basicrad} then fails every radiated tail (radc.f:61), so with
-\code{using\_rad}=1 and \code{Egamma\_gen\_max}=0 no event is ever accepted; the shipped example works only because it sets
-\code{Egamma\_gen\_max} = 1000 MeV (\code{hardwired\_rad}, init.f:421). Measured with SIMC++ (\code{-{}-fortran-compat},
-mt64 random numbers, seed 4242, \code{ee\_calcium48} with \code{ngen} = $-3000$): \code{Egamma\_max} = $-43296.1$ MeV and 0
-successes in 3000 tries with \code{Egamma\_gen\_max} = 0, against 265 successes with 1000 MeV (run folders
-\code{simc\_runs/20261123\_171324\_PHYS.1\_nucel\_noEgmax} and \code{\ldots\_171615\_PHYS.1\_nucel\_Egmax1000}). The same
-code path is in the 20d46fc Fortran. Kept in both modes; reported for the director.
-\end{simcfinding}
-
-\paragraph{Soft and hard factors.} The per-event constants of note 00 (\csecr{sec:radconst}) treat the recoil nucleus as
-the third radiating particle: $\lambda_3$ with $E_A$, $P_A$ (\ceqr{eq:lambda}), $c^\mathrm{int}_3$ with $M_p$ in the
-normalisation. \code{brem} reconstructs the electron angle and $Q^2$ from \emph{elastic e--p} kinematics
-(\ceqr{eq:bremkin}): for a nucleus $E'$ is much closer to $E_\mathrm{in}$ than for a proton at the same angle, so the
-angle seen by \code{brem}, $\sin^2(\theta/2)=\frac{M_p}{2E_\mathrm{in}}\bigl(\frac{E_\mathrm{in}}{E'}-1\bigr)$, is smaller
-than the true one by about the factor $M_p/M_A$, and $\delta_\mathrm{hard}$ (through $\ln Q^2/m_e^2$) and the e--e
-interference term are evaluated at that smaller $Q^2$. This is the general approximation \finding{P5.F1 Q8}; its size is
-largest for this reaction. With \code{rad\_proton} the proton terms of \code{brem} use the proton mass, not $M_A$.
-
-\paragraph{Energy loss, multiple scattering, decays.} The recoil nucleus is passed through
-\code{trip\_thru\_target} and
-\code{target\_musc} with $m=M_A$ (\csecr{sec:eloss}); the energy-loss formula has the ionisation constants of a singly
-charged particle (no $z^2$ of the projectile), and the most-probable correction of the reconstruction is applied to it
-like to a proton. No decays.
-
-% =====================================================================================================================
-\section{Input parameters and output columns}\label{sec:io}
-\begin{simctable}{footnotesize}{L{0.32\linewidth}L{0.64\linewidth}}
-\caption{Inputs specific to A(e,e$'$)A.}\label{tab:inputs}\\
-\toprule\rowcolor{simchead}\simcth{input} & \simcth{role}\\\midrule\endfirsthead
-\toprule\rowcolor{simchead}\simcth{input} & \simcth{role}\\\midrule\endhead
+\begin{simctable}{small}{L{0.25\linewidth}L{0.25\linewidth}L{0.5\linewidth}}
+\caption{Special radii of \eqr{eq:fgauss} (one nucleus per row; $A$ compared with $\mathrm{nint}(A)$).}\lbl{tab:radii}\\
+\toprule\rowcolor{simchead}\simcth{$A$} & \simcth{$R$ [fm]} & \simcth{source named in the code}\\\midrule\endfirsthead
 \bottomrule\endlastfoot
-\code{doing\_nuc\_elast} = 1 & selects the reaction (no other \code{doing\_*} flag)\\
-\code{targ\%A}, \code{targ\%Z}, \code{targ\%mass\_amu} & $A$ (radius $R$), $Z$ (form factor, Coulomb), $M_A$\\
-\code{spec\%p\%P}, \code{spec\%p\%theta}, \code{hadron\_arm} & the arm that sees the recoil nucleus\\
-\code{Egamma\_gen\_max} & must be set ($>0.01$ MeV) with \code{using\_rad} (\secr{sec:rad})\\
-\code{using\_Coulomb} & Coulomb energy and focusing factor\\
+205 & 5.470 & de Vries et al.\ \citer{devries}\\
+56 & 3.729 & de Vries et al.\\
+28 & 3.085 & de Vries et al.\\
+27 & 3.035 & de Vries et al.\\
 \end{simctable}
-The remaining inputs are those of note 01, \S7.
+The function is called \code{Fgauss}, but only the $A$-independent factor $\exp(-Q^2a^2/6)$ is a Gaussian; the radius $R$
+enters through a monopole factor.
 
-\input{frag_eep_columns}
-For A(e,e$'$)A the hadron columns describe the recoil nucleus, \code{Em} is \eqr{eq:recem}, and \code{corrsing},
-\code{Pmx}, \code{Pmy}, \code{Pmz} are 0: results\_write.f computes them only for hydrogen, deuterium and heavy (e,e$'$p)
-\fsrc{results\_write.f@20d46fc:54-61}, and the SAVEd locals keep 0 (\finding{U-B2}). \code{sigcc} is $\sigma$ of
-\eqr{eq:signuc} in $\mu$b/sr.
+\begin{simcfindingbox}
+\textbf{Radius of the form factor.} At small $Q^2$, $F\simeq1-Q^2(R^2+a^2)/6$: the charge distribution of
+\eqr{eq:fgauss} has $\langle r^2\rangle = R^2+a^2 = R^2+5.76$ fm$^2$. If the special values of $R$ are the r.m.s.\ charge
+radii of the compilation the code cites (3.729 fm for $^{56}$Fe), the form factor corresponds to an r.m.s.\ radius
+$\sqrt{R^2+a^2}$ (4.44 fm for $^{56}$Fe), and for the default $R=1.07A^{1/3}$ to $\sqrt{1.145A^{2/3}+5.76}$ fm (4.57 fm
+for $A=48$). The code does not say whether $R$ is meant as an r.m.s.\ radius nor what the fixed $a=2.4$ fm stands for.
+Kept in both modes.
+\end{simcfindingbox}
 
 % =====================================================================================================================
-\section{Fortran \texorpdfstring{$\leftrightarrow$}{<->} C++ map}\label{sec:map}
-\begin{simctable}{footnotesize}{L{0.42\linewidth}L{0.55\linewidth}}
+\section{Radiation, energy loss and decays}\lbl{sec:rad}
+Tail 1 has its own case, the H(e,e\pr p) relation with the target mass:
+\begin{feqa}{radiation/Radc.cpp: generateRad}{radc.f:278-285, 306-308}
+E_b^{(\mathrm{max})} &= \frac{M_A\,E'_\mathrm{max}}{M_A-E'_\mathrm{max}(1-\cos\theta_e)}\ \ (10^{10}\text{ if negative}),\qquad
+E_b^{(\mathrm{min})} = \frac{M_A\,E'_\mathrm{min}}{M_A-E'_\mathrm{min}(1-\cos\theta_e)},\nonumber\\
+E_{\gamma1} &\in\bigl[E_\mathrm{in}-E_b^{(\mathrm{max})}-d_E,\ \min(E_\mathrm{in}-E_b^{(\mathrm{min})},\ E^\mathrm{max}_{\gamma1})+d_E\bigr];
+\lbl{eq:tail1}
+\end{feqa}
+tails 2 and 3 have the limits of note 01 with $M_A$ in the recoil edges, and every upper limit is bounded by
+$E_\gamma^\mathrm{tot,max}$ of \eqr{eq:egammatot}.
+
+\begin{simcfindingbox}
+\textbf{Negative photon limit.} Because the struck mass is $M_p$ but the recoil edge uses $M_A$,
+$E_\gamma^\mathrm{tot,max}\approx E_b+M_p-E'-M_A<0$ and the photon limits of all tails are negative: with
+\code{using\_rad}=1 and no \code{Egamma\_gen\_max} every radiated tail fails and no event is ever accepted. The shipped
+example works only because it sets \code{Egamma\_gen\_max} = 1000 MeV. Measured with SIMC++ (compat mode, \code{mt64}
+random numbers, seed 4242, \code{ee\_calcium48} with \code{ngen} = $-3000$): photon limit $-43296.1$ MeV and 0 successes
+in 3000 tries without \code{Egamma\_gen\_max}, 265 successes with 1000 MeV (run folders
+\code{simc\_runs/20261123\_171324\_PHYS.1\_nucel\_noEgmax} and \code{simc\_runs/20261123\_171615\_PHYS.1\_nucel\_Egmax1000}).
+The same code path exists in the 20d46fc Fortran. Kept in both modes.
+\end{simcfindingbox}
+
+\paragraph{Soft and hard factors.} The recoil nucleus is the third radiating particle: $\lambda_3$ with $E_A$, $P_A$
+(\ceqr{eq:lambda}), and $c^\mathrm{int}_3$ with $M_p$ in its normalisation. The soft-photon calculation rebuilds the
+electron angle and $Q^2$ from elastic electron--\emph{proton} kinematics (\ceqr{eq:bremkin}); for a nucleus $E'$ is much
+closer to $E_\mathrm{in}$ than for a proton at the same angle, so the rebuilt
+$\sin^2(\theta/2)=\frac{M_p}{2E_\mathrm{in}}\bigl(\frac{E_\mathrm{in}}{E'}-1\bigr)$ is smaller than the true one by about
+$M_p/M_A$, and $\delta_\mathrm{hard}$ and the electron interference term are evaluated at that smaller $Q^2$. This is the
+general approximation of note 00, largest for this reaction. The proton terms of that calculation use the proton mass,
+not $M_A$.
+
+\paragraph{Energy loss, multiple scattering, decays.} The recoil nucleus is passed through the target and windows with
+$m=M_A$ (\csecr{sec:eloss}); the energy-loss formula is that of a singly charged particle (no $z^2$ of the projectile),
+and the reconstruction applies the most-probable correction to it as to a proton. Nothing decays.
+
+% =====================================================================================================================
+\section{Inputs and outputs}\lbl{sec:io}
+\subsection{Inputs}
+\begin{simctable}{footnotesize}{L{0.24\linewidth}L{0.12\linewidth}L{0.08\linewidth}L{0.56\linewidth}}
+\caption{Inputs specific to A(e,e\pr)A (one input per row; every input defaults to 0; the inputs common with
+H(e,e\pr p) are in note 01, \S7).}\lbl{tab:inputs}\\
+\toprule\rowcolor{simchead}\simcth{input} & \simcth{unit} & \simcth{default} & \simcth{meaning here}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{input} & \simcth{unit} & \simcth{default} & \simcth{meaning here}\\\midrule\endhead
+\bottomrule\endlastfoot
+\code{doing\_nuc\_elast} & flag & 0 & 1 selects this reaction (no other reaction flag)\\
+\code{targ\%A} & -- & 0 & mass number (radius $R$)\\
+\code{targ\%Z} & -- & 0 & charge (form factor, Coulomb energy)\\
+\code{targ\%mass\_amu} & u & 0 & $M_A$ (kinematics and luminosity)\\
+\code{targ\%mrec\_amu} & u & 0 & used only in the limits (replaced by $M_A-M_p$ when far off)\\
+\code{spec\%p\%P} & MeV/$c$ & 0 & central momentum of the arm that sees the recoil nucleus\\
+\code{spec\%p\%theta} & deg & 0 & its central angle\\
+\code{hadron\_arm} & code & 0 & its spectrometer\\
+\code{Egamma\_gen\_max} & MeV & 0 & must be set ($>0.01$ MeV) with \code{using\_rad} (\secr{sec:rad})\\
+\code{using\_Coulomb} & flag & 0 & Coulomb energy and focusing factor\\
+\end{simctable}
+
+\subsection{Outputs}
+\input{frag_eep_columns}
+For A(e,e\pr)A the hadron columns describe the recoil nucleus, \code{Em} is \eqr{eq:recem}, and the columns
+\code{corrsing}, \code{Pmx}, \code{Pmy}, \code{Pmz} are always 0 (the Fortran fills them only for the proton reactions and
+keeps 0 otherwise). \code{sigcc} is $\sigma$ of \eqr{eq:signuc} in $\mu$b/sr.
+
+% =====================================================================================================================
+\section{Validation in SIMC++}\lbl{sec:validation}
+\begin{simctable}{footnotesize}{L{0.46\linewidth}L{0.17\linewidth}L{0.37\linewidth}}
+\caption{CTest tests that cover A(e,e\pr)A (one test per row).}\lbl{tab:tests}\\
+\toprule\rowcolor{simchead}\simcth{test} & \simcth{labels} & \simcth{what it checks}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{test} & \simcth{labels} & \simcth{what it checks}\\\midrule\endhead
+\bottomrule\endlastfoot
+\code{l1\_nuc\_elastic} & l1 & \code{Fgauss} (108 rows) and \eqr{eq:signuc} (288 rows) against the Fortran tables\\
+\code{l1\_simcrun\_ranlux\_up\_ee\_calcium48\_cap1000\_20d46fc} & l1, replay & 1000 captured events of the 20d46fc Fortran, bitwise\\
+\code{l1\_simcrun\_ranlux\_up\_ee\_calcium48\_20d46fc} & l1, replay, slow & the 5000-event run, all outputs identical to the 20d46fc Fortran\\
+\code{fortran\_diff\_U\_DEV1\_nuc\_elast\_combination} & fortran\_diff & refusal of the flag combinations\\
+\end{simctable}
+The validation ledger (\code{project\_control/VALIDATION\_LEDGER.md}, entry of 2026-11-20) records the bitwise agreement
+of these tests with the 20d46fc Fortran references. No statistical comparison exists: the shipped kinematics give
+\code{wtcontr} = 0 because no event passes \code{pass\_cuts}.
+
+% =====================================================================================================================
+\section{Fortran origin and Fortran findings}\lbl{sec:origin}
+\begin{simctable}{footnotesize}{L{0.44\linewidth}L{0.56\linewidth}}
+\caption{Fortran routine $\to$ C++ function (one routine per row; the common routines are in \ctabr{tab:map}).}\lbl{tab:map}\\
 \toprule\rowcolor{simchead}\simcth{Fortran} & \simcth{C++ (src/...)}\\\midrule\endfirsthead
 \toprule\rowcolor{simchead}\simcth{Fortran} & \simcth{C++ (src/...)}\\\midrule\endhead
 \bottomrule\endlastfoot
-dbase.f:216-219 (59ccdf6) & \csrc{core/RunSetup.cpp: DeriveReactionFlags} (refuses combinations, U-DEV1)\\
-event.f@20d46fc:generate l.276-414 & \csrc{reactions/HydrogenElastic.cpp: HydrogenElastic::generate} (struct \code{NuclearElastic}, reaction \code{nuclear\_elastic})\\
-event.f@20d46fc:complete\_ev l.507-563, 937-938 & \csrc{reactions/EepReactionBase.cpp: EepReactionBase::completeEv}\\
-event.f@20d46fc:complete\_recon\_ev l.1344-1346 & \csrc{EepReactionBase::completeRecon}\\
-event.f@20d46fc:complete\_main l.1399-1401, 1457-1459 & \csrc{HydrogenElastic::spectralWeight}; \csrc{reactions/EventChain.cpp: assembleWeight}\\
-nuclear\_elastic.f: sig\_nuc\_elastic, NUC\_FORM\_FACTOR, Fgauss & \csrc{physics/nuclear/NuclearElastic.cpp: SigNucElastic, NucFormFactor, Fgauss}; model \code{nuc\_elastic}\\
-radc.f:278-286 (59ccdf6) & \csrc{radiation/Radc.cpp: generateRad} (CASE 2b)\\
-results\_write.f@20d46fc:246, NtupleInit.f@20d46fc:293 & \csrc{output/NtupleLayout.cpp: UsesEepLayout, FillEepNtuple, FillUpstreamNtuple}\\
+dbase.f:216-219 (59ccdf6) & \csrc{core/RunSetup.cpp: DeriveReactionFlags}\\
+event.f@20d46fc generate, l.276-414 & \csrc{reactions/HydrogenElastic.cpp: HydrogenElastic::generate}\\
+event.f@20d46fc complete\_ev, l.507-563, 937-938 & \csrc{reactions/EepReactionBase.cpp: EepReactionBase::completeEv}\\
+event.f@20d46fc complete\_recon\_ev, l.1344-1346 & \csrc{reactions/EepReactionBase.cpp: EepReactionBase::completeRecon}\\
+event.f@20d46fc complete\_main, l.1399-1401 & \csrc{reactions/HydrogenElastic.cpp: HydrogenElastic::spectralWeight}\\
+event.f@20d46fc complete\_main, l.1457-1459 & \csrc{reactions/EventChain.cpp: assembleWeight}\\
+nuclear\_elastic.f sig\_nuc\_elastic & \csrc{physics/nuclear/NuclearElastic.cpp: SigNucElastic}\\
+nuclear\_elastic.f NUC\_FORM\_FACTOR & \csrc{physics/nuclear/NuclearElastic.cpp: NucFormFactor}\\
+nuclear\_elastic.f Fgauss & \csrc{physics/nuclear/NuclearElastic.cpp: Fgauss}\\
+radc.f:278-286 (59ccdf6) & \csrc{radiation/Radc.cpp: generateRad}\\
+results\_write.f@20d46fc:246 & \csrc{output/NtupleLayout.cpp: UsesEepLayout, FillUpstreamNtuple}\\
 \end{simctable}
 
-% =====================================================================================================================
-\section{Fortran findings and the two modes}\label{sec:findings}
-\begin{simctable}{footnotesize}{L{0.17\linewidth}L{0.5\linewidth}L{0.29\linewidth}}
-\toprule\rowcolor{simchead}\simcth{id} & \simcth{what} & \simcth{default / \code{-{}-fortran-compat}}\\\midrule\endfirsthead
-\toprule\rowcolor{simchead}\simcth{id} & \simcth{what} & \simcth{default / \code{-{}-fortran-compat}}\\\midrule\endhead
+\begin{simcfindings}{footnotesize}{L{0.17\linewidth}L{0.5\linewidth}L{0.33\linewidth}}
+\caption{Fortran findings that touch A(e,e\pr)A (one finding per row; the common ones are in \ctabr{tab:findings}).}\lbl{tab:findings}\\
+\toprule\rowcolor{simchead}\simcth{id} & \simcth{Fortran behaviour} & \simcth{default / compat}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{id} & \simcth{Fortran behaviour} & \simcth{default / compat}\\\midrule\endhead
 \bottomrule\endlastfoot
-\finding{U-A1} (A) & upstream 59ccdf6 lost the event.f/ntuple branches: endless run with 0 successes & the 20d46fc code in both modes\\
-\finding{U-B2} (B) & $W_1=0$, the \code{Fgauss} model, $W$ with $M_p$, \code{corrsing}/\code{Pm*} never computed (0) & kept in both\\
-\finding{U-D1} (D) & \code{.hist} line \code{doing\_nuc\_elast}; the example input quirks (\code{Ebeam = 2118.0.}, no seed,
-  \code{mrec\_amu} replaced) & followed\\
-\finding{U-DEV1} (DEV) & the Fortran lets \code{doing\_nuc\_elast} mix with another reaction & refused at set-up\\
-\finding{P5.F1 Q8} (D) & \code{brem} uses e--p elastic kinematics; largest effect here & kept\\
+\finding{U-A1} & upstream 59ccdf6 lost the event and output branches: endless run & the 20d46fc code in both modes\\
+\finding{U-B2} & no magnetic term, the \code{Fgauss} model, $W$ with $M_p$, \code{corrsing} and \code{Pm*} never computed & kept in both\\
+\finding{U-D1} & the example input quirks (\code{Ebeam = 2118.0.}, no seed, \code{mrec\_amu} replaced) & followed\\
+\finding{U-DEV1} & the flag can be combined with another reaction & refused at set-up\\
+\finding{P5.F1 Q8} & soft and hard factors with elastic e--p kinematics & kept in both\\
 candidate & $E_\gamma^\mathrm{tot,max}<0$ without \code{Egamma\_gen\_max} (\secr{sec:rad}) & kept; reported\\
 candidate & $\langle r^2\rangle = R^2+(2.4\ \mathrm{fm})^2$ in \code{Fgauss} (\secr{sec:xsec}) & kept; reported\\
-\end{simctable}
-The 5000-event \code{ee\_calcium48} run of SIMC++ (RANLUX, \code{-{}-fortran-compat}) is compared with the 20d46fc Fortran
-in the tests \code{l1\_simcrun\_ranlux\_up\_ee\_calcium48\_*} (FORTRAN\_DIFFERENCES.md, U-A1).
+\end{simcfindings}
 
-\begin{thebibliography}{9}
-\bibitem{devries} H.~de Vries, C.~W.~de Jager, C.~de Vries, ``Nuclear charge-density-distribution parameters from elastic
-  electron scattering'', Atomic Data and Nuclear Data Tables \textbf{36}, 495 (1987) (cited at
+\begin{simcrefs}
+\simcref{devries} H.~de Vries, C.~W.~de Jager, C.~de Vries, ``Nuclear charge-density-distribution parameters from
+  elastic electron scattering'', Atomic Data and Nuclear Data Tables \textbf{36}, 495 (1987) (cited at
   \fsrc{nuclear\_elastic.f:55-57}).
-\bibitem{mo} L.~W.~Mo and Y.~S.~Tsai, Rev.\ Mod.\ Phys.\ \textbf{41}, 205 (1969) (``ASTRUC of Mo-Tsai program'',
+\simcref{mo} L.~W.~Mo and Y.~S.~Tsai, Rev.\ Mod.\ Phys.\ \textbf{41}, 205 (1969) (``ASTRUC of Mo-Tsai program'',
   \fsrc{nuclear\_elastic.f:4}).
-\end{thebibliography}
+\end{simcrefs}
 \end{document}

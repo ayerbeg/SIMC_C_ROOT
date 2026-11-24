@@ -1,24 +1,29 @@
 #!/usr/bin/env python3
-"""build_physics_pdf.py - build the SIMC++ physics notes (docs/physics/latex/*.tex) into PDFs.
+"""build_physics_pdf.py - build the SIMC++ physics notes and the bound "SIMC++ Physics Reference".
 
-usage: build_physics_pdf.py --source-root DIR --build-dir DIR [--pdf-dir DIR] [--publish] [--note SOURCE ...]
+usage: build_physics_pdf.py --source-root DIR --build-dir DIR [--pdf-dir DIR] [--publish] [--note SOURCE ...] [--no-book]
+       build_physics_pdf.py --source-root DIR --lint-only [--note SOURCE ...]
+       build_physics_pdf.py --source-root DIR --lint-file FILE [--lint-file FILE ...]
        build_physics_pdf.py --source-root DIR --check-copies
 
-The notes and their order are listed in docs/physics/latex/notes.json. 00_common is always built first: the reaction
-notes refer to its labels (xr-hyper reads 00_common.aux from the build directory).
+Single source: docs/physics/latex/<NN>_<name>.tex (listed in docs/physics/latex/notes.json, built in that order;
+00_common is always built first, the reaction notes read its labels through xr-hyper). The book
+docs/physics/latex/physics_reference.tex inputs the same files (note 00 as Part I, the reactions as the chapters of
+Part II, in the order of notes.json) through physics_reference_notes.tex, which this script writes.
 
 Steps (all intermediate files under --build-dir):
-  1. lint every note source: a displayed equation must be a  feq  or  feqa  environment whose mandatory argument is a
-     code citation (a file name such as event.f:518, radc.f:..., a .cpp/.h file or a FORTRAN_DIFFERENCES id);
-     equation/align/gather/multline/\\[...\\]/$$ displays are refused (rule: every formula cites the code);
-  2. simcnote_version.tex (git describe --always --tags and the commit date of the source tree);
-  3. xelatex until the references are stable (at most 5 passes); fails on a LaTeX error, an undefined reference or
-     citation, a missing file or glyph;
-  4. the PDF is copied to --pdf-dir (default: the build directory). With --publish it is also copied to
-     docs/physics/pdf/<output>.pdf and to every directory listed under "copies" in notes.json (for example
-     src/physics/proton/): the copies are the same bytes as the master, written by this script only.
---check-copies only compares the committed master PDFs of docs/physics/pdf with their copies (CTest
-docs_physics_pdf_copies) and fails if a copy is missing or differs.
+  1. lint every note: every display is a feq/feqa with TWO citations, {C++ file: function}{Fortran file:lines} (the
+     Fortran one may be "none" for a SIMC++-only formula); no plain equation/align/gather/multline/\\[ \\]/$$, no
+     \\label (use \\lbl), no thebibliography/\\bibitem (use simcrefs), \\simcnotemeta after \\begin{document}, and no
+     internal finding id (D-0xx, U-Xn, Pn.Fn, "Pn Qn") outside the simcfindings table and comments;
+  2. simcnote_version.tex and simcpp_version.tex (git describe --always --tags, commit date);
+  3. xelatex until the references are stable (at most 5 passes) for every note, then for the book; fails on a LaTeX
+     error, an undefined reference or citation, a missing file or glyph;
+  4. the PDFs are copied to --pdf-dir (default: the build directory). With --publish they are also copied to
+     docs/physics/pdf/ (the masters) and every note to each source folder listed under "copies" in notes.json (the
+     plug-in folders of its reaction): the copies are the same bytes as the master and are written only here.
+--check-copies compares the committed masters with their copies (CTest docs_physics_pdf_copies), checks that each copy
+folder has a README.md naming the PDF, and that the book is present.
 Exit status: 0 ok, 1 failure, 77 xelatex not installed (CTest SKIP).
 """
 import argparse
@@ -31,8 +36,11 @@ import subprocess
 import sys
 
 SKIP = 77
+BOOK_SOURCE = 'physics_reference.tex'
 DISPLAY_FORBIDDEN = [r'\\begin\{(equation|align|gather|multline|eqnarray|displaymath)\*?\}', r'\\\[', r'\$\$']
-CITATION = re.compile(r'(\.(f|inc|cpp|h|theory|dat|inp)\b)|FORTRAN_DIFFERENCES|D-\d{3}|U-[A-Z]\d')
+CXX_CITATION = re.compile(r'\.(cpp|h)\b')
+F_CITATION = re.compile(r'\.(f|inc)\b|\bnone\b')
+FINDING_ID = re.compile(r'\bD-\d{3}\b|\bU-(?:A|B|D|DEV)\d+\b|\bP\d+(?:\.\w+)?\s+Q\d+\b|\bP\d+\.F\d+\b')
 
 
 def run(cmd, cwd, env=None):
@@ -48,27 +56,59 @@ def strip_comments(text):
     return '\n'.join(out)
 
 
+def balanced(text, i):
+    """text[i] is just after an opening brace: return (content, index after the closing brace)."""
+    depth, j = 1, i
+    while j < len(text) and depth:
+        depth += {'{': 1, '}': -1}.get(text[j], 0)
+        j += 1
+    return text[i:j - 1], j
+
+
 def lint(path):
     """Return (number of cited displays, list of problems) for one note source."""
+    name = os.path.basename(path)
     text = strip_comments(open(path, encoding='utf-8').read())
     problems = []
+
+    def where(pos):
+        return f'{name}:{text.count(chr(10), 0, pos) + 1}'
     for pat in DISPLAY_FORBIDDEN:
         for m in re.finditer(pat, text):
-            line = text.count('\n', 0, m.start()) + 1
-            problems.append(f'{os.path.basename(path)}:{line}: display without code citation ({m.group(0)}); '
-                            'use \\begin{feq}{file:line} or \\begin{feqa}{file:line}')
+            problems.append(f'{where(m.start())}: display without code citations ({m.group(0)}); use '
+                            '\\begin{feq}{C++ file: function}{Fortran file:lines}')
     n = 0
-    for m in re.finditer(r'\\begin\{(feqa?)\}\{', text):
-        # read the balanced argument
-        i, depth = m.end(), 1
-        while i < len(text) and depth:
-            depth += {'{': 1, '}': -1}.get(text[i], 0)
-            i += 1
-        arg = text[m.end():i - 1]
+    for m in re.finditer(r'\\begin\{(feqa?)\}', text):
         n += 1
-        line = text.count('\n', 0, m.start()) + 1
-        if not CITATION.search(arg):
-            problems.append(f'{os.path.basename(path)}:{line}: the citation "{arg}" of a {m.group(1)} names no code file')
+        i = m.end()
+        args = []
+        for _ in range(2):
+            k = i
+            while k < len(text) and text[k] in ' \t\n':
+                k += 1
+            if k < len(text) and text[k] == '{':
+                arg, i = balanced(text, k + 1)
+                args.append(arg)
+            else:
+                break
+        if len(args) < 2:
+            problems.append(f'{where(m.start())}: {m.group(1)} needs two citations {{C++}}{{Fortran}}')
+            continue
+        if not CXX_CITATION.search(args[0]):
+            problems.append(f'{where(m.start())}: first citation "{args[0]}" names no C++ file (.cpp/.h)')
+        if not F_CITATION.search(args[1]):
+            problems.append(f'{where(m.start())}: second citation "{args[1]}" names no Fortran file (or "none")')
+    for m in re.finditer(r'\\label\{', text):
+        problems.append(f'{where(m.start())}: use \\lbl{{...}} instead of \\label (labels are prefixed per note)')
+    for m in re.finditer(r'\\begin\{thebibliography\}|\\bibitem', text):
+        problems.append(f'{where(m.start())}: use the simcrefs environment and \\simcref/\\citer')
+    b, meta = text.find('\\begin{document}'), text.find('\\simcnotemeta')
+    if b < 0 or meta < b:
+        problems.append(f'{name}: \\simcnotemeta must come after \\begin{{document}} (the book skips the preamble)')
+    body = re.sub(r'\\begin\{simcfindings\}.*?\\end\{simcfindings\}', '', text, flags=re.S)
+    for m in FINDING_ID.finditer(body):
+        problems.append(f'{where(m.start())}: finding id "{m.group(0)}" outside the findings table (describe the '
+                        'fact in words; the id belongs to the simcfindings table of the last section)')
     return n, problems
 
 
@@ -101,14 +141,17 @@ def git_meta(root):
     return (g('describe', '--always', '--tags') or 'unknown'), (g('log', '-1', '--format=%cs') or '')
 
 
-def check_copies(root, notes):
-    bad = []
+def check_copies(root, manifest):
+    notes, book = manifest['notes'], manifest.get('book', {})
+    bad, ncopies = [], 0
+    pdfdir = os.path.join(root, 'docs', 'physics', 'pdf')
     for n in notes:
-        master = os.path.join(root, 'docs', 'physics', 'pdf', n['output'] + '.pdf')
+        master = os.path.join(pdfdir, n['output'] + '.pdf')
         if not os.path.exists(master):
             bad.append('missing master ' + os.path.relpath(master, root))
             continue
         for d in n.get('copies', []):
+            ncopies += 1
             copy = os.path.join(root, d, n['output'] + '.pdf')
             if not os.path.exists(copy):
                 bad.append('missing copy ' + os.path.relpath(copy, root))
@@ -117,11 +160,28 @@ def check_copies(root, notes):
             readme = os.path.join(root, d, 'README.md')
             if not os.path.exists(readme) or n['output'] + '.pdf' not in open(readme, encoding='utf-8').read():
                 bad.append(f'{os.path.relpath(readme, root)} does not name {n["output"]}.pdf')
+    if book and not os.path.exists(os.path.join(pdfdir, book['output'] + '.pdf')):
+        bad.append(f'missing book docs/physics/pdf/{book["output"]}.pdf')
     for b in bad:
         print('build_physics_pdf: FAIL: ' + b)
     if not bad:
-        print(f'build_physics_pdf: {sum(len(n.get("copies", [])) for n in notes)} copies identical to their masters')
+        print(f'build_physics_pdf: {ncopies} copies identical to their masters; book present')
     return 1 if bad else 0
+
+
+def compile_tex(xelatex, src, job, bdir, env):
+    """xelatex until stable. Return (ok, errors, overfull, big, passes)."""
+    for p in range(1, 6):
+        r = run([xelatex, '-interaction=nonstopmode', '-halt-on-error', '-jobname', job, src], bdir, env)
+        errs, overfull, big, rerun = latex_problems(os.path.join(bdir, job + '.log'))
+        if r.returncode != 0:
+            errs = [e for e in errs if e.startswith('LaTeX error')] or errs or ['xelatex exit %d' % r.returncode]
+            return False, [f'pass {p}: ' + '; '.join(errs[:10])], overfull, big, p
+        if p >= 2 and not rerun:
+            break
+    if rerun:
+        errs = errs + ['references still changing after 5 passes']
+    return not errs, errs, overfull, big, p
 
 
 def main(argv):
@@ -130,20 +190,34 @@ def main(argv):
     ap.add_argument('--build-dir')
     ap.add_argument('--pdf-dir')
     ap.add_argument('--publish', action='store_true',
-                    help='copy the PDFs to docs/physics/pdf and to the "copies" directories of notes.json')
-    ap.add_argument('--note', action='append', help='build only this note source (00_common.tex is always built)')
+                    help='copy the PDFs to docs/physics/pdf and to the "copies" folders of notes.json')
+    ap.add_argument('--note', action='append', help='build only this note source (00_common.tex is always built); '
+                    'implies --no-book')
+    ap.add_argument('--no-book', action='store_true', help='do not build the bound book')
+    ap.add_argument('--lint-only', action='store_true')
+    ap.add_argument('--lint-file', action='append', help='lint this file (e.g. the template) and exit')
     ap.add_argument('--check-copies', action='store_true')
     a = ap.parse_args(argv[1:])
     root = os.path.abspath(a.source_root)
     ldir = os.path.join(root, 'docs', 'physics', 'latex')
-    notes = json.load(open(os.path.join(ldir, 'notes.json'), encoding='utf-8'))['notes']
+    manifest = json.load(open(os.path.join(ldir, 'notes.json'), encoding='utf-8'))
+    notes = manifest['notes']
+    book = manifest.get('book')
     if a.check_copies:
-        return check_copies(root, notes)
-    if not a.build_dir:
-        ap.error('--build-dir is required')
+        return check_copies(root, manifest)
+    if a.lint_file:
+        bad = []
+        for f in a.lint_file:
+            k, probs = lint(f if os.path.isabs(f) else os.path.join(ldir, f))
+            bad += probs
+            print(f'build_physics_pdf: {os.path.basename(f)}: {k} displays')
+        for b in bad:
+            print('build_physics_pdf: FAIL: ' + b)
+        return 1 if bad else 0
 
     failures = []
     wanted = set(a.note or [n['source'] for n in notes]) | {'00_common.tex'}
+    do_book = bool(book) and not a.note and not a.no_book
     # 1. lint
     neq = 0
     for n in notes:
@@ -156,7 +230,11 @@ def main(argv):
         for f in failures:
             print('build_physics_pdf: FAIL: ' + f)
         return 1
-    print(f'build_physics_pdf: lint ok, {neq} displayed equations, each with a code citation')
+    print(f'build_physics_pdf: lint ok, {neq} displayed equations, each with a C++ and a Fortran citation')
+    if a.lint_only:
+        return 0
+    if not a.build_dir:
+        ap.error('--build-dir is required')
 
     xelatex = shutil.which('xelatex')
     if not xelatex:
@@ -165,54 +243,67 @@ def main(argv):
     bdir = os.path.abspath(a.build_dir)
     os.makedirs(bdir, exist_ok=True)
     version, date = git_meta(root)
+    v = version.replace('_', '\\_')
     with open(os.path.join(bdir, 'simcnote_version.tex'), 'w', encoding='utf-8') as f:
         f.write('%% written by docs/physics/build_physics_pdf.py\n\\renewcommand\\simcnoteversion{%s}'
-                '\\renewcommand\\simcnotedate{%s}\n' % (version.replace('_', '\\_'), date))
+                '\\renewcommand\\simcnotedate{%s}\n' % (v, date))
+    with open(os.path.join(bdir, 'simcpp_version.tex'), 'w', encoding='utf-8') as f:
+        f.write('%% written by docs/physics/build_physics_pdf.py\n\\renewcommand\\simcbuildversion{%s}'
+                '\\renewcommand\\simcbuilddate{%s}\n' % (v, date))
     env = dict(os.environ)
     env['TEXINPUTS'] = os.pathsep.join([ldir, os.path.join(root, 'docs', 'common', 'latex') + '//',
                                         os.path.join(root, 'docs', 'common', 'figures'), bdir, ''])
     env['max_print_line'] = '1000'
-
     info = shutil.which('pdfinfo')
-    for n in notes:
-        if n['source'] not in wanted:
-            continue
-        job = os.path.splitext(n['source'])[0]
-        src = os.path.join(ldir, n['source'])
-        ok = True
-        for p in range(1, 6):
-            r = run([xelatex, '-interaction=nonstopmode', '-halt-on-error', '-jobname', job, src], bdir, env)
-            errs, overfull, big, rerun = latex_problems(os.path.join(bdir, job + '.log'))
-            if r.returncode != 0:
-                errs = [e for e in errs if e.startswith('LaTeX error')] or errs or ['xelatex exit %d' % r.returncode]
-                failures.append(f'{job}: pass {p}: ' + '; '.join(errs[:10]))
-                ok = False
-                break
-            if p >= 2 and not rerun:
-                break
-        if not ok:
-            continue
-        if errs:
-            failures.append(f'{job}: ' + '; '.join(sorted(set(errs))[:20]))
-            continue
-        if rerun:
-            failures.append(f'{job}: references still changing after 5 passes')
-        built = os.path.join(bdir, job + '.pdf')
-        outs = [os.path.join(os.path.abspath(a.pdf_dir or bdir), n['output'] + '.pdf')]
+
+    def pages_of(pdf):
+        if not info:
+            return '?'
+        m = re.search(r'^Pages:\s+(\d+)', run([info, pdf], bdir).stdout, re.M)
+        return m.group(1) if m else '?'
+
+    def deliver(built, output, copies):
+        outs = [os.path.join(os.path.abspath(a.pdf_dir or bdir), output + '.pdf')]
         if a.publish:
-            outs.append(os.path.join(root, 'docs', 'physics', 'pdf', n['output'] + '.pdf'))
-            outs += [os.path.join(root, d, n['output'] + '.pdf') for d in n.get('copies', [])]
+            outs.append(os.path.join(root, 'docs', 'physics', 'pdf', output + '.pdf'))
+            outs += [os.path.join(root, d, output + '.pdf') for d in copies]
         for out in outs:
             os.makedirs(os.path.dirname(out), exist_ok=True)
             if os.path.abspath(out) != os.path.abspath(built):
                 shutil.copyfile(built, out)
-        pages = '?'
-        if info:
-            m = re.search(r'^Pages:\s+(\d+)', run([info, built], bdir).stdout, re.M)
-            pages = m.group(1) if m else '?'
-        where = ', '.join(os.path.relpath(o, root) if o.startswith(root) else o for o in outs)
-        print(f'build_physics_pdf: {job}: {pages} pages, {p} xelatex passes, {overfull} overfull boxes ({big} > 3pt)'
-              f' -> {where}')
+        return ', '.join(os.path.relpath(o, root) if o.startswith(root) else o for o in outs)
+
+    # 3. the notes
+    for n in notes:
+        if n['source'] not in wanted:
+            continue
+        job = os.path.splitext(n['source'])[0]
+        ok, errs, overfull, big, p = compile_tex(xelatex, os.path.join(ldir, n['source']), job, bdir, env)
+        if not ok:
+            failures.append(f'{job}: ' + '; '.join(sorted(set(errs))[:20]))
+            continue
+        built = os.path.join(bdir, job + '.pdf')
+        where = deliver(built, n['output'], n.get('copies', []))
+        print(f'build_physics_pdf: {job}: {pages_of(built)} pages, {p} xelatex passes, {overfull} overfull boxes '
+              f'({big} > 3pt) -> {where}')
+
+    # 3b. the book
+    if do_book:
+        with open(os.path.join(bdir, 'physics_reference_notes.tex'), 'w', encoding='utf-8') as f:
+            f.write('% written by docs/physics/build_physics_pdf.py from notes.json: the reaction chapters\n')
+            for n in notes:
+                if n['source'] != '00_common.tex':
+                    f.write('\\simcinputnote{%s}\n' % os.path.splitext(n['source'])[0])
+        job = os.path.splitext(BOOK_SOURCE)[0]
+        ok, errs, overfull, big, p = compile_tex(xelatex, os.path.join(ldir, BOOK_SOURCE), job, bdir, env)
+        if not ok:
+            failures.append(f'{job}: ' + '; '.join(sorted(set(errs))[:20]))
+        else:
+            built = os.path.join(bdir, job + '.pdf')
+            where = deliver(built, book['output'], [])
+            print(f'build_physics_pdf: {job}: {pages_of(built)} pages, {p} xelatex passes, {overfull} overfull boxes '
+                  f'({big} > 3pt) -> {where}')
+
     for f in failures:
         print('build_physics_pdf: FAIL: ' + f)
     return 1 if failures else 0

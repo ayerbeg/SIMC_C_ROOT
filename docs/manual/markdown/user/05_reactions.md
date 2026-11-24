@@ -28,10 +28,19 @@ normalisation. The generation volume `genvol` is the product of the generated ra
 hadron solid angle and the electron energy for every reaction except H(e,e'p); also the hadron energy for A(e,e'p) and
 SIDIS.
 
+**Physics notes.** Every formula behind a reaction (generated variables and ranges, event completion, jacobians, the
+cross-section model, radiation, inputs and tree columns, validation and Fortran origin) is in its physics note, one PDF
+per reaction, bound together as the [SIMC++ Physics Reference](../../../physics/pdf/SIMCpp_Physics_Reference.pdf). The
+common elements (the plug-in architecture, notation and glossary, weighting and normalisation, energy loss, Coulomb
+correction, radiative corrections) are in [note 00](../../../physics/pdf/SIMCpp_Physics_00_common.pdf). A copy of each
+reaction note sits in the source folder of its physics model (`src/physics/<reaction>/`); see
+[docs/physics/README.md](../../../physics/README.md).
+
 ## 5.2 H(e,e'p) elastic, D(e,e'p), A(e,e'p) and A(e,e')A
 
 * **H(e,e'p)** (`hydrogen_elastic`, model `sigep`): elastic scattering. Only the electron angles are generated; the
-  proton follows from the kinematics. Elastic e-p cross section with a proton form-factor fit.
+  proton follows from the kinematics. Elastic e-p cross section with a proton form-factor fit. Physics note:
+  [01 H(e,e'p) elastic](../../../physics/pdf/SIMCpp_Physics_01_hydrogen_elastic.pdf).
 * **D(e,e'p) and A(e,e'p)** (`deuterium_eep`, `nucleus_eep`, model `deforest`): quasi-elastic knock-out with the de Forest
   off-shell cross section (`deForest_flag`: σcc1, σcc2 or σcc1 on-shell) times a spectral function:
   * **theory files** (default): `h2.theory`, `c12.theory`, `fe56.theory`, `au197.theory` in the data directory's
@@ -41,16 +50,18 @@ SIDIS.
 
   In a JSON input, `"pipeline": {"reaction": {"spectral_function": {"type": "benhar", "file": "benharsf_12.dat",
   "transparency": 0.6}}}` chooses the file explicitly (`--data-dir` sets its directory). `cuts%Em` limits the generated
-  missing energy.
+  missing energy. Physics note: [02 D(e,e'p) and A(e,e'p)](../../../physics/pdf/SIMCpp_Physics_02_quasielastic_eep.pdf).
 
 * **A(e,e')A nuclear elastic** (`doing_nuc_elast = 1`, `nuclear_elastic`, model `nuc_elastic`; upstream SIMC commit
   4df7351): elastic scattering from the whole nucleus, the "hadron" is the recoiling nucleus (mass `targ%mass_amu`).
   Only the electron angles are generated, as for H(e,e'p). Cross section σ_Mott · (Z·F(Q²))² · recoil factor with a
-  Gaussian charge form factor F (R = 1.07 A^1/3 fm; de Vries radii for A = 27, 28, 56, 205) and no magnetic term (spin-0
+  charge form factor F, a fixed Gaussian (2.4 fm) times a monopole in R (R = 1.07 A^1/3 fm; de Vries radii for A = 27,
+  28, 56, 205), and no magnetic term (spin-0
   nuclei). W and the ntuple columns `corrsing`, `Pmx/y/z` follow the (e,e'p) formulas with the proton mass (`corrsing`
   and `Pmx/y/z` are 0). `doing_nuc_elast` cannot be combined with another `doing_*` reaction flag or `doing_phsp`.
   Upstream SIMC 59ccdf6 lost this reaction in commit e4dd175 (0 successes); SIMC++ runs the code of commit 20d46fc
-  (FORTRAN_DIFFERENCES U-A1).
+  (FORTRAN_DIFFERENCES U-A1). Physics note:
+  [03 A(e,e')A nuclear elastic](../../../physics/pdf/SIMCpp_Physics_03_nuclear_elastic.pdf).
 
 Limitations: the D(e,e'p) weight has no hadron-angle jacobian while A(e,e'p) has one (a ≤ 1.5 % effect at the corners of
 the generated solid angle); He-3 and He-4 use the C-12 spectral function unless you give a file.

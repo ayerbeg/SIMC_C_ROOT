@@ -184,6 +184,11 @@ class IReaction : public IStage {
   the central complete_main: set the main0 quantities your cross section reads) and `finalTargetState(targ)` (target
   COMMON values your reaction changed during the run, for the report).
 
+Every reaction comes with a physics note written from `docs/physics/latex/template_reaction.tex`
+([docs/physics/README.md](../../../physics/README.md)): the formulas it evaluates, each citing its C++ function, its
+selection and JSON keys, inputs, tree columns and validation. The notes of the built-in reactions are in
+`docs/physics/pdf/` (bound as the *SIMC++ Physics Reference*) with copies in the plug-in folders.
+
 The (e,e'p) plug-ins share `reactions::EepReactionBase` (complete_ev, complete_recon_ev, complete_main, genvol of
 event.f/simc.f); a new (e,e'p)-like reaction can derive from it and implement `generate()` and `spectralWeight()`.
 `assembleWeight` serves the (e,e'p) family; the other reactions assemble their own weight. The exclusive pion reaction `pion_production` (P9.2, `include/simc/reactions/PionProduction.h`)
@@ -249,7 +254,9 @@ class IPhysicsModel : public IStage {
 ```
 
 A cross-section model takes the completed vertex (MeV, rad) and returns the cross section in the units of the
-Fortran routine it replaces (for H(e,e'p): those of physics_proton.f:sigep). Select it with `"physics": "name"`.
+Fortran routine it replaces (for H(e,e'p): those of physics_proton.f:sigep). Section 5 of the reaction's physics note
+(`docs/physics/pdf/`) states what the reaction requires from a model (the vertex quantities read and the units); a new
+model is documented in a physics note as well (`docs/physics/latex/template_reaction.tex`). Select it with `"physics": "name"`.
 Minimal, compiled and tested example: `examples/dev_manual/FlatModel.cpp` (IPhysicsModel `example_flat`, a constant
 cross section; CTest `example_dev_manual_plugins`; quoted in the developer manual, chapter 4):
 `{"pipeline": {"physics": {"type": "example_flat", "value": 2.5}}}`. Templates: `src/physics/proton/ProtonModels.cpp`;
@@ -328,3 +335,7 @@ defaults are zero/false), `IMaterialModel` (`simc_material`, used inside `hallc_
       the Fortran-mirror structures in a `kernel/` header of its module, and add an L1 test against a Fortran
       reference table.
 * [ ] A CTest that runs the driver with the plug-in selected through the JSON (see `examples/ideal_box`).
+* [ ] A new reaction or physics model: a physics note from `docs/physics/latex/template_reaction.tex`, listed in
+      `docs/physics/latex/notes.json` with its plug-in folders as copy folders, a `README.md` in each folder, and
+      `cmake --build <build> --target physics_pdf` run before the commit (CTests `docs_physics_*`;
+      [docs/physics/README.md](../../../physics/README.md)).

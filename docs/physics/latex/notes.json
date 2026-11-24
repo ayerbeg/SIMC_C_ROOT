@@ -1,10 +1,15 @@
 {
-  "comment": "Manifest of the SIMC++ physics notes (docs/physics/README.md). Built in this order by docs/physics/build_physics_pdf.py: 00_common first (the reaction notes reference its labels through xr-hyper). 'copies': source-tree directories that receive a generated copy of the PDF when the notes are published (target physics_pdf).",
+  "comment": "Manifest of the SIMC++ physics notes (docs/physics/README.md). Built in this order by docs/physics/build_physics_pdf.py: 00_common first (the reaction notes read its labels through xr-hyper), then the reactions; the book physics_reference.tex binds them in the same order (00 = Part I, the others = Part II). 'copies': the plug-in folders of the reaction (src/reactions/<r>/ where such a folder exists, src/physics/<r>/), which receive a generated, byte-identical copy of the PDF when the notes are published (target physics_pdf); each needs a README.md naming the PDF.",
+  "book": {
+    "source": "physics_reference.tex",
+    "output": "SIMCpp_Physics_Reference",
+    "title": "SIMC++ Physics Reference"
+  },
   "notes": [
     {
       "source": "00_common.tex",
       "output": "SIMCpp_Physics_00_common",
-      "title": "Common elements: frames, kinematics, weighting, event chain, radiation, energy loss, Coulomb",
+      "title": "Common elements: plug-in architecture, event chain, notation, kinematics, weighting, target effects, radiation",
       "copies": []
     },
     {
@@ -16,8 +21,8 @@
     {
       "source": "02_quasielastic_eep.tex",
       "output": "SIMCpp_Physics_02_quasielastic_eep",
-      "title": "D(e,e'p) and A(e,e'p) quasi-elastic knock-out (reactions deuterium_eep, nucleus_eep, model deforest)",
-      "copies": ["src/physics/nuclear"]
+      "title": "D(e,e'p) and A(e,e'p) quasi-elastic knock-out (reactions deuterium_eep, nucleus_eep; model deforest; spectral functions theory, benhar)",
+      "copies": ["src/physics/proton", "src/physics/nuclear"]
     },
     {
       "source": "03_nuclear_elastic.tex",

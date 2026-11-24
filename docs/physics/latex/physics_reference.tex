@@ -1,0 +1,33 @@
+% docs/physics/latex/physics_reference.tex - the bound book "SIMC++ Physics Reference".
+% Single source: the chapters ARE the note files of this directory (\simcinputnote inputs a complete note without its
+% preamble). Part I is the common note 00, Part II the reaction notes in the order of notes.json
+% (physics_reference_notes.tex is written by build_physics_pdf.py). Do not put physics text here.
+% Build: cmake --build <build> --target physics_pdf (see docs/physics/README.md).
+\documentclass[book]{simcnote}
+\simcsetmeta{SIMC++ Physics Reference}%
+  {The physics of the SIMC++ reactions: generation, kinematics, cross sections, radiation and the plug-ins that
+   implement them}%
+  {\simcbuildversion}{\simcbuilddate}{SIMC++ documentation}
+\begin{document}
+\simcphysfrontmatter
+\chapter*{About this book}\addcontentsline{toc}{chapter}{About this book}\markboth{About this book}{}
+\simcabstract{One chapter per reaction of SIMC++, preceded by the elements they share.}
+Each chapter is a \emph{physics note}: it describes one reaction as SIMC++ builds it (the reaction and physics-model
+plug-ins, how the pipeline selects them, the stages they use), then every formula the code evaluates, the inputs and
+outputs of the reaction, its validation and its Fortran origin. Each displayed equation names the C++ function that
+computes it and, second, the line of the Fortran SIMC (upstream commit \texttt{59ccdf6}) it was translated from.
+
+The same files are also built as standalone PDFs, one per note, in \texttt{docs/physics/pdf/}; a copy of each
+reaction note sits in the source folders of its plug-ins (\texttt{src/physics/<reaction>/}), next to the code it
+describes. Chapter~\ref{N00-note} (Part~I) defines the notation, the glossary and the common physics used by all the
+other chapters. The user manual (chapter 5, Reactions) explains how to run each reaction; the developer manual
+(chapter 4) explains how to add a reaction or a physics model, which comes with a new chapter of this book written
+from \texttt{docs/physics/latex/template\_reaction.tex}.
+\simcmainmatter
+\simcpart{Common elements}{The plug-in architecture, the event chain, notation and glossary, and the physics shared by
+all reactions: kinematics, weighting and normalisation, target effects, Coulomb correction and radiation.}
+\simcinputnote{00_common}
+\simcpart{Reactions}{One chapter per reaction: the SIMC++ components, kinematics and generation, the cross-section
+model, radiation, inputs and outputs, validation and the Fortran origin.}
+\input{physics_reference_notes}
+\end{document}

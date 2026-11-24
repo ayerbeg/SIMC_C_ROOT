@@ -67,6 +67,13 @@ struct for the run constants (and \code{fortran\_\allowbreak{}compat} if the mod
 model ported from the Fortran also needs a reference table (see the
 translation report\footnote{From SIMC to SIMC++, ``2.7 Adding a new Fortran reference, end to end'' (\code{docs/\allowbreak{}translation/\allowbreak{}markdown/\allowbreak{}02\_\allowbreak{}validation.\allowbreak{}md})}).
 
+\textbf{Physics note.} A new physics model comes with a physics note: a LaTeX note written from the template
+\code{docs/\allowbreak{}physics/\allowbreak{}latex/\allowbreak{}template\_\allowbreak{}reaction.\allowbreak{}tex} (nine sections; section 5 gives every formula of the model, each display
+citing the C++ function and, for a ported model, the Fortran lines), added to \code{docs/\allowbreak{}physics/\allowbreak{}latex/\allowbreak{}notes.\allowbreak{}json} with the
+model's folder as copy folder, plus a \code{README.\allowbreak{}md} in that folder. The target \code{physics\_\allowbreak{}pdf} builds it, copies it into the
+folder and binds it into the \emph{SIMC++ Physics Reference}; the CTests \code{docs\_\allowbreak{}physics\_\allowbreak{}*} check
+it\footnote{\code{docs/\allowbreak{}physics/\allowbreak{}README.\allowbreak{}md}}.
+
 \section{\texorpdfstring{A new output sink (\code{IOutputSink}, \code{IParallelSink})}{A new output sink (IOutputSink,\allowbreak{} IParallelSink)}}\label{developer_manual-04u5fextending:43-a-new-output-sink-ioutputsink-iparallelsink}
 \code{fill} sees \textbf{every} try (use \code{success} to select contributing events, \code{main.\allowbreak{}weight} as their weight); \code{endRun} gets
 the \code{RunSummary}\simcidx{Classes and interfaces!RunSummary@\code{RunSummary}}. To work with \code{-{}-{}threads\ N}\simcidx{Command-line options!threads@\code{-{}-{}threads}}, also implement \code{IParallelSink}\simcidx{Classes and interfaces!IParallelSink@\code{IParallelSink}}: \code{makeWorkerSink} returns a new, configured
@@ -192,6 +199,11 @@ The ntuple layout follows the reaction flags (output/\allowbreak{}NtupleLayout.\
 \item \textbf{Tests}: a run through the driver (like \code{example\_\allowbreak{}dev\_\allowbreak{}manual\_\allowbreak{}plugins}), tests of the kernels on fixed inputs (with a
 \code{ScriptedRandom}\simcidx{Classes and interfaces!ScriptedRandom@\code{ScriptedRandom}}), a regression baseline in both modes (\code{tests/\allowbreak{}regression}) and a statistical comparison with
 \code{simc\_\allowbreak{}compare}. A reaction ported from the Fortran needs the reference tests of the translation report.
+\item \textbf{Physics note}: write the reaction's note from \code{docs/\allowbreak{}physics/\allowbreak{}latex/\allowbreak{}template\_\allowbreak{}reaction.\allowbreak{}tex} (the reaction in
+SIMC++, kinematics and generation, event completion, jacobians, cross-section model, radiation, inputs and outputs,
+validation, Fortran origin), list it in \code{docs/\allowbreak{}physics/\allowbreak{}latex/\allowbreak{}notes.\allowbreak{}json} with its plug-in folders (\code{src/\allowbreak{}reactions/\allowbreak{}<r>/},
+\code{src/\allowbreak{}physics/\allowbreak{}<r>/}) as copy folders, give each folder a \code{README.\allowbreak{}md}, and run
+\code{cmake -{}-{}build <build> -{}-{}target physics\_\allowbreak{}pdf}\footnote{\code{docs/\allowbreak{}physics/\allowbreak{}README.\allowbreak{}md}}.
 \end{enumerate}
 \section{\texorpdfstring{Out of tree}{Out of tree}}\label{developer_manual-04u5fextending:46-out-of-tree}
 \simcsource{examples/\allowbreak{}out\_\allowbreak{}of\_\allowbreak{}tree\_\allowbreak{}plugin/\allowbreak{}CMake\allowbreak{}Lists.\allowbreak{}txt}

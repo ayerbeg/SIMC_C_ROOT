@@ -1,18 +1,26 @@
-# src/physics/nuclear: physics notes
+# src/physics/nuclear: nuclear spectral functions and the nuclear elastic model
 
-Two physics notes belong to the code of this folder:
+## The plug-ins and classes of this folder
 
-* `SIMCpp_Physics_02_quasielastic_eep.pdf`: D(e,e'p) and A(e,e'p) quasi-elastic knock-out (reactions `deuterium_eep`,
-  `nucleus_eep`, model `deforest`): generation and limits, the proton-energy solution and jacobian for deuterium, the
-  de Forest cross sections, the spectral functions (theory files, Benhar tables, implemented here in
-  `SpectralFunctions.cpp` and `SpectralFunctionTables.cpp`), transparency, radiation, inputs, tree columns, the
-  Fortran-to-C++ map and the Fortran findings;
-* `SIMCpp_Physics_03_nuclear_elastic.pdf`: A(e,e')A nuclear elastic scattering (reaction `nuclear_elastic`, model
-  `nuc_elastic`, implemented here in `NuclearElastic.cpp`): kinematics, the charge form factor, radiation, outputs and
-  the upstream status of the reaction.
+| registered name | interface | class | file | role |
+|---|---|---|---|---|
+| `theory` | `ISpectralFunction` | `nuclear::TheorySpectralFunction` | `SpectralFunctions.cpp` | spectral function of the theory files (h2/c12/fe56/au197.theory) for D/A(e,e'p) |
+| `benhar` | `ISpectralFunction` | `nuclear::BenharSpectralFunction` | `SpectralFunctions.cpp` | Benhar tables (benharsf_*.dat) with a constant transparency |
+| `nuc_elastic` | `IPhysicsModel` | `nuclear::NucElasticModel` | `NuclearElastic.cpp` | A(e,e')A elastic cross section with a charge form factor |
+| (kernels) | -- | `nuclear::SfTable`, `TheorySfWeight` | `SpectralFunctionTables.cpp` | table reading and interpolation (Fortran sf_lookup.f, event.f) |
+| (kernels) | -- | `nuclear::SigNucElastic`, `NucFormFactor`, `Fgauss` | `NuclearElastic.cpp` | the formulas of Fortran nuclear_elastic.f |
 
-These PDFs are generated copies. The sources are `docs/physics/latex/02_quasielastic_eep.tex` and
-`docs/physics/latex/03_nuclear_elastic.tex`, the master PDFs are in `docs/physics/pdf/`; the build target
-`physics_pdf` writes masters and copies together, so they are always identical (test `docs_physics_pdf_copies`). Do not
-edit or replace these files by hand. The common elements (frames, weighting, radiation, energy loss) are in
-`docs/physics/pdf/SIMCpp_Physics_00_common.pdf`; see `docs/physics/README.md`.
+The headers are in `include/simc/physics/nuclear/`. The spectral functions are components of the reactions
+`deuterium_eep` and `nucleus_eep` (`src/reactions/NuclearEep.cpp`); the data files are in `data/spectral/`.
+
+## Physics notes
+
+| PDF in this folder | note | LaTeX source |
+|---|---|---|
+| `SIMCpp_Physics_02_quasielastic_eep.pdf` | D(e,e'p) and A(e,e'p): the reactions `deuterium_eep`, `nucleus_eep`, the model `deforest` (in `src/physics/proton/`) and the spectral functions `theory` and `benhar` of this folder | `docs/physics/latex/02_quasielastic_eep.tex` |
+| `SIMCpp_Physics_03_nuclear_elastic.pdf` | A(e,e')A nuclear elastic scattering: the reaction `nuclear_elastic` with the model `nuc_elastic` | `docs/physics/latex/03_nuclear_elastic.tex` |
+
+These PDFs are **generated copies**: the build target `physics_pdf` writes them from the masters in `docs/physics/pdf/`,
+so they are always identical to the masters (test `docs_physics_pdf_copies`). Do not edit or replace them by hand;
+change the LaTeX source and rebuild. The common elements are in note 00 and the whole set is bound as the
+*SIMC++ Physics Reference* (`docs/physics/pdf/`); see `docs/physics/README.md`.
