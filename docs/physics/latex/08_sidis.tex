@@ -1,0 +1,755 @@
+% docs/physics/latex/08_sidis.tex - SIMC++ physics note 08: semi-inclusive (e,e'h)X production (SIDIS).
+% Standalone PDF docs/physics/pdf/SIMCpp_Physics_08_sidis.pdf (copied to src/reactions/sidis/ and src/physics/sidis/);
+% a chapter of the book SIMC++ Physics Reference. Rules: docs/physics/README.md; structure: template_reaction.tex.
+% Every display cites the C++ function first and the Fortran (upstream 59ccdf6) line second.
+\documentclass{simcnote}
+\simccommon
+\begin{document}
+\simcnotemeta{08}{SIDIS (e,e\pr h)X}{Semi-inclusive production (e,e\pr\texorpdfstring{$\pi^\pm$}{pi+-})X, (e,e\pr\texorpdfstring{$\pi^0$}{pi0})X and (e,e\pr K\texorpdfstring{$^\pm$}{+-})X}%
+  {Reaction plug-in \texttt{sidis\_production} with the physics model \texttt{sidis}: CTEQ5M parton distributions,
+   Bosted pion and fDSS kaon fragmentation, Christy inclusive structure functions}
+\simcnotemaketitle
+\simcabstract{Semi-inclusive electroproduction of a pion or a kaon on hydrogen, deuterium or a heavier nucleus, with the
+electron and the hadron detected in coincidence and the rest of the final state unobserved. Both final energies and
+both directions are generated, nothing is solved from the kinematics. The weight is a factorised leading-order model:
+the inclusive cross section (from the Christy--Bosted structure-function fit) times the hadron multiplicity
+$\sum_q e_q^2q(x)D_q^h(z)/\sum_q e_q^2q(x)$ (CTEQ5M parton distributions; P.~Bosted's fit of the pion fragmentation
+functions, fDSS for kaons), times a Gaussian transverse-momentum distribution and a flat azimuth. Notation, glossary and
+common physics: note 00.}
+\simcnotetoc
+
+% =====================================================================================================================
+\section{The reaction in SIMC++}\lbl{sec:reaction}
+
+\subsection{Process and scope}
+The reaction is $e + A \to e' + h + X$ with $h=\pi^+,\pi^-,\pi^0,K^+,K^-$, on hydrogen, deuterium or a nucleus with
+$A\ge3$. What is simulated: the full event chain of note 00 (beam, energy loss, multiple scattering, radiation on the three
+legs, both spectrometers, decay of the hadron in flight or its survival probability, the two photons of a $\pi^0$), with a
+factorised cross section built from parton distributions and fragmentation functions. What is not simulated: any
+azimuthal modulation (the $\varphi_{pq}$ dependence is flat, no Cahn, Boer--Mulders or higher-twist terms), target-mass
+corrections other than the scaling variable of the pion fragmentation fit, exclusive and resonance channels (they are
+cut by two missing-mass thresholds, \secr{sec:complete} and \secr{sec:xsec}), the unobserved hadrons, Fermi motion in
+nuclei with $A\ge3$ (only deuterium has it, and only in the cross section), polarised targets in the cross section, and
+any nuclear effect beyond the EMC ratio of the inclusive part and an attenuation factor of the multiplicity.
+
+\subsection{Components}
+\begin{simctable}{footnotesize}{L{0.14\linewidth}L{0.16\linewidth}L{0.15\linewidth}L{0.25\linewidth}L{0.30\linewidth}}
+\caption{The SIMC++ components of SIDIS (one component per row).}\lbl{tab:components}\\
+\toprule\rowcolor{simchead}\simcth{role} & \simcth{interface} & \simcth{registered name} & \simcth{class} & \simcth{file}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{role} & \simcth{interface} & \simcth{registered name} & \simcth{class} & \simcth{file}\\\midrule\endhead
+\bottomrule\endlastfoot
+reaction & \code{IReaction} & \code{sidis\_production} & \code{SidisProduction} & \file{reactions/sidis/SidisProduction.cpp}\\
+meson base class & (base class) & -- & \code{PionProduction} & \file{reactions/pion/PionProduction.cpp}\\
+event completion and reconstruction & (base class) & -- & \code{EepReactionBase} & \file{reactions/EepReactionBase.cpp}\\
+cross section & \code{IPhysicsModel} & \code{sidis} & \code{sidis::SidisModel} & \file{physics/sidis/SidisModel.cpp}\\
+cross-section kernel & (function) & -- & \code{sidis::peepiX} & \file{physics/sidis/SidisCrossSection.cpp}\\
+EMC ratio and hadron attenuation & (functions) & -- & \code{sidis::slacemcfit}, \code{sidis::rhadGlobal} & \file{physics/sidis/SidisCrossSection.cpp}\\
+parton distributions & (class) & -- & \code{sidis::Cteq5Pdf} & \file{physics/sidis/Cteq5Pdf.cpp}\\
+kaon fragmentation & (class) & -- & \code{sidis::FdssGrid} & \file{physics/sidis/Fdss.cpp}\\
+inclusive structure functions & (functions) & -- & \code{sidis::f1f2in21}, \code{sf}, \code{resmod} & \file{physics/sidis/F1F2In21.cpp}\\
+dilution factor (not called) & (function) & -- & \code{sidis::semiDilution} & \file{physics/sidis/SemiDilution.cpp}\\
+data tables & (files) & -- & \code{cteq5m.tbl}, \code{KANLO.GRID} & \file{data/sidis/}\\
+deuteron momentum distribution & (file) & -- & \code{ReadMomentum\-Distribution} (\code{deut.dat}) & \file{setup/SetupTheory.cpp}\\
+$\pi^0\to\gamma\gamma$ & (function) & -- & \code{pion::pizeroDecay} & \file{physics/pion/PizeroDecay.cpp}\\
+beam, target, radiation, arms, outputs & as in note 00 & \code{standard}, \code{hallc\_cryo}, \code{simc\_rad}, \ldots & & \ctabr{tab:plugins}\\
+\end{simctable}
+
+\subsection{Selection and override}
+The pipeline selects \code{sidis\_production} with the model \code{sidis} when \code{doing\_semi} = 1
+(\ctabr{tab:defaults}). \code{doing\_semi} then takes priority over the meson flags, which only choose the hadron:
+\code{doing\_pion} = 1 gives pions, \code{doing\_kaon} = 1 kaons; \code{doing\_hplus} chooses the charge and
+\code{doing\_pizero} = 1 (with \code{doing\_pion}) the neutral pion. The target class follows $\mathrm{nint}(A)$: 1, 2,
+$\ge3$. The set-up uses $M_h$ = $M_{\pi^\pm}$, $M_{\pi^0}$ or $M_K$, a struck nucleon $M_N=M_p$ and a ``recoil'' of mass
+$M_p$ for every target and hadron (the code comment says ``for now, just assuming proton mass''), so that $M_N$ and the
+recoil mass cancel in the energy budget. \code{do\_fermi} is switched off (with a warning) on hydrogen. The model
+refuses a set-up without \code{doing\_semi}, without a hadron choice, or with \code{doing\_phsp} (note 09). JSON keys:
+
+\begin{simctable}{footnotesize}{L{0.33\linewidth}L{0.33\linewidth}L{0.34\linewidth}}
+\caption{JSON keys of this reaction and its model (one key per row).}\lbl{tab:json}\\
+\toprule\rowcolor{simchead}\simcth{key} & \simcth{effect} & \simcth{example}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{key} & \simcth{effect} & \simcth{example}\\\midrule\endhead
+\bottomrule\endlastfoot
+\code{pipeline.reaction} & the reaction & \code{"sidis\_production"}\\
+\code{pipeline.physics} & the cross-section model & \code{"sidis"}\\
+\code{pipeline.physics.data\_dir} & directory of \code{cteq5m.tbl} and \code{KANLO.GRID} & \code{\{"type": "sidis", "data\_dir": "/path"\}}\\
+\code{pipeline.physics.verbose} & print the notes on ignored inputs and the model messages & \code{\{"type": "sidis", "verbose": true\}}\\
+\end{simctable}
+A replacement model must return $\mathrm{d}^5\sigma/(\mathrm{d}\Omega_e\,\mathrm{d}E'\,\mathrm{d}\Omega_h\,\mathrm{d}E_h)$
+in $\mu$b/(MeV$^2$\,sr$^2$) per nucleus (\secr{sec:xsec}).
+
+\subsection{Event flow}
+\begin{simctable}{footnotesize}{L{0.05\linewidth}L{0.33\linewidth}L{0.62\linewidth}}
+\caption{One try of SIDIS (one step per row; the general chain is \ctabr{tab:chain}).}\lbl{tab:flow}\\
+\toprule\rowcolor{simchead}\simcth{\#} & \simcth{C++ call} & \simcth{what is specific to this reaction}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{\#} & \simcth{C++ call} & \simcth{what is specific to this reaction}\\\midrule\endhead
+\bottomrule\endlastfoot
+1 & \code{StandardBeam::generate} & nothing\\
+2 & \code{SidisProduction::generate} & both slope pairs, the hadron energy, then the electron energy (\eqsr{eq:genhad}{eq:genel}); deuterium: a Fermi momentum (\eqr{eq:fermi})\\
+3 & \code{SidisProduction::completeEv} & no solution: $\vec q$, $W$, $\varepsilon$, $\theta_{pq}$, $t$, $\varphi_{pq}$, $\vec P_m$, $E_\mathrm{miss}$; the missing-mass threshold, $z$, $p_T^2$ (\eqsr{eq:mesonkin}{eq:zpt}); the $\pi^0$ photons; two solid-angle jacobians\\
+4 & \code{SimcRadiator::radiate} & tail-1 limit from the summed-energy limit (\eqr{eq:radlimits}); a tail-1 photon calls \code{completeEv} again\\
+5 & \code{MonteCarlo::run} & decay of $\pi^\pm$/K$^\pm$ in flight when \code{doing\_decay} = 1; for a $\pi^0$ the photons go to a calorimeter arm\\
+6 & \code{EepReactionBase::completeRecon} & $E_m^\mathrm{rec}$, missing masses, $t^\mathrm{rec}$, $z^\mathrm{rec}$, $p_T^{2,\mathrm{rec}}$ (\eqr{eq:recon})\\
+7 & \code{SidisProduction::completeMain} & $S=1$, $n_\mathrm{tgt}=1$; \code{SidisModel::sigccMain} (\secr{sec:xsec}); Coulomb factor; survival probability for kaons without decay\\
+\end{simctable}
+
+% =====================================================================================================================
+\section{Kinematics, generated variables and generation volume}\lbl{sec:gen}
+\subsection{Generated variables}
+\begin{simctable}{small}{L{0.35\linewidth}L{0.65\linewidth}}
+\caption{Generated variables (one variable per row; $\xi_i$ uniform random numbers, in this order).}\lbl{tab:generated}\\
+\toprule\rowcolor{simchead}\simcth{variable} & \simcth{how}\\\midrule\endfirsthead
+\bottomrule\endlastfoot
+electron slopes $y'_e$, $x'_e$ & flat in the electron edges (as in note 01)\\
+hadron slopes $y'_h$, $x'_h$ & flat in the hadron edges\\
+hadron energy $E_h$ & flat, drawn first (\eqr{eq:genhad})\\
+electron energy $E'$ & flat in its full generation range (\eqr{eq:genel})\\
+Fermi momentum $\vec p_F$ (deuterium only) & from the deuteron momentum distribution, isotropic (\eqr{eq:fermi})\\
+\end{simctable}
+After the four slopes the hadron energy is drawn in the part of its generation range compatible with the summed-energy
+limits $\Sigma$, then the electron energy in its own range:
+\begin{feqa}{reactions/sidis/SidisProduction.cpp: SidisProduction::generate}{event.f:289-297}
+E_h^\mathrm{lo} &= \max\bigl(E^\mathrm{gen}_{h,\mathrm{min}},\ \Sigma_\mathrm{min}-E'^\mathrm{gen}_\mathrm{max}\bigr),\qquad
+E_h^\mathrm{hi} = \min\bigl(E^\mathrm{gen}_{h,\mathrm{max}},\ \Sigma_\mathrm{max}-E'^\mathrm{gen}_\mathrm{min}\bigr),\nonumber\\
+E_h &= E_h^\mathrm{lo}+\xi_5\,(E_h^\mathrm{hi}-E_h^\mathrm{lo}),\qquad P_h = \sqrt{E_h^2-M_h^2},\qquad
+w_\mathrm{gen}\leftarrow w_\mathrm{gen}\,\frac{E_h^\mathrm{hi}-E_h^\mathrm{lo}}{E^\mathrm{gen}_{h,\mathrm{max}}-E^\mathrm{gen}_{h,\mathrm{min}}},
+\lbl{eq:genhad}
+\end{feqa}
+\begin{feq}{reactions/sidis/SidisProduction.cpp: SidisProduction::generate}{event.f:300-316}
+E' = E'^\mathrm{gen}_\mathrm{min}+\xi_6\,(E'^\mathrm{gen}_\mathrm{max}-E'^\mathrm{gen}_\mathrm{min}),\qquad
+P'_e=E',
+\lbl{eq:genel}
+\end{feq}
+the try failing when a range is empty. Unlike A(e,e\pr p), the hadron window does not depend on the drawn electron energy
+(it is built from the fixed limits of the other energy), so the factor of \eqr{eq:genhad} is the same for every event,
+and the electron factor is 1. The slopes are converted to angles with \ceqr{eq:physang}.
+
+For deuterium a Fermi momentum is drawn in every try, whether or not \code{do\_fermi} is set (four random numbers), from
+the tabulated momentum distribution $p_k$ with normalised cumulative probabilities $C_k$ (file \code{deut.dat}, $n$
+points):
+\begin{feqa}{reactions/sidis/SidisProduction.cpp: SidisProduction::generate}{event.f:339-367}
+k &= \min\{k: \xi_7\le C_k\}\ (\le n),\qquad p_F = p_\mathrm{lo}+\xi_8\,(p_\mathrm{hi}-p_\mathrm{lo}),\nonumber\\
+p_\mathrm{lo} &= \tfrac12(p_{k-1}+p_k)\ (0\text{ for }k=1),\qquad p_\mathrm{hi} = \tfrac12(p_k+p_{k+1})\ (p_n\text{ for }k=n),\nonumber\\
+\hat p_F &= (\sin\theta_F\cos\varphi_F,\ \sin\theta_F\sin\varphi_F,\ \cos\theta_F),\quad \cos\theta_F = 2\xi_9-1,\quad
+\varphi_F = 2\pi\xi_{10},\nonumber\\
+E_m &= M_p+M_n-M_d,\qquad m_s = M_A-M_N+E_m\ (=M_n),\qquad E_F = M_A-\sqrt{m_s^2+p_F^2},
+\lbl{eq:fermi}
+\end{feqa}
+$E_F$ being the off-shell energy of the struck nucleon with the spectator on shell. Without Fermi motion (hydrogen, and
+every nucleus with $A\ge3$) $p_F=0$ and $E_F=M_N$. The Fermi momentum does not change the kinematics of the event (the
+hadron is generated freely); it enters only the cross section (\secr{sec:fermixs}).
+
+\subsection{Limits}
+The vertex missing energy and momentum, the residual mass and kinetic energy are not constrained (all limits 0). With
+$M_N$ equal to the recoil mass, energy conservation gives
+\begin{feqa}{setup/SetupLimits.cpp: BuildLimits}{init.f:359-363, 411-425, 450-454, 467-469}
+E_\gamma^\mathrm{tot,max} &= E_b^\mathrm{max} - E'_\mathrm{min} - E_{h,\mathrm{min}},\nonumber\\
+\Sigma_\mathrm{max} &= E_b^\mathrm{max}+d_E,\qquad \Sigma_\mathrm{min} = \max\bigl(0,\ E'_\mathrm{min}+E_{h,\mathrm{min}}-d_E\bigr),
+\lbl{eq:sumegen}
+\end{feqa}
+($E_\gamma^\mathrm{tot,max}=0$ without radiation, \code{Egamma\_gen\_max} when set; each enabled tail gets
+$E^\mathrm{max}_{\gamma i}=E^\mathrm{tot,max}_\gamma$), and the generation ranges of the two energies
+\begin{feqa}{setup/SetupLimits.cpp: BuildLimits}{init.f:481-488, 504-513}
+[E'^\mathrm{gen}_\mathrm{min},E'^\mathrm{gen}_\mathrm{max}] &= [\Sigma_\mathrm{min}-E_{h,\mathrm{max}}-E^\mathrm{max}_{\gamma3},\
+\Sigma_\mathrm{max}-E_{h,\mathrm{min}}]\cap[E'_\mathrm{min},\ E'_\mathrm{max}+E^\mathrm{max}_{\gamma2}],\nonumber\\
+[E^\mathrm{gen}_{h,\mathrm{min}},E^\mathrm{gen}_{h,\mathrm{max}}] &= [\Sigma_\mathrm{min}-E'_\mathrm{max}-E^\mathrm{max}_{\gamma2},\
+\Sigma_\mathrm{max}-E'_\mathrm{min}]\cap[E_{h,\mathrm{min}},\ E_{h,\mathrm{max}}+E^\mathrm{max}_{\gamma3}],
+\lbl{eq:genranges}
+\end{feqa}
+with $E'_\mathrm{min/max}$, $E_{h,\mathrm{min/max}}$ the edges of \ceqr{eq:edges}. With radiation the upper hadron limit
+$E_{h,\mathrm{max}}+E^\mathrm{max}_{\gamma3}$ is large, so the hadron is generated far above the hadron acceptance
+(relative momenta up to about +100\,\% at typical Hall C settings); most such events fail, which lowers the generation
+efficiency of radiative runs.
+
+\subsection{Generation volume}
+\begin{feq}{reactions/EepReactionBase.cpp: EepReactionBase::genVolume}{simc.f:383-401}
+V_\mathrm{gen} = \Delta\Omega_e\,\Delta\Omega_h\,\bigl(E'^\mathrm{gen}_\mathrm{max}-E'^\mathrm{gen}_\mathrm{min}\bigr)
+\bigl(E^\mathrm{gen}_{h,\mathrm{max}}-E^\mathrm{gen}_{h,\mathrm{min}}\bigr)\quad[\mathrm{sr^2\,MeV^2}],
+\lbl{eq:genvol}
+\end{feq}
+the six-fold volume of \ceqr{eq:genvol}.
+
+% =====================================================================================================================
+\section{Completing the event}\lbl{sec:complete}
+\subsection{Vertex}
+Nothing is solved: $\nu$, $Q^2$, $\vec q$ and $x$ follow from \ceqsr{eq:nuq2}{eq:xbj} with the generated $E'$, and the
+hadron keeps its generated energy and direction. The meson block (shared with the pion reaction) computes, with the
+struck-nucleon mass $M_N$,
+\begin{feqa}{reactions/pion/PionProduction.cpp: PionProduction::pionMainKinematics}{event.f:723-732}
+W^2 &= M_N^2+2M_N\nu-Q^2,\qquad W = \operatorname{sign}(W^2)\sqrt{|W^2|},\qquad
+\cos\theta_{pq} = \hat p_h\cdot\hat q,\nonumber\\
+t &= Q^2-M_h^2+2\nu E_h-2P_h|\vec q|\cos\theta_{pq},\qquad t_\mathrm{min} = Q^2-M_h^2+2\nu E_h-2P_h|\vec q|,
+\lbl{eq:mesonkin}
+\end{feqa}
+$\varepsilon$ of \ceqr{eq:epsilon} and $\varphi_{pq}$ of \ceqr{eq:phipq} ($t$ is $-t_\mathrm{Mandelstam}$, positive). For
+$\pi^0$ the two decay photons are drawn here (two random numbers; the photon tracking is described with the pion
+reaction). The missing quantities are those of the whole nucleus:
+\begin{feqa}{reactions/sidis/SidisProduction.cpp: SidisProduction::completeEv}{event.f:914-918, 952-954}
+\vec P_m &= P_h\hat p_h-|\vec q|\,\hat q,\qquad P_m = P_\mathrm{miss}=|\vec P_m|,\qquad E_m = E_\mathrm{miss} = \nu+M_A-E_h,
+\lbl{eq:pmiss}
+\end{feqa}
+so the vertex ``missing energy'' of SIDIS is the energy of the unobserved system, not a separation energy; the residual
+mass and kinetic energy are not computed. The try fails below a two-pion threshold evaluated on the struck nucleon at rest:
+\begin{feq}{reactions/sidis/SidisProduction.cpp: SidisProduction::completeEv}{event.f:979-988}
+(M_N+\nu-E_h)^2 - P_m^2 < (M_p+M_{\pi^0})^2\ \Rightarrow\ \text{fail},
+\lbl{eq:threshold}
+\end{feq}
+with $M_{\pi^0}=134.9766$ MeV for every hadron (also for kaons, whose lowest semi-inclusive final state is a hyperon),
+and without the Fermi momentum. Then
+\begin{feq}{reactions/sidis/SidisProduction.cpp: SidisProduction::completeEv}{event.f:990-998}
+z = E_h/\nu,\qquad p_T^2 = P_h^2\bigl(1-\cos^2\theta_{pq}\bigr),\qquad z>1\ \Rightarrow\ \text{fail (with a warning)},
+\lbl{eq:zpt}
+\end{feq}
+the last test being unreachable because \eqr{eq:threshold} already rejects $z>1$; the warning line of the code is
+therefore never printed by a run. The vertex $P_{m,\perp}$ of \ceqr{eq:pmcomp} is computed before $P_m$ is assigned, i.e.\
+from the previous try's $P_m$ in the Fortran; SIMC++ uses the current $P_m$ by default (it is not a tree column).
+
+\subsection{Reconstruction}
+\begin{feqa}{reactions/EepReactionBase.cpp: EepReactionBase::completeRecon}{event.f:1325-1341}
+E_m^\mathrm{rec} &= \nu^\mathrm{rec}+M_N-E_h^\mathrm{rec},\qquad
+M_X^\mathrm{rec} = \operatorname{sign}(m^2)\sqrt{|m^2|},\quad m^2 = (E_m^\mathrm{rec})^2-(P_m^\mathrm{rec})^2,\nonumber\\
+M_{X,A}^\mathrm{rec} &= \operatorname{sign}(m_A^2)\sqrt{|m_A^2|},\quad m_A^2 = (\nu^\mathrm{rec}+M_A-E_h^\mathrm{rec})^2-(P_m^\mathrm{rec})^2,\nonumber\\
+t^\mathrm{rec} &= (Q^\mathrm{rec})^2-M_h^2+2\bigl(\nu^\mathrm{rec}E_h^\mathrm{rec}-P_h^\mathrm{rec}|\vec q^\mathrm{rec}|\cos\theta^\mathrm{rec}_{pq}\bigr),\nonumber\\
+z^\mathrm{rec} &= E_h^\mathrm{rec}/\nu^\mathrm{rec},\qquad p_T^{2,\mathrm{rec}} = (P_h^\mathrm{rec})^2\bigl(1-\cos^2\theta^\mathrm{rec}_{pq}\bigr),
+\lbl{eq:recon}
+\end{feqa}
+$M_X^\mathrm{rec}$ (tree column \code{missmass}) being the missing mass on a nucleon at rest and $M_{X,A}^\mathrm{rec}$
+(\code{mmnuc}) that on the nucleus. $W^\mathrm{rec}$ and $x^\mathrm{rec}$ use the proton mass (\ceqr{eq:w}).
+
+% =====================================================================================================================
+\section{Jacobians}\lbl{sec:jac}
+Both pairs of slopes are generated flat, so the event jacobian is the product of the two solid-angle factors of
+\ceqr{eq:jacomega}:
+\begin{feq}{reactions/sidis/SidisProduction.cpp: SidisProduction::completeEv}{event.f:1015-1025}
+J = \bigl(1+x_e'^2+y_e'^2\bigr)^{-3/2}\bigl(1+x_h'^2+y_h'^2\bigr)^{-3/2}.
+\lbl{eq:jac}
+\end{feq}
+The energies are generated flat in $E'$ and $E_h$, the variables of the cross section; the change of variables from the
+model's natural $(z,p_T^2)$ to $(E_h,\cos\theta_{pq})$ is inside the model (\eqr{eq:xsjac}).
+
+% =====================================================================================================================
+\section{Cross-section model}\lbl{sec:xsec}
+\subsection{What the reaction requires from a model}
+\code{SidisProduction::completeMain} sets $S=1$ and $n_\mathrm{tgt}=1$ (the sum over the nucleons is inside the model)
+and calls \code{sigccMain(vertex, main)}, which may write event fields (the tree columns \code{sighad} and
+\code{jacobian}, the survival probability). The model reads $E_\mathrm{in}$, $E'$, $\nu$, $Q^2$, $\vec q$, $E_h$, $P_h$,
+$\theta_{pq}$, $z$, $p_T^2$ of the vertex record and, with Fermi motion, the Fermi momentum of the try; it must return
+$\mathrm{d}^5\sigma/(\mathrm{d}\Omega_e\,\mathrm{d}E'\,\mathrm{d}\Omega_h\,\mathrm{d}E_h)$ per nucleus in
+$\mu$b/(MeV$^2$\,sr$^2$), the units of \eqr{eq:genvol}. The weight is
+\begin{feq}{reactions/sidis/SidisProduction.cpp: SidisProduction::completeMain}{event.f:1561-1564}
+w = J\cdot w_\mathrm{gen}\cdot\sigma\cdot\bigl(1+V_C/E_b\bigr)^2_{[\text{with \code{using\_Coulomb}}]}\ \cdot P_\mathrm{surv}{}_{[\text{K}^\pm,\ \text{decay not simulated}]}
+\quad[\mu\mathrm{b/(MeV^2\,sr^2)}],
+\lbl{eq:weight}
+\end{feq}
+with $P_\mathrm{surv}$ of \eqr{eq:survival}; the pion survival probability is computed but not applied.
+
+\subsection{The model \code{sidis}: overview}
+\code{peepiX} works in GeV. The code comment states the idea: ``p(e,e\pr$\pi^+$)X semi-inclusive cross sections from the
+CTEQ5M parton distribution functions and a simple parameterization of the favored and unfavored fragmentation
+functions'', later replaced by the fits below. The cross section is
+\begin{feq}{physics/sidis/SidisCrossSection.cpp: peepiX}{semi\_physics.f:508-513, 525-526, 553-556}
+\frac{\mathrm{d}^5\sigma}{\mathrm{d}\Omega_e\,\mathrm{d}E'\,\mathrm{d}z\,\mathrm{d}p_T^2\,\mathrm{d}\varphi_{pq}}
+= \sigma_e\cdot R_h(A,z)\,\frac{1}{z}\frac{\sum_q e_q^2\,q_A(x)\,zD_q^h(z)}{\sum_q e_q^2\,q_A(x)}\cdot
+\frac{b\,e^{-b\,p_T^2}}{2\pi}\cdot(\hbar c)^2\cdot10^4\quad[\mu\mathrm{b/(GeV^3\,sr)}],
+\lbl{eq:sigsemi}
+\end{feq}
+with the sums over $q=u,\bar u,d,\bar d,s,\bar s$, $e_u=2/3$, $e_d=e_s=-1/3$, the inclusive cross section $\sigma_e$
+(\eqr{eq:sige}) and the $p_T$ slope
+\begin{feq}{physics/sidis/SidisCrossSection.cpp: peepiX}{semi\_physics.f:525}
+b = \frac{1}{0.120\,z^2+0.200}\quad[\mathrm{GeV^{-2}}],
+\lbl{eq:bslope}
+\end{feq}
+which normalises the $p_T^2$ distribution to 1, so that $\int\mathrm{d}p_T^2\,\mathrm{d}\varphi_{pq}$ of the middle factors is
+the multiplicity $R_h\,\mathrm{d}N^h/\mathrm{d}z$. The factor $(\hbar c)^2\cdot10^4$ converts GeV$^{-2}$ to $\mu$b
+($\hbar c$ in GeV\,fm). The tree column \code{sighad} is $R_h\,(\ldots)\,b\,e^{-bp_T^2}/2\pi$ in GeV$^{-2}$, i.e.\
+\eqr{eq:sigsemi} without $\sigma_e$ and the conversion factor.
+
+\subsection{Kinematics of the model}\lbl{sec:fermixs}
+\begin{feqa}{physics/sidis/SidisCrossSection.cpp: peepiX}{semi\_physics.f:237-258, 268-272}
+E_h &= z\nu,\qquad P_h = \sqrt{E_h^2-M_h^2},\qquad \cos\theta_{pq}\ \text{from the vertex},\nonumber\\
+x &= \frac{Q^2}{2M_N\nu}\quad\text{or, with Fermi motion,}\quad x = \frac{Q^2}{2\,(E_F\nu-p_F\,\hat p_F\cdot\vec q)},\qquad
+x\leftarrow\min(x,1),\nonumber\\
+W^2 &= M_p^2+Q^2\Bigl(\frac1x-1\Bigr),
+\lbl{eq:xsidis}
+\end{feqa}
+with $M_N=M_p$; $x>1$ prints ``XBj is too large!'' and is replaced by 1. $M_h$ is the charged-pion mass also for a $\pi^0$
+in the Fortran (corrected to $M_{\pi^0}$ in the default mode). With Fermi motion ($p_F$, $E_F$ of \eqr{eq:fermi},
+deuterium only) $x$ is Bjorken's variable of the moving nucleon, $Q^2/2P\cdot q$; this $x$ is used everywhere in the model
+and $W^2$ is computed from it. A non-positive $x$ (a large Fermi momentum along $\vec q$) stops the Fortran run in the
+parton-distribution routine; SIMC++ returns $\sigma=0$ for that event in the default mode. A second missing-mass cut
+returns $\sigma=0$:
+\begin{feq}{physics/sidis/SidisCrossSection.cpp: peepiX}{semi\_physics.f:276-284}
+M_N^2+2M_N\nu(1-z)\bigl(1-p_T^2[\mathrm{GeV^2}]\bigr) < (M_N+M_h)^2\ \Rightarrow\ \sigma = 0\qquad(\text{masses and }\nu\text{ in GeV}),
+\lbl{eq:mmcut}
+\end{feq}
+described by the code as the ``2$\pi$ / $\pi$K threshold''. The left-hand side is the missing mass squared of the
+collinear limit, $M_N^2+2M_N\nu(1-z)$, multiplied in its second term by the dimension-carrying factor $1-p_T^2$; it is
+not a missing mass for $p_T\ne0$ (the code comment adds ``this shouldn't be necessary''). Below the cut the model returns
+before it writes \code{sighad}, the jacobian column and the survival probability: \code{sighad} stays 0 (reset at every
+try), the jacobian column keeps the previous event's value, and the weight is 0.
+
+\subsection{Parton distributions: CTEQ5M}
+The model reads the CTEQ5M table \citer{cteq5} (\code{cteq5m.tbl}, the set the code calls \code{iset} = 1; MS-bar, NLO,
+$\Lambda^{(5)}_\mathrm{QCD}=0.226$ GeV) and calls it with $Q=\sqrt{Q^2[\mathrm{GeV^2}]}$ for $u,\bar u,d,\bar d,s,\bar s$ of
+the proton. The table holds $f(x,Q)$ on a grid of 91 $x$ nodes $x_j$ and 14 nodes of $\ln(Q/\Lambda)$ for the flavours
+$\bar b\ldots\bar u$ (sea, quark $=$ antiquark for $s,c,b$), $g$, $u$, $d$; the value is a two-dimensional quadratic
+(three-point Neville) interpolation, first in $x$ at three $Q$ nodes, then in $\ln(Q/\Lambda)$:
+\begin{feqa}{physics/sidis/Cteq5Pdf.cpp: Cteq5Pdf::partonX, polint}{cteq5/Ctq5Pdf.f:133-198, 313-351}
+j_x &= j_\mathrm{lo}(x),\ \ \text{clamped to }[0,\,N_x-2],\qquad j_q = j_\mathrm{lo}(\ln(Q/\Lambda)),\ \ \text{clamped to }[0,\,N_t-2],\nonumber\\
+F_i &= \mathcal{P}_2\bigl(x;\ \{x_{j_x+k},\ f(x_{j_x+k},Q_{j_q+i})\}_{k=0,1,2}\bigr),\quad i=0,1,2,\qquad
+f(x,Q) = \mathcal{P}_2\bigl(\ln\tfrac{Q}{\Lambda};\ \{\ln\tfrac{Q_{j_q+i}}{\Lambda},\ F_i\}\bigr),
+\lbl{eq:cteq}
+\end{feqa}
+with $j_\mathrm{lo}$ the index of the lower node of the interval containing the argument (bisection) and $\mathcal P_2$
+the quadratic through the three points; $s$ is evaluated as $\bar s$. A negative result is set to 0
+\fsrc{cteq5/Ctq5Pdf.f:102}. $x<0$ or $x>1$ stops the run; $Q<\Lambda$ prints a warning and replaces the caller's $Q$ by
+$\Lambda$ for the remaining calls of the event. Below the smallest node $x_\mathrm{min}$ the clamp of $j_x$ is applied
+only in the first such call of a run (with a warning); the tables were not compared with the CTEQ publication for this
+note.
+
+\begin{simctable}{footnotesize}{L{0.35\linewidth}L{0.65\linewidth}}
+\caption{The CTEQ5M table as read (\code{ReadTbl}; one property per row).}\lbl{tab:cteq}\\
+\toprule\rowcolor{simchead}\simcth{property} & \simcth{value}\\\midrule\endfirsthead
+\bottomrule\endlastfoot
+order, flavours & 2 (NLO), 5\\
+$\Lambda$ & 0.2260 GeV\\
+quark masses $m_c$, $m_b$, $m_t$ & 1.3, 4.5, 180 GeV\\
+$N_x$, $N_t$, flavours stored & 90, 13 (indices from 0), $N_f+3 = 8$\\
+$Q$ range of the grid & 1 to $10^4$ GeV (extrapolated outside)\\
+\end{simctable}
+
+The nucleus is an incoherent sum of $Z$ protons and $N=A-Z$ neutrons with isospin symmetry:
+\begin{feqa}{physics/sidis/SidisCrossSection.cpp: peepiX}{semi\_physics.f:322-329}
+u_A &= Zu+Nd,\quad \bar u_A = Z\bar u+N\bar d,\quad d_A = Zd+Nu,\quad \bar d_A = Z\bar d+N\bar u,\nonumber\\
+s_A &= (Z+N)s,\quad \bar s_A = (Z+N)\bar s,\nonumber\\
+\Sigma_{e^2} &= e_u^2(u_A+\bar u_A)+e_d^2(d_A+\bar d_A)+e_s^2(s_A+\bar s_A).
+\lbl{eq:pdfA}
+\end{feqa}
+When every distribution vanishes ($x=1$ after the clamp) the ratio of \eqr{eq:sigsemi} is $0/0$: the Fortran weight is
+NaN, SIMC++ uses 0 in the default mode.
+
+\subsection{Pion fragmentation: P.\ Bosted's fit}
+For pions the code uses ``Peter Bosted's parameterization'' (fit of 9/20/2021 to Hall C data, a modified scaling
+variable after Accardi et al.\ \citer{accardi}); the fit gives $zD$ directly. With $M=M_p$, $m=M_\pi$ (GeV) and $W$ from
+\eqr{eq:xsidis}:
+\begin{feqa}{physics/sidis/SidisCrossSection.cpp: peepiX}{semi\_physics.f:465-477}
+\xi &= \frac{2x}{1+\sqrt{1+4x^2M^2/Q^2}},\qquad s_v = \ln(Q^2/2),\nonumber\\
+z_p &= \frac z2\,\frac{\xi}{x}\Bigl(1+\sqrt{1-\frac{4x^2M^2(m^2+p_T^2)}{z^2Q^4}}\Bigr),\nonumber\\
+y_k &= c_{k,1}\,z_p^{\,c_{k,2}+c_{k,4}s_v+c_{k,9}/W}\,(1-z_p)^{c_{k,3}+c_{k,5}s_v+c_{k,10}/W}\nonumber\\
+&\quad\times\bigl(1+c_{k,6}z_p+c_{k,7}z_p^2+c_{k,8}z_p^3\bigr)\Bigl(1+\frac{c_{k,11}}{W}+\frac{c_{k,12}}{W^2}\Bigr),
+\lbl{eq:bosted}
+\end{feqa}
+$k=f$ (favoured) or $u$ (unfavoured), with the coefficients of \tabr{tab:pbfit}. $\xi$ is the Nachtmann variable. With
+$x=Q^2/2M\nu$ the argument of the inner root equals $1-(m^2+p_T^2)/E_h^2 = p_L^2/E_h^2$ ($p_L$ the hadron momentum along
+$\vec q$), so $z_p=\tfrac z2\tfrac\xi x(1+p_L/E_h)$ is the light-cone fraction corrected for the target mass; with the
+Fermi $x$ or the clamp $x=1$ this identity no longer holds. The assignment to the quark flavours is
+\begin{feqa}{physics/sidis/SidisCrossSection.cpp: peepiX}{semi\_physics.f:479-495}
+\pi^+:&\quad zD_u = zD_{\bar d} = y_f,\qquad zD_d = zD_{\bar u} = zD_s = zD_{\bar s} = y_u,\nonumber\\
+\pi^-:&\quad zD_d = zD_{\bar u} = y_f,\qquad zD_u = zD_{\bar d} = zD_s = zD_{\bar s} = y_u,\nonumber\\
+\pi^0:&\quad zD_u = zD_d = zD_{\bar u} = \tfrac12(y_f+y_u),\qquad zD_{\bar d} = \text{the }\pi^\pm\text{ value above},\qquad zD_s=zD_{\bar s}=y_u.
+\lbl{eq:pionff}
+\end{feqa}
+The $\pi^0$ block is introduced by the comment ``just get averge of pi+ and pi-'' but averages $D_d$ twice and never
+$D_{\bar d}$, which keeps the value of the charged pion selected by \code{doing\_hplus}; SIMC++ averages $D_{\bar d}$ too
+in the default mode. The coefficients are transcribed from the code; they were not compared with a publication (the fit
+is not published in the code).
+
+\begin{simctable}{footnotesize}{L{0.1\linewidth}L{0.2\linewidth}L{0.2\linewidth}L{0.5\linewidth}}
+\caption{Coefficients of \eqr{eq:bosted} (\fsrc{semi\_physics.f:107-112}, ``PB fit of 9/20/2021''; one coefficient per row).}\lbl{tab:pbfit}\\
+\toprule\rowcolor{simchead}\simcth{$i$} & \simcth{$c_{f,i}$} & \simcth{$c_{u,i}$} & \simcth{role}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{$i$} & \simcth{$c_{f,i}$} & \simcth{$c_{u,i}$} & \simcth{role}\\\midrule\endhead
+\bottomrule\endlastfoot
+1 & 1.0424 & 0.7840 & normalisation\\
+2 & $-0.1714$ & 0.2369 & power of $z_p$\\
+3 & 1.8960 & 1.4238 & power of $1-z_p$\\
+4 & $-0.0307$ & 0.1484 & $s_v$ term of the $z_p$ power\\
+5 & 0.1636 & 0.1518 & $s_v$ term of the $1-z_p$ power\\
+6 & $-0.1272$ & $-1.2923$ & linear term of the polynomial\\
+7 & $-4.2093$ & $-1.5710$ & quadratic term\\
+8 & 5.0103 & 3.0305 & cubic term\\
+9 & 2.7406 & 1.1995 & $1/W$ term of the $z_p$ power\\
+10 & $-0.5778$ & 1.3553 & $1/W$ term of the $1-z_p$ power\\
+11 & 3.5292 & 2.5868 & $1/W$ factor\\
+12 & 7.3910 & 8.0666 & $1/W^2$ factor\\
+\end{simctable}
+
+\subsection{Kaon fragmentation: fDSS}
+For kaons the model calls the fDSS routine of de Florian, Sassot and Stratmann \citer{dss} at NLO for $K^\pm$
+(\code{KANLO.GRID}, read at start-up), with $z$ and $Q^2$; it returns $z$ times the fragmentation functions. The grid
+holds, at 34 $z$ nodes and 24 $Q^2$ nodes, the totals $zD_{q+\bar q}$ for $u$, $d$, $s$, $c$, $b$, the gluon, and the
+valence combinations $zD_{q-\bar q}$ for $u$, $d$, $s$. Each is divided at start-up by a smooth factor and the quotient is
+interpolated bilinearly in $(\ln z,\ln Q^2)$ (CERNLIB E104, linear extrapolation outside the grid, a node at $z=1$ set
+to 0):
+\begin{feqa}{physics/sidis/Fdss.cpp: FdssGrid::load, FdssGrid::eval, ffint}{fdss/fdss.f:117-161, 213-257}
+\tilde T(z_j,Q^2_k) &= \frac{T(z_j,Q^2_k)}{(1-z_j)^{a}\,z_j^{\,c}},\qquad
+T(z,Q^2) = \mathcal{I}\bigl[\tilde T\bigr](\ln z,\ln Q^2)\cdot(1-z)^{a}z^{c},\nonumber\\
+(a,c) &= (4,\,0.5)\ \text{for }u,d,s\text{ (total and valence)},\quad (7,\,0.3)\ \text{for }c,b,\quad (4,\,0.3)\ \text{for }g,\nonumber\\
+zD_q &= \tfrac12(T_q+V_q),\qquad zD_{\bar q} = \tfrac12(T_q-V_q),\qquad zD_c = \tfrac12T_c,\qquad zD_b=\tfrac12T_b,
+\lbl{eq:fdss}
+\end{feqa}
+with $\mathcal I$ the bilinear interpolation, $T_q$ the total and $V_q$ the valence combination. These are the $K^+$
+functions; for $K^-$ quark and antiquark are exchanged. A $z$ outside $[0.05,1]$ or a $Q^2$ outside $[1,10^5]$ GeV$^2$
+prints a warning and is extrapolated. The Fortran evaluates the factors $(1-z)^n$ and the products with the
+interpolated value in quadruple precision (its double-precision literals are promoted by the build); SIMC++ reproduces
+that arithmetic. The grid is the published one; its values were not compared with the paper.
+
+The partonic sum of \eqr{eq:sigsemi} is
+\begin{feq}{physics/sidis/SidisCrossSection.cpp: peepiX}{semi\_physics.f:508-513}
+\frac{\mathrm dN}{\mathrm dz} = \frac{e_u^2\,(u_A\,zD_u+\bar u_A\,zD_{\bar u}) + e_d^2\,(d_A\,zD_d+\bar d_A\,zD_{\bar d})
++ e_s^2\,(s_A\,zD_s+\bar s_A\,zD_{\bar s})}{\Sigma_{e^2}\;z}.
+\lbl{eq:dndz}
+\end{feq}
+
+\subsection{Nuclear factors}
+The multiplicity is multiplied by a hadron-attenuation fit that is 1 only for $A=1$ (deuterium gets
+$R_h\approx0.955$ at $z=0.5$):
+\begin{feqa}{physics/sidis/SidisCrossSection.cpp: rhadGlobal}{semi\_physics.f:652-680}
+R_h(A,z) &= N_0\,z^{\alpha_h}(1-z)^{\beta_h}\quad(A\ne1),\qquad R_h(1,z)=1,\nonumber\\
+N_0 &= 0.98883-0.0038309A+1.0841\times10^{-5}A^2,\nonumber\\
+\alpha_h &= 0.031953-0.0018659A+5.1747\times10^{-6}A^2,\nonumber\\
+\beta_h &= 0.0085475+0.0012763\tilde A-2.4451\times10^{-6}\tilde A^2,\qquad \tilde A=\min(A,83.8).
+\lbl{eq:rhad}
+\end{feqa}
+The inclusive part (below) carries the SLAC EMC ratio for $A>2$ \citer{gomez}:
+\begin{feqa}{physics/sidis/SidisCrossSection.cpp: slacemcfit}{semi\_physics.f:634-650}
+R_\mathrm{EMC}(A,x) &= C(x)\,A^{\alpha(x)}\ \ (A>2),\qquad R_\mathrm{EMC}=1\ \ (A\le2),\nonumber\\
+\alpha(x) &= -0.070+2.189x-24.667x^2+145.291x^3-497.237x^4\nonumber\\
+&\quad+1013.129x^5-1208.393x^6+775.767x^7-205.872x^8,\nonumber\\
+C(x) &= \exp\bigl(0.017+0.018\ln x+0.005\ln^2x\bigr).
+\lbl{eq:emc}
+\end{feqa}
+Neither fit names its source in the code; the coefficients are transcribed from the code and not compared with a paper.
+
+\subsection{Inclusive cross section}
+The inclusive cross section is the one-photon formula with the structure functions of the Christy--Bosted-type fit
+\code{F1F2IN21} (E.\ Christy, 2021) \citer{christy}, evaluated per nucleon at $W^2$ of \eqr{eq:xsidis} and summed:
+\begin{feqa}{physics/sidis/SidisCrossSection.cpp: peepiX}{semi\_physics.f:528-553}
+F_{1,2} &= \bigl(Z\,F_{1,2}^p+N\,F_{1,2}^n\bigr)\,R_\mathrm{EMC}(A,x),\qquad W_1 = F_1/M_N,\qquad W_2 = F_2/\nu,\nonumber\\
+\sin^2\frac{\theta_e}{2} &= \frac{Q^2}{4E_\mathrm{in}E'},\qquad
+\sigma_e = \frac{4\alpha^2E'^2}{Q^4}\Bigl[W_2\cos^2\frac{\theta_e}{2}+2W_1\sin^2\frac{\theta_e}{2}\Bigr]\quad[\mathrm{GeV^{-3}\,sr^{-1}}],
+\lbl{eq:sige}
+\end{feqa}
+in GeV ($\sigma_e$ is $\mathrm{d}^2\sigma/\mathrm{d}\Omega_e\mathrm{d}E'$ per nucleus in natural units). The free-nucleon
+structure functions come from fits of the transverse and longitudinal virtual-photon cross sections:
+\begin{feqa}{physics/sidis/F1F2In21.cpp: sf}{F1F2IN21\_v1.0.f:2345-2371}
+x_W &= \frac{Q^2}{Q^2+W^2-M^2},\qquad
+F_1 = \frac{\sigma_T\,|W^2-M^2|}{0.3894\times10^3\cdot8\pi^2\alpha},\qquad
+F_L = \frac{2x_W\,\sigma_L\,|W^2-M^2|}{0.3894\times10^3\cdot8\pi^2\alpha},\nonumber\\
+F_2 &= \frac{2x_WF_1+F_L}{1+4M^2x_W^2/Q^2},
+\lbl{eq:sfconv}
+\end{feqa}
+($M=0.938272$ GeV, $\pi=3.14159$, $\alpha=1/137.03599$ in this routine; $\sigma_{T,L}$ in $\mu$b). $\sigma_{T,L}$ of the proton
+and the neutron are the sum of seven Breit--Wigner resonances and a non-resonant term:
+\begin{feqa}{physics/sidis/F1F2In21.cpp: resmod}{F1F2IN21\_v1.0.f:373-670, 672-959}
+\sigma &= W\sum_{i=1}^{7} h_i\,\frac{k_r}{k}\frac{k^\mathrm{cm}_r}{k^\mathrm{cm}}\,
+\frac{\Gamma_i\,\Gamma_{\gamma,i}/\Gamma_i^0}{(W^2-M_i^2)^2+M_i^2\Gamma_i^2}\ [\times Q^2\text{ for }\sigma_L]
++389.4\,A_0\,(1-x_\pi)^{t_1}x_\pi^{t_2}\,[\ldots],\nonumber\\
+x_\pi &= \Bigl(1+\frac{W^2-(M+m_{\pi^0})^2}{Q^2+Q_0^2}\Bigr)^{-1},
+\lbl{eq:resmod}
+\end{feqa}
+with energy-dependent widths $\Gamma_i$ built from the one-pion, two-pion and $\eta$ decay momenta (branching ratios and
+angular momenta of P33(1232), S11(1535), D13(1520), F15(1680), S11(1650), P11(1440), F37(1950) fixed in the code), $Q^2$
+dependent heights $h_i$, and an $\eta$-threshold term in $\sigma_T$. The 100 parameters of each nucleon (masses, widths,
+heights, non-resonant coefficients) are DATA statements of \code{rescsp} and \code{rescsn}; they are not reproduced here and
+were not compared with a publication. For $A=1$ only the free-nucleon branch of \code{F1F2IN21} is used (the deuteron and
+nuclear branches of the routine are never called by SIDIS); its first call also reads deuteron smearing tables, which have
+no effect here and are not read by SIMC++.
+
+\subsection{Change of variables, Fermi factor and units}
+The event is generated in $(E_h,\Omega_h)$; with $\Omega_h$ measured around $\vec q$ ($\mathrm{d}\Omega_h =
+\mathrm{d}\cos\theta_{pq}\,\mathrm{d}\varphi_{pq}$), $z=E_h/\nu$ and $p_T^2 = P_h^2(1-\cos^2\theta_{pq})$:
+\begin{feqa}{physics/sidis/SidisCrossSection.cpp: peepiX}{semi\_physics.f:562-586}
+J_{zp_T} &= \Bigl|\frac{\partial(z,p_T^2)}{\partial(E_h,\cos\theta_{pq})}\Bigr| = \frac{2P_h^2\cos\theta_{pq}}{\nu}\quad[\mathrm{GeV}],\nonumber\\
+\sigma &= \frac{\mathrm{d}^5\sigma}{\mathrm{d}\Omega_e\,\mathrm{d}E'\,\mathrm{d}z\,\mathrm{d}p_T^2\,\mathrm{d}\varphi_{pq}}\cdot J_{zp_T}\cdot10^{-6}\cdot f_F
+\quad[\mu\mathrm{b/(MeV^2\,sr^2)}],\nonumber\\
+f_F &= \frac{M_N}{E_F}\,\frac{1}{1-p_F\hat p_{F,z}/E_F}\ \ (\text{Fermi motion}),\qquad f_F=1\ \ (\text{otherwise}),
+\lbl{eq:xsjac}
+\end{feqa}
+$10^{-6}$ converting GeV$^{-2}$ to MeV$^{-2}$. The code writes $\cos\theta_{pq}$, not its absolute value; it is positive in
+any spectrometer acceptance near $\vec q$. $f_F$ is the flux factor of a non-collinear collision, explained in the code:
+the relative velocity becomes $1-p_{F,z}/E_F$ and the target energy $E_F$ instead of $M_N$. The tree column
+\code{jacobian} is $1000\,J_{zp_T}$ (MeV). The header comment of the routine gives the units of an older version
+(``d3sigma/dEe'dOmegae'Omegapi, microbarn/MeV/sr\^{}2''); the returned value has the units above.
+
+\subsection{Survival probability}
+When \code{doing\_decay} = 0 the model computes the probability that the hadron reaches the aerogel detector of the
+hadron arm, written to the tree column \code{decdist}; it multiplies the weight of kaons only (\eqr{eq:weight}):
+\begin{feqa}{physics/sidis/SidisCrossSection.cpp: peepiX}{semi\_physics.f:610-626}
+L &= L_\mathrm{FP} + z_\mathrm{aero}\bigl(1+x'^2_\mathrm{fp}+y'^2_\mathrm{fp}\bigr),\qquad
+\beta = \frac{P}{\sqrt{P^2+M_h^2}},\qquad \gamma = (1-\beta^2)^{-1/2},\nonumber\\
+P_\mathrm{surv} &= \exp\bigl(-L/(c\tau\,\beta\gamma)\bigr),
+\lbl{eq:survival}
+\end{feqa}
+with $L_\mathrm{FP}$ the path length of the hadron to the end of the hut, $x'_\mathrm{fp}$, $y'_\mathrm{fp}$ the focal-plane
+slopes, $c\tau$ the input \code{ctau}, and $z_\mathrm{aero}$ of \tabr{tab:zaero}. The Fortran uses the central momentum
+$P=P_h^0$ although $P_h^0(1+\delta^\mathrm{SP}_h/100)$ is computed next to it (the comment says ``Get particle momentum from
+main.SP.p.delta''), and $z_\mathrm{aero}(1+x'^2+y'^2)$ where the path along a slope is $z_\mathrm{aero}\sqrt{1+x'^2+y'^2}$;
+SIMC++ uses the hadron momentum and the square root in the default mode.
+
+\begin{simctable}{footnotesize}{L{0.25\linewidth}L{0.2\linewidth}L{0.55\linewidth}}
+\caption{Aerogel distance $z_\mathrm{aero}$ of \eqr{eq:survival} (one arm per row).}\lbl{tab:zaero}\\
+\toprule\rowcolor{simchead}\simcth{hadron arm} & \simcth{$z_\mathrm{aero}$ [cm]} & \simcth{comment in the code}\\\midrule\endfirsthead
+\bottomrule\endlastfoot
+1 (HMS) & $-331.491$ & ``aero at 40.199 cm, last project=371.69 cm''\\
+2 (SOS) & $-82.8$ & ``From Rick: aero at 263.2cm, last project=346(cal)''\\
+3 (HRS-R) & $-183.0$ & ``aero at 130cm, last project=313(S2)''\\
+4 (HRS-L) & $-183.0$ & as HRS-R\\
+5 (SHMS) & none & the previous value is kept (0 in a run); 0 in the SIMC++ default mode\\
+\end{simctable}
+
+\subsection{Central cross section and unused parts}
+The \texttt{.hist} line \code{CENTRAL.sigcc} is the model at the central event, completed by the reconstruction formulas
+(so $z$, $p_T^2$ and $\theta_{pq}$ of the central ray are defined), and the run log prints its kinematics and the
+multiplicity \code{sighad} (``SIDIS: central event kinematics''); the ``lab cross section (nb/GeV2/sr2)'' printed there is
+$10^9\,\sigma$. The model has a second, ``central'' branch that evaluates \eqr{eq:sigsemi} at a fixed $z$ or $p_T^2$ in
+bins (inputs \code{sigc\_flag}, \code{sigc\_nbin}, \code{sigc\_kin\_min/max/ind}); its call is commented out, so these
+inputs have no effect (SIMC++ ports the branch, never calls it, and warns when they are set); the tree columns
+\code{sigcent} and \code{centjac} of the legacy layout are always 0. The input \code{pt\_b\_param} is read and not used
+(\eqr{eq:bslope} replaces it). The dilution-factor routine is not called either; it recomputes a $\pi^\pm$ multiplicity
+with the older Binnewies parametrisation of the fragmentation functions \citer{binnewies} and returns
+\begin{feqa}{physics/sidis/SemiDilution.cpp: semiDilution}{semi\_dilution.f:239-251}
+f_\mathrm{dil} &= \frac{\sigma_\mathrm{tgt}}{\sigma_\mathrm{tgt}+0.3333\,\sigma_{^{15}\mathrm N}+0.3165\,\sigma_{^4\mathrm{He}}
++0.0144\,\sigma_\mathrm{Al}+0.0031\,\sigma_\mathrm{Cu}+0.0013\,\sigma_\mathrm{Ni}},\nonumber\\
+\sigma_{(Z,N)} &= Z\sigma_p+N\sigma_n,
+\lbl{eq:dilution}
+\end{feqa}
+(999 if the proton or neutron term vanishes), the dilution of a polarised $^{15}$NH$_3$-type target; SIMC++ keeps it as a
+tested function only.
+
+% =====================================================================================================================
+\section{Radiation, energy loss and decays}\lbl{sec:rad}
+The three tails radiate as in \csecr{sec:radiation}; the hadron tail uses $\lambda_3$ with the hadron's $E_h$, $P_h$
+(\ceqr{eq:lambda}). The photon limits are those of the meson reactions:
+\begin{feqa}{radiation/Radc.cpp: generateRad}{radc.f:297-308, 372-389, 428-446}
+E_{\gamma1} &\in \bigl[-d_E,\ \min(\Sigma_\mathrm{max}-E',\ E^\mathrm{max}_{\gamma1})+d_E\bigr],\nonumber\\
+E_{\gamma2} &\in \bigl[E'-E'_\mathrm{max}-d_E,\ \min(E'-E'_\mathrm{min},\ E_\gamma^\mathrm{tot,max}-E_{\gamma1})+d_E\bigr],\nonumber\\
+E_{\gamma3} &\in \bigl[E_h-E_{h,\mathrm{max}}-d_E,\ \min(E_h-E_{h,\mathrm{min}},\ E_\gamma^\mathrm{tot,max}-E_{\gamma1}-E_{\gamma2})+d_E\bigr],
+\lbl{eq:radlimits}
+\end{feqa}
+(a negative lower limit counts as 0). The missing-energy constraints of the (e,e\pr p) reactions do not apply. After a
+tail-1 photon \code{completeEv} is called again at the lower beam energy: the thresholds of \eqsr{eq:threshold}{eq:zpt}
+are re-applied, the generated $E'$, $E_h$ and directions are kept. The soft-photon factors use elastic e--p kinematics
+(\ceqr{eq:bremkin}), an approximation for this inelastic reaction.
+
+The hadron loses energy and scatters in the target and the windows with its own mass (\csecr{sec:eloss}); the Coulomb
+correction applies to the electron for $Z>1$ (\csecr{sec:coulomb}). With \code{doing\_decay} = 1 a charged pion or kaon may
+decay in flight inside the hadron arm (the spectrometer models follow the decay product; the column \code{decdist} then
+holds the decay distance and \code{Mhadron} the mass of the particle that reached the detectors); with
+\code{doing\_decay} = 0 the survival probability of \eqr{eq:survival} is used. A $\pi^0$ decays at the vertex into two
+photons (\code{pizero\_ngamma} = 1 or 2 photons required in the calorimeter arm; the photon columns are added to the tree).
+
+% =====================================================================================================================
+\section{Inputs and outputs}\lbl{sec:io}
+\subsection{Inputs}
+\begin{simctable}{footnotesize}{L{0.24\linewidth}L{0.12\linewidth}L{0.08\linewidth}L{0.56\linewidth}}
+\caption{Inputs specific to SIDIS (one input per row; the common inputs are in note 01, \S7, and the user manual,
+chapter 4).}\lbl{tab:inputs}\\
+\toprule\rowcolor{simchead}\simcth{input} & \simcth{unit} & \simcth{default} & \simcth{meaning here}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{input} & \simcth{unit} & \simcth{default} & \simcth{meaning here}\\\midrule\endhead
+\bottomrule\endlastfoot
+\code{doing\_semi} & flag & 0 & 1 selects this reaction\\
+\code{doing\_pion} & flag & 0 & 1: the hadron is a pion\\
+\code{doing\_kaon} & flag & 0 & 1: the hadron is a kaon\\
+\code{doing\_hplus} & flag & 0 & 1: positive hadron, 0: negative\\
+\code{doing\_pizero} & flag & 0 & 1 (with \code{doing\_pion}): $\pi^0$\\
+\code{pizero\_ngamma} & -- & 0 & $\pi^0$: number of photons required (1 or 2)\\
+\code{targ\%A} & -- & 0 & 1 H, 2 D, $\ge3$ nucleus; $A$ of the nuclear factors\\
+\code{targ\%Z} & -- & 0 & $Z$ of the nucleon sum (\eqr{eq:pdfA}); Coulomb correction for $Z>1$\\
+\code{do\_fermi} & flag & 0 & deuterium: Fermi motion in the cross section (\secr{sec:fermixs}); ignored for $A\ge3$, refused (switched off) for H\\
+\code{doing\_decay} & flag & 0 & 1: decay in flight; 0: survival probability\\
+\code{ctau} & cm & 0 & $c\tau$ of the hadron (\eqr{eq:survival})\\
+\code{hadron\_arm} & code & 0 & also selects $z_\mathrm{aero}$ (\tabr{tab:zaero})\\
+\code{pt\_b\_param} & GeV$^{-2}$ & 0 & read, not used (warning when set)\\
+\code{sigc\_flag} & -- & 0 & read, not used (central-branch binning: 0 in $z$, 1 in $p_T^2$)\\
+\code{sigc\_nbin} & -- & 10 & read, not used\\
+\code{sigc\_kin\_min} & -- & 0 & read, not used\\
+\code{sigc\_kin\_max} & -- & 1 & read, not used\\
+\code{sigc\_kin\_ind} & -- & 0 & read, not used\\
+\end{simctable}
+
+\subsection{Outputs}
+The default (upstream 59ccdf6) tree has 64 columns for SIDIS (76 with a $\pi^0$, 8 more with the polarised-target field);
+\code{-{}-tree-layout legacy} gives the 56-column layout of SIMC 294f662 (68 with a $\pi^0$). Columns 1--40 are those of
+the (e,e\pr p)-type layout (the arm blocks \code{hs}, \code{ss} and the kinematic columns, note 01, Outputs), with
+\code{Em} of \eqr{eq:recon}, \code{Emi} and \code{Pmi} of \eqr{eq:pmiss} and \code{Wi}, \code{epsiloni} of the meson block.
+The following columns are specific:
+
+\begin{simctable}{footnotesize}{L{0.06\linewidth}L{0.14\linewidth}L{0.17\linewidth}L{0.63\linewidth}}
+\caption{SIDIS tree columns 41--64 of the default layout (\code{FillUpstreamNtuple}; one column per row).}\lbl{tab:columns}\\
+\toprule\rowcolor{simchead}\simcth{\#} & \simcth{name} & \simcth{unit} & \simcth{content}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{\#} & \simcth{name} & \simcth{unit} & \simcth{content}\\\midrule\endhead
+\bottomrule\endlastfoot
+41 & \code{missmass} & GeV & $M_X^\mathrm{rec}$ on a nucleon (\eqr{eq:recon})\\
+42 & \code{mmnuc} & GeV & $M_{X,A}^\mathrm{rec}$ on the nucleus\\
+43 & \code{phad} & GeV/$c$ & $P_h^\mathrm{rec}$\\
+44 & \code{t} & GeV$^2$ & $t^\mathrm{rec}$ (positive convention)\\
+45 & \code{ti} & GeV$^2$ & vertex $t$ (\eqr{eq:mesonkin})\\
+46 & \code{z} & -- & $z^\mathrm{rec}$\\
+47 & \code{zi} & -- & vertex $z$\\
+48 & \code{pt2} & GeV$^2$ & $p_T^{2,\mathrm{rec}}$\\
+49 & \code{pt2i} & GeV$^2$ & vertex $p_T^2$\\
+50 & \code{thetapq} & rad & $\theta^\mathrm{rec}_{pq}$\\
+51 & \code{phipq} & rad & $\varphi^\mathrm{rec}_{pq}$\\
+52 & \code{thetapqi} & rad & vertex $\theta_{pq}$\\
+53 & \code{phipqi} & rad & vertex $\varphi_{pq}$\\
+54 & \code{pmpar} & GeV/$c$ & $P^\mathrm{rec}_{m,\parallel}$\\
+55 & \code{pmper} & GeV/$c$ & $P^\mathrm{rec}_{m,\perp}$\\
+56 & \code{pmoop} & GeV/$c$ & $P^\mathrm{rec}_{m,\mathrm{oop}}$\\
+57 & \code{fry} & cm & minus the vertical raster coordinate\\
+58 & \code{radphot} & GeV & $E_{\gamma1}+E_{\gamma2}+E_{\gamma3}$\\
+59 & \code{pfermi} & GeV/$c$ & $p_F$ with the sign of $\hat p_F\cdot\hat q$ (0 for H and $A\ge3$; for deuterium the drawn $p_F$, also without \code{do\_fermi})\\
+60 & \code{siglab} & $\mu$b/(MeV$^2$\,sr$^2$) & $\sigma$ of \eqr{eq:xsjac}, with the Coulomb factor\\
+61 & \code{sighad} & GeV$^{-2}$ & the multiplicity factor of \eqr{eq:sigsemi} (0 below the cut of \eqr{eq:mmcut})\\
+62 & \code{Weight} & $\mu$b/(MeV$^2$\,sr$^2$) & $w$ of \eqr{eq:weight}\\
+63 & \code{decdist} & cm or -- & decay distance (\code{doing\_decay} = 1) or $P_\mathrm{surv}$ (\code{doing\_decay} = 0)\\
+64 & \code{Mhadron} & MeV & mass of the detected particle (the decay product after a decay)\\
+65--76 & photon columns & cm, MeV & $\pi^0$ only: calorimeter positions and four-momenta of the two photons\\
+\end{simctable}
+The legacy layout orders the columns differently and has some that the default layout does not: \code{xbj},
+\code{xbji}, \code{thqi} (the vertex polar angle of $\vec q$), \code{jacobian} ($1000J_{zp_T}$), \code{sigcent} and
+\code{centjac} (always 0) and \code{xfermi} (the $x$ of the model); its column list is in the reference manual
+(\file{docs/manual/markdown/reference/OUTPUT\_FORMAT.md}, \S1e).
+
+% =====================================================================================================================
+\section{Validation in SIMC++}\lbl{sec:validation}
+\begin{simctable}{footnotesize}{L{0.5\linewidth}L{0.21\linewidth}L{0.29\linewidth}}
+\caption{CTest tests that cover SIDIS (one test per row).}\lbl{tab:tests}\\
+\toprule\rowcolor{simchead}\simcth{test} & \simcth{labels} & \simcth{what it checks}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{test} & \simcth{labels} & \simcth{what it checks}\\\midrule\endhead
+\bottomrule\endlastfoot
+\code{l1\_sidis\_data\_files} & l1 & the data copies equal the Fortran files (md5)\\
+\code{l1\_ctq5pdf} & l1 & \eqr{eq:cteq} against the Fortran table\\
+\code{l1\_ctq5\_state} & l1 & the CTEQ5 table as read\\
+\code{l1\_fdss} & l1 & \eqr{eq:fdss}\\
+\code{l1\_f1f2in21} & l1 & \eqsr{eq:sfconv}{eq:resmod}\\
+\code{l1\_slacemcfit\_rhad\_global} & l1 & \eqr{eq:rhad} and \eqr{eq:emc}\\
+\code{l1\_peepix} & l1 & the complete model (compat mode)\\
+\code{l1\_generate\_semi\_fixedrng} & l1 & the generation with fixed random numbers\\
+\code{l1\_complete\_ev\_semi} & l1 & the vertex completion\\
+\code{l1\_complete\_recon\_ev\_semi} & l1 & the reconstruction\\
+\code{l1\_complete\_main\_semi} & l1 & the weight\\
+\code{l1\_replay\_event\_capture\_semi\_h} & l1, replay & every routine of captured H events\\
+\code{l1\_replay\_event\_capture\_semi\_d} & l1, replay & the same for deuterium\\
+\code{l1\_montecarlo\_replay\_semi\_h} & l1, replay & the spectrometer chain of the H capture\\
+\code{l1\_montecarlo\_replay\_semi\_d} & l1, replay & the same for deuterium\\
+\code{l1\_simcrun\_replay\_semi\_h} & l1, replay & the complete run of the H capture, bitwise\\
+\code{l1\_simcrun\_replay\_semi\_d} & l1, replay & the same for deuterium\\
+\code{l1\_simcrun\_ranlux\_p14f2\_sidis\_h\_cap} & l1, replay & the $\pi^0$ capture with the calorimeter arm\\
+\code{l1\_simcrun\_ranlux\_up\_sidis\_h\_k1\_pip\_rad\_A} & l1, replay, slow, upstream\_layout & full run, RANLUX and compat mode, against the upstream Fortran run\\
+\code{cli\_sidis\_central\_log\_sidis\_h\_k1\_pip\_rad\_A} & cli, l1 & the central-event log lines\\
+\code{cli\_sidis\_central\_log\_p14f2\_sidis\_h\_A} & cli, l1 & the same for the $\pi^0$ run\\
+\code{sidis\_tables} & unit & table readers\\
+\code{sidis\_sanity} & unit & limits, refusals and the default-mode corrections\\
+\code{fortran\_diff\_D051\_sidis} & fortran\_diff, unit & the corrected model against the compat model\\
+\code{fortran\_diff\_D051\_F3\_F9\_semi\_pfermi\_pmper} & fortran\_diff, unit & the \code{pfermi} column and the vertex $P_{m,\perp}$\\
+\code{fortran\_diff\_D051\_F12\_F14\_semi\_hist\_titles} & fortran\_diff, unit & the \texttt{.hist} titles\\
+\code{regression\_identity\_sidis\_h\_k1\_pip\_rad} & regression & compat-mode outputs against the stored baseline\\
+\code{regression\_corrected\_sidis\_h\_k1\_pip\_rad} & regression & default-mode outputs against the stored baseline\\
+\code{regression\_upstream\_u59\_sidis\_d\_k1\_pip\_fermi\_rad\_A} & regression\_upstream, slow & the deuterium run with Fermi motion against the upstream Fortran (which stops)\\
+\code{regression\_shipped\_nps\_sidis\_pi0\_test} & regression\_shipped, slow & the shipped $\pi^0$ input\\
+\end{simctable}
+Recorded in the validation ledger (\code{project\_control/VALIDATION\_LEDGER.md}, entries of 2026-10-22 and 2026-10-24):
+the model library is bitwise equal to the Fortran tables in the compat mode (43685 CTEQ5, 36432 fDSS, 360 F1F2IN21, 1696
+nuclear-factor and 3338 complete-model rows), the default mode differing only where the corrections act; the statistical
+comparison of the compat mode with the seven Fortran SIDIS runs (seed 4242, $10^5$ events; H, D, C-12, $\pi^\pm$, K$^+$, with
+and without radiation) passes for all seven (8, 6, 8, 0, 5, 2 and 3 failed comparisons out of 253--270); the
+default-mode differences are the documented corrections (the hadron $\delta$ cut of \code{pass\_cuts}, the survival
+probability, the \code{pfermi} column).
+
+% =====================================================================================================================
+\section{Fortran origin and Fortran findings}\lbl{sec:origin}
+\begin{simctable}{footnotesize}{L{0.42\linewidth}L{0.58\linewidth}}
+\caption{Fortran routine $\to$ C++ function (one routine per row; the common routines are in \ctabr{tab:map}).}\lbl{tab:map}\\
+\toprule\rowcolor{simchead}\simcth{Fortran (upstream 59ccdf6)} & \simcth{C++ (src/...)}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{Fortran (upstream 59ccdf6)} & \simcth{C++ (src/...)}\\\midrule\endhead
+\bottomrule\endlastfoot
+\file{dbase.f:125}-134, 192-207 (flags) & \csrc{core/RunSetup.cpp: DeriveReactionFlags}\\
+\file{dbase.f:305}-317 (masses) & \csrc{setup/SetupReaction.cpp: BuildReactionAndKinematics}\\
+\file{dbase.f:567}-591 (deut.dat) & \csrc{setup/SetupTheory.cpp: BuildTargetAndTheory, ReadMomentumDistribution}\\
+\file{init.f:359}-513 (limits) & \csrc{setup/SetupLimits.cpp: BuildLimits}\\
+\file{event.f} generate, l.276-373 & \csrc{reactions/sidis/SidisProduction.cpp: SidisProduction::generate}\\
+\file{event.f} complete\_ev, l.723-786 & \csrc{reactions/pion/PionProduction.cpp: PionProduction::pionMainKinematics}\\
+\file{event.f} complete\_ev, l.914-1047 & \csrc{reactions/sidis/SidisProduction.cpp: SidisProduction::completeEv}\\
+\file{event.f} complete\_recon\_ev, l.1325-1341 & \csrc{reactions/EepReactionBase.cpp: EepReactionBase::completeRecon}\\
+\file{event.f} complete\_main, l.1523-1564 & \csrc{reactions/sidis/SidisProduction.cpp: SidisProduction::completeMain}\\
+\file{semi\_physics.f} peepiX & \csrc{physics/sidis/SidisCrossSection.cpp: peepiX}\\
+\file{semi\_physics.f} (call of peepiX) & \csrc{physics/sidis/SidisModel.cpp: SidisModel::sigccMain}\\
+\file{semi\_physics.f} slacemcfit & \csrc{physics/sidis/SidisCrossSection.cpp: slacemcfit}\\
+\file{semi\_physics.f} Rhad\_global & \csrc{physics/sidis/SidisCrossSection.cpp: rhadGlobal}\\
+\file{cteq5/Ctq5Pdf.f} SetCtq5, ReadTbl & \csrc{physics/sidis/Cteq5Pdf.cpp: Cteq5Pdf::load}\\
+\file{cteq5/Ctq5Pdf.f} Ctq5Pdf & \csrc{physics/sidis/Cteq5Pdf.cpp: Cteq5Pdf::pdf}\\
+\file{cteq5/Ctq5Pdf.f} PartonX & \csrc{physics/sidis/Cteq5Pdf.cpp: Cteq5Pdf::partonX}\\
+\file{cteq5/Ctq5Pdf.f} POLINT & \csrc{physics/sidis/Cteq5Pdf.cpp: polint}\\
+\file{fdss/fdss.f} fDSS (grid) & \csrc{physics/sidis/Fdss.cpp: FdssGrid::load}\\
+\file{fdss/fdss.f} fDSS (evaluation) & \csrc{physics/sidis/Fdss.cpp: FdssGrid::eval}\\
+\file{fdss/fdss.f} fFINT & \csrc{physics/sidis/Fdss.cpp: ffint}\\
+\file{F1F2IN21\_v1.0.f} F1F2IN21 & \csrc{physics/sidis/F1F2In21.cpp: f1f2in21}\\
+\file{F1F2IN21\_v1.0.f} SF & \csrc{physics/sidis/F1F2In21.cpp: sf}\\
+\file{F1F2IN21\_v1.0.f} rescsp, RESCSN & \csrc{physics/sidis/F1F2In21.cpp: rescsp, rescsn}\\
+\file{F1F2IN21\_v1.0.f} RESMODP, RESMODN & \csrc{physics/sidis/F1F2In21.cpp: resmod}\\
+\file{F1F2IN21\_v1.0.f} SQESUB & not ported (no effect on SIDIS)\\
+\file{semi\_dilution.f} semi\_dilution & \csrc{physics/sidis/SemiDilution.cpp: semiDilution}\\
+\file{radc.f:297}-303 (tail-1 case) & \csrc{radiation/Radc.cpp: generateRad}\\
+\file{simc.f:1298}-1313 (central log) & \csrc{driver/SimcRun.cpp}\\
+\file{results\_write.f:178}-286 & \csrc{output/NtupleLayout.cpp: FillUpstreamNtuple}\\
+\file{simc.f:394}-401 & \csrc{reactions/EepReactionBase.cpp: EepReactionBase::genVolume}\\
+\end{simctable}
+
+\begin{simcfindings}{footnotesize}{L{0.2\linewidth}L{0.5\linewidth}L{0.3\linewidth}}
+\caption{Fortran findings that touch SIDIS (one finding per row; the common ones are in \ctabr{tab:findings}).}\lbl{tab:findings}\\
+\toprule\rowcolor{simchead}\simcth{id} & \simcth{Fortran behaviour} & \simcth{default / compat}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{id} & \simcth{Fortran behaviour} & \simcth{default / compat}\\\midrule\endhead
+\bottomrule\endlastfoot
+\finding{D-051 F1} & all parton distributions 0: weight $0/0$ = NaN & 0 / NaN\\
+\finding{D-051 F2} & negative Fermi $x$ stops the run in Ctq5Pdf & $\sigma=0$ / stop\\
+\finding{D-051 F3} & \code{pfermi} 0/0 = NaN without Fermi momentum (fixed upstream) & 0 / 0\\
+\finding{D-051 F4} & $\pi^0$: $D_{\bar d}$ not averaged, charged-pion mass in the model & averaged, $M_{\pi^0}$ / Fortran\\
+\finding{D-051 F6 survival p} & survival probability with the central momentum & hadron momentum / Fortran\\
+\finding{D-051 F6 zaero} & no aerogel distance for the SHMS; path without the square root & 0, square root / Fortran\\
+\finding{D-051 F9} & vertex $P_{m,\perp}$ from the previous try's $P_m$ & current $P_m$ / Fortran\\
+\finding{D-051 F12} & no $\pi^0$ title in the \texttt{.hist} & $\pi^0$ title / Fortran\\
+\finding{D-051 F14} & $A\ge3$ kaon SIDIS stops when the \texttt{.hist} title is written & title written / stop\\
+\finding{D-051 F7} & the ``2$\pi$/$\pi$K'' cut of \eqr{eq:mmcut} multiplies by $1-p_T^2$ & kept in both\\
+\finding{D-051 F8} & threshold \eqr{eq:threshold} with $M_{\pi^0}$ for kaons, no Fermi motion; $z>1$ test unreachable & kept in both\\
+\finding{D-051 F10} & $R_h\ne1$ for deuterium; EMC fit and $M_N=M_p$ choices; no Fermi momentum for $A\ge3$ & kept in both\\
+\finding{D-051 F16} & hadron generated up to $\Sigma_\mathrm{max}-E'_\mathrm{min}$ with radiation & kept in both\\
+\finding{D-051 F5 dead inputs} & \code{pt\_b\_param} read and not used & kept; warning\\
+\finding{D-051 F5 doing\_cent} & central branch never called; \code{sigc\_*} inputs unused & ported, not called; warning\\
+\finding{D-051 F5 semi\_dilution} & dilution routine never called & ported, not called\\
+\finding{D-051 F13} & \code{CENTRAL.sigcc} from the reconstructed central event & kept\\
+\finding{D-005 sigc\_nbin} & \code{sigc\_nbin} = 0 would divide by zero in the central branch & kept (branch not called)\\
+\finding{P12.1 Q1} & early return of the model below the cut of \eqr{eq:mmcut} & kept\\
+\finding{P12.1 Q2} & first call reads deuteron smearing tables (no effect) & not ported\\
+\finding{P12.1 Q3} & a resonance-fit cut that is never true & kept\\
+\finding{P12.1 Q4} & Ctq5Pdf overwrites the caller's $Q$ below $\Lambda$ & reproduced\\
+\finding{P12.1 Q5} & fDSS arithmetic in quadruple precision & reproduced\\
+\finding{P12.1 Q6} & pion survival probability written, not applied & kept\\
+\finding{P12.1 Q7} & $x>1$ replaced by 1 with a message & kept\\
+\finding{P12.1 Q8} & PartonX reads outside its arrays for $x\le$ the first node after the first call & reproduced\\
+\finding{U-D1} & every SIDIS try with $z>1$ prints a warning (unreachable, \eqr{eq:zpt}) & followed\\
+\finding{D-006 pass\_cuts} & hadron $\delta$ cut with the electron upper limit (\texttt{wtcontr} of the SIDIS runs $-28.9$ to $-32.2$\,\%) & hadron limit / Fortran\\
+\finding{D-062 G8} & a tail-1 photon redraws the $\pi^0$ decay photons & kept\\
+\finding{D-065 P1} & a $\pi^0$ transported through a magnetic arm & kept / stop with decay\\
+\end{simcfindings}
+
+\begin{simcfindingbox}
+\textbf{Description of the early return.} The list of Fortran differences says that, below the cut of \eqr{eq:mmcut},
+the columns \code{sighad} and \code{decdist} keep the previous event's values. Both are reset to 0 at the start of every
+try (\fsrc{simc.f:184-186}, and in SIMC++ \csrc{driver/SimcRun.cpp}), so only the jacobian column keeps a stale value and
+the survival probability is stale only as an internal variable (the weight is 0). Documentation only.
+\end{simcfindingbox}
+
+\begin{simcrefs}
+\simcref{cteq5} H.~L.~Lai et al.\ (CTEQ), ``Global QCD analysis of parton structure of the nucleon: CTEQ5 parton
+  distributions'', Eur.\ Phys.\ J.\ C \textbf{12}, 375 (2000), hep-ph/9903282 (cited at \fsrc{cteq5/Ctq5Pdf.f:5-8}).
+\simcref{accardi} A.~Accardi, T.~Hobbs, W.~Melnitchouk, ``Hadron mass corrections in semi-inclusive deep inelastic
+  scattering'', JHEP \textbf{11} (2009) 084, arXiv:0907.2395 (cited at \fsrc{semi\_physics.f:462}).
+\simcref{dss} D.~de Florian, R.~Sassot, M.~Stratmann, Phys.\ Rev.\ D \textbf{75}, 114010 (2007) and D \textbf{76},
+  074033 (2007) (cited at \fsrc{fdss/fdss.f:4-5}).
+\simcref{christy} M.~E.~Christy et al., F1F2IN21 fit, version 1.0 prerelease of April 4, 2022 (named at
+  \fsrc{F1F2IN21\_v1.0.f:3-20}; unpublished at that date according to the code).
+\simcref{gomez} J.~Gomez et al., ``Measurement of the A dependence of deep-inelastic electron scattering'', Phys.\ Rev.\ D
+  \textbf{49}, 4348 (1994): the usual source of the SLAC EMC fit; not cited in the code, not compared.
+\simcref{binnewies} J.~Binnewies, B.~A.~Kniehl, G.~Kramer, Phys.\ Rev.\ D \textbf{52}, 4947 (1995) (the parametrisation of
+  the unused dilution routine, cited at \fsrc{semi\_physics.f:14-15}).
+\end{simcrefs}
+\end{document}

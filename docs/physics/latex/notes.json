@@ -29,6 +29,18 @@
       "output": "SIMCpp_Physics_03_nuclear_elastic",
       "title": "A(e,e')A nuclear elastic scattering (reaction nuclear_elastic, model nuc_elastic)",
       "copies": ["src/physics/nuclear"]
+    },
+    {
+      "source": "08_sidis.tex",
+      "output": "SIMCpp_Physics_08_sidis",
+      "title": "Semi-inclusive (e,e'h)X production (reaction sidis_production, model sidis: CTEQ5M, Bosted pion and fDSS kaon fragmentation, F1F2IN21)",
+      "copies": ["src/reactions/sidis", "src/physics/sidis"]
+    },
+    {
+      "source": "09_phase_space.tex",
+      "output": "SIMCpp_Physics_09_phase_space",
+      "title": "Phase-space (acceptance) runs: doing_phsp (reaction phase_space)",
+      "copies": []
     }
   ]
 }
