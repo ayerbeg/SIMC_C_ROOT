@@ -35,8 +35,8 @@ implemented - buyer beware!!''; the second is accurate, the first is not for rad
 \begin{simcwarning}
 \textbf{Scope.} SIMC++ runs \code{doing\_phsp} only on hydrogen without another reaction flag. Every other combination
 is refused or gives no event (\tabr{tab:replaces}): deuterium and heavier targets are a configuration error (exit
-status 2), a SIDIS flag is refused (exit status 3), and with a pion, kaon, Delta or $\rho$ flag the run stops with ``no
-layout'' when a tree is written (exit status 3) and no try reaches the spectrometers without a tree.
+status 2), and so is a pion, kaon, Delta or $\rho$ flag (``doing\_phsp cannot be combined with doing\_pion \ldots'', exit
+status 2, with or without a tree); a SIDIS flag is refused as well (exit status 3).
 \end{simcwarning}
 
 \subsection{Components}
@@ -63,8 +63,8 @@ input \code{rad\_flag} to 0 \fsrc{dbase.f:231-238}. It does not clear \code{doin
 \code{doing\_deuterium}, \code{doing\_heavy} nor the target-class flags of the meson reactions, and it does not switch
 \code{using\_rad} off. Because \code{doing\_eep} is cleared before the struck-nucleon masses are set, no branch sets them:
 $M_N=0$ and the recoil mass is 0 \fsrc{dbase.f:297-317}. The plug-in \code{PhaseSpace} refuses, in its \code{init()},
-deuterium and heavier targets and a SIDIS flag; a meson flag has already been cleared by the switch, so such a set-up
-passes \code{init()} and fails later (\tabr{tab:replaces}). A JSON input can name \code{"reaction": "phase\_space"}
+deuterium and heavier targets, a SIDIS flag and, from the raw input flags (the switch has already cleared the derived
+ones), a pion, kaon, Delta or $\rho$ flag; the refusal comes before any sink chooses the tree layout (\tabr{tab:replaces}). A JSON input can name \code{"reaction": "phase\_space"}
 directly; the conditions are the same.
 
 \subsection{What the switch does to each reaction}
@@ -78,7 +78,7 @@ H, no other flag & elastic generation and kinematics (note 01), $\sigma=1$, norm
 D, no other flag & D(e,e\pr p) generation; with $M_N=0$ the residual mass becomes $M_p+M_n$, the proton energy is solved for that recoil; $S=1$, $\sigma=1$ & refused at set-up (configuration error, exit status 2)\\
 $A\ge3$, no other flag & A(e,e\pr p) generation; with $M_N=0$ the vertex $E_m=M^*_\mathrm{rec}-M_A$ is negative and fails the vertex limit $E_m\ge E_\mathrm{Fermi}$: no event & refused at set-up (exit status 2)\\
 \code{doing\_nuc\_elast} & the elastic flag is kept & refused at set-up\\
-\code{doing\_pion} & flag cleared, target class kept: only the electron slopes are generated, no energy; the hadron is put at $P_h^0$ along its previous slopes & runs only without tree (\code{Nntu} = 0): no try reaches the spectrometers, \texttt{wtcontr} $=0$; with a tree: stop ``ntuple: no layout for this reaction'' (exit status 3)\\
+\code{doing\_pion} & flag cleared, target class kept: only the electron slopes are generated, no energy; the hadron is put at $P_h^0$ along its previous slopes & refused at set-up (exit status 2, ``doing\_phsp cannot be combined with doing\_pion''), with or without a tree; before this refusal (up to v2.0) the run stopped with ``no layout'' (tree) or gave no event (no tree)\\
 \code{doing\_kaon} & as \code{doing\_pion} & as \code{doing\_pion}\\
 \code{doing\_delta} & as \code{doing\_pion} & as \code{doing\_pion}\\
 \code{doing\_rho} & as \code{doing\_pion} (no $\rho$ decay) & as \code{doing\_pion}\\
@@ -94,8 +94,8 @@ with a meson flag the electron energy is never generated \fsrc{event.f:300-316} 
 (0 at start-up); (4) with SIDIS kaons and \code{doing\_decay} = 0, the survival probability multiplies the weight
 \fsrc{event.f:1563-1564} but is computed only by the SIDIS model, which the phase-space branch does not call
 \fsrc{event.f:1449-1451}: the weight is 0. SIMC++ refuses all of these (\tabr{tab:replaces}); the list of Fortran
-differences records them as deliberate deviations (the deuterium/heavy and SIDIS refusals) and as a combination that is
-not supported yet (the meson flags), see \tabr{tab:findings}.
+differences records the three refusals (deuterium/heavy, SIDIS, meson flags) as deliberate deviations, see
+\tabr{tab:findings}.
 \end{simcfindingbox}
 
 \subsection{Event flow}
@@ -142,8 +142,8 @@ E' &= \frac{E_\mathrm{in}\,M_h}{M_h + E_\mathrm{in}(1-\cos\theta_e)}\quad(M_h=M_
 \lbl{eq:proton}
 \end{feq}
 The elastic relation uses the hadron mass $M_h$, which is $M_p$ here. The dedicated phase-space branch of
-\code{completeEv}, reached only when no other branch applies (a meson flag cleared by the switch, \tabr{tab:replaces}),
-puts the hadron at the central momentum:
+\code{completeEv}, reached in the Fortran only when no other branch applies (a meson flag cleared by the switch; SIMC++
+refuses that input, \tabr{tab:replaces}), puts the hadron at the central momentum:
 \begin{feq}{reactions/EepReactionBase.cpp: EepReactionBase::completeEv}{event.f:709-716}
 P_h = P_h^0,\qquad E_h = \sqrt{M_h^2+P_h^2},\qquad \delta_h = 0.
 \lbl{eq:phspbranch}
@@ -255,6 +255,10 @@ of \eqr{eq:normfac}.
 \code{regression\_identity\_phsp} & regression & compat-mode outputs against the stored baseline\\
 \code{regression\_corrected\_phsp} & regression & default-mode outputs against the stored baseline\\
 \code{regression\_shipped\_p15f1\_phsp\_sm1\_A} & regression\_shipped, slow & phase space with one arm simulated\\
+\code{cli\_phsp\_pion\_refused} & fortran\_diff, cli, unit & \code{doing\_phsp} + \code{doing\_pion} refused (exit 2), both modes, with and without a tree\\
+\code{cli\_phsp\_kaon\_refused} & fortran\_diff, cli, unit & the same for \code{doing\_kaon}\\
+\code{cli\_phsp\_delta\_refused} & fortran\_diff, cli, unit & the same for \code{doing\_delta}\\
+\code{cli\_phsp\_rho\_refused} & fortran\_diff, cli, unit & the same for \code{doing\_rho}\\
 \end{simctable}
 Recorded in the validation ledger (\code{project\_control/VALIDATION\_LEDGER.md}): the statistical comparison of SIMC++
 with the Fortran run \code{acc\_phsp\_hms\_shms\_A} fails 0 of 209 comparisons (2026-10-01); the run at 6.4 GeV
@@ -262,7 +266,8 @@ with the Fortran run \code{acc\_phsp\_hms\_shms\_A} fails 0 of 209 comparisons (
 mode only by \texttt{wtcontr} ($-24.4$\,\%, the hadron $\delta$ cut of \code{pass\_cuts}). The probes of
 \tabr{tab:replaces} were made for this note with the SIMC++ build of commit 8260761 (the code is unchanged at cab5a4d),
 the input of \code{acc\_phsp\_hms\_shms\_A} with $-20000$ tries, seed 4242: hydrogen 978 contributing events,
-\texttt{wtcontr} $=0.0370$; the other rows as stated.
+\texttt{wtcontr} $=0.0370$; the other rows as stated, except the meson rows, which are refused since the refusal was
+added (tests \code{cli\_phsp\_*\_refused}).
 
 % =====================================================================================================================
 \section{Fortran origin and Fortran findings}\lbl{sec:origin}
@@ -297,6 +302,6 @@ the input of \code{acc\_phsp\_hms\_shms\_A} with $-20000$ tries, seed 4242: hydr
 \finding{U-DEV1} & \code{doing\_nuc\_elast} combined with \code{doing\_phsp} & refused in both\\
 \finding{PHYS.2C phsp D/A} & deuterium and heavier targets run with $M_N=0$ & refused in both (exit status 2)\\
 \finding{PHYS.2C phsp SIDIS} & SIDIS generation with $\sigma=1$ (kaon weights 0) & refused in both (exit status 3)\\
-\finding{PHYS.2C phsp mesons} & meson flags cleared, target class kept & not supported: no layout / no event\\
+\finding{PHYS.2C phsp mesons} & meson flags cleared, target class kept: no event reaches the spectrometers & refused in both (exit status 2)\\
 \end{simcfindings}
 \end{document}

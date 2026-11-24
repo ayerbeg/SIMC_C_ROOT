@@ -7,18 +7,20 @@ The reaction follows from the reaction flags and from `targ%A`. SIMC++ then pick
 
 | flags | target | reaction plug-in | physics model | tree layout ([7.1](07_outputs.md#71-the-event-tree-h10)) |
 |---|---|---|---|---|
-| `doing_phsp = 1` | A = 1 only (see [5.8](#58-phase-space-and-acceptance-runs-doing_phsp)) | `phase_space` | none (σ = 1) | (e,e'p) |
-| none of the flags below | A = 1 | `hydrogen_elastic` | `sigep` | (e,e'p), 46 columns |
-| none | A = 2 | `deuterium_eep` | `deforest` | (e,e'p) |
-| none | A ≥ 3 | `nucleus_eep` | `deforest` | (e,e'p) |
-| `doing_nuc_elast` | any | `nuclear_elastic` | `nuc_elastic` | (e,e'p), 46 columns |
-| `doing_pion` | any | `pion_production` | `pion` | pion, 53 (65 with π0) |
-| `doing_kaon` | any | `kaon_production` | `kaon` | kaon, 55 |
-| `doing_delta` | any | `delta_production` | `delta` | pion layout, 53 |
-| `doing_semi` + `doing_pion` or `doing_kaon` | any | `sidis_production` | `sidis` | SIDIS, 56 (68 with π0) |
-| `doing_rho` | A = 1, 2, 3 | `rho_production` | `rho` | rho, 59 |
+| `doing_phsp = 1` | A = 1 only (see [5.8](#58-phase-space-and-acceptance-runs-doing_phsp)) | `phase_space` | none (σ = 1) | (e,e'p), 53 (legacy 46) |
+| none of the flags below | A = 1 | `hydrogen_elastic` | `sigep` | (e,e'p), 53 columns (legacy 46) |
+| none | A = 2 | `deuterium_eep` | `deforest` | (e,e'p), 53 (legacy 46) |
+| none | A ≥ 3 | `nucleus_eep` | `deforest` | (e,e'p), 53 (legacy 46) |
+| `doing_nuc_elast` | any | `nuclear_elastic` | `nuc_elastic` | (e,e'p), 53 columns (legacy 46) |
+| `doing_pion` | any | `pion_production` | `pion` | pion, 64 (76 with π0; legacy 53, 65) |
+| `doing_kaon` | any | `kaon_production` | `kaon` | kaon, 66 (legacy 55) |
+| `doing_delta` | any | `delta_production` | `delta` | pion layout, 64 (legacy 53) |
+| `doing_semi` + `doing_pion` or `doing_kaon` | any | `sidis_production` | `sidis` | SIDIS, 64 (76 with π0; legacy 56, 68) |
+| `doing_rho` | A = 1, 2, 3 | `rho_production` | `rho` | rho, 67 (legacy 59) |
 
-`doing_semi` takes priority: `doing_pion`/`doing_kaon` then only select the SIDIS hadron. With `using_tgt_field`, 8
+The column counts are those of the default tree layout (upstream SIMC 59ccdf6); "legacy" gives the count of
+`--tree-layout legacy` (SIMC 294f662). `doing_semi` takes priority: `doing_pion`/`doing_kaon` then only select the SIDIS
+hadron. With `using_tgt_field`, 8
 polarized-target columns are added ([7.1.7](07_outputs.md#718-polarized-target-columns-using_tgt_field)). The log shows
 the reaction title (for example ` ****--------  H(e,e'pi+)X  --------****`).
 
@@ -165,10 +167,9 @@ Physics note: [09 Phase-space runs](../../../physics/pdf/SIMCpp_Physics_09_phase
 `doing_phsp` switches off the pion, kaon, Delta and rho physics but keeps the hadron mass that these flags selected.
 
 **Scope in SIMC++: hydrogen only, without another reaction flag.** On deuterium or A ≥ 3 the run is refused at start-up
-(configuration error, exit status 2); together with `doing_semi` it is refused (exit status 3); with `doing_pion`,
-`doing_kaon`, `doing_delta` or `doing_rho` and a tree (`Nntu > 0`) the run stops with "ntuple: no layout for this
-reaction" (exit status 3), and without a tree no try reaches the spectrometers. The Fortran runs these combinations with
-inconsistent kinematics (physics note 09).
+(configuration error, exit status 2), and so is `doing_phsp` together with `doing_pion`, `doing_kaon`, `doing_delta` or
+`doing_rho` ("doing_phsp cannot be combined with doing_pion ..."); together with `doing_semi` it is refused as well
+(exit status 3). The Fortran runs these combinations with inconsistent kinematics (physics note 09).
 
 To measure the acceptance of one spectrometer, or to throw events at a spectrometer without simulating it, see
 `spect_mode` ([6.4](06_spectrometers.md#64-spect_mode-switching-the-spectrometer-monte-carlo-off)).

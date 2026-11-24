@@ -18,18 +18,19 @@ The reaction follows from the reaction flags and from \hyperref[param:targu25A]{
 \multicolumn{5}{@{}l}{\simccontinued}\\\toprule\rowcolor{simchead}\simcth{flags} & \simcth{target} & \simcth{reaction plug-in} & \simcth{physics model} & \simcth{tree layout (\hyperref[user_manual-07u5foutputs:71-the-event-tree-h10]{7.1})} \\\midrule\endhead
 \midrule\multicolumn{5}{r@{}}{\simccontinues}\\\endfoot
 \bottomrule\endlastfoot
-\code{doing\_\allowbreak{}phsp\ =\ 1} & A = 1 only (see \hyperref[user_manual-05u5freactions:58-phase-space-and-acceptance-runs-doingu5fphsp]{5.8}) & \code{phase\_\allowbreak{}space} & none (σ = 1) & (e,e'p) \\
-none of the flags below & A = 1 & \code{hydrogen\_\allowbreak{}elastic} & \code{sigep} & (e,e'p), 46 columns \\
-none & A = 2 & \code{deuterium\_\allowbreak{}eep} & \code{deforest} & (e,e'p) \\
-none & A ≥ 3 & \code{nucleus\_\allowbreak{}eep} & \code{deforest} & (e,e'p) \\
-\hyperref[param:doingu5fnucu5felast]{\code{doing\_\allowbreak{}nuc\_\allowbreak{}elast}}\simcidx{Parameters!doing_nuc_elast@\code{doing\_nuc\_elast}} & any & \code{nuclear\_\allowbreak{}elastic} & \code{nuc\_\allowbreak{}elastic} & (e,e'p), 46 columns \\
-\hyperref[param:doingu5fpion]{\code{doing\_\allowbreak{}pion}}\simcidx{Parameters!doing_pion@\code{doing\_pion}} & any & \code{pion\_\allowbreak{}production} & \code{pion} & pion, 53 (65 with π0) \\
-\hyperref[param:doingu5fkaon]{\code{doing\_\allowbreak{}kaon}}\simcidx{Parameters!doing_kaon@\code{doing\_kaon}} & any & \code{kaon\_\allowbreak{}production} & \code{kaon} & kaon, 55 \\
-\hyperref[param:doingu5fdelta]{\code{doing\_\allowbreak{}delta}}\simcidx{Parameters!doing_delta@\code{doing\_delta}} & any & \code{delta\_\allowbreak{}production} & \code{delta} & pion layout, 53 \\
-\hyperref[param:doingu5fsemi]{\code{doing\_\allowbreak{}semi}}\simcidx{Parameters!doing_semi@\code{doing\_semi}} + \hyperref[param:doingu5fpion]{\code{doing\_\allowbreak{}pion}}\simcidx{Parameters!doing_pion@\code{doing\_pion}} or \hyperref[param:doingu5fkaon]{\code{doing\_\allowbreak{}kaon}}\simcidx{Parameters!doing_kaon@\code{doing\_kaon}} & any & \code{sidis\_\allowbreak{}production} & \code{sidis} & SIDIS, 56 (68 with π0) \\
-\hyperref[param:doingu5frho]{\code{doing\_\allowbreak{}rho}}\simcidx{Parameters!doing_rho@\code{doing\_rho}} & A = 1, 2, 3 & \code{rho\_\allowbreak{}production} & \code{rho} & rho, 59 \\
+\code{doing\_\allowbreak{}phsp\ =\ 1} & A = 1 only (see \hyperref[user_manual-05u5freactions:58-phase-space-and-acceptance-runs-doingu5fphsp]{5.8}) & \code{phase\_\allowbreak{}space} & none (σ = 1) & (e,e'p), 53 (legacy 46) \\
+none of the flags below & A = 1 & \code{hydrogen\_\allowbreak{}elastic} & \code{sigep} & (e,e'p), 53 columns (legacy 46) \\
+none & A = 2 & \code{deuterium\_\allowbreak{}eep} & \code{deforest} & (e,e'p), 53 (legacy 46) \\
+none & A ≥ 3 & \code{nucleus\_\allowbreak{}eep} & \code{deforest} & (e,e'p), 53 (legacy 46) \\
+\hyperref[param:doingu5fnucu5felast]{\code{doing\_\allowbreak{}nuc\_\allowbreak{}elast}}\simcidx{Parameters!doing_nuc_elast@\code{doing\_nuc\_elast}} & any & \code{nuclear\_\allowbreak{}elastic} & \code{nuc\_\allowbreak{}elastic} & (e,e'p), 53 columns (legacy 46) \\
+\hyperref[param:doingu5fpion]{\code{doing\_\allowbreak{}pion}}\simcidx{Parameters!doing_pion@\code{doing\_pion}} & any & \code{pion\_\allowbreak{}production} & \code{pion} & pion, 64 (76 with π0; legacy 53, 65) \\
+\hyperref[param:doingu5fkaon]{\code{doing\_\allowbreak{}kaon}}\simcidx{Parameters!doing_kaon@\code{doing\_kaon}} & any & \code{kaon\_\allowbreak{}production} & \code{kaon} & kaon, 66 (legacy 55) \\
+\hyperref[param:doingu5fdelta]{\code{doing\_\allowbreak{}delta}}\simcidx{Parameters!doing_delta@\code{doing\_delta}} & any & \code{delta\_\allowbreak{}production} & \code{delta} & pion layout, 64 (legacy 53) \\
+\hyperref[param:doingu5fsemi]{\code{doing\_\allowbreak{}semi}}\simcidx{Parameters!doing_semi@\code{doing\_semi}} + \hyperref[param:doingu5fpion]{\code{doing\_\allowbreak{}pion}}\simcidx{Parameters!doing_pion@\code{doing\_pion}} or \hyperref[param:doingu5fkaon]{\code{doing\_\allowbreak{}kaon}}\simcidx{Parameters!doing_kaon@\code{doing\_kaon}} & any & \code{sidis\_\allowbreak{}production} & \code{sidis} & SIDIS, 64 (76 with π0; legacy 56, 68) \\
+\hyperref[param:doingu5frho]{\code{doing\_\allowbreak{}rho}}\simcidx{Parameters!doing_rho@\code{doing\_rho}} & A = 1, 2, 3 & \code{rho\_\allowbreak{}production} & \code{rho} & rho, 67 (legacy 59) \\
 \end{simctable}
-\hyperref[param:doingu5fsemi]{\code{doing\_\allowbreak{}semi}}\simcidx{Parameters!doing_semi@\code{doing\_semi}} takes priority: \hyperref[param:doingu5fpion]{\code{doing\_\allowbreak{}pion}}\simcidx{Parameters!doing_pion@\code{doing\_pion}}/\hyperref[param:doingu5fkaon]{\code{doing\_\allowbreak{}kaon}}\simcidx{Parameters!doing_kaon@\code{doing\_kaon}} then only select the SIDIS hadron. With \hyperref[param:usingu5ftgtu5ffield]{\code{using\_\allowbreak{}tgt\_\allowbreak{}field}}\simcidx{Parameters!using_tgt_field@\code{using\_tgt\_field}}, 8
+The column counts are those of the default tree layout (upstream SIMC 59ccdf6); ``legacy'' gives the count of
+\code{-{}-{}tree-{}layout\ legacy} (SIMC 294f662). \hyperref[param:doingu5fsemi]{\code{doing\_\allowbreak{}semi}}\simcidx{Parameters!doing_semi@\code{doing\_semi}} takes priority: \hyperref[param:doingu5fpion]{\code{doing\_\allowbreak{}pion}}\simcidx{Parameters!doing_pion@\code{doing\_pion}}/\hyperref[param:doingu5fkaon]{\code{doing\_\allowbreak{}kaon}}\simcidx{Parameters!doing_kaon@\code{doing\_kaon}} then only select the SIDIS hadron. With \hyperref[param:usingu5ftgtu5ffield]{\code{using\_\allowbreak{}tgt\_\allowbreak{}field}}\simcidx{Parameters!using_tgt_field@\code{using\_tgt\_field}}, 8
 polarized-target columns are added (\hyperref[user_manual-07u5foutputs:718-polarized-target-columns-usingu5ftgtu5ffield]{7.1.7}). The log shows
 the reaction title (for example \code{\ ****-{}-{}-{}-{}-{}-{}-{}-{}\ \ H(\allowbreak{}e,\allowbreak{}e'pi+)X\ \ -{}-{}-{}-{}-{}-{}-{}-{}****}).
 
@@ -181,10 +182,10 @@ can give zero accepted events. Set \code{using\_\allowbreak{}rad\ =\ 0} for a pu
 \hyperref[param:doingu5fphsp]{\code{doing\_\allowbreak{}phsp}}\simcidx{Parameters!doing_phsp@\code{doing\_phsp}} switches off the pion, kaon, Delta and rho physics but keeps the hadron mass that these flags selected.
 
 \textbf{Scope in SIMC++: hydrogen only, without another reaction flag.} On deuterium or A ≥ 3 the run is refused at
-start-up (configuration error, exit status 2); together with \code{doing\_\allowbreak{}semi} it is refused (exit status 3); with
-\code{doing\_\allowbreak{}pion}, \code{doing\_\allowbreak{}kaon}, \code{doing\_\allowbreak{}delta} or \code{doing\_\allowbreak{}rho} and a tree (\code{Nntu\ >\ 0}) the run stops with ``ntuple: no layout for
-this reaction'' (exit status 3), and without a tree no try reaches the spectrometers. The Fortran runs these combinations
-with inconsistent kinematics (physics note 09).
+start-up (configuration error, exit status 2), and so is \code{doing\_\allowbreak{}phsp} together with \code{doing\_\allowbreak{}pion}, \code{doing\_\allowbreak{}kaon},
+\code{doing\_\allowbreak{}delta} or \code{doing\_\allowbreak{}rho} (``doing\_phsp cannot be combined with doing\_pion \ldots''); together with
+\code{doing\_\allowbreak{}semi} it is refused as well (exit status 3). The Fortran runs these combinations with inconsistent kinematics
+(physics note 09).
 
 To measure the acceptance of one spectrometer,\allowbreak{} or to throw events at a spectrometer without simulating it, see
 \hyperref[param:spectu5fmode]{\code{spect\_\allowbreak{}mode}}\simcidx{Parameters!spect_mode@\code{spect\_mode}} (\hyperref[user_manual-06u5fspectrometers:64-spectu5fmode-switching-the-spectrometer-monte-carlo-off]{6.4}).

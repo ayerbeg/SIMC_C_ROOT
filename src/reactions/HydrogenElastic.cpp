@@ -22,6 +22,25 @@ HydrogenElastic::HydrogenElastic(std::string name) : EepReactionBase(std::move(n
 
 void HydrogenElastic::init(const StageContext& ctx) {
     const ReactionFlags& f = ctx.setup.flags;
+    if (f.doing_phsp) {
+        // SIMC++ (FORTRAN_DIFFERENCES PHYS.2C phsp mesons, task FIX.1): dbase.f:227-234 (RunSetup.cpp, DeriveReactionFlags
+        // step 3) clears doing_pion/kaon/delta/rho when doing_phsp is set but keeps their target-class flags, so the
+        // Fortran generates no electron energy and places the hadron at the central momentum (no event reaches the
+        // spectrometers). The raw input flags are tested here, before any sink chooses the ntuple layout.
+        const SimcParameters& p = ctx.setup.params;
+        std::string meson;
+        if (p.doing_pion && !p.doing_semi) meson = "doing_pion";
+        else if (p.doing_kaon && !p.doing_semi) meson = "doing_kaon";
+        else if (p.doing_delta) meson = "doing_delta";
+        else if (p.doing_rho) meson = "doing_rho";
+        if (!meson.empty())
+            throw std::invalid_argument("reaction '" + name_ + "': doing_phsp cannot be combined with " + meson +
+                                        " (phase-space runs are H(e,e'p) only: with a meson flag no hadron energy is "
+                                        "generated and no event reaches the spectrometers)");
+        if (f.doing_semi)
+            throw NotPorted("reaction '" + name_ + "': doing_phsp cannot be combined with doing_semi (phase-space runs "
+                            "are H(e,e'p) only)");
+    }
     if (f.doing_deuterium || f.doing_heavy)
         throw std::invalid_argument("reaction '" + name_ + "': D(e,e'p)/A(e,e'p) is the reaction 'deuterium_eep' / "
                                     "'nucleus_eep'");

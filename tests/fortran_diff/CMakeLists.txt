@@ -66,6 +66,16 @@ add_test(NAME cli_decay_non_pik
                  ${CMAKE_CURRENT_BINARY_DIR}/cli_decay_non_pik)
 set_tests_properties(cli_decay_non_pik PROPERTIES LABELS "fortran_diff;cli" SKIP_RETURN_CODE 77)
 
+# FIX.1 (FORTRAN_DIFFERENCES PHYS.2C phsp mesons): doing_phsp with a meson flag is a configuration error (exit 2) in
+# both modes, with and without the tree
+foreach(_flag pion kaon delta rho)
+    add_test(NAME cli_phsp_${_flag}_refused
+             COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/cli_phsp_meson_refused.sh $<TARGET_FILE:simcpp>
+                     ${CMAKE_SOURCE_DIR}/docs/manual/markdown/user/examples/h_elastic_rad.inp
+                     ${CMAKE_CURRENT_BINARY_DIR}/cli_phsp_${_flag}_refused doing_${_flag})
+    set_tests_properties(cli_phsp_${_flag}_refused PROPERTIES LABELS "fortran_diff;cli;unit")
+endforeach()
+
 # P15.2 (D-065): shipped legacy-name inputs (same STOP as the Fortran + the ignored names), fpi12_deltapp, spect_mode warning
 add_test(NAME cli_shipped_inputs
          COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/cli_shipped_inputs.sh $<TARGET_FILE:simcpp> $<TARGET_FILE:simc_root_identity>
