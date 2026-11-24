@@ -12,7 +12,8 @@ restores the exact Fortran behaviour, and with the RANLUX generator SIMC++ then 
 at master commit **59ccdf6** (2026-10-01), as recorded in [UPSTREAM_SIMC](UPSTREAM_SIMC). The default column layout of the
 `h10` tree follows 59ccdf6; `--tree-layout legacy` writes the layout of the older version 294f662, and
 `--fortran-compat --compat-target 294f662` reproduces the behaviour of 294f662. The release that reproduced 294f662 is
-the git tag `v1.0-fortran294f662` (`git checkout v1.0-fortran294f662`).
+the git tag `v1.0-fortran294f662` (`git checkout v1.0-fortran294f662`); the release that reproduces 59ccdf6 is the tag
+`v2.0-fortran59ccdf6`.
 
 ## Features
 

@@ -29,7 +29,8 @@ master commit **59ccdf6** (2026-10-01), the version recorded in the file `UPSTRE
 column layout of the ROOT tree follows 59ccdf6; `--tree-layout legacy` writes the layout of the older version 294f662
 ([7.1](07_outputs.md)), and `--fortran-compat --compat-target 294f662` reproduces the behaviour of 294f662
 ([8.3](08_running_and_reproducibility.md#83-default-and-legacy-compatible-mode)). The SIMC++ release that reproduced
-294f662 is the git tag `v1.0-fortran294f662` (`git checkout v1.0-fortran294f662`, [2.1](02_installation.md#21-directory-layout-used-in-this-manual)).
+294f662 is the git tag `v1.0-fortran294f662` (`git checkout v1.0-fortran294f662`, [2.1](02_installation.md#21-directory-layout-used-in-this-manual));
+the release that reproduces 59ccdf6 is the tag `v2.0-fortran59ccdf6`.
 
 ![A run of SIMC++: the inputs are read into SimcParameters and RunSetup, the pipeline creates the stages by name, the event loop calls them once per try, and finish() normalises and writes the outputs through the sinks](../../figures/run_flow.png)
 

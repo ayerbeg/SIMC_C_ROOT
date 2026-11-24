@@ -34,8 +34,9 @@ implemented - buyer beware!!''; the second is accurate, the first is not for rad
 
 \begin{simcwarning}
 \textbf{Scope.} SIMC++ runs \code{doing\_phsp} only on hydrogen without another reaction flag. Every other combination
-is refused or gives no event (\tabr{tab:replaces}). The tables of note 00 and of the user manual that list
-\code{phase\_space} for ``any target'' describe the selection rule of the pipeline, not what runs.
+is refused or gives no event (\tabr{tab:replaces}): deuterium and heavier targets are a configuration error (exit
+status 2), a SIDIS flag is refused (exit status 3), and with a pion, kaon, Delta or $\rho$ flag the run stops with ``no
+layout'' when a tree is written (exit status 3) and no try reaches the spectrometers without a tree.
 \end{simcwarning}
 
 \subsection{Components}
@@ -92,8 +93,9 @@ $M_p+M_n-M_N$ with $M_N=0$ \fsrc{dbase.f:447-451}, so the proton is solved again
 with a meson flag the electron energy is never generated \fsrc{event.f:300-316} and keeps the value of the event record
 (0 at start-up); (4) with SIDIS kaons and \code{doing\_decay} = 0, the survival probability multiplies the weight
 \fsrc{event.f:1563-1564} but is computed only by the SIDIS model, which the phase-space branch does not call
-\fsrc{event.f:1449-1451}: the weight is 0. SIMC++ refuses all of these (\tabr{tab:replaces}); the refusals are not listed
-among the deliberate deviations of the list of Fortran differences.
+\fsrc{event.f:1449-1451}: the weight is 0. SIMC++ refuses all of these (\tabr{tab:replaces}); the list of Fortran
+differences records them as deliberate deviations (the deuterium/heavy and SIDIS refusals) and as a combination that is
+not supported yet (the meson flags), see \tabr{tab:findings}.
 \end{simcfindingbox}
 
 \subsection{Event flow}
@@ -293,5 +295,8 @@ the input of \code{acc\_phsp\_hms\_shms\_A} with $-20000$ tries, seed 4242: hydr
 \finding{D-006 pass\_cuts} & hadron $\delta$ cut with the electron upper limit & hadron limit / Fortran\\
 \finding{D-028 F2} & a NaN proton $y'$ by rounding & $y'=0$ / NaN\\
 \finding{U-DEV1} & \code{doing\_nuc\_elast} combined with \code{doing\_phsp} & refused in both\\
+\finding{PHYS.2C phsp D/A} & deuterium and heavier targets run with $M_N=0$ & refused in both (exit status 2)\\
+\finding{PHYS.2C phsp SIDIS} & SIDIS generation with $\sigma=1$ (kaon weights 0) & refused in both (exit status 3)\\
+\finding{PHYS.2C phsp mesons} & meson flags cleared, target class kept & not supported: no layout / no event\\
 \end{simcfindings}
 \end{document}

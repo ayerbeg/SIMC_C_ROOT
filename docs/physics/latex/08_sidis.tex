@@ -731,12 +731,12 @@ probability, the \code{pfermi} column).
 \finding{D-065 P1} & a $\pi^0$ transported through a magnetic arm & kept / stop with decay\\
 \end{simcfindings}
 
-\begin{simcfindingbox}
-\textbf{Description of the early return.} The list of Fortran differences says that, below the cut of \eqr{eq:mmcut},
-the columns \code{sighad} and \code{decdist} keep the previous event's values. Both are reset to 0 at the start of every
-try (\fsrc{simc.f:184-186}, and in SIMC++ \csrc{driver/SimcRun.cpp}), so only the jacobian column keeps a stale value and
-the survival probability is stale only as an internal variable (the weight is 0). Documentation only.
-\end{simcfindingbox}
+\begin{simcnote}
+\textbf{Early return.} Below the cut of \eqr{eq:mmcut} the columns \code{sighad} and \code{decdist} show 0, because both
+are reset at the start of every try (\fsrc{simc.f:184-186}, \csrc{driver/SimcRun.cpp: SimcRun::resetForTry}); only the
+jacobian (a column of the legacy tree layout) keeps the previous event's value, and the survival probability is stale
+only as an internal variable (the weight is 0). The list of Fortran differences states it so.
+\end{simcnote}
 
 \begin{simcrefs}
 \simcref{cteq5} H.~L.~Lai et al.\ (CTEQ), ``Global QCD analysis of parton structure of the nucleon: CTEQ5 parton

@@ -156,7 +156,7 @@
 % ---- references: \begin{simcrefs} \simcref{key} text ... \end{simcrefs}; \citer{key} -------------------------------------
 \newenvironment{simcrefs}{\section*{References}%
   \ifsimcbook\else\addcontentsline{toc}{section}{References}\fi
-  \begin{enumerate}[label={[\arabic*]}, leftmargin=2.2em, itemsep=2pt]\small}{\end{enumerate}}
+  \begin{enumerate}[label={[\arabic*]}, ref={\arabic*}, leftmargin=2.2em, itemsep=2pt]\small}{\end{enumerate}}
 \newcommand\simcref[1]{\item\lbl{ref:#1}}
 \newcommand\citer[1]{[\ref{\simcnoteprefix ref:#1}]}
 

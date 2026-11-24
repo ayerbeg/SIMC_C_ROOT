@@ -38,9 +38,11 @@ set-up). Setting \code{ROOTSYS}, \code{LD\_\allowbreak{}LIBRARY\_\allowbreak{}PA
 
 \textbf{Which version to check out.} The \code{main} branch reproduces the Fortran SIMC at master commit 59ccdf6 (the file
 \code{UPSTREAM\_\allowbreak{}SIMC}; the default tree layout is that of 59ccdf6, \code{-{}-{}tree-{}layout\ legacy}\simcidx{Command-line options!tree-layout@\code{-{}-{}tree-{}layout}} gives the 294f662 layout). The
-release that reproduced the older Fortran version 294f662 is the tag \code{v1.\allowbreak{}0-{}fortran294f662}:
+release that reproduces 59ccdf6 is the tag \code{v2.\allowbreak{}0-{}fortran59ccdf6}; the release that reproduced the older Fortran version
+294f662 is the tag \code{v1.\allowbreak{}0-{}fortran294f662}:
 
 \begin{simcshell}[basicstyle=\ttfamily\scriptsize]
+git -C $SIMCPP_SRC checkout v2.0-fortran59ccdf6   # the release for Fortran SIMC 59ccdf6
 git -C $SIMCPP_SRC checkout v1.0-fortran294f662   # the release for Fortran SIMC 294f662
 git -C $SIMCPP_SRC checkout main                  # back to the current version (Fortran SIMC 59ccdf6)
 \end{simcshell}

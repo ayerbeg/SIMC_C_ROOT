@@ -86,7 +86,12 @@ the physics notes refer to.
 \code{IReaction} & \code{deuterium\_eep} & \code{DeuteriumEep} & \file{reactions/NuclearEep.cpp} (note 02)\\
 \code{IReaction} & \code{nucleus\_eep} & \code{NuclearEep} & \file{reactions/NuclearEep.cpp} (note 02)\\
 \code{IReaction} & \code{nuclear\_elastic} & \code{NuclearElastic} & \file{reactions/HydrogenElastic.cpp} (note 03)\\
-\code{IReaction} & \code{phase\_space} & \code{PhaseSpace} & \file{reactions/HydrogenElastic.cpp} (acceptance runs)\\
+\code{IReaction} & \code{phase\_space} & \code{PhaseSpace} & \file{reactions/HydrogenElastic.cpp} (note 09)\\
+\code{IReaction} & \code{pion\_production} & \code{PionProduction} & \file{reactions/pion/PionProduction.cpp} (note 04)\\
+\code{IReaction} & \code{delta\_production} & \code{DeltaProduction} & \file{reactions/delta/DeltaProduction.cpp} (note 05)\\
+\code{IReaction} & \code{kaon\_production} & \code{KaonProduction} & \file{reactions/kaon/KaonProduction.cpp} (note 06)\\
+\code{IReaction} & \code{rho\_production} & \code{RhoProduction} & \file{reactions/rho/RhoProduction.cpp} (note 07)\\
+\code{IReaction} & \code{sidis\_production} & \code{SidisProduction} & \file{reactions/sidis/SidisProduction.cpp} (note 08)\\
 \code{ISpectralFunction} & \code{theory} & \code{nuclear::TheorySpectralFunction} & \file{physics/nuclear/SpectralFunctions.cpp} (note 02)\\
 \code{ISpectralFunction} & \code{benhar} & \code{nuclear::BenharSpectralFunction} & \file{physics/nuclear/SpectralFunctions.cpp} (note 02)\\
 \code{IPhysicsModel} & \code{sigep} & \code{proton::SigEPModel} & \file{physics/proton/ProtonModels.cpp} (note 01)\\
@@ -95,6 +100,11 @@ the physics notes refer to.
 \code{IPhysicsModel} & \code{deforest\_cc2} & \code{proton::DeForestCC2} & \file{physics/proton/ProtonModels.cpp} (note 02; $\sigma_{cc2}$ forced)\\
 \code{IPhysicsModel} & \code{deforest\_cc1\_onshell} & \code{proton::DeForestCC1OnShell} & \file{physics/proton/ProtonModels.cpp} (note 02)\\
 \code{IPhysicsModel} & \code{nuc\_elastic} & \code{nuclear::NucElasticModel} & \file{physics/nuclear/NuclearElastic.cpp} (note 03)\\
+\code{IPhysicsModel} & \code{pion} & \code{pion::PionModel} & \file{physics/pion/PionModel.cpp} (note 04)\\
+\code{IPhysicsModel} & \code{delta} & \code{delta::DeltaModel} & \file{physics/delta/DeltaModel.cpp} (note 05)\\
+\code{IPhysicsModel} & \code{kaon} & \code{kaon::KaonModel} & \file{physics/kaon/KaonModel.cpp} (note 06)\\
+\code{IPhysicsModel} & \code{rho} & \code{rho::RhoModel} & \file{physics/rho/RhoModel.cpp} (note 07)\\
+\code{IPhysicsModel} & \code{sidis} & \code{sidis::SidisModel} & \file{physics/sidis/SidisModel.cpp} (note 08)\\
 \code{IRadiator} & \code{simc\_rad} & \code{SimcRadiator} & \file{radiation/SimcRadiator.cpp} (\secr{sec:radiation})\\
 \code{ISpectrometer} & \code{hms} & \code{hms::HmsSpectrometer} & spectrometers/hms/ (HMS, beam right)\\
 \code{ISpectrometer} & \code{shms} & \code{shms::ShmsSpectrometer} & spectrometers/shms/ (SHMS, beam left)\\
@@ -121,16 +131,16 @@ derived from the inputs by \code{DeriveReactionFlags}, core/RunSetup.cpp).}\lbl{
 \toprule\rowcolor{simchead}\simcth{condition} & \simcth{reaction} & \simcth{physics model} & \simcth{note}\\\midrule\endfirsthead
 \toprule\rowcolor{simchead}\simcth{condition} & \simcth{reaction} & \simcth{physics model} & \simcth{note}\\\midrule\endhead
 \bottomrule\endlastfoot
-\code{doing\_phsp} = 1 & \code{phase\_space} & \code{sigep} (not used, $\sigma=1$) & --\\
+\code{doing\_phsp} = 1 (runs only with nint($A$) = 1 and no other reaction flag) & \code{phase\_space} & \code{sigep} (not used, $\sigma=1$) & 09\\
 no reaction flag, nint($A$) = 1 & \code{hydrogen\_elastic} & \code{sigep} & 01\\
 no reaction flag, nint($A$) = 2 & \code{deuterium\_eep} & \code{deforest} & 02\\
 no reaction flag, nint($A$) $\ge3$ & \code{nucleus\_eep} & \code{deforest} & 02\\
 \code{doing\_nuc\_elast} = 1 & \code{nuclear\_elastic} & \code{nuc\_elastic} & 03\\
 \code{doing\_pion} = 1 & \code{pion\_production} & \code{pion} & 04\\
-\code{doing\_kaon} = 1 & \code{kaon\_production} & \code{kaon} & 05\\
-\code{doing\_delta} = 1 & \code{delta\_production} & \code{delta} & 06\\
-\code{doing\_semi} = 1 & \code{sidis\_production} & \code{sidis} & 07\\
-\code{doing\_rho} = 1 & \code{rho\_production} & \code{rho} & 08\\
+\code{doing\_kaon} = 1 & \code{kaon\_production} & \code{kaon} & 06\\
+\code{doing\_delta} = 1 & \code{delta\_production} & \code{delta} & 05\\
+\code{doing\_semi} = 1 & \code{sidis\_production} & \code{sidis} & 08\\
+\code{doing\_rho} = 1 & \code{rho\_production} & \code{rho} & 07\\
 \end{simctable}
 
 The optional \code{"pipeline"} object of a JSON input (or the file given with \code{-{}-pipeline}) overrides the

@@ -7,7 +7,7 @@ The reaction follows from the reaction flags and from `targ%A`. SIMC++ then pick
 
 | flags | target | reaction plug-in | physics model | tree layout ([7.1](07_outputs.md#71-the-event-tree-h10)) |
 |---|---|---|---|---|
-| `doing_phsp = 1` | any | `phase_space` | none (σ = 1) | as the reaction it replaces |
+| `doing_phsp = 1` | A = 1 only (see [5.8](#58-phase-space-and-acceptance-runs-doing_phsp)) | `phase_space` | none (σ = 1) | (e,e'p) |
 | none of the flags below | A = 1 | `hydrogen_elastic` | `sigep` | (e,e'p), 46 columns |
 | none | A = 2 | `deuterium_eep` | `deforest` | (e,e'p) |
 | none | A ≥ 3 | `nucleus_eep` | `deforest` | (e,e'p) |
@@ -72,6 +72,7 @@ the generated solid angle); He-3 and He-4 use the C-12 spectral function unless 
 final states and coherent production, selected with `which_pion` ([4.6](04_inputs.md#46-parameter-reference)). The cross
 section is a parametrisation of the pion electroproduction data; below W = 2 GeV the MAID2007 tables (data directory
 `pion/`) are also evaluated.
+Physics note: [04 Exclusive pion production](../../../physics/pdf/SIMCpp_Physics_04_pion.pdf).
 
 * **π0** (`doing_pizero = 1`): the π0 decays to γγ. With the calorimeter arm 7/8 as hadron arm both photons are tracked
   to the calorimeter, and `pizero_ngamma` (1 or 2) says how many must hit ([6.3](06_spectrometers.md#63-the-calorimeter-arms-7-and-8)).
@@ -90,6 +91,7 @@ precision and taken from the nearest grid point.
 `kaon_production` with the `kaon` model: K+Λ, K+Σ0, K+Σ− (on the neutron), quasifree on D and A, and coherent hypernucleus
 production (`which_kaon` 10/11/12). The weight uses the factorized model (`sigcm` and `factor` columns); the Saghai model
 is evaluated for the `saghai` column. Tables in the data directory's `kaon/`.
+Physics note: [06 Kaon electroproduction](../../../physics/pdf/SIMCpp_Physics_06_kaon.pdf).
 
 * With `doing_decay = 1` the kaon decays in flight (70 % μν, 30 % ππ). With `doing_decay = 0` the weight is multiplied by
   the kaon's survival probability to the detectors, which is also written to `decdist`.
@@ -101,6 +103,7 @@ the proton mass is used in the Σ− kinematics of the factorized model.
 
 `delta_production` with the `delta` model: p(e,e'p)π with the proton detected and the pion missing (the missing particle
 has the charged-pion mass). D and nuclei are supported in the default mode.
+Physics note: [05 (e,e'p)π in the Delta region](../../../physics/pdf/SIMCpp_Physics_05_delta.pdf).
 
 **The event weight contains no cross section** (no Delta model is implemented). The weight is phase space × virtual-photon
 flux × the jacobian of the proton angles. The yields, the `.hist` wtcontr and the `Weight` column of a Delta run are
@@ -115,6 +118,7 @@ pion-production fit evaluated at the proton's CM angles, for information; it is 
 fragmentation functions (P. Bosted), (e,e'K±)X with fDSS fragmentation, π0 as the average of π+ and π−. Deuterium uses the
 isospin-symmetric nucleon sum; A ≥ 3 adds the SLAC EMC fit and a hadron-attenuation fit. Tables in the data directory's
 `sidis/`.
+Physics note: [08 Semi-inclusive (e,e'h)X](../../../physics/pdf/SIMCpp_Physics_08_sidis.pdf).
 
 | inputs | hadron |
 |---|---|
@@ -135,6 +139,7 @@ radiation the generated hadron-energy range is wide; the hadron-attenuation fact
 `rho_production` with the `rho` model: p(e,e'ρ0)p, ρ0 → π+π−, with one pion detected (`doing_hplus` chooses π+ or π−). The ρ
 mass is drawn from a Breit-Wigner and the decay angles from the ρ decay distribution; the `Mrho` and `Thrho` columns record
 them.
+Physics note: [07 Exclusive ρ0 production](../../../physics/pdf/SIMCpp_Physics_07_rho.pdf).
 
 * Targets: H; D and ³He with a nucleon at rest (no Fermi motion, no ³He spectral function). A ≥ 4 is refused.
 * Hadron arm 1, 2, 3, 4 or 5; the calorimeter is refused. `doing_rho` together with another reaction flag or with
@@ -150,6 +155,7 @@ recomputes the event.
 
 `doing_phsp = 1` sets the cross section to 1 and normfac to 1, for acceptance studies: the weight is then the generation
 weight only. Two properties to know:
+Physics note: [09 Phase-space runs](../../../physics/pdf/SIMCpp_Physics_09_phase_space.pdf).
 
 * **On hydrogen the kinematics stay elastic.** The proton is still computed from the elastic kinematics, so the run is an
   elastic acceptance run, not a flat phase space.
@@ -157,6 +163,12 @@ weight only. Two properties to know:
   can give zero accepted events. Set `using_rad = 0` for a pure acceptance run.
 
 `doing_phsp` switches off the pion, kaon, Delta and rho physics but keeps the hadron mass that these flags selected.
+
+**Scope in SIMC++: hydrogen only, without another reaction flag.** On deuterium or A ≥ 3 the run is refused at start-up
+(configuration error, exit status 2); together with `doing_semi` it is refused (exit status 3); with `doing_pion`,
+`doing_kaon`, `doing_delta` or `doing_rho` and a tree (`Nntu > 0`) the run stops with "ntuple: no layout for this
+reaction" (exit status 3), and without a tree no try reaches the spectrometers. The Fortran runs these combinations with
+inconsistent kinematics (physics note 09).
 
 To measure the acceptance of one spectrometer, or to throw events at a spectrometer without simulating it, see
 `spect_mode` ([6.4](06_spectrometers.md#64-spect_mode-switching-the-spectrometer-monte-carlo-off)).

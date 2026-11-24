@@ -21,9 +21,12 @@ The same sources give three products:
 | 01 H(e,e'p) elastic (`hydrogen_elastic`, `sigep`) | [SIMCpp_Physics_01_hydrogen_elastic.pdf](pdf/SIMCpp_Physics_01_hydrogen_elastic.pdf) | [src/physics/proton](../../src/physics/proton/README.md) | [01_hydrogen_elastic.tex](latex/01_hydrogen_elastic.tex) |
 | 02 D(e,e'p) and A(e,e'p) (`deuterium_eep`, `nucleus_eep`, `deforest`, spectral functions `theory`, `benhar`) | [SIMCpp_Physics_02_quasielastic_eep.pdf](pdf/SIMCpp_Physics_02_quasielastic_eep.pdf) | [src/physics/proton](../../src/physics/proton/README.md), [src/physics/nuclear](../../src/physics/nuclear/README.md) | [02_quasielastic_eep.tex](latex/02_quasielastic_eep.tex) |
 | 03 A(e,e')A nuclear elastic (`nuclear_elastic`, `nuc_elastic`) | [SIMCpp_Physics_03_nuclear_elastic.pdf](pdf/SIMCpp_Physics_03_nuclear_elastic.pdf) | [src/physics/nuclear](../../src/physics/nuclear/README.md) | [03_nuclear_elastic.tex](latex/03_nuclear_elastic.tex) |
-
-Notes 04-09 (pion, kaon, Delta, SIDIS, rho, phase space) follow the same template; they are added to
-`latex/notes.json` when they are converted (see "Converting a draft" below).
+| 04 Exclusive pion production (`pion_production`, `pion`) | [SIMCpp_Physics_04_pion.pdf](pdf/SIMCpp_Physics_04_pion.pdf) | [src/reactions/pion](../../src/reactions/pion/README.md), [src/physics/pion](../../src/physics/pion/README.md) | [04_pion.tex](latex/04_pion.tex) |
+| 05 (e,e'p)π in the Delta region (`delta_production`, `delta`) | [SIMCpp_Physics_05_delta.pdf](pdf/SIMCpp_Physics_05_delta.pdf) | [src/reactions/delta](../../src/reactions/delta/README.md), [src/physics/delta](../../src/physics/delta/README.md) | [05_delta.tex](latex/05_delta.tex) |
+| 06 Kaon electroproduction (`kaon_production`, `kaon`) | [SIMCpp_Physics_06_kaon.pdf](pdf/SIMCpp_Physics_06_kaon.pdf) | [src/reactions/kaon](../../src/reactions/kaon/README.md), [src/physics/kaon](../../src/physics/kaon/README.md) | [06_kaon.tex](latex/06_kaon.tex) |
+| 07 Exclusive ρ0 production (`rho_production`, `rho`) | [SIMCpp_Physics_07_rho.pdf](pdf/SIMCpp_Physics_07_rho.pdf) | [src/reactions/rho](../../src/reactions/rho/README.md), [src/physics/rho](../../src/physics/rho/README.md) | [07_rho.tex](latex/07_rho.tex) |
+| 08 Semi-inclusive (e,e'h)X (`sidis_production`, `sidis`) | [SIMCpp_Physics_08_sidis.pdf](pdf/SIMCpp_Physics_08_sidis.pdf) | [src/reactions/sidis](../../src/reactions/sidis/README.md), [src/physics/sidis](../../src/physics/sidis/README.md) | [08_sidis.tex](latex/08_sidis.tex) |
+| 09 Phase-space runs (`phase_space`, `doing_phsp`; hydrogen only) | [SIMCpp_Physics_09_phase_space.pdf](pdf/SIMCpp_Physics_09_phase_space.pdf) | (none) | [09_phase_space.tex](latex/09_phase_space.tex) |
 
 The user manual (chapter 5, Reactions) links each reaction to its note; the developer manual (chapter 4) and
 `docs/manual/markdown/reference/EXTENDING.md` require a physics note for every new reaction or physics-model plug-in.
@@ -78,7 +81,7 @@ Start from [latex/template_reaction.tex](latex/template_reaction.tex); the comme
 Then add the note to `latex/notes.json` with its `copies`, add or update the `README.md` of each copy folder (it must
 name the PDF), and publish.
 
-## Converting a draft written for the first template (notes 04-09)
+## Converting a draft written for the first template
 
 The conversion is mechanical:
 

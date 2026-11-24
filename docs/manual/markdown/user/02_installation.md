@@ -29,9 +29,11 @@ set-up). Setting `ROOTSYS`, `LD_LIBRARY_PATH=$ROOTSYS/lib` and `PATH=$ROOTSYS/bi
 
 **Which version to check out.** The `main` branch reproduces the Fortran SIMC at master commit 59ccdf6 (the file
 `UPSTREAM_SIMC`; the default tree layout is that of 59ccdf6, `--tree-layout legacy` gives the 294f662 layout). The
-release that reproduced the older Fortran version 294f662 is the tag `v1.0-fortran294f662`:
+release that reproduces 59ccdf6 is the tag `v2.0-fortran59ccdf6`; the release that reproduced the older Fortran version
+294f662 is the tag `v1.0-fortran294f662`:
 
 ```bash
+git -C $SIMCPP_SRC checkout v2.0-fortran59ccdf6   # the release for Fortran SIMC 59ccdf6
 git -C $SIMCPP_SRC checkout v1.0-fortran294f662   # the release for Fortran SIMC 294f662
 git -C $SIMCPP_SRC checkout main                  # back to the current version (Fortran SIMC 59ccdf6)
 ```
