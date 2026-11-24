@@ -31,6 +31,18 @@
       "copies": ["src/physics/nuclear"]
     },
     {
+      "source": "04_pion.tex",
+      "output": "SIMCpp_Physics_04_pion",
+      "title": "Exclusive pion electroproduction H, D, A(e,e'pi+-) and (e,e'pi0) (reaction pion_production, model pion: Bosted 2021 fit, MAID2007; pi0 decay, decay in flight)",
+      "copies": ["src/reactions/pion", "src/physics/pion"]
+    },
+    {
+      "source": "05_delta.tex",
+      "output": "SIMCpp_Physics_05_delta",
+      "title": "(e,e'p)pi in the Delta region (reaction delta_production, model delta)",
+      "copies": ["src/reactions/delta", "src/physics/delta"]
+    },
+    {
       "source": "08_sidis.tex",
       "output": "SIMCpp_Physics_08_sidis",
       "title": "Semi-inclusive (e,e'h)X production (reaction sidis_production, model sidis: CTEQ5M, Bosted pion and fDSS kaon fragmentation, F1F2IN21)",

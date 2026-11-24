@@ -1,0 +1,81 @@
+% docs/physics/latex/frag_pion_columns.tex - the meson tree layout of the pion and Delta reactions, \input by the notes
+% 04 (pion_production) and 05 (delta_production). C++: output/NtupleLayout.cpp (UpstreamMesonColumns,
+% FillUpstreamNtuple; legacy layout PionNtupleColumns, FillPionNtuple). Fortran: NtupleInit.f:34-224 and
+% results_write.f:120-286 (upstream 59ccdf6). One column per row. No displayed equations here.
+The sink \code{root\_tree} writes one entry of the tree \code{h10} per success. With the layout of upstream SIMC 59ccdf6
+(the default) the tree has the 64 columns of \tabr{tab:columns}; \code{-{}-tree-layout legacy} gives the layout of SIMC
+294f662. Columns 1--24 are those of the (e,e\pr p) layout: \code{hs} is the arm on the beam right, \code{ss} the arm on
+the beam left, whatever particle each detects; the reconstructed columns come from the \code{recon} record, the
+``true'' ones (suffix \code{i}) from the \code{orig} record for the arm columns and from the \code{vertex} record
+for the physics columns. ``Hadron'' is the detected hadron: the pion in note 04, the proton in note 05.
+
+\begin{simctable}{footnotesize}{L{0.06\linewidth}L{0.15\linewidth}L{0.13\linewidth}L{0.66\linewidth}}
+\caption{Tree columns of the pion and Delta reactions (default layout; one column per row).}\lbl{tab:columns}\\
+\toprule\rowcolor{simchead}\simcth{\#} & \simcth{name} & \simcth{unit} & \simcth{content}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{\#} & \simcth{name} & \simcth{unit} & \simcth{content}\\\midrule\endhead
+\bottomrule\endlastfoot
+1 & \code{hsdelta} & \% & reconstructed $\delta$, \code{hs} arm\\
+2 & \code{hsyptar} & rad & reconstructed $y'$, \code{hs} arm\\
+3 & \code{hsxptar} & rad & reconstructed $x'$, \code{hs} arm\\
+4 & \code{hsytar} & cm & reconstructed horizontal target position, \code{hs} arm\\
+5 & \code{hsxfp} & cm & focal-plane $x$, \code{hs} arm\\
+6 & \code{hsxpfp} & rad & focal-plane $x'$, \code{hs} arm\\
+7 & \code{hsyfp} & cm & focal-plane $y$, \code{hs} arm\\
+8 & \code{hsypfp} & rad & focal-plane $y'$, \code{hs} arm\\
+9 & \code{hsdeltai} & \% & true $\delta$ after radiation, \code{hs} arm\\
+10 & \code{hsyptari} & rad & true $y'$, \code{hs} arm\\
+11 & \code{hsxptari} & rad & true $x'$, \code{hs} arm\\
+12 & \code{hsytari} & cm & $z_t\sin\theta^0$ of the \code{hs} arm\\
+13 & \code{ssdelta} & \% & reconstructed $\delta$, \code{ss} arm\\
+14 & \code{ssyptar} & rad & reconstructed $y'$, \code{ss} arm\\
+15 & \code{ssxptar} & rad & reconstructed $x'$, \code{ss} arm\\
+16 & \code{ssytar} & cm & reconstructed horizontal target position, \code{ss} arm\\
+17 & \code{ssxfp} & cm & focal-plane $x$, \code{ss} arm\\
+18 & \code{ssxpfp} & rad & focal-plane $x'$, \code{ss} arm\\
+19 & \code{ssyfp} & cm & focal-plane $y$, \code{ss} arm\\
+20 & \code{ssypfp} & rad & focal-plane $y'$, \code{ss} arm\\
+21 & \code{ssdeltai} & \% & true $\delta$ after radiation, \code{ss} arm\\
+22 & \code{ssyptari} & rad & true $y'$, \code{ss} arm\\
+23 & \code{ssxptari} & rad & true $x'$, \code{ss} arm\\
+24 & \code{ssytari} & cm & $-z_t\sin\theta^0$ of the \code{ss} arm\\
+25 & \code{q} & GeV/$c$ & $|\vec q^\mathrm{rec}|$\\
+26 & \code{nu} & GeV & $\nu^\mathrm{rec}$\\
+27 & \code{Q2} & (GeV/$c$)$^2$ & $(Q^\mathrm{rec})^2$\\
+28 & \code{W} & GeV & $W^\mathrm{rec}$, computed with the proton mass\\
+29 & \code{xbj} & -- & $x^\mathrm{rec}$\\
+30 & \code{epsilon} & -- & $\varepsilon^\mathrm{rec}$\\
+31 & \code{Em} & GeV & $E_m^\mathrm{rec}=\nu^\mathrm{rec}+M_N-E_h^\mathrm{rec}$\\
+32 & \code{Pm} & GeV/$c$ & $P_m^\mathrm{rec}=|\vec P_m^\mathrm{rec}|$\\
+33 & \code{qi} & GeV/$c$ & vertex $|\vec q|$\\
+34 & \code{nui} & GeV & vertex $\nu$\\
+35 & \code{Q2i} & (GeV/$c$)$^2$ & vertex $Q^2$\\
+36 & \code{Wi} & GeV & vertex $W$, computed with the struck-nucleon mass $M_N$ (no Fermi motion)\\
+37 & \code{xbji} & -- & vertex $x$\\
+38 & \code{epsiloni} & -- & vertex $\varepsilon$\\
+39 & \code{Emi} & GeV & vertex $E_\mathrm{miss}=\nu+M_A-E_h$\\
+40 & \code{Pmi} & GeV/$c$ & vertex $P_\mathrm{miss}=|\vec p_h-\vec q|$\\
+41 & \code{missmass} & GeV & reconstructed missing mass on the struck nucleon at rest (\secr{sec:recon})\\
+42 & \code{mmnuc} & GeV & reconstructed missing mass on the target nucleus (\secr{sec:recon})\\
+43 & \code{phad} & GeV/$c$ & $P_h^\mathrm{rec}$\\
+44 & \code{t} & GeV$^2$ & reconstructed $-t$ (\secr{sec:recon})\\
+45 & \code{ti} & GeV$^2$ & vertex $-t$\\
+46 & \code{z} & -- & $E_h^\mathrm{rec}/\nu^\mathrm{rec}$\\
+47 & \code{zi} & -- & $E_h/\nu$ at the vertex\\
+48 & \code{pt2} & GeV$^2$ & $(P_h^\mathrm{rec})^2\sin^2\theta_{pq}^\mathrm{rec}$\\
+49 & \code{pt2i} & GeV$^2$ & $P_h^2\sin^2\theta_{pq}$ at the vertex\\
+50 & \code{thetapq} & rad & $\theta_{pq}^\mathrm{rec}$\\
+51 & \code{phipq} & rad & $\varphi_{pq}^\mathrm{rec}$\\
+52 & \code{thetapqi} & rad & vertex $\theta_{pq}$\\
+53 & \code{phipqi} & rad & vertex $\varphi_{pq}$\\
+54 & \code{pmpar} & GeV/$c$ & $P^\mathrm{rec}_{m,\parallel}$\\
+55 & \code{pmper} & GeV/$c$ & $P^\mathrm{rec}_{m,\perp}$\\
+56 & \code{pmoop} & GeV/$c$ & $P^\mathrm{rec}_{m,\mathrm{oop}}$\\
+57 & \code{fry} & cm & minus the vertical raster coordinate\\
+58 & \code{radphot} & GeV & $E_{\gamma1}+E_{\gamma2}+E_{\gamma3}$\\
+59 & \code{pfermi} & GeV/$c$ & $p_F$ with the sign of $\hat p_F\cdot\hat q$ (0 without Fermi motion)\\
+60 & \code{siglab} & $\mu$b/(MeV sr$^2$) & $\sigma$ at the vertex, with the Coulomb factor (\secr{sec:xsec})\\
+61 & \code{sigcm} & $\mu$b/(MeV$^2$ rad) & the centre-of-mass value written by the model (\secr{sec:xsec})\\
+62 & \code{Weight} & see \secr{sec:xsec} & the event weight $w$\\
+63 & \code{decdist} & cm & path flown by the hadron before its decay, or the whole path when it did not decay (\secr{sec:rad})\\
+64 & \code{Mhadron} & MeV & mass of the particle that reached the detectors (the muon mass after a pion decay)\\
+\end{simctable}

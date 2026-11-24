@@ -1,0 +1,804 @@
+% docs/physics/latex/04_pion.tex - SIMC++ physics note 04: exclusive pion electroproduction.
+% Standalone PDF docs/physics/pdf/SIMCpp_Physics_04_pion.pdf (copied to src/reactions/pion/ and src/physics/pion/); a
+% chapter of the book SIMC++ Physics Reference. Rules: docs/physics/README.md; structure: template_reaction.tex.
+\documentclass{simcnote}
+\simccommon
+\begin{document}
+\simcnotemeta{04}{Exclusive (e,e\pr \texorpdfstring{$\pi$}{pi})}{Exclusive pion electroproduction: H, D, A(e,e\pr \texorpdfstring{$\pi^\pm$}{pi+-}) and (e,e\pr \texorpdfstring{$\pi^0$}{pi0})}%
+  {Reaction plug-in \texttt{pion\_production} with the physics model \texttt{pion}: quasi-free and coherent
+   charged and neutral pion production, nucleon and \texorpdfstring{$\Delta(1232)$}{Delta(1232)} recoil, Fermi motion, \texorpdfstring{$\pi^0\to\gamma\gamma$}{pi0 decay} and pion decay in flight}
+\simcnotemaketitle
+\simcabstract{Exclusive electroproduction of a single pion, detected in coincidence with the scattered electron, on
+hydrogen, deuterium and heavier nuclei. The electron energy and both pairs of slopes are generated; for D and $A\ge3$ the
+struck nucleon also gets a Fermi momentum and a missing energy, and the pion energy follows from two-body kinematics
+with a nucleon, a $\Delta(1232)$ of Breit--Wigner mass or the final nucleus as recoil. The cross section is the 2021 fit
+of P. Bosted to exclusive $\pi^\pm$ data, joined to the MAID2007 tables below $W=2$ GeV, transformed from
+$\mathrm{d}\sigma/\mathrm{d}t\,\mathrm{d}\varphi^*$ to the laboratory with an exact jacobian and multiplied by the
+virtual-photon flux. A $\pi^0$ is decayed into two photons for a calorimeter, a charged pion can decay in flight in the
+spectrometer. Notation, glossary and common physics: note 00.}
+\simcnotetoc
+
+% =====================================================================================================================
+\section{The reaction in SIMC++}\lbl{sec:reaction}
+
+\subsection{Process and scope}
+The reaction is $e + N \to e' + \pi + X$ on a nucleon $N$ (free for hydrogen, bound in D or a heavier nucleus), with the
+pion detected in the hadron arm. The recoil $X$ is not detected. \tabr{tab:finalstates} lists the final states: one
+input integer, \code{which\_pion}, chooses the charge of the pion, the struck nucleon and the recoil (nucleon,
+$\Delta(1232)$, or the whole nucleus for coherent production), and \code{doing\_pizero} turns the charged pion into a
+$\pi^0$ (mass $M_{\pi^0}=134.9766$ MeV instead of $M_\pi=139.57018$ MeV).
+
+\begin{simctable}{footnotesize}{L{0.08\linewidth}L{0.07\linewidth}L{0.31\linewidth}L{0.09\linewidth}L{0.17\linewidth}L{0.28\linewidth}}
+\caption{Final states (input \code{which\_pion}, $\pi^0$ = \code{doing\_pizero}): struck mass $M_N$, recoil mass $M_X$ and the number of
+target nucleons $n_\mathrm{tgt}$ of the weight (one final state per row).}\lbl{tab:finalstates}\\
+\toprule\rowcolor{simchead}\simcth{value} & \simcth{$\pi^0$} & \simcth{process} & \simcth{$M_N$} & \simcth{$M_X$} & \simcth{targets, $n_\mathrm{tgt}$}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{value} & \simcth{$\pi^0$} & \simcth{process} & \simcth{$M_N$} & \simcth{$M_X$} & \simcth{targets, $n_\mathrm{tgt}$}\\\midrule\endhead
+\bottomrule\endlastfoot
+0 & no & $\gamma^*p\to\pi^+n$ & $M_p$ & $M_n$ & H, D, A; $Z$\\
+1 & no & $\gamma^*n\to\pi^-p$ & $M_n$ & $M_p$ & D, A (refused on H); $N$\\
+2 & no & $\gamma^*p\to\pi^+\Delta^0$ (D: also $\gamma^*n\to\pi^+\Delta^-$) & $M_p$ & $M_\Delta$ (sampled) & H, D, A; \eqr{eq:cgfactors}\\
+3 & no & $\gamma^*p\to\pi^-\Delta^{++}$ (D: also $\gamma^*n\to\pi^-\Delta^+$) & $M_p$ & $M_\Delta$ (sampled) & H, D, A; \eqr{eq:cgfactors}\\
+10 & no & $\gamma^*A\to\pi^+A'$ (coherent) & $M_A$ & $M_A-M_p+M_n$ & $A\ge3$ ($A\neq4$); $Z$\\
+11 & no & $\gamma^*A\to\pi^-A'$ (coherent) & $M_A$ & $M_A-M_n+M_p$ & $A\ge5$; $N$\\
+0 & yes & $\gamma^*p\to\pi^0p$ & $M_p$ & $M_p$ & H, D, A; $Z$\\
+1 & yes & $\gamma^*n\to\pi^0n$ & $M_n$ & $M_n$ & D, A (refused on H in the default mode); $N$\\
+2 & yes & $\gamma^*p\to\pi^0\Delta^+$ & $M_p$ & $M_\Delta$ (sampled) & H, D, A; \eqr{eq:cgfactors}\\
+3 & yes & $\gamma^*n\to\pi^0\Delta^0$ & $M_n$ & $M_\Delta$ (sampled) & D, A (refused on H); \eqr{eq:cgfactors}\\
+\end{simctable}
+
+What is simulated: the quasi-free production on a nucleon of momentum $\vec p_F$ (D and $A\ge3$) or at rest
+(H, coherent production), the unpolarised cross section of \secr{sec:xsec} in the photon--nucleon centre-of-mass frame,
+the $\Delta(1232)$ recoil mass distribution, the event chain of note 00 (radiation on the three legs, energy loss and
+multiple scattering of the pion, Coulomb correction of the electron), the decay $\pi^0\to\gamma\gamma$ and the decay
+in flight of a charged pion inside the spectrometer. What is not simulated: final-state interactions of the pion or
+the recoil (no pion absorption or transparency factor in the nucleus, no Pauli blocking), a cross-section model for
+nuclei other than the nucleon fit (coherent production uses the nucleon model with $M_N=M_A$), the decay of the
+$\Delta$, and polarisation observables (the MAID polarised terms are computed and discarded).
+
+\subsection{Components}
+\begin{simctable}{footnotesize}{L{0.15\linewidth}L{0.16\linewidth}L{0.15\linewidth}L{0.25\linewidth}L{0.29\linewidth}}
+\caption{The SIMC++ components of exclusive pion production (one component per row).}\lbl{tab:components}\\
+\toprule\rowcolor{simchead}\simcth{role} & \simcth{interface} & \simcth{registered name} & \simcth{class} & \simcth{file}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{role} & \simcth{interface} & \simcth{registered name} & \simcth{class} & \simcth{file}\\\midrule\endhead
+\bottomrule\endlastfoot
+reaction & \code{IReaction} & \code{pion\_production} & \code{reactions::PionProduction} & \file{reactions/pion/PionProduction.cpp}\\
+recoil-mass table & (class) & -- & \code{reactions::DeltaMassTable} & \file{reactions/pion/PionProduction.cpp}\\
+event completion, recon & (base class) & -- & \code{reactions::EepReactionBase} & \file{reactions/EepReactionBase.cpp}\\
+centre-of-mass transform & (function) & -- & \code{reactions::transformToCm} & \file{reactions/EventChain.cpp}\\
+cross section & \code{IPhysicsModel} & \code{pion} & \code{pion::PionModel} & \file{physics/pion/PionModel.cpp}\\
+cross-section kernels & (functions) & -- & \code{pion::peepi}, \code{sigParam2021}, \code{exclfit} & \file{physics/pion/PionCrossSections.cpp}\\
+MAID tables & (class, function) & -- & \code{pion::MaidTables}, \code{pion::sigmaid} & \file{physics/pion/PionCrossSections.cpp}\\
+unused fits & (functions) & -- & \code{pion::sigBlok}, \code{sigParam04}, \code{sigParam3000} & \file{physics/pion/PionCrossSections.cpp}\\
+unused multipole model & (class) & -- & \code{pion::SigMultipole} & \file{physics/pion/SigMultipole.cpp}\\
+$\pi^0$ decay & (function) & -- & \code{pion::pizeroDecay} & \file{physics/pion/PizeroDecay.cpp}\\
+$\pi^0$ photons in a calorimeter & (class) & -- & \code{driver::PizeroCalorimeter} & \file{driver/PizeroCalorimeter.cpp}\\
+missing energy, $A\ge3$ & (class) & -- & \code{nuclear::SfTable} & \file{physics/nuclear/SpectralFunctionTables.cpp}\\
+decay in flight & (functions) & -- & \code{optics::project}, \code{CosyEngine::transp} & \file{optics/CosyEngine.cpp}\\
+beam, target, radiation, arms, outputs & as in note 00 & \code{standard}, \code{hallc\_cryo}, \code{simc\_rad}, \ldots & & \ctabr{tab:plugins}\\
+\end{simctable}
+
+\subsection{Selection and override}
+The input \code{doing\_pion} = 1 selects \code{pion\_production} with the model \code{pion} (\ctabr{tab:defaults});
+\code{doing\_pion} together with \code{doing\_semi} selects semi-inclusive production instead. The set-up derives the
+case from the target: H for $\mathrm{nint}(A)=1$, D for $\mathrm{nint}(A)=2$, $A\ge3$ otherwise, and coherent production
+(treated like hydrogen, with $M_N=M_A$) for \code{which\_pion} $\ge10$. It sets $M_h$, $M_N$ and $M_X$ of
+\tabr{tab:finalstates}, forces $M_A=M_p$ for H and $M_A=M_d$, $M_\mathrm{rec}=M_p+M_n-M_N$ for D, and replaces the
+input recoil mass of coherent production by $M_A+M_N^\mathrm{struck}-M_N^\mathrm{recoil}$ when the two differ by more than
+100 MeV. Inputs that the Fortran stops on (π$^-$ on hydrogen, coherent production on H, D, He-4 and coherent π$^-$ on
+He-3, $\gamma^*n\to\pi^0\Delta^0$ on hydrogen, \code{pizero\_ngamma} other than 1 or 2) stop SIMC++ too; the
+corrected mode also refuses π$^0$ from the neutron on hydrogen. The missing-mass cut window is opened to $\pm10^6$ MeV.
+
+\begin{simctable}{footnotesize}{L{0.3\linewidth}L{0.38\linewidth}L{0.32\linewidth}}
+\caption{JSON keys of this reaction and its model (one key per row).}\lbl{tab:json}\\
+\toprule\rowcolor{simchead}\simcth{key} & \simcth{effect} & \simcth{example}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{key} & \simcth{effect} & \simcth{example}\\\midrule\endhead
+\bottomrule\endlastfoot
+\code{pipeline.reaction.data\_dir} & directory of \code{delta\_relativistic\_bw.inp} (default \code{data/pion}) & \code{"data/pion"}\\
+\code{pipeline.reaction.verbose} & print the Fortran warnings of the reaction & \code{true}\\
+\code{pipeline.physics.data\_dir} & directory of the MAID tables (default \code{data/pion}) & \code{"data/pion"}\\
+\code{pipeline.physics.verbose} & print the warnings of the transform & \code{true}\\
+\end{simctable}
+A replacement model gets the completed vertex event and the main record (Fermi momentum, $\varepsilon$, $-t$,
+$\varphi_{pq}$) and must return $\mathrm{d}^5\sigma/\mathrm{d}E'\mathrm{d}\Omega_e\mathrm{d}\Omega_\pi$ per nucleon in
+$\mu$b/(MeV sr$^2$) (\secr{sec:require}), for example
+\code{\{"pipeline": \{"reaction": "pion\_production", "physics": \{"type": "pion", "data\_dir": "/my/maid"\}\}\}}.
+
+\subsection{Event flow}
+\begin{simctable}{footnotesize}{L{0.05\linewidth}L{0.33\linewidth}L{0.62\linewidth}}
+\caption{One try of exclusive pion production (one step per row; the general chain is \ctabr{tab:chain}).}\lbl{tab:flow}\\
+\toprule\rowcolor{simchead}\simcth{\#} & \simcth{C++ call} & \simcth{what is specific to this reaction}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{\#} & \simcth{C++ call} & \simcth{what is specific to this reaction}\\\midrule\endhead
+\bottomrule\endlastfoot
+1 & \code{StandardBeam::generate} & nothing\\
+2 & \code{PionProduction::generate} & both slope pairs, $E'$, and for D/$A\ge3$ the Fermi momentum and $E_m$ (\secr{sec:gen})\\
+3 & \code{PionProduction::completeEv} & $M_\Delta$ for \code{which\_pion} 2/3, the pion energy (\eqr{eq:quad}), $W$, $\varepsilon$, $-t$, $\varphi_{pq}$, the $\pi^0$ photons\\
+4 & \code{SimcRadiator::radiate} & tail-1 limit from the electron-energy range (\eqr{eq:tail1}); a tail-1 photon calls \code{completeEv} again\\
+5 & \code{MonteCarlo::run} & the pion crosses the hadron arm and may decay (\secr{sec:decay}); for a $\pi^0$ the two photons go to the calorimeter\\
+6 & \code{EepReactionBase::completeRecon} & $E_m^\mathrm{rec}$, missing masses and $-t^\mathrm{rec}$ (\secr{sec:recon})\\
+7 & \code{PionProduction::completeMain} & $S=1$; \code{PionModel::sigccMain}, the factors of \eqr{eq:cgfactors}, $n_\mathrm{tgt}$, the weight\\
+\end{simctable}
+
+% =====================================================================================================================
+\section{Kinematics, generated variables and generation volume}\lbl{sec:gen}
+\subsection{Generated variables}
+\begin{simctable}{small}{L{0.38\linewidth}L{0.31\linewidth}L{0.31\linewidth}}
+\caption{Generated variables (one variable per row).}\lbl{tab:generated}\\
+\toprule\rowcolor{simchead}\simcth{variable} & \simcth{H, coherent} & \simcth{D, $A\ge3$}\\\midrule\endfirsthead
+\bottomrule\endlastfoot
+electron slopes $y'_e$, $x'_e$ & flat & flat\\
+pion slopes $y'_h$, $x'_h$ & flat & flat\\
+electron energy $E'$ & flat & flat\\
+Fermi momentum $p_F$, direction $\hat p_F$ & 0 & from the momentum distribution, isotropic\\
+missing energy $E_m$ & 0 & D: binding energy; $A\ge3$: from the spectral function\\
+recoil mass $M_X$ & fixed, or sampled for $\Delta$ & fixed, or sampled for $\Delta$\\
+pion energy $E_h$ & solved (\eqr{eq:quad}) & solved (\eqr{eq:quad})\\
+\end{simctable}
+The four slopes are drawn flat in their generation ranges, which are the edges of note 00, and converted to angles with
+\ceqr{eq:physang}. The electron energy is drawn flat inside the generated-energy range narrowed by the summed-energy limits
+$\Sigma$ (for this reaction $\Sigma$ limits the electron energy alone):
+\begin{feqa}{reactions/pion/PionProduction.cpp: PionProduction::generate}{event.f:276-286, 300-315}
+x' &= x'_\mathrm{min}+\xi\,(x'_\mathrm{max}-x'_\mathrm{min})\quad\text{(each of }y'_e, x'_e, y'_h, x'_h\text{)},\nonumber\\
+E'^\mathrm{lo} &= \max\bigl(E'^\mathrm{gen}_\mathrm{min},\Sigma_\mathrm{min}\bigr),\qquad
+E'^\mathrm{hi} = \min\bigl(E'^\mathrm{gen}_\mathrm{max},\Sigma_\mathrm{max}\bigr),\nonumber\\
+E' &= E'^\mathrm{lo}+\xi\,(E'^\mathrm{hi}-E'^\mathrm{lo}),\qquad
+w_\mathrm{gen}\leftarrow w_\mathrm{gen}\,\frac{E'^\mathrm{hi}-E'^\mathrm{lo}}{E'^\mathrm{gen}_\mathrm{max}-E'^\mathrm{gen}_\mathrm{min}},
+\lbl{eq:genee}
+\end{feqa}
+the try failing when $E'^\mathrm{lo}>E'^\mathrm{hi}$. The pion energy is not generated.
+
+\subsection{Fermi momentum and missing energy (D and \texorpdfstring{$A\ge3$}{A>=3})}
+The momentum distribution is a table of nodes $p_i$ and cumulative probabilities $c_i$ ($i=1\ldots n$, normalised to
+$c_n=1$ when it is read): \code{deut.dat} for D, \code{he3.dat}, \code{he4.dat}, \code{c12.dat} for $A=3$, 4, 12, and
+\code{c12.dat} for every other $A$. With five uniform numbers:
+\begin{feqa}{reactions/pion/PionProduction.cpp: PionProduction::generate}{event.f:339-360; dbase.f:582-589}
+i &= \min\{i:\ \xi_1\le c_i\}\ (\text{or } n),\qquad
+p_\mathrm{lo} = \tfrac12(p_{i-1}+p_i)\ (0\text{ for } i=1),\nonumber\\
+p_\mathrm{hi} &= \tfrac12(p_i+p_{i+1})\ (p_n\text{ for } i=n),\qquad
+p_F = p_\mathrm{lo}+\xi_2\,(p_\mathrm{hi}-p_\mathrm{lo}),\nonumber\\
+\hat p_F &= (\sin\theta_F\cos\varphi_F,\ \sin\theta_F\sin\varphi_F,\ \cos\theta_F),\qquad
+\cos\theta_F = 2\xi_3-1,\quad \varphi_F = 2\pi\xi_4,
+\lbl{eq:fermi}
+\end{feqa}
+in the laboratory frame of note 00. The missing energy and the energy of the struck nucleon are
+\begin{feqa}{reactions/pion/PionProduction.cpp: PionProduction::generate}{event.f:362-372}
+\text{D:}\quad E_m &= M_p+M_n-M_d,\qquad \text{$A\ge3$:}\quad E_m \sim S(E_m, p_F)\ \text{at fixed } p_F,\nonumber\\
+M_\mathrm{spec} &= M_A-M_N+E_m,\qquad E_F = M_A-\sqrt{M_\mathrm{spec}^2+p_F^2},
+\lbl{eq:efer}
+\end{feqa}
+and $E_F=M_N$, $p_F=0$, $E_m=0$ for H and coherent production. For $A\ge3$ the missing energy is drawn from the Benhar
+spectral-function table of note 02 (\code{benharsf\_3mod.dat}, \code{\_4}, \code{\_12}, \code{\_56}, \code{\_64},
+\code{\_197}, otherwise \code{benharsf\_12.dat}; the proton column for $M_N=M_p$, the neutron column for $M_N=M_n$):
+\begin{feq}{physics/nuclear/SpectralFunctionTables.cpp: SfTable::generateEm}{sf\_lookup.f:216-237}
+C_j = \sum_{k\le j} S(E_k,p_F)\Big/\sum_{k} S(E_k,p_F),\qquad
+j = \min\{j:\ \xi_5\le C_j\},\qquad E_m = E_j + \Delta E_j\,(\xi_6-\tfrac12),
+\lbl{eq:genem}
+\end{feq}
+with $S(E,p)$ interpolated in the table as in note 02 and $E_j$, $\Delta E_j$ the centres and widths of the energy
+bins. The momentum and the missing energy come from two different tables (the momentum distribution and the spectral
+function), so $p_F$ and $E_m$ are not drawn from one joint distribution. The energy $E_F$ of \eqr{eq:efer} is the
+nucleon's share of the target mass with the spectator on its mass shell, so the struck nucleon is off shell.
+
+\subsection{Limits}
+The vertex limits, the largest photon energy and the summed-energy limits are, with $M_X$ the recoil mass at set-up
+time (the nominal $M_\Delta=1232$ MeV for \code{which\_pion} 2/3):
+\begin{feqa}{setup/SetupLimits.cpp: BuildLimits}{init.f:344-358, 380-402}
+\text{H, coherent:}&\quad E_m = P_m = 0,\qquad M_\mathrm{rec}=T_\mathrm{rec}=0,\nonumber\\
+\text{D:}&\quad E_m = M_p+M_n-M_d,\qquad P_m\in[0,\ p_n],\nonumber\\
+A\ge3\text{:}&\quad E_m\in[M_N+M_\mathrm{rec}-M_A,\ E_{m}^\mathrm{table,max}],\qquad P_m\in[0,\ p_n],\nonumber\\
+\text{D, }A\ge3\text{:}&\quad M_\mathrm{rec}^\mathrm{min,max}=M_A-M_N+E_m^\mathrm{min,max},\nonumber\\
+&\quad T_\mathrm{rec}^\mathrm{min}=\sqrt{(M_\mathrm{rec}^\mathrm{max})^2+(P_m^\mathrm{min})^2}-M_\mathrm{rec}^\mathrm{max},\quad
+T_\mathrm{rec}^\mathrm{max}=\sqrt{(M_\mathrm{rec}^\mathrm{min})^2+(P_m^\mathrm{max})^2}-M_\mathrm{rec}^\mathrm{min},\nonumber\\
+T_X^\mathrm{max} &= E_b^\mathrm{max}+M_N-M_X-E'_\mathrm{min}-E_{h,\mathrm{min}}-E_m^\mathrm{min}-T_\mathrm{rec}^\mathrm{min},\qquad T_X^\mathrm{min}=0,
+\lbl{eq:vertexedge}
+\end{feqa}
+($p_n$ the last node of the momentum distribution, $T_X$ the kinetic energy of the recoil), and
+\begin{feqa}{setup/SetupLimits.cpp: BuildLimits}{init.f:411-425, 456-469, 477-488, 500-513}
+E_\gamma^\mathrm{tot,max} &= E_b^\mathrm{max}+M_N-M_X-E'_\mathrm{min}-E_{h,\mathrm{min}}-E_m^\mathrm{min}-T_\mathrm{rec}^\mathrm{min},\nonumber\\
+\Sigma_\mathrm{max} &= \min\bigl(E_b^\mathrm{max}+M_N-M_X-E_{h,\mathrm{min}}-E_m^\mathrm{min}-T_\mathrm{rec}^\mathrm{min},\ E'_\mathrm{max}+E_{\gamma2}^\mathrm{max}\bigr)+d_E,\nonumber\\
+\Sigma_\mathrm{min} &= \max\bigl(0,\ \max\bigl(E_b^\mathrm{min}+M_N-M_X-E_{h,\mathrm{max}}-E_m^\mathrm{max}-T_\mathrm{rec}^\mathrm{max}-T_X^\mathrm{max}-E_\gamma^\mathrm{tot,max},\ E'_\mathrm{min}\bigr)-d_E\bigr),\nonumber\\
+E'^\mathrm{gen} &= \bigl[\max(\Sigma_\mathrm{min},E'_\mathrm{min}),\ \min(\Sigma_\mathrm{max},E'_\mathrm{max}+E_{\gamma2}^\mathrm{max})\bigr],\qquad
+E_h^\mathrm{gen} = \bigl[E_{h,\mathrm{min}},\ E_{h,\mathrm{max}}+E_{\gamma3}^\mathrm{max}\bigr],
+\lbl{eq:sumegen}
+\end{feqa}
+with $E_b^\mathrm{max,min}$ of \ceqr{eq:ebeamlimits} and $E_{\gamma i}^\mathrm{max}=E_\gamma^\mathrm{tot,max}$ for each
+enabled tail ($E_\gamma^\mathrm{tot,max}=0$ without radiation, \code{Egamma\_gen\_max} when set). The hadron range only
+serves the diagnostic histograms.
+
+\subsection{Generation volume}
+\begin{feq}{reactions/EepReactionBase.cpp: EepReactionBase::genVolume}{simc.f:383-397}
+V_\mathrm{gen} = \Delta\Omega_e\,\Delta\Omega_h\,\bigl(E'^\mathrm{gen}_\mathrm{max}-E'^\mathrm{gen}_\mathrm{min}\bigr)\quad[\mathrm{sr^2\,MeV}],
+\lbl{eq:genvol}
+\end{feq}
+with $\Delta\Omega$ the products of the slope ranges (\ceqr{eq:genvol}). The Fermi momentum, the missing energy and the
+$\Delta$ mass are drawn from normalised distributions and add nothing to $V_\mathrm{gen}$.
+
+% =====================================================================================================================
+\section{Completing the event}\lbl{sec:complete}
+\subsection{Recoil mass of the \texorpdfstring{$\Delta$}{Delta} final states}
+For \code{which\_pion} 2 and 3 every call of the event completion draws a new recoil mass from the table
+\code{delta\_relativistic\_bw.inp} (a relativistic Breit--Wigner shape computed by P. Bosted, according to the code
+comment; the first 1000 lines, masses $m_i$ from 1.028 to 1.627 GeV in 1 MeV steps, weights $b_i$; the file holds the
+same table twice). With $B_i=\sum_{k\le i}b_k/\sum_k b_k$:
+\begin{feq}{reactions/pion/PionProduction.cpp: DeltaMassTable::sample}{event.f:478-495, 620-631}
+M_X = 1000\,m_{i^*}\ \mathrm{MeV},\qquad i^* = \text{the first } i \text{ with the smallest } |\xi-B_i|,
+\lbl{eq:deltamass}
+\end{feq}
+i.e.\ the node nearest in cumulative probability, not an interpolated inverse. The distribution peaks at
+$m=1.207$ GeV and 58\,\% of its weight lies below 1.232 GeV. A photon of tail 1 calls the completion again and draws
+a new mass (\secr{sec:rad}).
+
+\subsection{The pion energy}\lbl{sec:vertex}
+With $\hat p$ the pion direction, $E_F$ and $\vec p_F=p_F\hat p_F$ of \eqr{eq:efer}, energy and momentum conservation
+$\nu+E_F = E_h+E_X$, $\vec q+\vec p_F=\vec p_h+\vec p_X$, $E_X^2=M_X^2+p_X^2$ give, after squaring,
+\begin{feqa}{reactions/pion/PionProduction.cpp: PionProduction::completeEv}{event.f:634-680}
+a &= -|\vec q|\,(\hat q\cdot\hat p) - p_F\,(\hat p_F\cdot\hat p),\qquad
+b = |\vec q|^2 + p_F^2 + 2|\vec q|\,p_F\,(\hat p_F\cdot\hat q),\qquad c = \nu + E_F,\nonumber\\
+\tau &= c^2-b+M_h^2-M_X^2,\qquad
+Q_A = 4(a^2-c^2),\quad Q_B = 4c\,\tau,\quad Q_C = -4a^2M_h^2-\tau^2,\nonumber\\
+E_h &= \frac{-Q_B-\sqrt{Q_B^2-4Q_AQ_C}}{2Q_A},\qquad P_h=\sqrt{E_h^2-M_h^2},\qquad \delta_h = 100\,(P_h-P_h^0)/P_h^0,
+\lbl{eq:quad}
+\end{feqa}
+where for H and coherent production $p_F=0$ and $c=\nu+M_A$ ($M_A=M_N$ there). The quadratic is that of
+$\tau-2cE_h = 2aP_h$ squared. The try fails when the discriminant is negative, when $E_h<0$, when the recoil energy
+$c-E_h\le M_X$ or when $E_h\le M_h$. Since $Q_A<0$, the chosen root is the larger energy, the forward solution in the
+centre of mass; the code comment says that the second solution is hoped never to fall in the acceptance, and it prints
+a warning in the first 5000 tries when that root lies inside the hadron energy edges. The sign condition
+$\tau-2cE_h=2aP_h$ is not tested (\secr{sec:origin}). The vertex missing quantities follow from
+\ceqr{eq:pm}; in addition $P_m=p_F$ (the generated value, not $|\vec P_m|$), $M_\mathrm{rec}=M_A-M_N+E_m$ and
+\begin{feq}{reactions/pion/PionProduction.cpp: PionProduction::completeEv}{event.f:947-951}
+T_\mathrm{rec} = 0\ \ (\text{H, coherent}),\qquad T_\mathrm{rec}=\sqrt{M_\mathrm{rec}^2+p_F^2}-M_\mathrm{rec}\ \ (\text{D},\ A\ge3).
+\lbl{eq:trec}
+\end{feq}
+
+\subsection{Meson variables at the vertex}
+\begin{feqa}{reactions/pion/PionProduction.cpp: PionProduction::pionMainKinematics}{event.f:723-771}
+W^2 &= M_N^2+2M_N\nu-Q^2,\qquad \varepsilon = \Bigl[1+2\Bigl(1+\frac{\nu^2}{Q^2}\Bigr)\tan^2\frac{\theta_e}{2}\Bigr]^{-1},\qquad
+\theta_{pq} = \arccos(\hat p\cdot\hat q),\nonumber\\
+-t &= Q^2-M_h^2+2\nu E_h-2P_h|\vec q|\cos\theta_{pq},\qquad -t_\mathrm{min} = Q^2-M_h^2+2\nu E_h-2P_h|\vec q|,
+\lbl{eq:tvertex}
+\end{feqa}
+and $\varphi_{pq}$ of \ceqr{eq:phipq}. The code keeps $-t$, the positive quantity $-(q-p_h)^2$, under the name
+\code{t}. These values ignore the Fermi motion ($W$ is that of a nucleon at rest); the model computes its own
+invariant mass with the Fermi motion (\eqr{eq:peepi}). For a deuteron or a heavier nucleus a relative momentum of the
+recoil pair is stored (D: $k=\sqrt{\max(0,M^2-4M_X^2)}$ with $M$ the vertex missing mass; $A\ge3$:
+$|\vec P_m+1.5\,\vec p_F|$, negative when $E_m<6$ MeV), which is not a tree column.
+
+\subsection{\texorpdfstring{$\pi^0\to\gamma\gamma$}{pi0 -> 2 gamma}}
+For \code{doing\_pizero} the completion decays the $\pi^0$ isotropically in its rest frame (two uniform numbers, first
+the azimuth) and boosts the photons back along $\hat p$:
+\begin{feqa}{physics/pion/PizeroDecay.cpp: pizeroDecay}{pizero\_decay.f:37-70; loren.f:18-23}
+\beta &= \frac{P_h}{\sqrt{P_h^2+M_h^2}},\quad \gamma=(1-\beta^2)^{-1/2},\quad \varphi^\star=2\pi\xi_1,\quad \cos\theta^\star=2\xi_2-1,\quad
+\vec k_{1}^\star = \tfrac{M_h}{2}\hat n(\theta^\star,\varphi^\star) = -\vec k_2^\star,\nonumber\\
+E_i &= \gamma\bigl(\tfrac{M_h}{2}-\vec b\cdot\vec k_i^\star\bigr),\qquad
+\vec k_i = \vec k_i^\star+\frac{\gamma^2}{1+\gamma}\,(\vec b\cdot\vec k_i^\star)\,\vec b-\gamma\,\tfrac{M_h}{2}\,\vec b,\qquad \vec b = -\beta\hat p,
+\lbl{eq:pi0decay}
+\end{feqa}
+the photon four-momenta $(E_i,\vec k_i)$ in MeV in the laboratory frame being written to the tree. The code warns when
+energy or momentum is not conserved to 0.001 MeV. The photons are traced to the calorimeter in \secr{sec:decay}.
+
+\subsection{Reconstruction}\lbl{sec:recon}
+From the reconstructed electron and pion (\ceqr{eq:recon}), with the hadron-arm reconstruction taken directly from the
+spectrometer-entrance values for a $\pi^0$ (no $\pi^0$ reconstruction):
+\begin{feqa}{reactions/EepReactionBase.cpp: EepReactionBase::completeRecon}{event.f:1325-1335, 1353-1354}
+E_m^\mathrm{rec} &= \nu^\mathrm{rec}+M_N-E_h^\mathrm{rec},\qquad
+m_N^2 = (E_m^\mathrm{rec})^2-(P_m^\mathrm{rec})^2,\qquad
+m_A^2 = (\nu^\mathrm{rec}+M_A-E_h^\mathrm{rec})^2-(P_m^\mathrm{rec})^2,\nonumber\\
+m &= \operatorname{sign}(m^2)\sqrt{|m^2|}\quad(\text{for } m_N, m_A),\qquad
+-t^\mathrm{rec} = (Q^\mathrm{rec})^2-M_h^2+2\bigl(\nu^\mathrm{rec}E_h^\mathrm{rec}-P_h^\mathrm{rec}|\vec q^\mathrm{rec}|\cos\theta_{pq}^\mathrm{rec}\bigr),
+\lbl{eq:recmm}
+\end{feqa}
+the tree columns \code{missmass} ($m_N$), \code{mmnuc} ($m_A$) and \code{t}. For a free nucleon $m_N$ peaks at $M_X$
+(the neutron for $\pi^+$, the $\Delta$ distribution for \code{which\_pion} 2/3); the Fermi motion broadens it. The
+reconstructed $W$ uses $M_p$ (\ceqr{eq:w}).
+
+% =====================================================================================================================
+\section{Jacobians}\lbl{sec:jac}
+\subsection{Slopes}
+Both slope pairs are generated, so the event jacobian is the product of the two solid-angle factors of \ceqr{eq:jacomega}:
+\begin{feq}{reactions/pion/PionProduction.cpp: PionProduction::completeEv}{event.f:498, 1015-1025}
+J = \bigl(1+x_e'^2+y_e'^2\bigr)^{-3/2}\bigl(1+x_h'^2+y_h'^2\bigr)^{-3/2}.
+\lbl{eq:jac}
+\end{feq}
+No jacobian for the electron energy is needed: the pion energy is solved, and the cross section is differential in
+$E'$, $\Omega_e$ and $\Omega_\pi$.
+
+\subsection{Centre-of-mass frame and \texorpdfstring{$\mathrm{d}t\,\mathrm{d}\varphi^*\to\mathrm{d}\Omega_\pi$}{dt dphi -> dOmega}}\lbl{sec:cm}
+The model gives $\mathrm{d}^2\sigma/\mathrm{d}t\,\mathrm{d}\varphi^*$ in the photon--nucleon centre of mass; the
+transformation to the laboratory pion solid angle is computed by \code{transformToCm}, called by the model. Work in the
+frame of \ceqr{eq:phipq} ($\hat z'\parallel\hat q$, $\hat y'\parallel\hat q\times\hat z$, $\hat x'=\hat y'\times\hat q$, in
+the replay orientation of note 00). The pion has polar angle $\theta_{pq}$ and azimuth $\varphi_{pq}$, the Fermi momentum
+the azimuth $\varphi_F$ (0 when its $x'$ component vanishes) and $\cos\theta_F'=\hat p_F\cdot\hat q$. The boost and the
+Lorentz transformation of a four-vector $(E,\vec p)$ are
+\begin{feqa}{reactions/EventChain.cpp: transformToCm}{jacobians.f:57-133; loren.f:18-23}
+\vec\beta^* &= \frac{\bigl(p_Fp_{F,x'},\ p_Fp_{F,y'},\ |\vec q|+p_F\cos\theta_F'\bigr)}{\nu+E_F},\qquad
+\gamma^* = (1-\beta^{*2})^{-1/2},\nonumber\\
+E^* &= \gamma^*(E-\vec\beta^*\cdot\vec p),\qquad
+\vec p^{\,*} = \vec p+\frac{\gamma^{*2}}{1+\gamma^*}(\vec\beta^*\cdot\vec p)\,\vec\beta^*-\gamma^*E\,\vec\beta^*,\nonumber\\
+\cos\theta^* &= \frac{\vec p^{\,*}_h\cdot\vec q^{\,*}}{|\vec p^{\,*}_h|\,|\vec q^{\,*}|},
+\lbl{eq:boost}
+\end{feqa}
+applied to the beam $(E_\mathrm{in}, E_\mathrm{in}\hat z)$, the photon $(\nu,|\vec q|\hat z')$, the pion
+$(E_h, P_h\hat n(\theta_{pq},\varphi_{pq}))$ ($\hat n$ the unit vector of polar angle $\theta_{pq}$ and azimuth
+$\varphi_{pq}$ in the frame of $\vec q$) and the nucleon $(E_F,\vec p_F)$ (a warning is printed when $|\beta^*|>1$). The azimuth $\varphi^*$ is that of $\vec p^{\,*}_h$ about
+$\vec q^{\,*}$ in the axes $\hat y^*\parallel\vec q^{\,*}\times\vec k^{\,*}_\mathrm{beam}$, $\hat x^*\parallel\hat
+y^*\times\vec q^{\,*}$, in $[0,2\pi)$. Without Fermi motion the boost is along $\vec q$ and $\varphi^*=\varphi_{pq}$.
+
+The jacobian $|\partial(t,\varphi^*)/\partial(\cos\theta_{pq},\varphi_{pq})|$ is evaluated exactly for the non-collinear
+boost. With $R=|\vec q|+p_F\cos\theta_F'-P_h\cos\theta_{pq}$, $\psi=\cos\varphi_F\cos\varphi_{pq}+\sin\varphi_F\sin\varphi_{pq}$
+and $D=\nu+E_F-E_h$:
+\begin{feqa}{reactions/EventChain.cpp: transformToCm}{jacobians.f:208-226}
+\frac{\partial P_h}{\partial\cos\theta_{pq}} &=
+\frac{P_h+\bigl(P_h^2\cos\theta_{pq}-\psi\,p_FP_h\sin\theta_F'\cos\theta_{pq}/\sin\theta_{pq}\bigr)/R}
+{\bigl(DP_h/E_h+P_h\sin^2\theta_{pq}-\psi\,p_F\sin\theta_F'\sin\theta_{pq}\bigr)/R-\cos\theta_{pq}},\nonumber\\
+\frac{\partial P_h}{\partial\varphi_{pq}} &=
+\frac{p_FP_h\sin\theta_{pq}\sin\theta_F'\,\sin(\varphi_{pq}-\varphi_F)/R}
+{\cos\theta_{pq}+\bigl(p_F\sin\theta_{pq}\sin\theta_F'\,\psi-P_h\sin^2\theta_{pq}-DP_h/E_h\bigr)/R},\nonumber\\
+\frac{\partial t}{\partial\cos\theta_{pq}} &= 2\Bigl(|\vec q|P_h+\bigl(|\vec q|\cos\theta_{pq}-\nu\tfrac{P_h}{E_h}\bigr)\frac{\partial P_h}{\partial\cos\theta_{pq}}\Bigr),\qquad
+\frac{\partial t}{\partial\varphi_{pq}} = 2\bigl(|\vec q|\cos\theta_{pq}-\nu\tfrac{P_h}{E_h}\bigr)\frac{\partial P_h}{\partial\varphi_{pq}},
+\lbl{eq:dpdcos}
+\end{feqa}
+($t$ standing for the positive $-t$ of the code). For $\xi=\cos\theta_{pq}$ or $\varphi_{pq}$ the derivative of the boosted
+pion momentum follows from \eqr{eq:boost} with $\partial E_h/\partial\xi=(P_h/E_h)\,\partial P_h/\partial\xi$, and in the
+axes $(\hat x^*,\hat y^*)$
+\begin{feqa}{reactions/EventChain.cpp: transformToCm}{jacobians.f:231-271}
+\frac{\partial\vec p^{\,*}_h}{\partial\xi} &= \frac{\partial\vec p_h}{\partial\xi}
++\frac{\gamma^*-1}{\beta^{*2}}\Bigl(\vec\beta^*\cdot\frac{\partial\vec p_h}{\partial\xi}\Bigr)\vec\beta^*
+-\gamma^*\vec\beta^*\,\frac{P_h}{E_h}\frac{\partial P_h}{\partial\xi},\qquad
+\frac{\partial\varphi^*}{\partial\xi} = \frac{p^*_x\,\partial p^*_y/\partial\xi-p^*_y\,\partial p^*_x/\partial\xi}{p_x^{*2}+p_y^{*2}},\nonumber\\
+J_\mathrm{cm} &= \Bigl|\frac{\partial t}{\partial\cos\theta_{pq}}\frac{\partial\varphi^*}{\partial\varphi_{pq}}
+-\frac{\partial t}{\partial\varphi_{pq}}\frac{\partial\varphi^*}{\partial\cos\theta_{pq}}\Bigr|\quad[\mathrm{MeV^2/sr}],
+\lbl{eq:jcm}
+\end{feqa}
+the code writing the components of $\partial\vec p_h/\partial\xi$ out term by term. $J_\mathrm{cm}$ enters the cross
+section (\eqr{eq:peepi}), not $J$. Without Fermi motion it reduces to $\partial t/\partial\cos\theta_{pq}$, the
+$2|\vec q|P_h\cdots$ factor of the collinear case. The code also keeps the older collinear approximation
+\begin{feq}{reactions/EventChain.cpp: transformToCm}{jacobians.f:275-278}
+J_\mathrm{old} = \frac{2\bigl(E_F-2p_F\hat p_{F,z}\tfrac{E_h}{P_h}\cos\theta_{pq}\bigr)\bigl(|\vec q|+p_F\hat p_{F,z}\bigr)P_h}
+{E_F+\nu-\bigl(|\vec q|+p_F\hat p_{F,z}\bigr)\tfrac{E_h}{P_h}\cos\theta_{pq}}-2P_hp_F,
+\lbl{eq:jold}
+\end{feq}
+which is stored in the main record and not used ($\hat p_{F,z}$ is the component along the beam, not along $\vec q$).
+
+% =====================================================================================================================
+\section{Cross-section model}\lbl{sec:xsec}
+\subsection{What the reaction requires from a model}\lbl{sec:require}
+\code{PionProduction::completeMain} sets $S=1$ and calls \code{sigccMain(vertex, main)} of the run's
+\code{IPhysicsModel}. The model reads the vertex record ($E_\mathrm{in}$, $E'$, $\nu$, $Q^2$, $\vec q$, the pion), the main
+record ($\varepsilon$, $-t$, $\varphi_{pq}$, the Fermi momentum $p_F$, $\hat p_F$, $E_F$) and the set-up values $M_N$,
+\code{which\_pion} and \code{doing\_pizero}. It must return the cross section per nucleon
+$\mathrm{d}^5\sigma/\mathrm{d}E'\mathrm{d}\Omega_e\mathrm{d}\Omega_\pi$ in $\mu$b/(MeV sr$^2$), with the pion solid angle
+in the laboratory, and may write the centre-of-mass angles, $W^*$, the jacobians and the tree value \code{sigcm} into
+the main record; \code{sigccRecon} returns 1. The reaction then applies the factors of \eqr{eq:cgfactors}, the
+Coulomb factor and $n_\mathrm{tgt}$.
+
+\subsection{The model \texttt{pion}: from the centre of mass to the laboratory}
+\begin{feqa}{physics/pion/PionCrossSections.cpp: peepi}{physics\_pion.f:74-92, 126-191}
+s &= (\nu+E_F)^2-\bigl(|\vec q|+p_F\cos\theta_F'\bigr)^2-\bigl(p_F\sin\theta_F'\bigr)^2,\qquad W^*=\sqrt s,\nonumber\\
+k_\mathrm{eq} &= \frac{W^{*2}-M_N^2}{2M_N},\qquad
+\Gamma = \frac{\alpha}{2\pi^2}\,\frac{E'}{E_\mathrm{in}}\,\frac{k_\mathrm{eq}}{Q^2}\,\frac{1}{1-\varepsilon},\qquad
+f = \frac{1}{1-p_F\hat p_{F,z}/E_F}\,\frac{M_N}{E_F},\nonumber\\
+\sigma &= \frac{\mathrm{d}^2\sigma}{\mathrm{d}t\,\mathrm{d}\varphi^*}\cdot J_\mathrm{cm}\cdot\Gamma\cdot f
+\quad[\mu\mathrm{b/(MeV\,sr^2)}],
+\lbl{eq:peepi}
+\end{feqa}
+($\cos\theta_F'$ set to 1 when it exceeds 1 by less than $10^{-8}$). $\Gamma$ is the Hand virtual-photon flux with the
+equivalent photon energy $k_\mathrm{eq}$ of a nucleon at rest; the code comments explain the choice of $M_N$ instead of
+the Fermi-moving nucleon energy (a 2000 version used $E_F-p_F\cos\theta_F'$, the 2001 version returned to $M_N$
+``more consistent with the phase space''), and $f$ as the non-collinear flux correction: the relative velocity
+$1-p_{F,z}/E_F$ of electron and nucleon and $E_F$ instead of $M_N$ in the flux $|v_1-v_2|\,2E_1\,2E_2$.
+$\mathrm{d}^2\sigma/\mathrm{d}t\,\mathrm{d}\varphi^*$ (in $\mu$b/(MeV$^2$ rad)) is the blend of \eqr{eq:blend}.
+
+\subsection{The 2021 fit of P. Bosted}
+The default centre-of-mass cross section is a fit to exclusive $\pi^+$ and $\pi^-$ data (code comment: ``April 2021 fit
+to exclusive pi+ and pi- data from fpi1, fpi2, CT, pt-SIDIS, CSV-SIDIS, and KLT''), evaluated with $s$, $Q^2$ and $-t$ in
+GeV$^2$ and the centre-of-mass angles of \secr{sec:cm}. With the parameter set $p_1\ldots p_{17}$ of \tabr{tab:pfit}:
+\begin{feqa}{physics/pion/PionCrossSections.cpp: exclfit}{physics\_pion.f:807-851}
+F_\pi &= \frac{\phi}{1+p_1Q^2+p_2Q^4},\qquad
+\sigma_L = \Bigl(p_3+\frac{p_{15}}{Q^2}\Bigr)\frac{|t|}{(|t|+0.02)^2}\,Q^2F_\pi^2\,e^{p_4|t|}\Big/\bigl(s^{p_{11}}+s^{p_{17}/2}\bigr),\nonumber\\
+\sigma_T &= \frac{p_5}{Q^2}\,e^{p_6Q^4}\,e^{p_{14}|t|}\Big/\bigl(s^{p_{12}}+s^{p_{16}/2}\bigr),\qquad
+\sigma_{LT} = \frac{p_7}{1+p_{10}Q^2}\,e^{p_8|t|}\,\frac{\sin\theta^*}{s^{p_{13}}},\nonumber\\
+\sigma_{TT} &= \frac{p_9}{1+Q^2}\,e^{-7|t|}\sin^2\theta^*,\qquad
+\sigma_\mathrm{u} = \sigma_T+\varepsilon\sigma_L+\varepsilon\cos2\varphi^*\,\sigma_{TT}+\sqrt{2\varepsilon(1+\varepsilon)}\cos\varphi^*\,\sigma_{LT},\nonumber\\
+\frac{\mathrm{d}^2\sigma}{\mathrm{d}t\,\mathrm{d}\varphi^*}\Big|_{2021} &= \frac{8.539\,\sigma_\mathrm{u}}{(s-0.938^2)^2}\,\frac{1}{2\cdot3.1415928\cdot10^6},
+\lbl{eq:exclfit}
+\end{feqa}
+(the last factor converts GeV$^{-2}$ to MeV$^{-2}$ and $\mathrm{d}t\to\mathrm{d}t\,\mathrm{d}\varphi^*$). The charged
+pion uses $\phi=1$ and the set $p^+$ for \code{which\_pion} 0, 2, 10, $p^-$ for 1, 3, 11; the $\pi^0$ uses $\phi=0$
+(no pion pole, $\sigma_L=0$) and the average of the results of the two sets:
+\begin{feq}{physics/pion/PionCrossSections.cpp: sigParam2021}{physics\_pion.f:788-803}
+\frac{\mathrm{d}^2\sigma}{\mathrm{d}t\,\mathrm{d}\varphi^*}\Big|_{2021,\pi^0} = \tfrac12\Bigl(
+\frac{\mathrm{d}^2\sigma}{\mathrm{d}t\,\mathrm{d}\varphi^*}\Big|_{p^+,\phi=0}+\frac{\mathrm{d}^2\sigma}{\mathrm{d}t\,\mathrm{d}\varphi^*}\Big|_{p^-,\phi=0}\Bigr).
+\lbl{eq:pizerofit}
+\end{feq}
+Remarks from the code: the normalisation 8.539 and the denominator $(s-M^2)^2$ come from earlier fits scaled to a fixed
+$W$; the comment says $W=1.96$ GeV, while $(W^2-0.938^2)^2=8.539$ corresponds to $W=1.950$ GeV (with 1.96 it would be
+8.772). The proton mass is fixed at 0.938 GeV inside the fit and $\pi$ is written 3.1415928. The fit is used as it is
+for coherent production ($s$ of the photon--nucleus system); it is not clamped and can be negative. The parameters are
+transcribed from the code; there is no publication to compare them with (the code cites the output of a private
+program, \code{ptb.f}).
+
+\begin{simctable}{footnotesize}{L{0.12\linewidth}L{0.2\linewidth}L{0.2\linewidth}L{0.48\linewidth}}
+\caption{Parameters of the 2021 fit \fsrc{physics\_pion.f:751-786} (one parameter per row).}\lbl{tab:pfit}\\
+\toprule\rowcolor{simchead}\simcth{parameter} & \simcth{$p^+$ ($\pi^+$)} & \simcth{$p^-$ ($\pi^-$)} & \simcth{role in \eqr{eq:exclfit}}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{parameter} & \simcth{$p^+$ ($\pi^+$)} & \simcth{$p^-$ ($\pi^-$)} & \simcth{role in \eqr{eq:exclfit}}\\\midrule\endhead
+\bottomrule\endlastfoot
+$p_1$ & 1.60077 & 1.75169 & $Q^2$ term of the form factor\\
+$p_2$ & $-0.01523$ & 0.11144 & $Q^4$ term of the form factor\\
+$p_3$ & 37.08142 & 47.35877 & $\sigma_L$ normalisation\\
+$p_4$ & $-4.11060$ & $-4.69434$ & $\sigma_L$ $t$ slope\\
+$p_5$ & 23.26192 & 1.60552 & $\sigma_T$ normalisation\\
+$p_6$ & 0.00983 & 0.00800 & $\sigma_T$ $Q^4$ exponent\\
+$p_7$ & 0.87073 & 0.44194 & $\sigma_{LT}$ normalisation\\
+$p_8$ & $-5.77115$ & $-2.29188$ & $\sigma_{LT}$ $t$ slope\\
+$p_9$ & $-271.08678$ & $-41.67194$ & $\sigma_{TT}$ normalisation\\
+$p_{10}$ & 0.13766 & 0.69475 & $\sigma_{LT}$ $Q^2$ term\\
+$p_{11}$ & $-0.00855$ & 0.02527 & $\sigma_L$ $s$ power\\
+$p_{12}$ & 0.27885 & $-0.50178$ & $\sigma_T$ $s$ power\\
+$p_{13}$ & $-1.13212$ & $-1.22825$ & $\sigma_{LT}$ $s$ power\\
+$p_{14}$ & $-1.50415$ & $-1.16878$ & $\sigma_T$ $t$ slope\\
+$p_{15}$ & $-6.34766$ & 5.75825 & $\sigma_L$ $1/Q^2$ term\\
+$p_{16}$ & 0.55769 & $-1.00355$ & $\sigma_T$ $\sqrt s$ power\\
+$p_{17}$ & $-0.01709$ & 0.05055 & $\sigma_L$ $\sqrt s$ power\\
+\end{simctable}
+
+\subsection{MAID2007 below \texorpdfstring{$W=2$}{W = 2} GeV}
+For $W^*<2$ GeV the code also evaluates the unpolarised MAID2007 cross section from tables produced by P. Bosted with
+code of L. Tiator (code comment), four files of 25 $Q^2$ $\times$ 46 $W$ $\times$ 23 angle rows of 18 response
+functions: \code{maidpi0p.dat} ($\pi^0p$, $i_\pi=1$), \code{maidpi0n.dat} ($\pi^0n$, 2), \code{maidpipn.dat}
+($\pi^+n$, 3), \code{maidpimp.dat} ($\pi^-p$, 4). $\pi^0$ uses $i_\pi=2$ for \code{which\_pion} 1 and 3, 1 otherwise;
+the charged pion uses 4 for \code{which\_pion} 1, 3, 11 and 3 otherwise. With $Q^2$, $W$, $E_0=E_\mathrm{in}$ in GeV,
+$m=0.9383$:
+\begin{feqa}{physics/pion/PionCrossSections.cpp: sigmaid}{physics\_pion.f:636-705}
+\nu_0 &= \frac{W^2-m^2+Q^2}{2m},\qquad \sin^2\tfrac{\theta_0}{2}=\frac{Q^2}{4E_0(E_0-\nu_0)},\nonumber\\
+\varepsilon_0 &= \Bigl[1+2\Bigl(1+\frac{\nu_0^2}{Q^2}\Bigr)\frac{\sin^2(\theta_0/2)}{1-\sin^2(\theta_0/2)}\Bigr]^{-1},\nonumber\\
+i_Q &= \min\bigl(25,\max(1,\lfloor(Q^2+0.1)/0.2\rfloor)\bigr),\qquad
+i_W = \min\bigl(46,\max(1,\lfloor(W-1.09)/0.02\rfloor)\bigr),\nonumber\\
+w_f &= 1\ (W\le1.232),\qquad w_f=(W-1.132)/0.1\ (W>1.232),\nonumber\\
+\sigma_T &= \frac{R_1}{\max(0.2,Q^2)\,w_f},\qquad \sigma_L=R_2\sigma_T,\qquad \sigma_{LT}=R_3\sigma_T,\qquad \sigma_{TT}=R_4\sigma_T,\nonumber\\
+\frac{\mathrm{d}\sigma}{\mathrm{d}\Omega^*}\Big|_\mathrm{MAID} &= \sigma_T+\varepsilon_0\sigma_L\nonumber\\
+&\quad+\sqrt{2\varepsilon_0(1+\varepsilon_0)}\cos\varphi^*\,\sigma_{LT}+\varepsilon_0\cos2\varphi^*\,\sigma_{TT}\quad[\mu\mathrm{b/sr}],
+\lbl{eq:maid}
+\end{feqa}
+with $R_j=R_j(i_\pi,i_Q,i_W,i_\theta)$ the table entries and $i_\theta$ the bin of $\cos\theta^*$ in the edges
+$-0.20$, 0.20, 0.44, 0.63, 0.78, 0.90, 1.0 (the last bin containing it; $\cos\theta^*<-0.2$ uses bin 1). The result is 0
+for $W<1.08$ GeV, $\nu_0>E_0$, or $\sin^2(\theta_0/2)\notin(0,1]$. The table is used at the bin found by truncation,
+without interpolation, and only the first six angle rows are reachable. $\varepsilon_0$ is that of a nucleon at rest at
+$(W,Q^2,E_0)$, not the event's $\varepsilon$. The target-polarisation responses $R_5\ldots R_{18}$ are combined into
+polarised cross sections that are not used. MAID2007 is the model of the reference cited below; the tables were not
+compared with it for this note.
+
+The model value, in $\mu$b/(MeV$^2$ rad), is the blend
+\begin{feq}{physics/pion/PionCrossSections.cpp: peepi}{physics\_pion.f:133-154}
+\frac{\mathrm{d}^2\sigma}{\mathrm{d}t\,\mathrm{d}\varphi^*} =
+\begin{cases} f_W\,\sigma_{2021}+(1-f_W)\,\dfrac{\mathrm{d}\sigma/\mathrm{d}\Omega^*|_\mathrm{MAID}}{2\,p^*_h\,q^*}, & W^*<2\ \mathrm{GeV},\\
+\sigma_{2021}, & W^*\ge2\ \mathrm{GeV},\end{cases}\qquad f_W = \min\Bigl(1,\max\bigl(0,\tfrac{W^*-1.5}{0.4}\bigr)\Bigr),
+\lbl{eq:blend}
+\end{feq}
+with $\sigma_{2021}$ of \eqsr{eq:exclfit}{eq:pizerofit}, $p^*_h$, $q^*$ the centre-of-mass momenta in MeV
+($\mathrm{d}t=2p^*q^*\,\mathrm{d}\cos\theta^*$), $W^*$ in GeV in $f_W$. Below 1.5 GeV the cross section is MAID, above
+1.9 GeV the fit. The tree column \code{sigcm} is this value.
+
+\subsection{Fits present in the code and not used}
+\code{sig\_blok} (a fit to the data of Brauel et al.\ \citer{brauel}, used by the Delta reaction, note 05), \code{sig\_param04}
+and \code{sig\_param\_3000} (earlier fits to the $F_\pi$ data) and \code{sig\_multipole} (a low-$W$ multipole model with
+CGLN \citer{cgln}, Walker \citer{walker} and Bartl \citer{bartl} amplitudes, \code{MULTIPOL.file}) are ported but their
+calls are commented out in the Fortran \fsrc{physics\_pion.f:94-123, 156-163}; SIMC++ keeps them for the L1 tests.
+
+\subsection{\texorpdfstring{$\Delta$}{Delta} final states and the number of target nucleons}
+The cross section of $\gamma^*N\to\pi\Delta$ is the nucleon-recoil cross section scaled by empirical factors (code
+comment: ``Clebsch-Gordon coefficients ... updated from Peter Bosted's empirical checks'', 2021 and 2023). SIMC++
+applies, in both modes,
+\begin{feqa}{reactions/pion/PionProduction.cpp: PionProduction::completeMain}{event.f:1461-1503 (294f662: event.f:1458-1500)}
+\text{\code{which\_pion} 2:}&\quad \sigma\leftarrow 0.55\,\sigma\ (\pi^0,\ \text{H, D}),\quad
+\sigma\leftarrow0.4\,\sigma\ (\pi^+,\ \text{H}),\quad \sigma\leftarrow(0.4+0.8)\,\sigma\ (\pi^+,\ \text{D}),\nonumber\\
+\text{\code{which\_pion} 3:}&\quad \sigma\leftarrow0.99\,\sigma\ (\pi^0,\ \text{D}),\quad
+\sigma\leftarrow0.55\,\sigma\ (\pi^-,\ \text{H}),\quad \sigma\leftarrow(0.55+0.99)\,\sigma\ (\pi^-,\ \text{D}),\nonumber\\
+n_\mathrm{tgt} &= N\ (\text{\code{which\_pion} 1, 11}),\qquad n_\mathrm{tgt}=Z\ (\text{all other values}),
+\lbl{eq:cgfactors}
+\end{feqa}
+and no factor for $A\ge3$ (the branches exist for H and D only), so for $A\ge3$ the $\Delta$ final states are weighted
+with $Z$ times the nucleon-recoil cross section. Upstream SIMC 59ccdf6 changed this block: the D factors became
+$Z\cdot0.4+N\cdot0.8$ and $Z\cdot0.55+N\cdot0.99$ (and $Z$ times the H factors), and $n_\mathrm{tgt}$ is set only for
+\code{which\_pion} 0, 10 ($Z$) and 1, 11 ($N$), so that it stays 1 for 2 and 3. For H and D the weight is unchanged
+($Z=N=1$); for $A\ge3$ and \code{which\_pion} 2/3 the upstream weight is the SIMC++ weight divided by $Z$. SIMC++ keeps
+the earlier weight in both modes until the author of the change has answered (\secr{sec:origin}). For hydrogen
+$\gamma^*n\to\pi^0\Delta^0$ is set to 0 (and refused at set-up).
+
+\subsection{Weight and units}
+\begin{feq}{reactions/pion/PionProduction.cpp: PionProduction::completeMain}{event.f:1536-1538, 1561-1562}
+w = J\cdot w_\mathrm{gen}\cdot\sigma\cdot n_\mathrm{tgt}\quad[\mu\mathrm{b/(MeV\,sr^2)}],\qquad
+\sigma\leftarrow\sigma\,(1+V_C/E_b)^2\ \text{with the Coulomb correction},
+\lbl{eq:weight}
+\end{feq}
+with $\sigma$ of \eqr{eq:peepi} times the factors of \eqr{eq:cgfactors}, $J$ of \eqr{eq:jac} and $w_\mathrm{gen}$ of
+\eqr{eq:genee} times the radiative weight. With $V_\mathrm{gen}$ in sr$^2$ MeV the products $w\,\mathcal L\,V_\mathrm{gen}
+/N_\mathrm{tried}$ are counts (\ceqr{eq:normfac}). The \texttt{.hist} line \code{CENTRAL.sigcc} is the model at the
+central kinematics; in the Fortran (and the compat mode) the central event has $\varepsilon=-t=\varphi_{pq}=0$, while the
+default mode sets the central $W$, $\varepsilon$, $\theta_{pq}$, $-t$ and $\varphi_{pq}$ first
+(\code{PionProduction::prepareCentral}).
+
+% =====================================================================================================================
+\section{Radiation, energy loss and decays}\lbl{sec:rad}
+\subsection{Radiative tails}
+All three legs radiate; the pion tail uses $\lambda_3$ of \ceqr{eq:lambda} with the pion energy and momentum. The photon
+limits of this reaction are
+\begin{feqa}{radiation/Radc.cpp: generateRad}{radc.f:297-308, 372-389, 428-446}
+E_{\gamma1} &\in \bigl[-d_E,\ \min(\Sigma_\mathrm{max}-E',\ E_{\gamma1}^\mathrm{max})+d_E\bigr],\nonumber\\
+E_{\gamma2} &\in \bigl[E'-E'_\mathrm{max}-d_E,\ \min(E'-E'_\mathrm{min},\ E_\gamma^\mathrm{tot,max}-E_{\gamma1})+d_E\bigr],\nonumber\\
+E_{\gamma3} &\in \bigl[E_h-E_{h,\mathrm{max}}-d_E,\ \min(E_h-E_{h,\mathrm{min}},\ E_\gamma^\mathrm{tot,max}-E_{\gamma1}-E_{\gamma2})+d_E\bigr],
+\lbl{eq:tail1}
+\end{feqa}
+(\code{Egamma\_gen\_max} replaces the upper limits when set; the code comment calls the exact beam-energy limits of
+tail 1 ``too complicated'' for pion production and uses the remaining generated energy). A tail-1 photon lowers
+$E_\mathrm{in}$ and the event completion runs again with it: the pion energy is solved again and, for \code{which\_pion}
+2/3, a new $\Delta$ mass is drawn and, for a $\pi^0$, a new photon pair. The soft-photon factors assume elastic e--p
+kinematics (\ceqr{eq:bremkin}), and the internal radiator constant of the hadron uses $M_p$ for every hadron (note 00).
+
+\subsection{Energy loss and multiple scattering}
+The pion loses energy in the target and the windows with its own mass in the Bethe--Bloch formula and scatters with
+$\beta=P_h/E_h$ (\csecr{sec:eloss}); the reconstruction adds back the most probable loss with \code{correct\_Eloss}.
+With \code{using\_HMScoll} or \code{using\_SHMScoll} the spectrometer collimator is stepped through, with energy loss,
+multiple scattering and a pion absorption probability; this belongs to the spectrometer models and is not described here.
+
+\subsection{Decay in flight}\lbl{sec:decay}
+With \code{doing\_decay} = 1 a charged pion can decay inside the HMS, SHMS, SOS and HRS models, along the whole path
+from the target plane (the first drift of each model starts there) to the detector hut; the mean decay length uses the input \code{ctau} (cm, 780.45 cm for the pion
+is the usual value; the code does not set it). In each field-free drift of length $L$ (along the central ray) the decay
+point is drawn and tested against the path of the ray:
+\begin{feqa}{optics/CosyEngine.cpp: project}{shared/project.f:45-69}
+\beta &= \frac{p}{\sqrt{p^2+m^2}},\qquad \lambda = c\tau\,\beta\gamma,\qquad z_d=-\lambda\ln(1-\xi),\qquad
+\ell = L\sqrt{1+x'^2+y'^2},\nonumber\\
+z_d>\ell&:\ \ \text{no decay; } d\leftarrow d+\ell,\nonumber\\
+z_d\le\ell&:\ \ \text{decay at } (x,y)\leftarrow(x,y)+(x',y')\,\frac{z_d}{\sqrt{1+x'^2+y'^2}},\ \ d\leftarrow d+z_d,
+\lbl{eq:decaypoint}
+\end{feqa}
+$d$ being the tree column \code{decdist} (reset to 0 for every try). The decay is isotropic in the pion rest frame,
+$\pi\to\mu\nu$ with the muon momentum $p^\star=29.783$ MeV/$c$ (the masses of note 00 give 29.792 MeV/$c$), and the muon
+is boosted along the track with \eqr{eq:boost} ($\vec\beta=-\beta\,(x',y',1)/\sqrt{1+x'^2+y'^2}$ in the loren
+convention):
+\begin{feqa}{optics/CosyEngine.cpp: decayProducts}{shared/project.f:72-116; shared/transp.f:146-184}
+\varphi^\star&=2\pi\xi_1,\quad \cos\theta^\star=2\xi_2-1,\quad \vec p^{\,\star}=p^\star\hat n(\theta^\star,\varphi^\star),\quad
+E^\star=\sqrt{M_\mu^2+p^{\star2}},\nonumber\\
+x' &\leftarrow p_x/p_z,\quad y'\leftarrow p_y/p_z,\quad \delta\leftarrow100\,(p/p_\mathrm{spec}-1),\quad m\leftarrow M_\mu,\nonumber\\
+x &\leftarrow x+x'\,\Bigl(L-\frac{z_d}{\sqrt{1+x'^2+y'^2}}\Bigr)\ \ (\text{the rest of the drift}),
+\lbl{eq:decayproducts}
+\end{feqa}
+where the Fortran computes the remaining drift with the muon slopes, the default mode with the pion slopes (so that
+the track ends at the end of the drift). Inside a magnetic element of length $L$, whose transport is a COSY map that
+cannot be split, the decay is applied at the entrance when $z_d\le L/2$ (and the map transports the muon) or at the
+exit when $L/2<z_d\le L+\Delta L$ (with the pion's $\beta$, $\gamma$; $\Delta L$ the path-length correction of the map);
+$d$ grows by $z_d$ or by $L+\Delta L$ \fsrc{shared/transp.f:132-185, 231-276}. After a decay the muon is transported,
+scattered and reconstructed as if it were the pion, and \code{Mhadron} is $M_\mu$. Kaon decays use the same code
+(note on kaon production). A $\pi^0$ never decays in flight in SIMC++; the Fortran stops at the first decay test of a
+$\pi^0$ or of one of its photons (its mass is not within 2 MeV of $M_\pi$).
+
+\subsection{\texorpdfstring{$\pi^0$}{pi0} photons in a calorimeter}
+With \code{doing\_pizero} and a calorimeter as hadron arm (codes 7, 8) each photon of \eqr{eq:pi0decay} is rotated
+into the frame of the calorimeter centred at the hadron-arm angle $\theta_h^0$ and traced to its face:
+\begin{feqa}{driver/PizeroCalorimeter.cpp: rotateToCalorimeter}{simc.f:1506-1526}
+\text{arm 8 (beam left):}&\quad k'_x=k_x,\quad k'_y=k_y\cos\theta_h^0-k_z\sin\theta_h^0,\quad k'_z=k_y\sin\theta_h^0+k_z\cos\theta_h^0,\nonumber\\
+\text{arm 7 (beam right):}&\quad k'_x=k_x,\quad k'_y=k_y\cos\theta_h^0+k_z\sin\theta_h^0,\quad k'_z=-k_y\sin\theta_h^0+k_z\cos\theta_h^0,\nonumber\\
+x'_\gamma &= k'_x/k'_z,\qquad y'_\gamma=k'_y/k'_z,
+\lbl{eq:calorot}
+\end{feqa}
+from the vertex position of the hadron arm. The try succeeds if both photons hit (\code{pizero\_ngamma} = 2) or at least
+one (\code{pizero\_ngamma} = 1). The hit positions go to the columns \code{xcal\_gamma1/2}, \code{ycal\_gamma1/2}
+($-10^{10}$ for a missed photon) and the hadron-arm focal-plane columns hold the last photon that hit. The photons are
+massless and stable in the default mode; each photon's path starts at 0. With a magnetic spectrometer as hadron arm
+the $\pi^0$ itself is transported as if it were charged, and its photons are only written to the tree.
+
+% =====================================================================================================================
+\section{Inputs and outputs}\lbl{sec:io}
+\subsection{Inputs}
+\begin{simctable}{footnotesize}{L{0.24\linewidth}L{0.12\linewidth}L{0.08\linewidth}L{0.56\linewidth}}
+\caption{Inputs specific to pion production (one input per row; the common inputs are in note 01, \S7, and the user
+manual, chapter 4).}\lbl{tab:inputs}\\
+\toprule\rowcolor{simchead}\simcth{input} & \simcth{unit} & \simcth{default} & \simcth{meaning here}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{input} & \simcth{unit} & \simcth{default} & \simcth{meaning here}\\\midrule\endhead
+\bottomrule\endlastfoot
+\code{doing\_pion} & flag & 0 & 1 selects this reaction\\
+\code{which\_pion} & code & 0 & final state (\tabr{tab:finalstates})\\
+\code{doing\_pizero} & flag & 0 & $\pi^0$ instead of a charged pion\\
+\code{pizero\_ngamma} & 1 or 2 & 0 & photons required in the calorimeter (must be set for a $\pi^0$)\\
+\code{drift\_to\_cal} & cm & 0 & distance from the target to the calorimeter face (arms 7, 8)\\
+\code{doing\_decay} & flag & 0 & decay in flight of the charged pion\\
+\code{ctau} & cm & 0 & $c\tau$ of the hadron for the decay\\
+\code{using\_HMScoll} & flag & 0 & HMS collimator stepping and pion absorption\\
+\code{using\_SHMScoll} & flag & 0 & SHMS collimator stepping and pion absorption\\
+\code{targ\%A} & -- & 0 & H, D or $A\ge3$ case; Fermi-motion table\\
+\code{targ\%Z} & -- & 0 & $n_\mathrm{tgt}$, Coulomb correction\\
+\code{targ\%mass\_amu} & u & 0 & $M_A$ (forced for H and D)\\
+\code{targ\%mrec\_amu} & u & 0 & $M_\mathrm{rec}$ for $A\ge3$; final nucleus for coherent production (replaced when off by 100 MeV)\\
+\code{hadron\_arm} & code & 0 & pion spectrometer (7/8: calorimeter for $\pi^0$)\\
+\code{spec\%p\%P} & MeV/$c$ & 0 & $P_h^0$\\
+\code{spec\%p\%theta} & deg & 0 & $\theta_h^0$; calorimeter angle\\
+\code{SPedge\%p\%yptar\%min} & mrad & 0 & generation range of $y'_h$, lower limit\\
+\code{SPedge\%p\%yptar\%max} & mrad & 0 & generation range of $y'_h$, upper limit\\
+\code{SPedge\%p\%xptar\%min} & mrad & 0 & generation range of $x'_h$, lower limit\\
+\code{SPedge\%p\%xptar\%max} & mrad & 0 & generation range of $x'_h$, upper limit\\
+\code{SPedge\%p\%delta\%min} & \% & 0 & hadron energy edges (limits, tail 3)\\
+\code{SPedge\%p\%delta\%max} & \% & 0 & hadron energy edges (limits, tail 3)\\
+\code{using\_tgt\_field} & flag & 0 & polarised-target field: tracking and the angles to the polarisation\\
+\end{simctable}
+The inputs \code{deForest\_flag}, \code{use\_benhar\_sf}, \code{transparency} and the $E_m$ cut have no effect on
+this reaction.
+
+\subsection{Outputs}
+\input{frag_pion_columns}
+For pion production \code{siglab} is $\sigma$ of \eqr{eq:peepi} after the factors of \eqr{eq:cgfactors} and the Coulomb
+factor, \code{sigcm} the blend of \eqr{eq:blend}, and \code{Weight} $w$ of \eqr{eq:weight} in $\mu$b/(MeV sr$^2$).
+With \code{doing\_pizero} twelve columns follow (\tabr{tab:pi0columns}); with \code{using\_tgt\_field} eight more
+(the angles to the target polarisation), after them.
+
+\begin{simctable}{footnotesize}{L{0.06\linewidth}L{0.17\linewidth}L{0.11\linewidth}L{0.66\linewidth}}
+\caption{The $\pi^0$ columns (one column per row).}\lbl{tab:pi0columns}\\
+\toprule\rowcolor{simchead}\simcth{\#} & \simcth{name} & \simcth{unit} & \simcth{content}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{\#} & \simcth{name} & \simcth{unit} & \simcth{content}\\\midrule\endhead
+\bottomrule\endlastfoot
+65 & \code{xcal\_gamma1} & cm & photon 1 at the calorimeter, $x$ ($-10^{10}$ if missed)\\
+66 & \code{ycal\_gamma1} & cm & photon 1 at the calorimeter, $y$ ($-10^{10}$ if missed)\\
+67 & \code{Egamma1} & MeV & $E_1$ of \eqr{eq:pi0decay}\\
+68 & \code{Pgamma1x} & MeV & $k_{1,x}$ (laboratory)\\
+69 & \code{Pgamma1y} & MeV & $k_{1,y}$\\
+70 & \code{Pgamma1z} & MeV & $k_{1,z}$\\
+71 & \code{xcal\_gamma2} & cm & photon 2 at the calorimeter, $x$\\
+72 & \code{ycal\_gamma2} & cm & photon 2 at the calorimeter, $y$\\
+73 & \code{Egamma2} & MeV & $E_2$\\
+74 & \code{Pgamma2x} & MeV & $k_{2,x}$\\
+75 & \code{Pgamma2y} & MeV & $k_{2,y}$\\
+76 & \code{Pgamma2z} & MeV & $k_{2,z}$\\
+\end{simctable}
+
+% =====================================================================================================================
+\section{Validation in SIMC++}\lbl{sec:validation}
+\begin{simctable}{footnotesize}{L{0.46\linewidth}L{0.2\linewidth}L{0.34\linewidth}}
+\caption{CTest tests that cover pion production (one test per row).}\lbl{tab:tests}\\
+\toprule\rowcolor{simchead}\simcth{test} & \simcth{labels} & \simcth{what it checks}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{test} & \simcth{labels} & \simcth{what it checks}\\\midrule\endhead
+\bottomrule\endlastfoot
+\code{l1\_peepi} & l1 & \eqr{eq:peepi} against the Fortran table\\
+\code{l1\_sigmaid} & l1 & \eqr{eq:maid}\\
+\code{l1\_sig\_multipole} & l1 & the unused multipole model\\
+\code{l1\_transform\_to\_cm\_pion} & l1 & \eqsr{eq:boost}{eq:jold}\\
+\code{l1\_pizero\_decay\_fixedrng} & l1 & \eqr{eq:pi0decay}\\
+\code{l1\_pion\_data\_files} & l1 & the MAID and $\Delta$ tables (checksums)\\
+\code{l1\_pion\_plugin} & l1 & the plug-in \code{pion} against \code{peepi}\\
+\code{l1\_pion\_state} & l1 & the set-up of the pion runs (masses, limits, tables)\\
+\code{l1\_generate\_pion\_fixedrng} & l1 & \secr{sec:gen} with a fixed random stream\\
+\code{l1\_complete\_ev\_pion} & l1 & \secr{sec:complete}\\
+\code{l1\_complete\_recon\_ev\_pion} & l1 & \eqr{eq:recmm}\\
+\code{l1\_complete\_main\_pion} & l1 & \eqsr{eq:cgfactors}{eq:weight}\\
+\code{l1\_replay\_event\_capture\_pion\_pip\_h} & l1, replay & every routine of captured H($\pi^+$) events\\
+\code{l1\_simcrun\_replay\_pion\_pip\_h} & l1, replay & the complete run on a captured random stream, bitwise\\
+\code{l1\_simcrun\_replay\_pion\_pim\_d} & l1 & the same, D($\pi^-$)\\
+\code{l1\_montecarlo\_replay\_pion\_pip\_h} & l1, replay & the spectrometer calls of the capture\\
+\code{l1\_project\_decay} & l1 & \eqsr{eq:decaypoint}{eq:decayproducts}\\
+\code{l1\_transp\_decay\_hms} & l1 & decay inside the HMS magnets\\
+\code{l1\_mc\_hms\_decay} & l1 & the HMS model with decay\\
+\code{l1\_decay\_fixedrng} & l1 & the decay kinematics with a fixed random stream\\
+\code{l1\_simcrun\_ranlux\_up\_pion\_h\_k1\_rad\_dec0\_A} & l1, replay, slow, upstream\_layout & full run, RANLUX, compat, against the upstream Fortran run\\
+\code{l1\_simcrun\_ranlux\_up\_upf1\_pion\_c12\_wp0\_A} & l1, replay, upstream\_layout & the same, C-12 quasi-free $\pi^+$\\
+\code{l1\_simcrun\_ranlux\_up\_upf1\_pion\_h\_wp3\_A} & l1, replay, slow, upstream\_layout & the same, H($\pi^-\Delta^{++}$)\\
+\code{l1\_pi0calo\_state} & l1 & the $\pi^0$/calorimeter set-up\\
+\code{calo\_selftest} & l1, unit & the calorimeter and the $\pi^0$ photons\\
+\code{regression\_identity\_pion\_h\_k1\_rad\_dec1} & regression & compat-mode outputs against the baseline\\
+\code{regression\_corrected\_pion\_h\_k1\_rad\_dec1} & regression & default-mode outputs against the baseline\\
+\code{regression\_identity\_calo\_excl\_h\_ng2} & regression & $\pi^0$ with two photons, compat mode\\
+\code{regression\_upstream\_u59\_p15f1\_pi0\_shms\_A} & regression\_upstream, slow & $\pi^0$ in the SHMS, against the upstream run\\
+\code{regression\_shipped\_shipped\_test\_pion\_he\_pct} & regression\_shipped, slow & a shipped $A\ge3$ pion input\\
+\code{fortran\_diff\_D038\_F10\_sigcm2\_stale} & fortran\_diff, unit & a default-mode correction of the model (\secr{sec:origin})\\
+\end{simctable}
+Recorded in the validation ledger (\code{project\_control/VALIDATION\_LEDGER.md}): the L1 tables of the model
+(about 49\,000 rows, all columns bitwise, plug-in 5047 of 5047 rows; entry of 2026-10-06, task P9.1); the event tables,
+both capture replays and seven L2 comparisons with the Fortran in the compat mode, all passing, the default mode
+differing only by the central cross section and the hadron $\delta$ cut (entry of 2026-10-07, task P9.2). The
+\code{fortran\_diff\_*} tests of the findings of \secr{sec:origin} are listed in FORTRAN\_DIFFERENCES.md.
+
+% =====================================================================================================================
+\section{Fortran origin and Fortran findings}\lbl{sec:origin}
+\begin{simctable}{footnotesize}{L{0.42\linewidth}L{0.58\linewidth}}
+\caption{Fortran routine $\to$ C++ function (one routine per row; the common routines are in \ctabr{tab:map}).}\lbl{tab:map}\\
+\toprule\rowcolor{simchead}\simcth{Fortran (upstream 59ccdf6)} & \simcth{C++ (src/...)}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{Fortran (upstream 59ccdf6)} & \simcth{C++ (src/...)}\\\midrule\endhead
+\bottomrule\endlastfoot
+\file{dbase.f:138}-161 (pion flags, stops) & \csrc{core/RunSetup.cpp: DeriveReactionFlags}; \csrc{setup/SetupBuilder.cpp: BuildRunSetup}\\
+\file{dbase.f:333}-393 (pion masses) & \csrc{setup/SetupReaction.cpp: BuildReactionAndKinematics}\\
+\file{dbase.f:567}-591 (momentum distribution) & \csrc{setup/SetupTheory.cpp: ReadMomentumDistribution}\\
+\file{dbase.f:598}-628 (spectral function) & \csrc{physics/nuclear/SpectralFunctionTables.cpp: SfTable::load}\\
+\file{init.f:344}-513 (limits) & \csrc{setup/SetupLimits.cpp: BuildLimits}\\
+\file{event.f} generate, l.276-391 & \csrc{reactions/pion/PionProduction.cpp: PionProduction::generate}\\
+\file{sf\_lookup.f} generate\_em & \csrc{physics/nuclear/SpectralFunctionTables.cpp: SfTable::generateEm}\\
+\file{event.f} complete\_ev, l.478-495 (table) & \csrc{reactions/pion/PionProduction.cpp: DeltaMassTable::load}\\
+\file{event.f} complete\_ev, l.620-631 ($M_\Delta$) & \csrc{reactions/pion/PionProduction.cpp: DeltaMassTable::sample}\\
+\file{event.f} complete\_ev, l.608-1054 & \csrc{reactions/pion/PionProduction.cpp: PionProduction::completeEv}\\
+\file{event.f} complete\_ev, l.723-771 & \csrc{reactions/pion/PionProduction.cpp: PionProduction::pionMainKinematics}\\
+\file{event.f} complete\_ev, l.796-897 & \csrc{reactions/pion/PionProduction.cpp: PionProduction::polarizedTargetAngles}\\
+\file{pizero\_decay.f} pizero\_decay & \csrc{physics/pion/PizeroDecay.cpp: pizeroDecay}\\
+\file{event.f} complete\_recon\_ev, l.1325-1354 & \csrc{reactions/EepReactionBase.cpp: EepReactionBase::completeRecon}\\
+\file{event.f} complete\_main, l.1461-1503, 1561-1562 & \csrc{reactions/pion/PionProduction.cpp: PionProduction::completeMain}\\
+\file{simc.f} calculate\_central, l.1245-1296 & \csrc{reactions/pion/PionProduction.cpp: PionProduction::prepareCentral}\\
+\file{jacobians.f} transform\_to\_cm & \csrc{reactions/EventChain.cpp: transformToCm}\\
+\file{physics\_pion.f} peepi & \csrc{physics/pion/PionCrossSections.cpp: peepi}; plug-in \csrc{physics/pion/PionModel.cpp: PionModel::sigccMain}\\
+\file{physics\_pion.f} sig\_param\_2021 & \csrc{physics/pion/PionCrossSections.cpp: sigParam2021}\\
+\file{physics\_pion.f} exclfit & \csrc{physics/pion/PionCrossSections.cpp: exclfit}\\
+\file{physics\_pion.f} sigmaid (tables) & \csrc{physics/pion/PionCrossSections.cpp: MaidTables::load}\\
+\file{physics\_pion.f} sigmaid & \csrc{physics/pion/PionCrossSections.cpp: sigmaid}\\
+\file{physics\_pion.f} sig\_blok, sig\_param04, sig\_param\_3000 & \csrc{physics/pion/PionCrossSections.cpp: sigBlok, sigParam04, sigParam3000}\\
+\file{physics\_pion.f} sig\_multipole & \csrc{physics/pion/SigMultipole.cpp: SigMultipole}\\
+\file{radc.f:297}-308 (tail 1, case 4) & \csrc{radiation/Radc.cpp: generateRad}\\
+\file{simc.f:1500}-1566 ($\pi^0$ photons) & \csrc{driver/PizeroCalorimeter.cpp: PizeroCalorimeter::detect}\\
+\file{shared/project.f} project & \csrc{optics/CosyEngine.cpp: project}\\
+\file{shared/transp.f} transp (decay) & \csrc{optics/CosyEngine.cpp: CosyEngine::transp}\\
+\file{results\_write.f:178}-286 & \csrc{output/NtupleLayout.cpp: FillUpstreamNtuple}\\
+\file{simc.f:394}-397 (genvol) & \csrc{reactions/EepReactionBase.cpp: EepReactionBase::genVolume}\\
+\end{simctable}
+
+\begin{simcfindings}{footnotesize}{L{0.18\linewidth}L{0.5\linewidth}L{0.32\linewidth}}
+\caption{Fortran findings that touch pion production (one finding per row; the common ones are in \ctabr{tab:findings}).}\lbl{tab:findings}\\
+\toprule\rowcolor{simchead}\simcth{id} & \simcth{Fortran behaviour} & \simcth{default / compat}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{id} & \simcth{Fortran behaviour} & \simcth{default / compat}\\\midrule\endhead
+\bottomrule\endlastfoot
+\finding{U-A3} & 59ccdf6: \code{which\_pion} 2/3 on $A\ge3$ weighted per nucleon, without $Z$ (weight $\times1/Z$ against 294f662) & 294f662 weight in both modes (author asked)\\
+\finding{D-038 F1} & H($\pi^-\Delta^{++}$) stopped (fixed upstream in 20d46fc) & runs / runs (294f662 target: stop)\\
+\finding{D-038 F2} & $\pi^0$ from the neutron accepted on hydrogen & refused / accepted\\
+\finding{D-038 F5} & central cross section with $\varepsilon=-t=\varphi_{pq}=0$ & central kinematics / Fortran\\
+\finding{D-038 F10} & MAID value of an earlier event kept for $W\ge2$ GeV (not a tree column) & 0 / Fortran\\
+\finding{D-038 F15} & \texttt{.hist} final-state line missing for \code{which\_pion} 11 & printed / Fortran\\
+\finding{D-038 F3} & coherent production: the input final-nucleus mass is never used & kept in both\\
+\finding{D-038 F4} & coherent production with the nucleon model, $n_\mathrm{tgt}=Z$ or $N$, negative cross sections possible & kept in both\\
+\finding{D-038 F9} & a tail-1 photon draws a second $\Delta$ mass; the \texttt{.hist} shows the last one & kept in both\\
+\finding{D-038 F12} & unused multipole model in single precision with stale amplitudes & reproduced\\
+\finding{D-038 F11} & relative momentum of the recoil pair: stale local value & not an output\\
+\finding{D-038 F13} & unused fit with a pole at $|t|=0.02$ GeV$^2$ & dead code\\
+\finding{D-038 F14} & MAID: nearest lower bin, no interpolation, 6 of 23 angle rows & the coded model\\
+\finding{D-038 pi0 decay} & decay failure branch unreachable & reproduced\\
+\finding{D-038 F16} & every STOP exits with status 0 & exit status 2 or 3\\
+\finding{D-062 G1} & $\pi^0$ photons decayed with the $\pi^0$ mass: STOP with \code{doing\_decay} & massless, stable / Fortran\\
+\finding{D-062 G3} & second photon starts with the first photon's path length & each from 0 / Fortran\\
+\finding{D-062 G4} & focal-plane columns of the last photon that hit; no $\pi^0$ reconstruction & reproduced\\
+\finding{D-062 G8} & a tail-1 photon draws a second photon pair & kept in both\\
+\finding{D-065 P1} & $\pi^0$ transported through a magnetic spectrometer & kept in both (no decay in default)\\
+\finding{D-067 T13} & $\pi^0$ bent in the target field & kept in both\\
+\finding{D-067 T14} & field + $\pi^0$: photon columns overwrite the field columns (294f662 layout) & own columns / own columns\\
+\finding{U-A4} & field + $\pi^0$: 84 values in arrays of 80 (59ccdf6) & full layout in both\\
+\finding{D-037 F7} & remaining drift after a decay computed with the muon slopes & pion slopes / Fortran\\
+\finding{D-037 F8} & decay inside a magnet applied at its entrance or exit & kept in both\\
+\finding{D-037 F9} & decay of a non-$\pi$/K hadron stops the run & refused at input / stop\\
+\finding{D-006 pass\_cuts} & hadron $\delta$ upper cut with the electron limit & hadron limit / Fortran\\
+\end{simcfindings}
+
+\begin{simcfindingbox}
+\textbf{Root of the squared energy equation.} \eqr{eq:quad} squares $\tau-2cE_h=2aP_h$ and the code does not check
+the sign afterwards. A numerical check of the formula alone (Python, H($\pi^+$)n, $4\times10^5$ random $(\nu, Q^2,
+\theta_{pq})$ points, $\nu<8$ GeV) found that every accepted root with $\theta_{pq}>90^\circ$ violated momentum
+conservation (recoil mass $\ne M_X$), and none with $\theta_{pq}<90^\circ$. Usual set-ups keep $\theta_{pq}$ small,
+so runs are probably not affected; not checked on reference runs \fsrc{event.f:676-698}.
+\end{simcfindingbox}
+
+\begin{simcfindingbox}
+\textbf{Generation limits with the nominal $\Delta$ mass.} The electron-energy and photon limits of
+\eqsr{eq:vertexedge}{eq:sumegen} are computed once with $M_X=M_\Delta=1232$ MeV \fsrc{dbase.f:361-367; init.f:399-462},
+while the event takes $M_X$ from 1028 to 1627 MeV (58\,\% below 1232 MeV, \eqr{eq:deltamass}). When the
+energy-conservation term is the active upper limit of $\Sigma_\mathrm{max}$, events with a light $\Delta$ and the
+largest electron energies are never generated. Found by reading the code; the size of the effect was not measured.
+\end{simcfindingbox}
+
+\begin{simcfindingbox}
+\textbf{Coherent $\pi^0$.} \code{doing\_pizero} with \code{which\_pion} 10 or 11 passes the set-up checks for heavy
+targets, but the $\pi^0$ branch of the mass set-up has no case for them \fsrc{dbase.f:334-351}: $M_N$ stays 0 and $M_X$
+is set to the $A-1$ guess $M_A-M_p$. SIMC++ reproduces this (the model then refuses $M_N=0$ at start-up). Found by
+reading the code; not run in the Fortran.
+\end{simcfindingbox}
+
+\begin{simcrefs}
+\simcref{maid} D. Drechsel, S. S. Kamalov, L. Tiator, Eur.\ Phys.\ J.\ A \textbf{34}, 69 (2007): MAID2007 (the code says
+  ``MAID 2007'' \fsrc{physics\_pion.f:580}, without a reference).
+\simcref{brauel} P. Brauel et al., Z.\ Phys.\ C \textbf{3}, 101 (1979) (cited at \fsrc{physics\_pion.f:408}).
+\simcref{cgln} G. F. Chew, M. L. Goldberger, F. E. Low, Y. Nambu, Phys.\ Rev.\ \textbf{106}, 1345 (1957) (cited at
+  \fsrc{physics\_pion.f:333}).
+\simcref{walker} R. L. Walker, Phys.\ Rev.\ \textbf{182}, 1729 (1969) (cited at \fsrc{physics\_pion.f:343}).
+\simcref{bartl} E. Bartl, Nucl.\ Phys.\ B \textbf{62}, 267 (1973) (cited at \fsrc{physics\_pion.f:351}).
+\simcref{devenish} R. C. E. Devenish, D. H. Lyth, Phys.\ Rev.\ D \textbf{5}, 47 (1972) (cited as ``Phys. Rev. C D5'' at
+  \fsrc{jacobians.f:189} for the old jacobian).
+\end{simcrefs}
+\end{document}

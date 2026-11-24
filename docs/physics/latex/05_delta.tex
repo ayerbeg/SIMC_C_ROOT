@@ -1,0 +1,345 @@
+% docs/physics/latex/05_delta.tex - SIMC++ physics note 05: (e,e'p)pi in the Delta region.
+% Standalone PDF docs/physics/pdf/SIMCpp_Physics_05_delta.pdf (copied to src/reactions/delta/ and src/physics/delta/);
+% a chapter of the book SIMC++ Physics Reference. Rules: docs/physics/README.md; structure: template_reaction.tex.
+\documentclass{simcnote}
+\simccommon
+\begin{document}
+\simcnotemeta{05}{(e,e\pr p)\texorpdfstring{$\pi$}{pi}, \texorpdfstring{$\Delta$}{Delta} region}{Proton detection in the \texorpdfstring{$\Delta$}{Delta} region: H, D, A(e,e\pr p)\texorpdfstring{$\pi$}{pi}}%
+  {Reaction plug-in \texttt{delta\_production} with the physics model \texttt{delta}: pion electroproduction with the
+   proton detected and the pion missing; the weight is phase space times virtual-photon flux}
+\simcnotemaketitle
+\simcabstract{Pion electroproduction in the $\Delta(1232)$ region seen through the recoil proton: the electron and the
+proton are detected, the pion is the missing particle. Generation and kinematics are those of exclusive pion production
+(note 04) with the roles exchanged: the detected hadron is the proton, the recoil is a pion, and one of the two proton
+energies allowed by the kinematics is chosen at random. The physics model computes the photon--nucleon centre-of-mass
+frame, the jacobian and the virtual-photon flux, but the event weight contains no cross section: the cross-section line
+of the code is commented out. Notation, glossary and common physics: note 00.}
+\simcnotetoc
+
+% =====================================================================================================================
+\section{The reaction in SIMC++}\lbl{sec:reaction}
+
+\subsection{Process and scope}
+The reaction is $e + p \to e' + p + \pi$ with the scattered electron and the proton detected and the pion
+reconstructed as the missing mass; the code comments describe it as ``(e,e\pr p)pi'' and as a first version with a
+``shortcut'' cross section, set up for a proton target. The struck nucleon is a proton ($M_N=M_p$), the detected hadron
+is a proton ($M_h=M_p$) and the recoil is a pion of mass $M_X=M_\pi=139.57018$ MeV, the charged-pion mass.
+
+\begin{simcwarning}
+The event weight of this reaction contains \emph{no cross section}. The model returns the photon flux times the
+centre-of-mass jacobian times 1 (\secr{sec:xsec}); the line that multiplied by the cross section is commented out in
+the code (``Need new xsec model.''). Yields, \code{wtcontr} and the column \code{Weight} of a Delta run are therefore
+phase-space distributions weighted by the virtual-photon flux, not rates. SIMC++ keeps this in both modes; whether a
+real cross section should be provided is an open question (\secr{sec:origin}).
+\end{simcwarning}
+
+What is simulated: the generation of note 04 (electron energy, both slope pairs, Fermi motion for D and $A\ge3$), the
+two-body kinematics with a pion recoil, the photon--nucleon centre-of-mass frame and its jacobian for the proton, the
+event chain of note 00 (radiation on the three legs, energy loss and multiple scattering of the proton, Coulomb
+correction). What is not simulated: a $\Delta$ line shape or any resonance dynamics (no cross section at all), the
+$n\pi^+$ channel, final-state interactions. The Fortran stops every deuterium or heavier-target run before the first
+event; SIMC++ runs them in the default mode only (\secr{sec:origin}), with no Fortran reference for those cases.
+
+\subsection{Components}
+\begin{simctable}{footnotesize}{L{0.15\linewidth}L{0.16\linewidth}L{0.15\linewidth}L{0.25\linewidth}L{0.29\linewidth}}
+\caption{The SIMC++ components of (e,e\pr p)$\pi$ (one component per row).}\lbl{tab:components}\\
+\toprule\rowcolor{simchead}\simcth{role} & \simcth{interface} & \simcth{registered name} & \simcth{class} & \simcth{file}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{role} & \simcth{interface} & \simcth{registered name} & \simcth{class} & \simcth{file}\\\midrule\endhead
+\bottomrule\endlastfoot
+reaction & \code{IReaction} & \code{delta\_production} & \code{reactions::DeltaProduction} & \file{reactions/delta/DeltaProduction.cpp}\\
+generation and completion & (base class) & -- & \code{reactions::PionProduction} & \file{reactions/pion/PionProduction.cpp}\\
+reconstruction & (base class) & -- & \code{reactions::EepReactionBase} & \file{reactions/EepReactionBase.cpp}\\
+centre-of-mass transform & (function) & -- & \code{reactions::transformToCm} & \file{reactions/EventChain.cpp}\\
+weight model & \code{IPhysicsModel} & \code{delta} & \code{delta::DeltaModel} & \file{physics/delta/DeltaModel.cpp}\\
+model kernel & (function) & -- & \code{delta::peedelta} & \file{physics/delta/DeltaModel.cpp}\\
+Blok fit (tree only) & (function) & -- & \code{pion::sigBlok} & \file{physics/pion/PionCrossSections.cpp}\\
+missing energy, $A\ge3$ & (class) & -- & \code{nuclear::SfTable} & \file{physics/nuclear/SpectralFunctionTables.cpp}\\
+beam, target, radiation, arms, outputs & as in note 00 & \code{standard}, \code{hallc\_cryo}, \code{simc\_rad}, \ldots & & \ctabr{tab:plugins}\\
+\end{simctable}
+
+\subsection{Selection and override}
+The input \code{doing\_delta} = 1 selects \code{delta\_production} with the model \code{delta} (\ctabr{tab:defaults}).
+The case follows the target: H for $\mathrm{nint}(A)=1$, D for 2, $A\ge3$ otherwise; for $A\ge2$ a warning says that the
+model is set up for a proton target only. The set-up uses $M_h=M_N=M_p$, $M_X=M_\pi$, $M_A=M_p$ for H and $M_A=M_d$,
+$M_\mathrm{rec}=M_n$ for D; the missing-mass cut window is opened to $\pm10^6$ MeV. The input \code{which\_pion} is also
+read by this reaction: with 2 or 3 the recoil pion is replaced by a $\Delta$ mass drawn as in note 04, and with 1, 3 or
+11 the $\pi^-$ branch of the Blok fit is used for the tree column \code{sigcm}; keep \code{which\_pion} = 0.
+
+\begin{simctable}{footnotesize}{L{0.3\linewidth}L{0.38\linewidth}L{0.32\linewidth}}
+\caption{JSON keys of this reaction and its model (one key per row).}\lbl{tab:json}\\
+\toprule\rowcolor{simchead}\simcth{key} & \simcth{effect} & \simcth{example}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{key} & \simcth{effect} & \simcth{example}\\\midrule\endhead
+\bottomrule\endlastfoot
+\code{pipeline.reaction.data\_dir} & directory of \code{delta\_relativistic\_bw.inp} (read only for \code{which\_pion} 2/3) & \code{"data/pion"}\\
+\code{pipeline.reaction.verbose} & print the Fortran warnings of the reaction & \code{true}\\
+\code{pipeline.physics.verbose} & print the warnings of the transform & \code{true}\\
+\end{simctable}
+Because the reaction only asks the model for one number, a real cross section can be plugged in without touching the
+reaction: a model registered under a new name, selected with
+\code{\{"pipeline": \{"reaction": "delta\_production", "physics": "my\_delta"\}\}}, must return
+$\mathrm{d}^5\sigma/\mathrm{d}E'\mathrm{d}\Omega_e\mathrm{d}\Omega_p$ in $\mu$b/(MeV sr$^2$) with the proton solid angle in
+the laboratory (\secr{sec:require}).
+
+\subsection{Event flow}
+\begin{simctable}{footnotesize}{L{0.05\linewidth}L{0.33\linewidth}L{0.62\linewidth}}
+\caption{One try of (e,e\pr p)$\pi$ (one step per row; the general chain is \ctabr{tab:chain}).}\lbl{tab:flow}\\
+\toprule\rowcolor{simchead}\simcth{\#} & \simcth{C++ call} & \simcth{what is specific to this reaction}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{\#} & \simcth{C++ call} & \simcth{what is specific to this reaction}\\\midrule\endhead
+\bottomrule\endlastfoot
+1 & \code{StandardBeam::generate} & nothing\\
+2 & \code{PionProduction::generate} & both slope pairs, $E'$; Fermi momentum and $E_m$ for D/$A\ge3$ (default mode only)\\
+3 & \code{PionProduction::completeEv} & the proton energy with a random choice of root (\eqr{eq:roots}), $W$, $\varepsilon$, $-t$, $\varphi_{pq}$\\
+4 & \code{SimcRadiator::radiate} & tail-1 limits (\secr{sec:rad}); a tail-1 photon draws a new root\\
+5 & \code{MonteCarlo::run} & the proton crosses the hadron arm\\
+6 & \code{EepReactionBase::completeRecon} & missing mass of the pion (\eqr{eq:recmm})\\
+7 & \code{DeltaProduction::completeMain} & $S=1$, \code{DeltaModel::sigccMain} (\eqr{eq:peedelta}), $n_\mathrm{tgt}=1$\\
+\end{simctable}
+
+% =====================================================================================================================
+\section{Kinematics, generated variables and generation volume}\lbl{sec:gen}
+The reaction uses the generation of exclusive pion production unchanged; note 04, \S2 has the formulas. The generated
+variables are the electron slopes $y'_e$, $x'_e$ and the proton slopes $y'_h$, $x'_h$ (flat in the edges), the electron
+energy $E'$ (flat in the range narrowed by the summed-energy limits, with the generation weight), and for D and $A\ge3$
+the Fermi momentum $\vec p_F$, the missing energy $E_m$ and the struck-nucleon energy $E_F$:
+\begin{feqa}{reactions/pion/PionProduction.cpp: PionProduction::generate}{event.f:276-286, 300-315, 336-372}
+E' &= E'^\mathrm{lo}+\xi\,(E'^\mathrm{hi}-E'^\mathrm{lo}),\qquad [E'^\mathrm{lo},E'^\mathrm{hi}]=\bigl[\max(E'^\mathrm{gen}_\mathrm{min},\Sigma_\mathrm{min}),\ \min(E'^\mathrm{gen}_\mathrm{max},\Sigma_\mathrm{max})\bigr],\nonumber\\
+w_\mathrm{gen} &\leftarrow w_\mathrm{gen}\,\frac{E'^\mathrm{hi}-E'^\mathrm{lo}}{E'^\mathrm{gen}_\mathrm{max}-E'^\mathrm{gen}_\mathrm{min}},\nonumber\\
+E_F &= M_A-\sqrt{(M_A-M_N+E_m)^2+p_F^2}\ \ (\text{D},\ A\ge3),\qquad E_F=M_N\ \ (\text{H}),
+\lbl{eq:gen}
+\end{feqa}
+the Fermi momentum coming from the momentum distribution and, for $A\ge3$, $E_m$ from the spectral function (note 04,
+\S2.2). The limits are those of note 04 with $M_X=M_\pi$ and $M_h=M_p$:
+\begin{feqa}{setup/SetupLimits.cpp: BuildLimits}{init.f:411-413, 456-469, 477-480}
+E_\gamma^\mathrm{tot,max} &= E_b^\mathrm{max}+M_p-M_\pi-E'_\mathrm{min}-E_{h,\mathrm{min}}-E_m^\mathrm{min}-T_\mathrm{rec}^\mathrm{min},\nonumber\\
+\Sigma_\mathrm{max} &= \min\bigl(E_b^\mathrm{max}+M_p-M_\pi-E_{h,\mathrm{min}}-E_m^\mathrm{min}-T_\mathrm{rec}^\mathrm{min},\ E'_\mathrm{max}+E_{\gamma2}^\mathrm{max}\bigr)+d_E,
+\lbl{eq:limits}
+\end{feqa}
+and correspondingly for $\Sigma_\mathrm{min}$ and the vertex limits ($E_{h}$ is the proton energy here). The generation
+volume is
+\begin{feq}{reactions/EepReactionBase.cpp: EepReactionBase::genVolume}{simc.f:383-397}
+V_\mathrm{gen} = \Delta\Omega_e\,\Delta\Omega_p\,\bigl(E'^\mathrm{gen}_\mathrm{max}-E'^\mathrm{gen}_\mathrm{min}\bigr)\quad[\mathrm{sr^2\,MeV}].
+\lbl{eq:genvol}
+\end{feq}
+
+% =====================================================================================================================
+\section{Completing the event}\lbl{sec:complete}
+\subsection{The proton energy}
+The proton energy solves the quadratic of exclusive pion production with $M_h=M_p$ and the pion as recoil; unlike the
+pion reaction, one random number chooses between the two roots:
+\begin{feqa}{reactions/pion/PionProduction.cpp: PionProduction::completeEv}{event.f:634-698}
+a &= -|\vec q|\,(\hat q\cdot\hat p) - p_F\,(\hat p_F\cdot\hat p),\quad
+b = |\vec q|^2+p_F^2+2|\vec q|p_F(\hat p_F\cdot\hat q),\quad c=\nu+E_F\ \ (\nu+M_A\text{ for H}),\nonumber\\
+\tau &= c^2-b+M_p^2-M_\pi^2,\quad Q_A=4(a^2-c^2),\quad Q_B=4c\tau,\quad Q_C=-4a^2M_p^2-\tau^2,\nonumber\\
+E_\pm &= \frac{-Q_B\mp\sqrt{Q_B^2-4Q_AQ_C}}{2Q_A},\qquad
+E_p = \begin{cases}E_+ & \xi\le0.5\\ E_- & \xi>0.5\end{cases},\qquad P_p=\sqrt{E_p^2-M_p^2}.
+\lbl{eq:roots}
+\end{feqa}
+The try fails for a negative discriminant, when $E_+<0$ (tested before the choice), when the pion energy $c-E_p\le M_\pi$
+or when $E_p\le M_p$. When both roots are physical each is generated in half of the tries with the full weight; no factor
+2 enters $w_\mathrm{gen}$ or $J$ (\secr{sec:origin}). The rest of the completion is that of note 04: $W$, $\varepsilon$,
+$\theta_{pq}$, $\varphi_{pq}$, and
+\begin{feq}{reactions/pion/PionProduction.cpp: PionProduction::pionMainKinematics}{event.f:728-731}
+-t = Q^2-M_p^2+2\nu E_p-2P_p|\vec q|\cos\theta_{pq},
+\lbl{eq:t}
+\end{feq}
+the momentum transfer to the \emph{proton}, $-(q-p_p)^2$, under the name of the pion $t$. $T_\mathrm{rec}=0$ for H.
+With \code{which\_pion} 2 or 3 the recoil mass $M_\pi$ is replaced by a sampled $\Delta$ mass (note 04, \S3.1), which lies
+far above the available energy in the $\Delta$ region: every completion then fails.
+
+\subsection{Reconstruction}\lbl{sec:recon}
+\begin{feqa}{reactions/EepReactionBase.cpp: EepReactionBase::completeRecon}{event.f:1325-1335, 1353-1354}
+E_m^\mathrm{rec} &= \nu^\mathrm{rec}+M_p-E_p^\mathrm{rec},\qquad
+m_N = \operatorname{sign}(m_N^2)\sqrt{|m_N^2|},\quad m_N^2=(E_m^\mathrm{rec})^2-(P_m^\mathrm{rec})^2,\nonumber\\
+m_A^2 &= (\nu^\mathrm{rec}+M_A-E_p^\mathrm{rec})^2-(P_m^\mathrm{rec})^2,\qquad
+-t^\mathrm{rec} = (Q^\mathrm{rec})^2-M_p^2+2\bigl(\nu^\mathrm{rec}E_p^\mathrm{rec}-P_p^\mathrm{rec}|\vec q^\mathrm{rec}|\cos\theta_{pq}^\mathrm{rec}\bigr),
+\lbl{eq:recmm}
+\end{feqa}
+so that \code{missmass} ($m_N$) is the reconstructed mass of the missing pion, peaking at $M_\pi$ for hydrogen without
+radiation.
+
+% =====================================================================================================================
+\section{Jacobians}\lbl{sec:jac}
+The event jacobian is that of the four generated slopes,
+\begin{feq}{reactions/pion/PionProduction.cpp: PionProduction::completeEv}{event.f:1015-1025}
+J = \bigl(1+x_e'^2+y_e'^2\bigr)^{-3/2}\bigl(1+x_p'^2+y_p'^2\bigr)^{-3/2},
+\lbl{eq:jac}
+\end{feq}
+and the model applies the jacobian $J_\mathrm{cm}=|\partial(t,\varphi^*)/\partial(\cos\theta_{pq},\varphi_{pq})|$ of the
+photon--nucleon centre-of-mass transformation of note 04 (\S4.2), with the proton in the place of the pion: $\theta^*$,
+$\varphi^*$ are the centre-of-mass angles of the proton relative to $\vec q^{\,*}$, and $t$ is that of \eqr{eq:t}.
+
+% =====================================================================================================================
+\section{Cross-section model}\lbl{sec:xsec}
+\subsection{What the reaction requires from a model}\lbl{sec:require}
+\code{DeltaProduction::completeMain} sets $S=1$, calls \code{sigccMain(vertex, main)} of the run's
+\code{IPhysicsModel}, multiplies by the Coulomb factor and uses $n_\mathrm{tgt}=1$ for every target. The model reads the
+same quantities as the pion model (the vertex record, $\varepsilon$, $-t$, $\varphi_{pq}$, the Fermi momentum, $M_N$) and
+must return $\mathrm{d}^5\sigma/\mathrm{d}E'\mathrm{d}\Omega_e\mathrm{d}\Omega_p$ in $\mu$b/(MeV sr$^2$); \code{sigccRecon}
+returns 1.
+
+\subsection{The model \texttt{delta}}
+With $s$, $W^*$, $k_\mathrm{eq}$, $\Gamma$ and $f$ of note 04 (\S5.2) and $J_\mathrm{cm}$ of \secr{sec:jac}:
+\begin{feqa}{physics/delta/DeltaModel.cpp: peedelta}{physics\_delta.f:50-132}
+s &= (\nu+E_F)^2-\bigl(|\vec q|+p_F\cos\theta_F'\bigr)^2-\bigl(p_F\sin\theta_F'\bigr)^2,\qquad
+k_\mathrm{eq} = \frac{s-M_p^2}{2M_p},\qquad
+\Gamma = \frac{\alpha}{2\pi^2}\frac{E'}{E_\mathrm{in}}\frac{k_\mathrm{eq}}{Q^2}\frac{1}{1-\varepsilon},\nonumber\\
+f &= \frac{1}{1-p_F\hat p_{F,z}/E_F}\frac{M_p}{E_F},\qquad
+\sigma = 1\cdot J_\mathrm{cm}\cdot\Gamma\cdot f,
+\lbl{eq:peedelta}
+\end{feqa}
+that is, the weight of a constant centre-of-mass cross section $\mathrm{d}^2\sigma/\mathrm{d}t\,\mathrm{d}\varphi^*=1$
+$\mu$b/(MeV$^2$ rad). The commented-out line multiplied by the Blok fit below, a $p(e,e'\pi^+)n$ fit, which would not be a
+$\Delta\to p\pi$ cross section either. The model still evaluates that fit and writes it to the tree column \code{sigcm}:
+\begin{feqa}{physics/pion/PionCrossSections.cpp: sigBlok}{physics\_pion.f:427-462}
+\sigma_L &= 27.8\,e^{-11.5|t|},\quad \sigma_T = 50|t|\,e^{-5|t|},\quad \sigma_{LT}=0,\quad
+\sigma_{TT} = -(4\sigma_L+0.5\sigma_T)\sin^2\theta^*,\nonumber\\
+\pi^-:&\quad \sigma_T,\ \sigma_{TT}\ \leftarrow\ 0.25\,(1+3e^{-10|t|})\,\sigma_T,\ \sigma_{TT},\nonumber\\
+F_\pi &= \frac{1}{1+1.65Q^2+0.5Q^4},\quad
+\sigma_L\leftarrow\sigma_L\frac{Q^2F_\pi^2}{0.1215},\quad \sigma_T\leftarrow\frac{\sigma_T}{0.3+Q^2},\quad
+\sigma_{TT}\leftarrow\frac{\sigma_{TT}}{0.3+Q^2},\nonumber\\
+\frac{\mathrm{d}^2\sigma}{\mathrm{d}t\,\mathrm{d}\varphi^*}\Big|_\mathrm{Blok} &=
+\bigl(\sigma_T+\varepsilon\sigma_L+\varepsilon\cos2\varphi^*\sigma_{TT}+\sqrt{2\varepsilon(1+\varepsilon)}\cos\varphi^*\sigma_{LT}\bigr)
+\frac{15.333}{(s-M_N^2)^2}\,\frac{1}{2\pi\cdot10^6},
+\lbl{eq:sigblok}
+\end{feqa}
+with $Q^2$, $|t|$, $s$, $M_N$ in GeV units, the result in $\mu$b/(MeV$^2$ rad); the $\pi^-$ branch is used for
+\code{which\_pion} 1, 3, 11. The code comments: the fit reproduces the data of Brauel et al.\ \citer{brauel} at $W=2.19$
+GeV and $Q^2=0.70$ GeV$^2$ (``MODIFIED BY HAND''), 0.1215 is $Q^2F_\pi^2$ at $Q^2=0.7$, and 15.333 is $(W^2-M_p^2)^2$ at
+$W=2.19$ GeV (with $M_p$ in GeV this gives 15.337); the coefficients are transcribed from the code and were not compared
+with the paper. Here $t$ and the angles are those of the proton. In the Fortran the arguments $t$, $Q^2$, $s$ are passed
+with the wrong floating-point kind, so that \code{sigcm} holds meaningless numbers; the compat mode reproduces them, the
+default mode passes the intended values.
+
+\subsection{Weight and units}
+\begin{feq}{reactions/delta/DeltaProduction.cpp: DeltaProduction::completeMain}{event.f:1514-1516, 1536-1538, 1561-1562}
+w = J\cdot w_\mathrm{gen}\cdot\sigma\quad(n_\mathrm{tgt}=1),\qquad \sigma\leftarrow\sigma\,(1+V_C/E_b)^2\ \text{with the Coulomb correction},
+\lbl{eq:weight}
+\end{feq}
+in the units of \eqr{eq:peedelta} with the unit cross section. The \texttt{.hist} line \code{CENTRAL.sigcc} is the model
+at the central kinematics, with $\varepsilon=-t=\varphi_{pq}=0$ in the compat mode and the central values in the
+default mode (\code{PionProduction::prepareCentral}).
+
+% =====================================================================================================================
+\section{Radiation, energy loss and decays}\lbl{sec:rad}
+The three legs radiate, the proton with $\lambda_3$ of \ceqr{eq:lambda}. Tails 2 and 3 have the limits of note 04
+(\S6.1) with the proton energy and edges. For tail 1 the Fortran sets no limits for this reaction (the case list of
+the incident-electron tail omits it): the limits keep the value 0, the photon generation returns a zero weight and
+every try that chooses tail 1 fails, which the compat mode reproduces. The default mode uses the pion case:
+\begin{feq}{radiation/Radc.cpp: generateRad}{radc.f:297-308}
+E_{\gamma1}\in\bigl[-d_E,\ \min(\Sigma_\mathrm{max}-E',\ E_{\gamma1}^\mathrm{max})+d_E\bigr]\quad(\text{default mode}).
+\lbl{eq:tail1}
+\end{feq}
+After a tail-1 photon the completion runs again and draws a new root choice. The proton loses energy and scatters like
+any hadron (\csecr{sec:eloss}). Nothing decays: SIMC++ refuses \code{doing\_decay} for a proton.
+
+% =====================================================================================================================
+\section{Inputs and outputs}\lbl{sec:io}
+\subsection{Inputs}
+\begin{simctable}{footnotesize}{L{0.24\linewidth}L{0.12\linewidth}L{0.08\linewidth}L{0.56\linewidth}}
+\caption{Inputs specific to (e,e\pr p)$\pi$ (one input per row; the common inputs are in note 01, \S7, and the user
+manual, chapter 4).}\lbl{tab:inputs}\\
+\toprule\rowcolor{simchead}\simcth{input} & \simcth{unit} & \simcth{default} & \simcth{meaning here}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{input} & \simcth{unit} & \simcth{default} & \simcth{meaning here}\\\midrule\endhead
+\bottomrule\endlastfoot
+\code{doing\_delta} & flag & 0 & 1 selects this reaction\\
+\code{which\_pion} & code & 0 & keep 0 (2/3: $\Delta$ recoil mass, every try fails; 1/3/11: $\pi^-$ branch of \code{sigcm})\\
+\code{targ\%A} & -- & 0 & H, D or $A\ge3$ (D and $A\ge3$ run in the default mode only)\\
+\code{targ\%Z} & -- & 0 & Coulomb correction (not $n_\mathrm{tgt}$)\\
+\code{hadron\_arm} & code & 0 & proton spectrometer\\
+\code{spec\%p\%P} & MeV/$c$ & 0 & $P_h^0$, the proton central momentum\\
+\code{spec\%p\%theta} & deg & 0 & $\theta_h^0$\\
+\code{SPedge\%p\%yptar\%min} & mrad & 0 & generation range of $y'_p$, lower limit\\
+\code{SPedge\%p\%yptar\%max} & mrad & 0 & generation range of $y'_p$, upper limit\\
+\code{SPedge\%p\%xptar\%min} & mrad & 0 & generation range of $x'_p$, lower limit\\
+\code{SPedge\%p\%xptar\%max} & mrad & 0 & generation range of $x'_p$, upper limit\\
+\code{SPedge\%p\%delta\%min} & \% & 0 & proton energy edges (limits, tail 3)\\
+\code{SPedge\%p\%delta\%max} & \% & 0 & proton energy edges (limits, tail 3)\\
+\end{simctable}
+
+\subsection{Outputs}
+\input{frag_pion_columns}
+For this reaction \code{phad} is the proton momentum, \code{missmass} the missing (pion) mass of \eqr{eq:recmm},
+\code{t} and \code{ti} the proton momentum transfer, \code{siglab} the value of \eqr{eq:peedelta} (no cross section),
+\code{sigcm} the Blok fit of \eqr{eq:sigblok} (meaningless numbers in the compat mode), \code{decdist} 0 and
+\code{Mhadron} $M_p$.
+
+% =====================================================================================================================
+\section{Validation in SIMC++}\lbl{sec:validation}
+\begin{simctable}{footnotesize}{L{0.46\linewidth}L{0.2\linewidth}L{0.34\linewidth}}
+\caption{CTest tests that cover (e,e\pr p)$\pi$ (one test per row).}\lbl{tab:tests}\\
+\toprule\rowcolor{simchead}\simcth{test} & \simcth{labels} & \simcth{what it checks}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{test} & \simcth{labels} & \simcth{what it checks}\\\midrule\endhead
+\bottomrule\endlastfoot
+\code{l1\_peedelta} & l1 & \eqr{eq:peedelta} and \code{sigcm} against the Fortran table\\
+\code{l1\_transform\_to\_cm\_delta} & l1 & the centre-of-mass transform with the proton\\
+\code{l1\_delta\_state} & l1 & the set-up of the Delta runs\\
+\code{l1\_generate\_delta\_fixedrng} & l1 & \secr{sec:gen} with a fixed random stream\\
+\code{l1\_complete\_ev\_delta} & l1 & \eqr{eq:roots}\\
+\code{l1\_complete\_recon\_ev\_delta} & l1 & \eqr{eq:recmm}\\
+\code{l1\_complete\_main\_delta} & l1 & \eqr{eq:weight}\\
+\code{l1\_replay\_event\_capture\_delta\_d1} & l1, replay & every routine of captured events\\
+\code{l1\_simcrun\_replay\_delta\_d1} & l1, replay & the complete run on a captured random stream, bitwise\\
+\code{l1\_montecarlo\_replay\_delta\_d1} & l1, replay & the spectrometer calls of the capture\\
+\code{l1\_simcrun\_replay\_delta\_d2} & l1, replay & the same, second kinematics\\
+\code{l1\_simcrun\_ranlux\_up\_delta\_h\_d1\_rad\_A} & l1, replay, slow, upstream\_layout & full run, RANLUX, compat, against the upstream Fortran run\\
+\code{regression\_identity\_delta\_h\_d1\_rad} & regression & compat-mode outputs against the baseline\\
+\code{regression\_corrected\_delta\_h\_d1\_rad} & regression & default-mode outputs against the baseline\\
+\code{regression\_upstream\_u59\_delta\_d\_d1\_rad\_A} & regression\_upstream, slow & against the upstream run\\
+\code{regression\_shipped\_shipped\_test\_delta\_pct} & regression\_shipped, slow & a shipped Delta input\\
+\code{fortran\_diff\_D048\_F1\_delta\_DA\_stop} & fortran\_diff, unit & D, He-3, C-12 runs: energy--momentum balance of every event\\
+\code{fortran\_diff\_D048\_F2\_delta\_tail1\_egamma} & fortran\_diff, unit & the tail-1 limits of \eqr{eq:tail1}\\
+\code{fortran\_diff\_D048\_F3\_delta\_sigblok\_args} & fortran\_diff, unit & the arguments of \eqr{eq:sigblok}\\
+\code{fortran\_diff\_D048\_F9\_central\_sigcc\_delta} & fortran\_diff, unit & the central value\\
+\end{simctable}
+Recorded in the validation ledger (\code{project\_control/VALIDATION\_LEDGER.md}, entry of 2026-10-17, task P11.1): the
+seven L1 tables bitwise in the compat mode (about $1.7\times10^6$ values), both captures replayed, four L2 comparisons
+with the Fortran passing in the compat mode; in the default mode the tail-1 correction multiplies \code{wtcontr} of
+the radiative runs by 1.76 and 1.84, the other corrections are deterministic (\code{sigcm}, central value) or at the
+0.5\,\% level (hadron $\delta$ cut).
+
+% =====================================================================================================================
+\section{Fortran origin and Fortran findings}\lbl{sec:origin}
+\begin{simctable}{footnotesize}{L{0.42\linewidth}L{0.58\linewidth}}
+\caption{Fortran routine $\to$ C++ function (one routine per row; the routines shared with the pion reaction are in
+note 04, the common ones in \ctabr{tab:map}).}\lbl{tab:map}\\
+\toprule\rowcolor{simchead}\simcth{Fortran (upstream 59ccdf6)} & \simcth{C++ (src/...)}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{Fortran (upstream 59ccdf6)} & \simcth{C++ (src/...)}\\\midrule\endhead
+\bottomrule\endlastfoot
+\file{dbase.f:182}-190 (flags, warning) & \csrc{core/RunSetup.cpp: DeriveReactionFlags}; \csrc{setup/SetupBuilder.cpp: BuildRunSetup}\\
+\file{dbase.f:301}-304 (masses) & \csrc{setup/SetupReaction.cpp: BuildReactionAndKinematics}\\
+\file{dbase.f:787}-796 (announcement, stop) & \csrc{setup/SetupBuilder.cpp: BuildRunSetup}\\
+\file{event.f} generate (delta flags) & \csrc{reactions/pion/PionProduction.cpp: PionProduction::generate}\\
+\file{event.f} complete\_ev, l.682-684 & \csrc{reactions/pion/PionProduction.cpp: PionProduction::completeEv}\\
+\file{event.f} complete\_main, l.1514-1516 & \csrc{reactions/delta/DeltaProduction.cpp: DeltaProduction::completeMain}\\
+\file{physics\_delta.f} peedelta & \csrc{physics/delta/DeltaModel.cpp: peedelta}; plug-in \csrc{physics/delta/DeltaModel.cpp: DeltaModel::sigccMain}\\
+\file{physics\_pion.f} sig\_blok & \csrc{physics/pion/PionCrossSections.cpp: sigBlok}\\
+\file{jacobians.f} transform\_to\_cm & \csrc{reactions/EventChain.cpp: transformToCm}\\
+\file{radc.f:288}-303 (tail 1) & \csrc{radiation/Radc.cpp: generateRad}\\
+\end{simctable}
+
+\begin{simcfindings}{footnotesize}{L{0.18\linewidth}L{0.5\linewidth}L{0.32\linewidth}}
+\caption{Fortran findings that touch (e,e\pr p)$\pi$ (one finding per row; the common ones are in \ctabr{tab:findings}).}\lbl{tab:findings}\\
+\toprule\rowcolor{simchead}\simcth{id} & \simcth{Fortran behaviour} & \simcth{default / compat}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{id} & \simcth{Fortran behaviour} & \simcth{default / compat}\\\midrule\endhead
+\bottomrule\endlastfoot
+\finding{D-048 F4} & no cross section in the weight & kept in both (open question)\\
+\finding{D-048 F1 Delta D/A STOP} & every D or $A\ge3$ run stops (pion flags tested) & runs / stop\\
+\finding{D-048 F1 Delta D/A data} & momentum distribution and spectral function not read for the Delta & read / not read\\
+\finding{D-048 F2} & no tail-1 limits: every tail-1 try fails & pion limits / Fortran\\
+\finding{D-048 F3} & \code{sig\_blok} arguments of the wrong kind: \code{sigcm} meaningless & intended values / Fortran\\
+\finding{D-048 F5} & random root choice without a factor 2 & kept in both\\
+\finding{D-048 F5b} & a tail-1 photon draws a new root & kept in both\\
+\finding{D-048 F6} & quote debris in the D/A warning & clean text / Fortran\\
+\finding{D-048 F7} & recoil mass of the charged pion although the missing pion is a $\pi^0$ & kept in both\\
+\finding{D-048 F8} & \code{which\_pion} read by the Delta reaction & kept in both\\
+\finding{D-048 F9 CENTRAL.sigcc} & central value with $\varepsilon=-t=\varphi_{pq}=0$ & central kinematics / Fortran\\
+\finding{D-048 F9 stale fields} & stale tree-unrelated fields; $n_\mathrm{tgt}=1$ also for D/A & the coded weight\\
+\finding{D-048 F11} & the stop exits with status 0 & no stop / exit status 3\\
+\finding{P11.1 tfcos} & a comparison in quadruple precision & reproduced\\
+\finding{D-006 pass\_cuts} & hadron $\delta$ upper cut with the electron limit & hadron limit / Fortran\\
+\end{simcfindings}
+
+\begin{simcrefs}
+\simcref{brauel} P. Brauel et al., Z.\ Phys.\ C \textbf{3}, 101 (1979) (cited at \fsrc{physics\_pion.f:408}).
+\end{simcrefs}
+\end{document}
