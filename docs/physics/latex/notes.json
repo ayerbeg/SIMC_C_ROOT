@@ -43,6 +43,18 @@
       "copies": ["src/reactions/delta", "src/physics/delta"]
     },
     {
+      "source": "06_kaon.tex",
+      "output": "SIMCpp_Physics_06_kaon",
+      "title": "Kaon electroproduction N(e,e'K+)Y and coherent hypernuclei (reaction kaon_production, model kaon)",
+      "copies": ["src/reactions/kaon", "src/physics/kaon"]
+    },
+    {
+      "source": "07_rho.tex",
+      "output": "SIMCpp_Physics_07_rho",
+      "title": "Exclusive rho0 electroproduction p(e,e'rho0)p with one decay pion detected (reaction rho_production, model rho)",
+      "copies": ["src/reactions/rho", "src/physics/rho"]
+    },
+    {
       "source": "08_sidis.tex",
       "output": "SIMCpp_Physics_08_sidis",
       "title": "Semi-inclusive (e,e'h)X production (reaction sidis_production, model sidis: CTEQ5M, Bosted pion and fDSS kaon fragmentation, F1F2IN21)",

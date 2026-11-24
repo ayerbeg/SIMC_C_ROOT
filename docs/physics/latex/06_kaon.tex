@@ -1,0 +1,707 @@
+% docs/physics/latex/06_kaon.tex - SIMC++ physics note 06: kaon electroproduction N(e,e'K+)Y.
+% Standalone PDF docs/physics/pdf/SIMCpp_Physics_06_kaon.pdf (copied to src/reactions/kaon/ and src/physics/kaon/);
+% a chapter of the book SIMC++ Physics Reference. Rules: docs/physics/README.md; structure: template_reaction.tex.
+\documentclass{simcnote}
+\simccommon
+\begin{document}
+\simcnotemeta{06}{Kaon electroproduction}{Kaon electroproduction: H, D, A(e,e\pr K\texorpdfstring{$^+$}{+})Y and coherent hypernuclei}%
+  {Reaction plug-in \texttt{kaon\_production} with the physics model \texttt{kaon}: the factorized cross section, the
+   Saghai amplitude tables, \texorpdfstring{$\Lambda$, $\Sigma^0$, $\Sigma^-$}{Lambda, Sigma0, Sigma-} and bound final states, and the kaon decay in flight}
+\simcnotemaketitle
+\simcabstract{Exclusive K$^+$ electroproduction with the electron and the kaon detected in coincidence and the hyperon
+($\Lambda$, $\Sigma^0$ or $\Sigma^-$) or the hypernucleus missing. Both directions and the electron energy are
+generated; the kaon momentum follows from two-body kinematics on a nucleon that moves with a Fermi momentum for D and
+heavier targets. The weight is a factorized fit in $Q^2$, $W$ and $t$ boosted from the photon--nucleon centre of mass,
+times the virtual-photon flux; the Saghai amplitude model is evaluated for a diagnostic column only. The kaon either
+decays in flight in the spectrometer or the weight carries its survival probability. Notation and common physics: note
+00.}
+\simcnotetoc
+
+% =====================================================================================================================
+\section{The reaction in SIMC++}\lbl{sec:reaction}
+
+\subsection{Process and scope}
+The reaction is $e + N \to e' + K^+ + Y$ with $Y=\Lambda$ or $\Sigma^0$ on the proton and $Y=\Sigma^-$ on the neutron,
+on hydrogen (quasi-free on a proton at rest), deuterium and heavier nuclei (quasi-free on a moving nucleon), or the
+coherent production $e + A \to e' + K^+ + {}_Y\!A'$ of a bound hypernucleus, treated as production on a ``heavy
+nucleon'' of mass $M_A$. The kaon is detected in the hadron arm; the hyperon is the missing particle and is not
+followed (it neither decays nor radiates).
+
+What is simulated: the beam, the vertex, energy loss and multiple scattering, radiation on the three legs (the kaon is
+the radiating hadron), the Fermi motion of the struck nucleon (D and $A\ge3$), the spectrometers, the kaon decay in
+flight inside the spectrometers (\code{doing\_decay} = 1) or, without it, a survival weight, and the factorized cross
+section of \secr{sec:xsec}. What is not simulated: final-state interactions and nuclear transparency, Pauli blocking,
+the decay of the hyperon, any $\varphi$ dependence of the cross section (the factorized model has none, the Saghai
+diagnostic is evaluated at $\varphi=0$), and a nuclear model for coherent production (the nucleon fit is used with the
+photon--nucleus $W$).
+
+\subsection{Components}
+\begin{simctable}{footnotesize}{L{0.15\linewidth}L{0.15\linewidth}L{0.16\linewidth}L{0.25\linewidth}L{0.29\linewidth}}
+\caption{The SIMC++ components of kaon production (one component per row).}\lbl{tab:components}\\
+\toprule\rowcolor{simchead}\simcth{role} & \simcth{interface} & \simcth{registered name} & \simcth{class} & \simcth{file}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{role} & \simcth{interface} & \simcth{registered name} & \simcth{class} & \simcth{file}\\\midrule\endhead
+\bottomrule\endlastfoot
+reaction & \code{IReaction} & \code{kaon\_production} & \code{KaonProduction} & \file{reactions/kaon/KaonProduction.cpp}\\
+generation and vertex completion & (base class) & -- & \code{PionProduction} & \file{reactions/pion/PionProduction.cpp}\\
+reconstruction, generation volume & (base class) & -- & \code{EepReactionBase} & \file{reactions/EepReactionBase.cpp}\\
+centre-of-mass transformation & (function) & -- & \code{reactions::transformToCm} & \file{reactions/EventChain.cpp}\\
+cross section & \code{IPhysicsModel} & \code{kaon} & \code{kaon::KaonModel} & \file{physics/kaon/KaonModel.cpp}\\
+cross-section kernel & (function) & -- & \code{kaon::peeK} & \file{physics/kaon/KaonCrossSections.cpp}\\
+factorized model & (function) & -- & \code{kaon::sigFactorized} & \file{physics/kaon/KaonCrossSections.cpp}\\
+Saghai model, $\Lambda$ & (function) & -- & \code{kaon::eekeek} & \file{physics/kaon/KaonCrossSections.cpp}\\
+Saghai model, $\Sigma$ & (function) & -- & \code{kaon::eekeeks} & \file{physics/kaon/KaonCrossSections.cpp}\\
+table interpolation & (function) & -- & \code{kaon::fint} & \file{physics/kaon/KaonCrossSections.cpp}\\
+amplitude tables & (class) & -- & \code{kaon::SaghaiTables} & \file{physics/kaon/KaonCrossSections.cpp} (files in \file{data/kaon})\\
+Fermi momenta & (function) & -- & \code{ReadMomentumDistribution} & \file{setup/SetupTheory.cpp}\\
+missing energy for $A\ge3$ & (class) & -- & \code{nuclear::SfTable::generateEm} & \file{physics/nuclear/SpectralFunctionTables.cpp}\\
+decay in flight & (functions) & -- & \code{decayProducts}, \code{project} & \file{optics/CosyEngine.cpp} (used by the spectrometer models)\\
+radiation & \code{IRadiator} & \code{simc\_rad} & \code{SimcRadiator} & \file{radiation/SimcRadiator.cpp}\\
+spectrometers & \code{ISpectrometer} & from the arm codes & e.g.\ \code{shms::ShmsSpectrometer} & spectrometers/\\
+\end{simctable}
+
+\subsection{Selection and override}
+\code{doing\_kaon} = 1 selects \code{kaon\_production} with the model \code{kaon} (\ctabr{tab:defaults}), unless
+\code{doing\_semi} is also set (then the run is kaon SIDIS, another note) or \code{doing\_phsp} = 1. The set-up
+(\code{DeriveReactionFlags}, \code{BuildReactionAndKinematics}) sets $M_h = M_K = 493.677$ MeV and the masses of
+\tabr{tab:masses}; the target flags are ``hydrogen'' for $A=1$ and for every coherent case, ``deuterium'' for $A=2$ and
+``nucleus'' for $A\ge3$ \fsrc{dbase.f:163-180}. $\Sigma^-$ on hydrogen, coherent production on H or D and any other
+\code{which\_kaon} stop the run at start-up. For coherent production the input final-nucleus mass is replaced twice
+(first by $M_A-M_p$ as for every heavy target, then by the guess of the table) and is therefore never used.
+
+\begin{simctable}{footnotesize}{L{0.11\linewidth}L{0.23\linewidth}L{0.16\linewidth}L{0.2\linewidth}L{0.3\linewidth}}
+\caption{Final states (\code{which\_kaon}; one value per row; $n_\mathrm{tgt}$ is the nucleon count of the weight).}\lbl{tab:masses}\\
+\toprule\rowcolor{simchead}\simcth{which\_kaon} & \simcth{process} & \simcth{$M_N$ (struck)} & \simcth{$M_Y$ (recoil)} & \simcth{$n_\mathrm{tgt}$}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{which\_kaon} & \simcth{process} & \simcth{$M_N$ (struck)} & \simcth{$M_Y$ (recoil)} & \simcth{$n_\mathrm{tgt}$}\\\midrule\endhead
+\bottomrule\endlastfoot
+0 & $p(e,e'K^+)\Lambda$ & $M_p$ & $M_\Lambda = 1115.68$ MeV & $Z$\\
+1 & $p(e,e'K^+)\Sigma^0$ & $M_p$ & $M_{\Sigma^0} = 1192.64$ MeV & $Z$\\
+2 & $n(e,e'K^+)\Sigma^-$ & $M_n$ & $M_{\Sigma^-} = 1197.45$ MeV & $N$\\
+10 & $A(e,e'K^+){}_\Lambda A'$ & $M_A$ & $M_A - M_p + M_\Lambda$ & $Z$\\
+11 & $A(e,e'K^+){}_{\Sigma^0} A'$ & $M_A$ & $M_A - M_p + M_{\Sigma^0}$ & $Z$\\
+12 & $A(e,e'K^+){}_{\Sigma^-} A'$ & $M_A$ & $M_A - M_n + M_{\Sigma^-}$ & $N$\\
+\end{simctable}
+In this note $M_N$ is the struck mass and $M_Y$ the recoil mass of \tabr{tab:masses}; for coherent production there is
+no residual system ($M_\mathrm{rec}=0$).
+
+The model reads its four tables from the data directory's \file{kaon/} (\code{l1\_kaon\_data\_files} checks that they
+are the Fortran files). The JSON input can override the model or its options:
+\begin{simctable}{footnotesize}{L{0.27\linewidth}L{0.3\linewidth}L{0.37\linewidth}}
+\caption{JSON keys of the reaction and the model (one key per row).}\lbl{tab:json}\\
+\toprule\rowcolor{simchead}\simcth{key} & \simcth{meaning} & \simcth{example}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{key} & \simcth{meaning} & \simcth{example}\\\midrule\endhead
+\bottomrule\endlastfoot
+\code{pipeline.reaction} & the reaction & \code{"kaon\_production"}\\
+\code{pipeline.physics.type} & the cross-section model & \code{"kaon"}\\
+\code{pipeline.physics.data\_dir} & directory of the four tables & \code{"data/kaon"}\\
+\code{pipeline.physics.verbose} & print the table messages and the model warnings & \code{true}\\
+\end{simctable}
+A replacement model must return the five-fold cross section of \secr{sec:xsec} in $\mu$b/(MeV\,sr$^2$), and, when the
+decay is not simulated, provide the survival probability in the event (\code{main.ntup.decdist}) as \code{kaon} does.
+
+\subsection{Event flow}
+\begin{simctable}{footnotesize}{L{0.05\linewidth}L{0.33\linewidth}L{0.62\linewidth}}
+\caption{One try of kaon production (one step per row; the general chain is \ctabr{tab:chain}).}\lbl{tab:flow}\\
+\toprule\rowcolor{simchead}\simcth{\#} & \simcth{C++ call} & \simcth{what is specific to this reaction}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{\#} & \simcth{C++ call} & \simcth{what is specific to this reaction}\\\midrule\endhead
+\bottomrule\endlastfoot
+0 & \code{PionProduction::prepareCentral} & once per run: the central-event quantities read by the model (\secr{sec:central})\\
+1 & \code{StandardBeam::generate} & nothing\\
+2 & \code{PionProduction::generate} & both pairs of slopes, $E'$, and for D/A the Fermi momentum and $E_m$ (\eqsr{eq:genslopes}{eq:fermi})\\
+3 & \code{PionProduction::completeEv} & the kaon energy from the two-body equation (\eqr{eq:quad}), $W$, $\varepsilon$, $t$, $\varphi_{pq}$, both solid-angle factors\\
+4 & \code{SimcRadiator::radiate} & photon limits of \eqr{eq:radlimits}; a tail-1 photon recomputes the kaon at the lower beam energy\\
+5 & \code{MonteCarlo::run} & the kaon crosses the hadron arm; with \code{doing\_decay} it may decay in flight (\eqr{eq:decay})\\
+6 & \code{EepReactionBase::completeRecon} & missing mass and $-t$ of the reconstructed event (\eqr{eq:recon})\\
+7 & \code{KaonProduction::completeMain} & \code{KaonModel::sigccMain} (\eqr{eq:peek}), $n_\mathrm{tgt}$, the survival probability (\eqr{eq:weight})\\
+\end{simctable}
+
+% =====================================================================================================================
+\section{Kinematics, generated variables and generation volume}\lbl{sec:gen}
+\subsection{Generated variables}
+After the beam part (\csecr{sec:beam}) the reaction draws, with uniform random numbers $\xi_i$:
+\begin{feqa}{reactions/pion/PionProduction.cpp: PionProduction::generate}{event.f:276-316}
+y'_e &= y'_{e,\mathrm{min}} + \xi_1\Delta y'_e,\qquad x'_e = x'_{e,\mathrm{min}} + \xi_2\Delta x'_e,\nonumber\\
+y'_h &= y'_{h,\mathrm{min}} + \xi_3\Delta y'_h,\qquad x'_h = x'_{h,\mathrm{min}} + \xi_4\Delta x'_h,\nonumber\\
+E' &= E'_\mathrm{lo} + \xi_5\,(E'_\mathrm{hi}-E'_\mathrm{lo}),\nonumber\\
+E'_\mathrm{lo} &= \max(E'^\mathrm{gen}_\mathrm{min},\Sigma_\mathrm{min}),\qquad E'_\mathrm{hi} = \min(E'^\mathrm{gen}_\mathrm{max},\Sigma_\mathrm{max}),
+\lbl{eq:genslopes}
+\end{feqa}
+with the generation weight of \ceqr{eq:genweight} for $E'$ (1 in practice, since the generation range of $E'$ already lies
+inside $[\Sigma_\mathrm{min},\Sigma_\mathrm{max}]$); the try fails if $E'_\mathrm{lo}>E'_\mathrm{hi}$. Both directions are
+converted to physics angles (\ceqr{eq:physang}). The kaon momentum is not generated.
+
+\paragraph{Fermi motion (D and $A\ge3$, quasi-free only).} The struck nucleon gets a momentum $p_F$ drawn from the
+cumulative momentum distribution $C(p_i)$ of the target (\code{deut.dat}; \code{he3.dat}, \code{he4.dat},
+\code{c12.dat} for $A=3,4,12$; \code{c12.dat} with a message for other $A$), normalised to $C(p_n)=1$, and an isotropic
+direction $\hat p_F$:
+\begin{feqa}{reactions/pion/PionProduction.cpp: PionProduction::generate}{event.f:336-372; dbase.f:567-591}
+i &= \min\{i:\ \xi_6\le C(p_i)\}\ (\le n),\qquad p_F = p_\mathrm{lo}+\xi_7\,(p_\mathrm{hi}-p_\mathrm{lo}),\nonumber\\
+p_\mathrm{lo} &= \tfrac12(p_{i-1}+p_i)\ (0\text{ for }i=1),\qquad p_\mathrm{hi} = \tfrac12(p_i+p_{i+1})\ (p_n\text{ for }i=n),\nonumber\\
+\cos\theta_F &= 2\xi_8-1,\qquad \varphi_F = 2\pi\xi_9,\qquad
+\hat p_F = (\sin\theta_F\cos\varphi_F,\ \sin\theta_F\sin\varphi_F,\ \cos\theta_F),\nonumber\\
+E_m &= M_p+M_n-M_d\ (\text{D}),\qquad E_m = E_m^\mathrm{SF}(p_F)\ (A\ge3),\nonumber\\
+E_F &= M_A - \sqrt{(M_A - M_N + E_m)^2 + p_F^2},
+\lbl{eq:fermi}
+\end{feqa}
+where $E_m^\mathrm{SF}(p_F)$ is drawn from the Benhar spectral function of the target at $P_m=p_F$ (the $E_m$
+distribution summed over the table nodes, a node chosen with one uniform number and smeared flat over its bin with a
+second; the neutron columns for $\Sigma^-$), and $E_F$ is the energy of the off-shell struck nucleon when the
+spectator system of mass $M_A-M_N+E_m$ is on shell with momentum $-\vec p_F$. For hydrogen and coherent production
+$p_F=0$, $E_m=0$ and $E_F=M_N$.
+
+\subsection{Limits}
+The vertex limits of the missing energy and momentum of the spectator system are
+\begin{feqa}{setup/SetupLimits.cpp: BuildLimits}{init.f:344-358, 374-402}
+\text{H, coherent:}&\quad E_m = P_m = M^\mathrm{V}_\mathrm{rec} = T^\mathrm{V}_\mathrm{rec} = 0,\nonumber\\
+\text{D:}&\quad E_m = M_p+M_n-M_d,\qquad P_m\in[0,\ p_n],\nonumber\\
+A\ge3:&\quad E_m\in[M_N+M_\mathrm{rec}-M_A,\ E_m^\mathrm{SF,max}],\qquad P_m\in[0,\ p_n],\nonumber\\
+&\quad M^\mathrm{V}_\mathrm{rec} = M_A-M_N+E_m,\qquad
+T_\mathrm{rec}^\mathrm{min} = \sqrt{(M^\mathrm{V,max}_\mathrm{rec})^2+P_{m,\mathrm{min}}^2}-M^\mathrm{V,max}_\mathrm{rec},\nonumber\\
+&\quad T_\mathrm{rec}^\mathrm{max} = \sqrt{(M^\mathrm{V,min}_\mathrm{rec})^2+P_{m,\mathrm{max}}^2}-M^\mathrm{V,min}_\mathrm{rec},\nonumber\\
+&\quad T_Y\in\bigl[0,\ E_b^\mathrm{max}+M_N-M_Y-E'_\mathrm{min}-E_{h,\mathrm{min}}-E_{m,\mathrm{min}}-T_\mathrm{rec}^\mathrm{min}\bigr],
+\lbl{eq:vertexlimits}
+\end{feqa}
+with $p_n$ the last node of the momentum distribution, $E_m^\mathrm{SF,max}$ the last $E_m$ node of the spectral
+function and $T_Y$ the kinetic energy of the recoiling hyperon, for which only energy conservation gives a limit.
+The largest photon energy and the range of the generated electron energy then follow from energy conservation:
+\begin{feqa}{setup/SetupLimits.cpp: BuildLimits}{init.f:411-425, 456-469, 477-488}
+E_\gamma^\mathrm{tot,max} &= E_b^\mathrm{max}+M_N-M_Y-E'_\mathrm{min}-E_{h,\mathrm{min}}-E_{m,\mathrm{min}}-T^\mathrm{min}_\mathrm{rec},\nonumber\\
+\Sigma_\mathrm{max} &= \min\bigl(E_b^\mathrm{max}+M_N-M_Y-E_{h,\mathrm{min}}-E_{m,\mathrm{min}}-T^\mathrm{min}_\mathrm{rec},\ E'_\mathrm{max}+E_{\gamma2}^\mathrm{max}\bigr)+d_E,\nonumber\\
+\Sigma_\mathrm{min} &= \max\bigl(E_b^\mathrm{min}+M_N-M_Y-E_{h,\mathrm{max}}-E_{m,\mathrm{max}}-T^\mathrm{max}_\mathrm{rec}-T_Y^\mathrm{max}-E_\gamma^\mathrm{tot,max},\nonumber\\
+&\qquad\quad E'_\mathrm{min}\bigr)-d_E\ \ (\ge0),\nonumber\\
+[E'^\mathrm{gen}_\mathrm{min},E'^\mathrm{gen}_\mathrm{max}] &= [\max(\Sigma_\mathrm{min},E'_\mathrm{min}),\ \min(\Sigma_\mathrm{max},E'_\mathrm{max}+E_{\gamma2}^\mathrm{max})],
+\lbl{eq:sumegen}
+\end{feqa}
+($E_\gamma^\mathrm{tot,max}=0$ without radiation, \code{Egamma\_gen\_max} when that is set; each enabled tail has
+$E_{\gamma i}^\mathrm{max}=E_\gamma^\mathrm{tot,max}$), where $\Sigma$ is here the generated electron energy. The hadron
+energy range $[E_{h,\mathrm{min}},E_{h,\mathrm{max}}+E^\mathrm{max}_{\gamma3}]$ serves only the diagnostic histograms;
+the kaon slopes are generated inside the hadron edges.
+
+\subsection{Generation volume}
+\begin{feq}{reactions/EepReactionBase.cpp: EepReactionBase::genVolume}{simc.f:383-397}
+V_\mathrm{gen} = \Delta\Omega_e\,\Delta\Omega_h\,(E'^\mathrm{gen}_\mathrm{max}-E'^\mathrm{gen}_\mathrm{min})\quad[\mathrm{sr^2\,MeV}].
+\lbl{eq:genvol}
+\end{feq}
+The Fermi momentum and $E_m$ are drawn from normalised distributions and add no factor to $V_\mathrm{gen}$.
+
+% =====================================================================================================================
+\section{Completing the event}\lbl{sec:complete}
+\subsection{Vertex}
+With $\nu$, $Q^2$, $\vec q$ of \ceqr{eq:nuq2} and the kaon direction $\hat p$, the kaon energy is the solution of
+$\nu + E_F = E_h + \sqrt{M_Y^2+|\vec q+\vec p_F-\vec p_h|^2}$ at fixed directions:
+\begin{feqa}{reactions/pion/PionProduction.cpp: PionProduction::completeEv}{event.f:634-698}
+a &= -|\vec q|\,\hat q\cdot\hat p\ \bigl[-\,p_F\,\hat p_F\cdot\hat p\bigr],\qquad
+b = |\vec q|^2\ \bigl[+\,p_F^2+2|\vec q|p_F\,\hat p_F\cdot\hat q\bigr],\qquad
+c = \nu + M_A\ \ \bigl[\nu+E_F\bigr],\nonumber\\
+k &= c^2-b+M_h^2-M_Y^2,\qquad Q_A = 4(a^2-c^2),\qquad Q_B = 4ck,\qquad Q_C = -4a^2M_h^2-k^2,\nonumber\\
+E_h &= \frac{-Q_B-\sqrt{Q_B^2-4Q_AQ_C}}{2Q_A},\qquad P_h = \sqrt{E_h^2-M_h^2},\qquad \delta_h = 100\,(P_h-P_h^0)/P_h^0,
+\lbl{eq:quad}
+\end{feqa}
+the brackets applying to D and $A\ge3$ ($M_A=M_p$ for hydrogen and the nucleus mass for coherent production, where
+$E_F=M_A$ is the same thing). The quadratic is the square of $k-2cE_h=2aP_h$; since $Q_A<0$ the chosen root is the
+larger one, the kaon going forward in the centre of mass. The try fails when the discriminant is negative, when
+$E_h<0$, when the recoil energy $c-E_h\le M_Y$ or when $E_h\le M_h$. When the other root falls inside the hadron
+energy edges a warning is printed (only in the first 5000 tries): the backward kaon is assumed never to be accepted.
+The meson variables of the vertex follow (\ceqsr{eq:w}{eq:epsilon}, \ceqr{eq:phipq}):
+\begin{feqa}{reactions/pion/PionProduction.cpp: PionProduction::pionMainKinematics}{event.f:723-771}
+W^2 &= M_N^2+2M_N\nu-Q^2,\qquad \theta_{pq} = \arccos(\hat p\cdot\hat q),\nonumber\\
+-t &= Q^2-M_h^2+2\nu E_h-2P_h|\vec q|\cos\theta_{pq},\qquad
+-t_\mathrm{min} = Q^2-M_h^2+2\nu E_h-2P_h|\vec q|,
+\lbl{eq:mesonvars}
+\end{feqa}
+$W$ being the photon--nucleon mass for a nucleon at rest (the photon--nucleus mass for coherent production; the model
+uses its own $W$ with the Fermi momentum, \eqr{eq:wcm}). $-t$ is positive; the code stores $-t$ under the name $t$.
+The spectator system has $P_m=p_F$, $M_\mathrm{rec}=M_A-M_N+E_m$ and
+\begin{feq}{reactions/pion/PionProduction.cpp: PionProduction::completeEv}{event.f:634-635, 947-951}
+T_\mathrm{rec} = \sqrt{M_\mathrm{rec}^2+p_F^2}-M_\mathrm{rec}\quad(\text{D},\ A\ge3),\qquad T_\mathrm{rec}=0\quad(\text{H, coherent}).
+\lbl{eq:trec}
+\end{feq}
+The vertex $\vec P_m$, $E_\mathrm{miss}$ (\ceqr{eq:pm}), $z$ and $p_T^2$ are filled as for every reaction. The kaon is
+not limited by the generation: its momentum may lie anywhere, and the hadron-arm model decides.
+
+\subsection{Reconstruction}
+From the reconstructed electron and kaon (\ceqr{eq:recon}):
+\begin{feqa}{reactions/EepReactionBase.cpp: EepReactionBase::completeRecon}{event.f:1325-1336, 1353-1354}
+E_m^\mathrm{rec} &= \nu^\mathrm{rec}+M_N-E_h^\mathrm{rec},\qquad
+M_x = \operatorname{sign}(m^2)\sqrt{|m^2|},\ \ m^2 = (E_m^\mathrm{rec})^2-(P_m^\mathrm{rec})^2,\nonumber\\
+M_x^A &= \operatorname{sign}(m_A^2)\sqrt{|m_A^2|},\ \ m_A^2 = (\nu^\mathrm{rec}+M_A-E_h^\mathrm{rec})^2-(P_m^\mathrm{rec})^2,\nonumber\\
+-t^\mathrm{rec} &= (Q^\mathrm{rec})^2-M_h^2+2\bigl(\nu^\mathrm{rec}E_h^\mathrm{rec}-P_h^\mathrm{rec}|\vec q^\mathrm{rec}|\cos\theta^\mathrm{rec}_{pq}\bigr),
+\lbl{eq:recon}
+\end{feqa}
+$M_x$ (tree column \code{missmass}) peaks at $M_Y$ for hydrogen; $M_x^A$ (\code{mmnuc}) is the missing mass of the
+whole target. The reconstructed $W$ uses $M_p$ (\ceqr{eq:w}).
+
+% =====================================================================================================================
+\section{Jacobians}\lbl{sec:jac}
+Both pairs of slopes are generated flat, so the event carries both solid-angle factors (\ceqr{eq:jacomega}):
+\begin{feq}{reactions/pion/PionProduction.cpp: PionProduction::completeEv}{event.f:1015-1025}
+J = \bigl(1+x_e'^2+y_e'^2\bigr)^{-3/2}\bigl(1+x_h'^2+y_h'^2\bigr)^{-3/2}.
+\lbl{eq:jac}
+\end{feq}
+The transformation of the cross section from the centre of mass to the laboratory solid angle of the kaon is part of the
+model (\eqr{eq:jcm}), not of $J$.
+
+% =====================================================================================================================
+\section{Cross-section model}\lbl{sec:xsec}
+\subsection{What the reaction requires from a model}
+\code{KaonProduction::completeMain} sets $S=1$ and calls \code{sigccMain(vertex, main)}, which must return the
+five-fold cross section $\mathrm{d}^5\sigma/\mathrm{d}E'\mathrm{d}\Omega_e\mathrm{d}\Omega_h$ in $\mu$b/(MeV\,sr$^2$)
+in the laboratory and may write the centre-of-mass quantities and the diagnostic cross sections into the event
+(tree columns \code{sigcm}, \code{saghai}, \code{factor}). When \code{doing\_decay} = 0 the model must also store the
+survival probability in \code{main.ntup.decdist}; the reaction multiplies the weight by it. The model reads the vertex
+$E_\mathrm{in}$, $E'$, $\nu$, $Q^2$, $\vec q$, the kaon four-momentum, $\varepsilon$, $\theta_{pq}$, $\varphi_{pq}$,
+$-t$, the Fermi momentum, and the focal-plane path and slopes of the kaon.
+
+\subsection{The model \code{kaon}: centre-of-mass frame}
+The photon--nucleon centre of mass moves with
+\begin{feqa}{reactions/EventChain.cpp: transformToCm}{jacobians.f:57-133}
+\vec\beta^* &= \frac{|\vec q|\,\hat q+p_F\,\hat p_F}{\nu+E_F},\qquad \gamma^* = (1-\beta^{*2})^{-1/2},\nonumber\\
+(\nu^*,\vec q^{\,*}) &= \Lambda(\vec\beta^*)\,(\nu,\vec q),\qquad (E^*_h,\vec p^{\,*}_h) = \Lambda(\vec\beta^*)\,(E_h,\vec p_h),\qquad
+\theta^* = \angle(\vec p^{\,*}_h,\vec q^{\,*}),
+\lbl{eq:cm}
+\end{feqa}
+$\Lambda$ being the Lorentz boost of \code{loren} written in the frame with $z\parallel\hat q$ and $x$ in the scattering
+plane (the frame of $\varphi_{pq}$). The azimuth $\varphi^*$ of $\vec p^{\,*}_h$ is measured around $\vec q^{\,*}$ from
+the plane of $\vec q^{\,*}$ and the boosted beam. The invariant mass with the Fermi momentum is
+\begin{feq}{physics/kaon/KaonCrossSections.cpp: peeK}{physics\_kaon.f:66-71}
+W^2_\mathrm{cm} = s = (\nu+E_F)^2-(|\vec q|+p_F\cos\theta_{Fq})^2-(p_F\sin\theta_{Fq})^2,\qquad \cos\theta_{Fq} = \hat p_F\cdot\hat q.
+\lbl{eq:wcm}
+\end{feq}
+The jacobian from $(t,\varphi^*)$ to the laboratory variables $(\cos\theta_{pq},\varphi_{pq})$ is computed in full
+for a non-collinear boost, and divided by $\mathrm{d}t/\mathrm{d}\cos\theta^* = 2P_h^*|\vec q^{\,*}|$ (Mandelstam $t$):
+\begin{feqa}{reactions/EventChain.cpp: transformToCm; physics/kaon/KaonCrossSections.cpp: peeK}{jacobians.f:208-271; physics\_kaon.f:52}
+J_\mathrm{cm} &= \frac{1}{2P_h^*|\vec q^{\,*}|}\left|\frac{\partial t}{\partial\cos\theta_{pq}}\frac{\partial\varphi^*}{\partial\varphi_{pq}}
+ - \frac{\partial t}{\partial\varphi_{pq}}\frac{\partial\varphi^*}{\partial\cos\theta_{pq}}\right|
+ = \frac{\mathrm{d}\Omega^*}{\mathrm{d}\Omega_h},\nonumber\\
+\frac{\partial t}{\partial\cos\theta_{pq}} &= 2\Bigl[|\vec q|P_h+\Bigl(|\vec q|\cos\theta_{pq}-\frac{\nu P_h}{E_h}\Bigr)\frac{\partial P_h}{\partial\cos\theta_{pq}}\Bigr],\qquad
+\frac{\partial t}{\partial\varphi_{pq}} = 2\Bigl(|\vec q|\cos\theta_{pq}-\frac{\nu P_h}{E_h}\Bigr)\frac{\partial P_h}{\partial\varphi_{pq}},
+\lbl{eq:jcm}
+\end{feqa}
+with $\partial P_h/\partial\cos\theta_{pq}$ and $\partial P_h/\partial\varphi_{pq}$ from energy conservation at fixed
+$\vec p_F$, and the derivatives of $\varphi^*$ from the boost (\fsrc{jacobians.f:208-269}, transcribed term by term).
+Without Fermi motion the boost is along $\vec q$, $\partial\varphi^*/\partial\varphi_{pq}=1$ and the second term
+vanishes. The older approximation for a collinear boost is computed too (tree diagnostic only, not in the weight):
+\begin{feq}{reactions/EventChain.cpp: transformToCm}{jacobians.f:275-278}
+J_\mathrm{cm}^\mathrm{coll}\cdot 2P_h^*|\vec q^{\,*}| = \frac{2\,(E_F-2p_{F}\hat p_{F,z}\frac{E_h}{P_h}\cos\theta_{pq})(|\vec q|+p_F\hat p_{F,z})P_h}
+{E_F+\nu-(|\vec q|+p_F\hat p_{F,z})\frac{E_h}{P_h}\cos\theta_{pq}}-2P_hp_F.
+\lbl{eq:jold}
+\end{feq}
+
+\subsection{The model \code{kaon}: the cross section}
+\begin{feqa}{physics/kaon/KaonCrossSections.cpp: peeK}{physics\_kaon.f:52, 96, 108, 132-135}
+\sigma &= \sigma_\mathrm{fact}\cdot J_\mathrm{cm}\cdot\Gamma'\cdot f\quad[\mu\mathrm{b/(MeV\,sr^2)}],\nonumber\\
+\Gamma' &= \frac{\alpha}{2\pi^2}\,\frac{E'}{E_\mathrm{in}}\,\frac{k_\gamma}{Q^2}\,\frac{1}{1-\varepsilon},\qquad
+k_\gamma = \frac{W_\mathrm{cm}^2-M_N^2}{2M_N},\qquad
+f = \frac{M_N}{E_F-p_F\hat p_{F,z}},
+\lbl{eq:peek}
+\end{feqa}
+where $\sigma_\mathrm{fact}$ is the centre-of-mass cross section $\mathrm{d}\sigma/\mathrm{d}\Omega^*$ in $\mu$b/sr
+(code comment \fsrc{physics\_kaon.f:111-116}), $\Gamma'$ the virtual-photon flux per MeV and sr with the equivalent
+photon energy $k_\gamma$ of Hand, and $f$ the correction of the flux for a moving target: the relative velocity
+$1-p_F\hat p_{F,z}/E_F$ along the beam and the target energy $E_F$ in place of $M_N$ (code comment
+\fsrc{physics\_kaon.f:118-129}; $f=1$ without Fermi motion). The code comments record that $k_\gamma$ with $M_N$
+(rather than $E_F-p_F\cos\theta_{Fq}$) was chosen to match the phase space of the generation.
+
+\paragraph{Factorized model (the one in the weight).} The fit of D.~Koltenuk's thesis \citer{koltenuk}: at fixed $Q^2$
+and $W$ the cross section falls as $\exp(-b|t-t_\mathrm{min}|)$. The routine receives $Q^2$, $W_\mathrm{cm}$, $-t$ and
+$P_h^*$ (all in MeV), recomputes the minimum $-t$ for a proton at rest, and evaluates (in GeV):
+\begin{feqa}{physics/kaon/KaonCrossSections.cpp: sigFactorized}{physics\_kaon.f:194-234}
+\nu_W &= \frac{W^2+Q^2-M_p^2}{2M_p},\qquad q^*_W = \sqrt{Q^2+\nu_W^2}\,\frac{M_p}{W},\qquad \nu^*_W = \sqrt{q^{*2}_W-Q^2},\nonumber\\
+-t_\mathrm{min} &= Q^2-M_K^2+2\nu^*_W\sqrt{P_h^{*2}+M_K^2}-2q^*_WP^*_h,\nonumber\\
+F_Q &= (Q^2+A_Q)^{-2},\qquad F_t = \exp\bigl[-b\,\bigl((-t)-(-t_\mathrm{min})\bigr)\bigr],\nonumber\\
+F_W &= \frac{c_W\,P^*_h}{W\,(W^2-m_0^2)}\ \Bigl[+\ \frac{a_R\,M_R^2\Gamma_R^2}{(W^2-M_R^2)^2+M_R^2\Gamma_R^2}\ \ (\Lambda)\Bigr],\qquad
+\sigma_\mathrm{fact} = F_Q\,F_t\,F_W,
+\lbl{eq:sigfact}
+\end{feqa}
+with the parameters of \tabr{tab:sigfact}. The $\Lambda$ branch is taken for $M_Y<1150$ MeV, the $\Sigma$ branch
+otherwise. The fit is a function of $W$, $Q^2$ and $t$ only: there is no $\varepsilon$ or $\varphi$ dependence, so the
+longitudinal--transverse separation and the interference terms are not modelled. The proton mass enters $\nu_W$ for
+every final state (also for $\Sigma^-$ on the neutron and for coherent production), $m_0$ is a hard-coded proton mass
+in GeV, and for coherent production $W$ is the photon--nucleus mass (4--13.5 GeV), far outside the range of a nucleon
+fit. As a check, $P^*_h$ is recomputed from $W$ and $M_Y$; a message is printed when the two differ by more than
+0.1\,\% (this happens for the central event of the $\Sigma$ and nuclear runs). If $W^2=0$ (``central event'' in the
+code comment) $F_W$ is not computed and keeps its previous value. The coefficients are transcribed from the code and
+were not compared with the thesis.
+
+\begin{simctable}{footnotesize}{L{0.14\linewidth}L{0.2\linewidth}L{0.2\linewidth}L{0.46\linewidth}}
+\caption{Parameters of the factorized model \fsrc{physics\_kaon.f:215-232} (one parameter per row; GeV units).}\lbl{tab:sigfact}\\
+\toprule\rowcolor{simchead}\simcth{parameter} & \simcth{$\Lambda$ ($M_Y<1150$ MeV)} & \simcth{$\Sigma^0$, $\Sigma^-$, coherent} & \simcth{meaning}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{parameter} & \simcth{$\Lambda$ ($M_Y<1150$ MeV)} & \simcth{$\Sigma^0$, $\Sigma^-$, coherent} & \simcth{meaning}\\\midrule\endhead
+\bottomrule\endlastfoot
+$A_Q$ & 2.67 GeV$^2$ & 0.79 GeV$^2$ & dipole-like $Q^2$ scale\\
+$b$ & 2.1 GeV$^{-2}$ & 1.0 GeV$^{-2}$ & $t$ slope\\
+$c_W$ & $0.959\times4.1959$ & $0.959\times4.1959$ & normalisation of the $W$ factor\\
+$m_0$ & 0.93827 GeV & 0.93827 GeV & proton mass in the phase-space denominator\\
+$a_R$ & 0.18 & -- (term commented out) & resonance strength\\
+$M_R$ & 1.72 GeV & -- & resonance mass\\
+$\Gamma_R$ & 0.10 GeV & -- & resonance width\\
+\end{simctable}
+
+\paragraph{Saghai amplitude model (diagnostic column \code{saghai}).} For each event the model also evaluates a
+cross section from tabulated CGLN-type amplitudes $F_1\ldots F_6$ (complex) attributed in the code to Saghai
+(``Saghai's form'', \fsrc{physics\_kaon.f:327}); the code cites no paper. The amplitudes are interpolated in
+$(s, Q^2, \theta^*)$ from \code{saghai\_proton.dat} ($\Lambda$) or \code{saghai\_sigma0.dat} ($\Sigma$), read at start-up
+(\tabr{tab:saghai}), with $s=W^2_\mathrm{cm}$ in GeV$^2$, $Q^2$ in GeV$^2$ and $\theta^*$ in degrees. The interpolation is
+the CERNLIB multilinear \code{fint}:
+\begin{feqa}{physics/kaon/KaonCrossSections.cpp: fint}{cern/fint.f:27-70}
+F(x_1,x_2,x_3) &= \sum_{\epsilon\in\{0,1\}^3}\ \prod_{n=1}^{3}\bigl[(1-\eta_n)\,\delta_{\epsilon_n0}+\eta_n\,\delta_{\epsilon_n1}\bigr]\,
+T(k_1+\epsilon_1,k_2+\epsilon_2,k_3+\epsilon_3),\nonumber\\
+\eta_n &= \frac{x_n-g_{n,k_n}}{g_{n,k_n+1}-g_{n,k_n}},
+\lbl{eq:fint}
+\end{feqa}
+$k_n$ being the grid interval of $x_n$ found by bisection and limited to the first and last interval (linear
+extrapolation outside the grid); on an exact node the dimension is not interpolated. With
+$x=\cos\theta^*$, the kinematic factors and the four response terms are
+\begin{feqa}{physics/kaon/KaonCrossSections.cpp: eekeek, eekeeks}{physics\_kaon.f:264-280, 320-348; 377-393, 452-474}
+P_K^* &= \frac{\sqrt{\max\bigl(0,(W^2-M_K^2-M_Y^2)^2-4M_K^2M_Y^2\bigr)}}{2W},\qquad
+\nu^*_\gamma = \frac{M_p\nu_W-Q^2}{W},\qquad r = \frac{Q}{\nu^*_\gamma},\nonumber\\
+a &= \frac{P^*_K}{2W\,(W^2-M_p^2)}\,(\hbar c)^2\cdot10^4,\qquad a_L = a\,r^2,\nonumber\\
+\sigma_T &= a\Bigl[|F_1|^2+|F_2|^2+2x\,\mathrm{Re}(F_1^*F_2)+\tfrac12\sin^2\theta^*\bigl(|F_3|^2+|F_4|^2+2\,\mathrm{Re}(F_1^*F_4-F_2^*F_3+x\,F_3^*F_4)\bigr)\Bigr],\nonumber\\
+\sigma_L &= a_L\,\varepsilon\,\bigl[|F_5|^2+|F_6|^2+2x\,\mathrm{Re}(F_5^*F_6)\bigr],\nonumber\\
+\sigma_{TT} &= a\,\varepsilon\,\sin^2\theta_{pq}\cos2\varphi\,\bigl[\tfrac12|F_3|^2+\tfrac12|F_4|^2+\mathrm{Re}(F_1^*F_4-F_2^*F_3+x\,F_3^*F_4)\bigr],\nonumber\\
+\sigma_{LT} &= a\sqrt{2r^2\varepsilon(1+\varepsilon)}\,\sin\theta_{pq}\cos\varphi\ \mathrm{Re}\bigl[F_5(F_3^*-F_2^*+xF_4^*)+F_6(F_1^*+xF_3^*+F_4^*)\bigr],\nonumber\\
+\sigma_\mathrm{Saghai} &= \sigma_T+\sigma_L+\sigma_{TT}+\sigma_{LT},
+\lbl{eq:saghai}
+\end{feqa}
+($\nu_W$ as in \eqr{eq:sigfact}; the factor $(\hbar c)^2\cdot10^4$ converts fm$^2$ to $\mu$b, so $\sigma_\mathrm{Saghai}$ is in $\mu$b/sr if the tabulated amplitudes are in fm, which the code does not state; the $\Sigma^0$ routine is identical except for the table and its grid). Three remarks on
+the code as written: the interference terms use the \emph{laboratory} angle $\theta_{pq}$ where $\sigma_T$ uses
+$\theta^*$; the azimuth $\varphi$ passed to the routine is never assigned and is 0 (the code comment says ``we are always
+calculating for $\varphi=0$''); and compared with the CGLN response functions in the convention of Drechsel and Tiator
+\citer{dt}, the expressions correspond to $F_2\to-F_2$ (and a sign convention of the LT term), which may be the convention
+of the tables; we did not check Saghai's convention. The routine is called with $\Lambda$ tables for $M_Y<1150$ MeV
+and with the $\Sigma$ tables otherwise, so coherent production (large $M_Y$) also uses the $\Sigma$ tables.
+
+\begin{simctable}{footnotesize}{L{0.2\linewidth}L{0.17\linewidth}L{0.63\linewidth}}
+\caption{The Saghai tables and their grids \fsrc{physics\_kaon.f:281-302, 394-435; dbase.f:650-683} (one grid per row).}\lbl{tab:saghai}\\
+\toprule\rowcolor{simchead}\simcth{table} & \simcth{variable} & \simcth{nodes}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{table} & \simcth{variable} & \simcth{nodes}\\\midrule\endhead
+\bottomrule\endlastfoot
+\code{saghai\_proton.dat} & $s$ [GeV$^2$] & 10 nodes $2.6+0.3(i-1)$ in the compat mode; the file holds blocks at 5.1 and 5.4 for nodes 9 and 10, which the default mode uses\\
+\code{saghai\_proton.dat} & $Q^2$ [GeV$^2$] & 11 nodes, 0 to 2.0 in steps of 0.2\\
+\code{saghai\_proton.dat} & $\theta^*$ [deg] & 19 nodes, 0 to 180 in steps of 10\\
+\code{saghai\_sigma0.dat} & $s$ [GeV$^2$] & 20 nodes: 2.851, 2.898, 2.945, 2.991, 3.038, 3.085, 3.132, then 3.320 to 5.572 in steps of about 0.188\\
+\code{saghai\_sigma0.dat} & $Q^2$ [GeV$^2$] & 10 nodes: 0, 0.25, 0.376, 0.52, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0\\
+\code{saghai\_sigma0.dat} & $\theta^*$ [deg] & 19 nodes, 0 to 180 in steps of 10\\
+\code{weightc.dat} & -- & $20\times50$ phase-space weights for HMS/SOS (read, used only by an uncalled routine)\\
+\code{weightd.dat} & -- & $8\times40\times30$ phase-space weights for SOS/HMS (read, used only by an uncalled routine)\\
+\end{simctable}
+Each proton record has a kinematics line and two lines of three complex amplitudes; the $\Sigma^0$ file starts with a
+truncated line, so a plain sequential read takes every record one line late. The compat mode reproduces that read and
+also the interpolation result as the Fortran build returns it, which is $+0$ for every value (the tree column
+\code{saghai} is then 0); the default mode skips the stray line, uses the grid of the file and returns the interpolated
+value. None of this enters the weight.
+
+\subsection{Weight and units}
+\begin{feq}{reactions/kaon/KaonProduction.cpp: KaonProduction::completeMain}{event.f:1505-1512, 1536-1538, 1561-1564}
+w = J\cdot w_\mathrm{gen}\cdot\sigma\cdot n_\mathrm{tgt}\cdot\bigl(1+V_C/E_b\bigr)^2_{[Z>1]}\ \bigl[\cdot P_\mathrm{surv}\ \text{if the decay is not simulated}\bigr],
+\lbl{eq:weight}
+\end{feq}
+with $n_\mathrm{tgt}$ of \tabr{tab:masses} ($Z$ or $N$ also for coherent production) and $P_\mathrm{surv}$ of
+\eqr{eq:surv}. $w$ is in $\mu$b/(MeV\,sr$^2$), which matches $V_\mathrm{gen}$ in sr$^2$ MeV.
+
+\paragraph{Central event.}\lbl{sec:central} The \texttt{.hist} line \code{CENTRAL.sigcc} evaluates the model once for the
+central momenta and angles of both arms. In the default mode \code{prepareCentral} first gives the central event its
+$W$, $\varepsilon$, $\theta_{pq}$, $-t$, $-t_\mathrm{min}$ and $\varphi_{pq}$ (\eqr{eq:mesonvars}); in the compat mode
+these stay 0, as in the Fortran, where the model then sees $\varepsilon=0$ and $t=0$. The focal-plane path of the
+central event is 0, so its survival probability is 1. The central kaon is placed at $P_h^0$ whatever the hyperon, which
+is why the $P^*_h$ check of \eqr{eq:sigfact} prints its message for $\Sigma$ and nuclear runs.
+
+% =====================================================================================================================
+\section{Radiation, energy loss and decays}\lbl{sec:rad}
+\subsection{Radiation}
+All three tails radiate; the kaon is the radiating hadron, with $\lambda_3$ from its own $E_h$, $P_h$
+(\ceqr{eq:lambda}). The photon limits are those of the ``meson'' case of \code{generateRad}:
+\begin{feqa}{radiation/Radc.cpp: generateRad}{radc.f:297-308, 372-389, 428-446}
+E_{\gamma1} &\in \bigl[-d_E,\ \min(\Sigma_\mathrm{max}-E',\ E^\mathrm{max}_{\gamma1})+d_E\bigr],\nonumber\\
+E_{\gamma2} &\in \bigl[E'-E'_\mathrm{max}-d_E,\ \min(E'-E'_\mathrm{min},\ E_\gamma^\mathrm{tot,max}-E_{\gamma1})+d_E\bigr],\nonumber\\
+E_{\gamma3} &\in \bigl[E_h-E_{h,\mathrm{max}}-d_E,\ \min(E_h-E_{h,\mathrm{min}},\ E_\gamma^\mathrm{tot,max}-E_{\gamma1}-E_{\gamma2})+d_E\bigr].
+\lbl{eq:radlimits}
+\end{feqa}
+After a tail-1 photon \code{completeEv} runs again at $E_\mathrm{in}-E_{\gamma1}$ with the same directions and the same
+Fermi momentum: a new kaon energy (\eqr{eq:quad}) and new meson variables; the cross section is evaluated there. The
+soft and hard factors use the elastic e--p kinematics of \ceqr{eq:bremkin}, which are not those of kaon production.
+
+\subsection{Energy loss and multiple scattering}
+The kaon loses energy and scatters with its own mass and $\beta=P_h/E_h$ like any hadron (\csecr{sec:eloss}); the
+reconstruction adds back the most probable loss with \code{correct\_Eloss}.
+
+\subsection{Kaon decay in flight (\code{doing\_decay} = 1)}
+The spectrometer models check the kaon for decay in every drift and every transport element, with the input $c\tau$
+(371.2 cm for the K$^+$ in the reference inputs). For a step of nominal length $L$ (the transport element adds its
+path-length correction $\Delta L$) and the current momentum $P$:
+\begin{feqa}{optics/CosyEngine.cpp: project, decayProducts}{shared/transp.f:134-185, 231-276; shared/project.f:43-117}
+\beta\gamma &= P/M,\qquad z_\mathrm{dec} = -c\tau\,\beta\gamma\,\ln(1-\xi_1),\nonumber\\
+&\text{decay in the step if } z_\mathrm{dec}\le L\sqrt{1+x'^2+y'^2}\ \text{(drift)},\ \ z_\mathrm{dec}\le L+\Delta L\ \text{(element)},\nonumber\\
+\cos\theta^\star &= 2\xi_2-1,\quad \varphi^\star = 2\pi\xi_3,\qquad
+(p^\star,\ m_f) = \begin{cases}(235.5\ \mathrm{MeV}/c,\ m_\mu) & \xi_4<0.7\ \ (K\to\mu\nu)\\
+\bigl(\sqrt{M_K^2/4-M_\pi^2},\ M_\pi\bigr) & \text{otherwise}\ \ (K\to\pi\pi)\end{cases}\nonumber\\
+(E,\vec p) &= \Lambda(-\beta\hat t)\,\bigl(\sqrt{m_f^2+p^{\star2}},\ p^\star\hat n^\star\bigr),\qquad
+x' = p_x/p_z,\quad y'=p_y/p_z,\quad \delta = 100\,(|\vec p|/P^0-1),
+\lbl{eq:decay}
+\end{feqa}
+$\hat t$ being the track direction and $\hat n^\star$ the isotropic direction in the kaon rest frame. A transport element
+applies a decay found in its first half before the transport of the element and one in its second half after it. The
+decay product continues with its own mass (used for multiple scattering and any later energy loss), reported in the tree
+column \code{Mhadron}; it does not decay again (a pion from $K\to\pi\pi$ is not re-tested for its own decay after a kaon
+decay). The tree column \code{decdist} is the distance travelled before the decay (the whole path if the kaon did not
+decay). The model is fixed: 70\,\% $\mu\nu$ and 30\,\% $\pi\pi$ (the measured K$^+$ branching ratios are 63.6\,\% and
+20.7\,\% for $\pi^+\pi^0$, with further three-body modes), and the $\pi\pi$ momentum uses the equal-mass formula with the
+charged pion, 203.6 MeV/$c$ (205.1 MeV/$c$ for $\pi^+\pi^0$). In a drift, the default mode ends a decayed track at the
+end of the drift; the compat mode reproduces the Fortran, which computes the remaining drift with the slopes after the
+decay and so ends the track slightly off.
+
+Up to SIMC 294f662 the $K\to\pi\pi$ product of a decay in the first half of a transport element kept the kaon mass;
+upstream fixed that line (the daughter mass is $M_\pi$ since 59ccdf6), and SIMC++ uses $M_\pi$ in both modes. The
+option \code{-{}-compat-target 294f662} restores the kaon mass for the old references.
+
+\subsection{Survival probability (\code{doing\_decay} = 0)}
+Without the decay simulation the weight is multiplied by the probability that the kaon reaches the detector that
+identifies it:
+\begin{feqa}{physics/kaon/KaonCrossSections.cpp: peeK}{physics\_kaon.f:148-164}
+P_\mathrm{surv} &= \exp\Bigl[-\frac{L}{c\tau\,\beta\gamma}\Bigr],\qquad
+L = L_\mathrm{FP} + z_\mathrm{aero}\sqrt{1+x'^2_\mathrm{fp}+y'^2_\mathrm{fp}}\ \ \bigl[\text{compat: }z_\mathrm{aero}(1+x'^2_\mathrm{fp}+y'^2_\mathrm{fp})\bigr],\nonumber\\
+\beta\gamma &= P/M_K,\qquad P = P_h^0\,(1+\delta^\mathrm{SP}_h/100)\ \ \bigl[\text{compat: } P=P_h^0\bigr],
+\lbl{eq:surv}
+\end{feqa}
+where $L_\mathrm{FP}$ is the path length of the hadron-arm model (to the back of its last detector), $x'_\mathrm{fp}$,
+$y'_\mathrm{fp}$ the focal-plane slopes, and $z_\mathrm{aero}$ the hard-coded distance of the aerogel detector from the
+end of the path: 0 for the HMS, $-82.8$ cm for the SOS, $-183$ cm for the HRS; for the SHMS the compat mode keeps the
+value of the previous call (0 in a run) and the default mode uses 0. $\delta^\mathrm{SP}_h$ is the kaon at the
+spectrometer entrance (after radiation and energy loss): the code comment asks for that momentum, but the Fortran uses
+the central momentum, which makes $P_\mathrm{surv}$ almost constant. The value is written to \code{decdist}.
+
+% =====================================================================================================================
+\section{Inputs and outputs}\lbl{sec:io}
+\subsection{Inputs}
+\begin{simctable}{footnotesize}{L{0.24\linewidth}L{0.12\linewidth}L{0.08\linewidth}L{0.56\linewidth}}
+\caption{Inputs specific to kaon production (one input per row; the common inputs are those of note 01, \S7, and the
+user manual, chapter 4).}\lbl{tab:inputs}\\
+\toprule\rowcolor{simchead}\simcth{input} & \simcth{unit} & \simcth{default} & \simcth{meaning here}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{input} & \simcth{unit} & \simcth{default} & \simcth{meaning here}\\\midrule\endhead
+\bottomrule\endlastfoot
+\code{doing\_kaon} & flag & 0 & 1 selects this reaction\\
+\code{which\_kaon} & code & 0 & final state (\tabr{tab:masses})\\
+\code{targ\%A} & -- & 0 & 1: hydrogen; 2: deuterium; $\ge3$: nucleus (momentum distribution, spectral function)\\
+\code{targ\%Z} & -- & 0 & $n_\mathrm{tgt}$ for $\Lambda$, $\Sigma^0$; Coulomb correction for $Z>1$\\
+\code{targ\%mass\_amu} & u & 0 & $M_A$ (forced to $M_p$, $M_d$ for $A=1,2$)\\
+\code{targ\%mrec\_amu} & u & 0 & $M_\mathrm{rec}$ of the spectator system ($A\ge3$); ignored for coherent production\\
+\code{doing\_decay} & flag & 0 & 1: decay in flight (\eqr{eq:decay}); 0: survival weight (\eqr{eq:surv})\\
+\code{ctau} & cm & 0 & $c\tau$ of the kaon (371.2 cm for K$^+$); used in both cases\\
+\code{hadron\_arm} & code & 0 & the kaon arm; also selects $z_\mathrm{aero}$\\
+\code{spec\%p\%P} & MeV/$c$ & 0 & $P_h^0$; the survival $\beta\gamma$ in the compat mode\\
+\code{doing\_semi} & flag & 0 & with \code{doing\_kaon} = 1 the run is kaon SIDIS instead (another note)\\
+\code{doing\_phsp} & flag & 0 & 1: phase-space run with the kaon mass\\
+\end{simctable}
+
+\subsection{Outputs}
+The sink \code{root\_tree} writes one entry of \code{h10} per success with the 66 columns of \tabr{tab:columns} (layout
+of upstream SIMC 59ccdf6; \code{-{}-tree-layout legacy} gives the 55 columns of SIMC 294f662). The upstream Fortran
+writes 66 values but declares only 65 column names for kaon runs and stops at the first event; SIMC++ declares the
+column \code{sigcm} as well, in both modes. Columns 1--24 are arranged as in the (e,e\pr p) layout: \code{hs} is the
+arm on the beam right, \code{ss} the arm on the beam left.
+
+\begin{simctable}{footnotesize}{L{0.06\linewidth}L{0.15\linewidth}L{0.13\linewidth}L{0.66\linewidth}}
+\caption{Tree columns of kaon production (one column per row).}\lbl{tab:columns}\\
+\toprule\rowcolor{simchead}\simcth{\#} & \simcth{name} & \simcth{unit} & \simcth{content}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{\#} & \simcth{name} & \simcth{unit} & \simcth{content}\\\midrule\endhead
+\bottomrule\endlastfoot
+1 & \code{hsdelta} & \% & reconstructed $\delta$, \code{hs} arm\\
+2 & \code{hsyptar} & rad & reconstructed $y'$, \code{hs} arm\\
+3 & \code{hsxptar} & rad & reconstructed $x'$, \code{hs} arm\\
+4 & \code{hsytar} & cm & reconstructed horizontal target position, \code{hs} arm\\
+5 & \code{hsxfp} & cm & focal-plane $x$, \code{hs} arm\\
+6 & \code{hsxpfp} & rad & focal-plane $x'$, \code{hs} arm\\
+7 & \code{hsyfp} & cm & focal-plane $y$, \code{hs} arm\\
+8 & \code{hsypfp} & rad & focal-plane $y'$, \code{hs} arm\\
+9 & \code{hsdeltai} & \% & true $\delta$ after radiation, \code{hs} arm\\
+10 & \code{hsyptari} & rad & true $y'$, \code{hs} arm\\
+11 & \code{hsxptari} & rad & true $x'$, \code{hs} arm\\
+12 & \code{hsytari} & cm & $z_t\sin\theta^0$ of the \code{hs} arm\\
+13 & \code{ssdelta} & \% & reconstructed $\delta$, \code{ss} arm\\
+14 & \code{ssyptar} & rad & reconstructed $y'$, \code{ss} arm\\
+15 & \code{ssxptar} & rad & reconstructed $x'$, \code{ss} arm\\
+16 & \code{ssytar} & cm & reconstructed horizontal target position, \code{ss} arm\\
+17 & \code{ssxfp} & cm & focal-plane $x$, \code{ss} arm\\
+18 & \code{ssxpfp} & rad & focal-plane $x'$, \code{ss} arm\\
+19 & \code{ssyfp} & cm & focal-plane $y$, \code{ss} arm\\
+20 & \code{ssypfp} & rad & focal-plane $y'$, \code{ss} arm\\
+21 & \code{ssdeltai} & \% & true $\delta$ after radiation, \code{ss} arm\\
+22 & \code{ssyptari} & rad & true $y'$, \code{ss} arm\\
+23 & \code{ssxptari} & rad & true $x'$, \code{ss} arm\\
+24 & \code{ssytari} & cm & $-z_t\sin\theta^0$ of the \code{ss} arm\\
+25 & \code{q} & GeV/$c$ & $|\vec q^\mathrm{rec}|$\\
+26 & \code{nu} & GeV & $\nu^\mathrm{rec}$\\
+27 & \code{Q2} & (GeV/$c$)$^2$ & $(Q^\mathrm{rec})^2$\\
+28 & \code{W} & GeV & $W^\mathrm{rec}$ (proton mass)\\
+29 & \code{xbj} & -- & $x^\mathrm{rec}$\\
+30 & \code{epsilon} & -- & $\varepsilon^\mathrm{rec}$\\
+31 & \code{Em} & GeV & $E_m^\mathrm{rec}$ of \eqr{eq:recon}\\
+32 & \code{Pm} & GeV/$c$ & $P_m^\mathrm{rec}$\\
+33 & \code{qi} & GeV/$c$ & vertex $|\vec q|$\\
+34 & \code{nui} & GeV & vertex $\nu$\\
+35 & \code{Q2i} & (GeV/$c$)$^2$ & vertex $Q^2$\\
+36 & \code{Wi} & GeV & vertex $W$ of \eqr{eq:mesonvars} (without the Fermi momentum)\\
+37 & \code{xbji} & -- & vertex $x$\\
+38 & \code{epsiloni} & -- & vertex $\varepsilon$\\
+39 & \code{Emi} & GeV & vertex $E_\mathrm{miss}=\nu+M_A-E_h$\\
+40 & \code{Pmi} & GeV/$c$ & vertex $P_\mathrm{miss}$\\
+41 & \code{missmass} & GeV & $M_x$ of \eqr{eq:recon}\\
+42 & \code{mmnuc} & GeV & $M_x^A$ of \eqr{eq:recon}\\
+43 & \code{phad} & GeV/$c$ & $P_h^\mathrm{rec}$\\
+44 & \code{t} & GeV$^2$ & $-t^\mathrm{rec}$\\
+45 & \code{ti} & GeV$^2$ & vertex $-t$\\
+46 & \code{z} & -- & $E_h^\mathrm{rec}/\nu^\mathrm{rec}$\\
+47 & \code{zi} & -- & vertex $E_h/\nu$\\
+48 & \code{pt2} & GeV$^2$ & reconstructed $p_T^2$\\
+49 & \code{pt2i} & GeV$^2$ & vertex $p_T^2$\\
+50 & \code{thetapq} & rad & $\theta^\mathrm{rec}_{pq}$\\
+51 & \code{phipq} & rad & $\varphi^\mathrm{rec}_{pq}$\\
+52 & \code{thetapqi} & rad & vertex $\theta_{pq}$\\
+53 & \code{phipqi} & rad & vertex $\varphi_{pq}$\\
+54 & \code{pmpar} & GeV/$c$ & $P^\mathrm{rec}_{m,\parallel}$\\
+55 & \code{pmper} & GeV/$c$ & $P^\mathrm{rec}_{m,\perp}$\\
+56 & \code{pmoop} & GeV/$c$ & $P^\mathrm{rec}_{m,\mathrm{oop}}$\\
+57 & \code{fry} & cm & minus the vertical raster coordinate\\
+58 & \code{radphot} & GeV & $E_{\gamma1}+E_{\gamma2}+E_{\gamma3}$\\
+59 & \code{pfermi} & GeV/$c$ & $p_F$ with the sign of $\hat p_F\cdot\hat q$ (0 without Fermi motion)\\
+60 & \code{siglab} & $\mu$b/MeV/sr$^2$ & $\sigma$ of \eqr{eq:peek} with the Coulomb factor\\
+61 & \code{sigcm} & $\mu$b/sr & $\sigma_\mathrm{fact}$ (the model in the weight)\\
+62 & \code{saghai} & see text & $\sigma_\mathrm{Saghai}$ of \eqr{eq:saghai} (0 in the compat mode)\\
+63 & \code{factor} & $\mu$b/sr & $\sigma_\mathrm{fact}$ again (the factorized model by name)\\
+64 & \code{Weight} & $\mu$b/MeV/sr$^2$ & $w$ of \eqr{eq:weight}\\
+65 & \code{decdist} & cm or -- & decay distance (decay on) or $P_\mathrm{surv}$ (decay off)\\
+66 & \code{Mhadron} & MeV & mass of the particle that reached the detectors ($M_K$, $m_\mu$ or $M_\pi$)\\
+\end{simctable}
+
+% =====================================================================================================================
+\section{Validation in SIMC++}\lbl{sec:validation}
+\begin{simctable}{footnotesize}{L{0.5\linewidth}L{0.22\linewidth}L{0.28\linewidth}}
+\caption{CTest tests that cover kaon production (one test per row).}\lbl{tab:tests}\\
+\toprule\rowcolor{simchead}\simcth{test} & \simcth{labels} & \simcth{what it checks}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{test} & \simcth{labels} & \simcth{what it checks}\\\midrule\endhead
+\bottomrule\endlastfoot
+\code{l1\_kaon\_data\_files} & l1 & the four tables are the Fortran files\\
+\code{l1\_saghai\_tables} & l1 & the tables as read (both readings of the $\Sigma^0$ file)\\
+\code{l1\_sig\_factorized} & l1 & \eqr{eq:sigfact} against the Fortran table\\
+\code{l1\_eekeek} & l1 & \eqr{eq:saghai}, $\Lambda$, default numerics\\
+\code{l1\_eekeek\_fintabi} & l1 & the same with the Fortran interpolation result\\
+\code{l1\_eekeeks} & l1 & \eqr{eq:saghai}, $\Sigma$\\
+\code{l1\_eekeeks\_fintabi} & l1 & the same with the Fortran interpolation result\\
+\code{l1\_phspwght} & l1 & the uncalled phase-space weight routine\\
+\code{l1\_phspwght\_fintabi} & l1 & the same, Fortran interpolation result\\
+\code{l1\_peek} & l1 & \eqr{eq:peek} and \eqr{eq:surv}\\
+\code{l1\_peek\_fintabi} & l1 & the same, Fortran interpolation result\\
+\code{l1\_kaon\_plugin} & l1 & the model through its plug-in interface\\
+\code{l1\_transform\_to\_cm\_kaon} & l1 & \eqsr{eq:cm}{eq:jold}\\
+\code{l1\_kaon\_state} & l1 & set-up values (masses, limits)\\
+\code{l1\_generate\_kaon\_fixedrng} & l1 & \eqsr{eq:genslopes}{eq:fermi} with fixed random numbers\\
+\code{l1\_complete\_ev\_kaon} & l1 & \eqsr{eq:quad}{eq:trec}\\
+\code{l1\_complete\_recon\_ev\_kaon} & l1 & \eqr{eq:recon}\\
+\code{l1\_complete\_main\_kaon} & l1 & \eqr{eq:weight}\\
+\code{l1\_decay\_kaon\_fixedrng} & l1 & \eqr{eq:decay} in the drifts\\
+\code{l1\_mc\_decay\_kaon\_fixedrng} & l1 & decays inside the spectrometer models\\
+\code{l1\_replay\_event\_capture\_kaon\_kl\_h} & l1, replay & every routine of captured H $\Lambda$ events\\
+\code{l1\_replay\_event\_capture\_kaon\_ksm\_d} & l1, replay & every routine of captured D $\Sigma^-$ events\\
+\code{l1\_simcrun\_replay\_kaon\_kl\_h} & l1, replay & complete H run from a captured random stream, bitwise\\
+\code{l1\_simcrun\_replay\_kaon\_ksm\_d} & l1, replay & complete D run, bitwise\\
+\code{l1\_montecarlo\_replay\_kaon\_kl\_h} & l1, replay & the spectrometer stage of the H capture\\
+\code{l1\_montecarlo\_replay\_kaon\_ksm\_d} & l1, replay & the spectrometer stage of the D capture\\
+\code{l1\_simcrun\_ranlux\_kaon\_h\_k1\_norad\_dec0\_A} & l1, replay, slow & full run with RANLUX, compat mode, against the 294f662 Fortran run\\
+\code{l1\_simcrun\_ranlux\_up\_upf1\_kaon\_h\_k1\_rad\_dec1\_nontu} & l1, replay, upstream\_layout, slow & decay-on run against the 59ccdf6 Fortran (no tree: the Fortran stops when writing it)\\
+\code{regression\_identity\_kaon\_h\_k1\_rad\_dec1} & regression & compat-mode outputs against the baseline\\
+\code{regression\_corrected\_kaon\_h\_k1\_rad\_dec1} & regression & default-mode outputs against the baseline\\
+\code{regression\_identity\_kaon\_d\_k1\_sigm\_rad\_dec1} & regression & compat-mode $\Sigma^-$ D outputs\\
+\code{regression\_corrected\_kaon\_d\_k1\_sigm\_rad\_dec1} & regression & default-mode $\Sigma^-$ D outputs\\
+\code{regression\_upstream\_u59\_kaon\_d\_k1\_sigm\_rad\_dec1\_A\_nontu} & regression\_upstream, slow & decay-on D run against 59ccdf6\\
+\code{regression\_upstream\_u59\_shipped\_test\_kaon\_d\_pct} & regression\_upstream, slow & a kaon run with the tree, against the Fortran run without it\\
+\code{fortran\_diff\_D043\_kaon\_model} & fortran\_diff, unit & the model corrections in both modes\\
+\code{fortran\_diff\_D043\_F13\_central\_sigcc\_kaon} & fortran\_diff, unit & the central event in both modes\\
+\code{fortran\_diff\_D006\_kaon\_decay\_mass} & fortran\_diff, unit & the $K\to\pi\pi$ daughter mass for both compat targets\\
+\code{fortran\_diff\_D037\_F7\_project\_decay\_drift} & fortran\_diff, unit & the drift after a decay in both modes\\
+\code{fortran\_diff\_U\_A2\_A4\_upstream\_layout\_kaon\_pi0\_field} & fortran\_diff, unit & the 66 kaon columns\\
+\end{simctable}
+The validation ledger (\code{project\_control/VALIDATION\_LEDGER.md}, entry of 2026-10-11) records all kaon L1 and replay
+tests bitwise and the statistical comparison of the compat mode with the nine Fortran reference runs passed
+(\code{validation/simc\_compare}, seed 4242, $2\times10^5$ events; one seed-4242 fluctuation, other seeds pass); a
+RANLUX compat run reproduces \code{kaon\_h\_k1\_norad\_dec0\_A} exactly (.hist, .geni, .gen and the tree of 200000
+entries $\times$ 55 columns). FORTRAN\_DIFFERENCES.md \S10 lists, per run, the effect of each default-mode correction.
+
+% =====================================================================================================================
+\section{Fortran origin and Fortran findings}\lbl{sec:origin}
+\begin{simctable}{footnotesize}{L{0.42\linewidth}L{0.58\linewidth}}
+\caption{Fortran routine $\to$ C++ function (one routine per row; the common routines are in \ctabr{tab:map}).}\lbl{tab:map}\\
+\toprule\rowcolor{simchead}\simcth{Fortran (upstream 59ccdf6)} & \simcth{C++ (src/...)}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{Fortran (upstream 59ccdf6)} & \simcth{C++ (src/...)}\\\midrule\endhead
+\bottomrule\endlastfoot
+\file{dbase.f:163}-180 (kaon flags) & \csrc{core/RunSetup.cpp: DeriveReactionFlags}\\
+\file{dbase.f:400}-442 (kaon masses) & \csrc{setup/SetupReaction.cpp: BuildReactionAndKinematics}\\
+\file{dbase.f:567}-591 (momentum distribution) & \csrc{setup/SetupTheory.cpp: ReadMomentumDistribution}\\
+\file{dbase.f:598}-628 (spectral function for $E_m$) & \csrc{physics/nuclear/SpectralFunctionTables.cpp: SfTable::load}\\
+\file{dbase.f:630}-685 (kaon tables) & \csrc{physics/kaon/KaonCrossSections.cpp: SaghaiTables::load}\\
+\file{init.f:344}-510 (limits) & \csrc{setup/SetupLimits.cpp: BuildLimits}\\
+\file{event.f} generate, l.276-372 & \csrc{reactions/pion/PionProduction.cpp: PionProduction::generate}\\
+\file{sf\_lookup.f} generate\_em & \csrc{physics/nuclear/SpectralFunctionTables.cpp: SfTable::generateEm}\\
+\file{event.f} complete\_ev, l.608-698, 947-951, 1015-1025 & \csrc{reactions/pion/PionProduction.cpp: PionProduction::completeEv}\\
+\file{event.f} complete\_ev, l.723-771 & \csrc{reactions/pion/PionProduction.cpp: PionProduction::pionMainKinematics}\\
+\file{event.f} complete\_recon\_ev, l.1325-1354 & \csrc{reactions/EepReactionBase.cpp: EepReactionBase::completeRecon}\\
+\file{event.f} complete\_main, l.1505-1512, 1561-1564 & \csrc{reactions/kaon/KaonProduction.cpp: KaonProduction::completeMain}\\
+\file{jacobians.f} transform\_to\_cm & \csrc{reactions/EventChain.cpp: transformToCm}\\
+\file{physics\_kaon.f} peeK & \csrc{physics/kaon/KaonCrossSections.cpp: peeK}\\
+\file{physics\_kaon.f} sig\_factorized & \csrc{physics/kaon/KaonCrossSections.cpp: sigFactorized}\\
+\file{physics\_kaon.f} eekeek & \csrc{physics/kaon/KaonCrossSections.cpp: eekeek}\\
+\file{physics\_kaon.f} eekeeks & \csrc{physics/kaon/KaonCrossSections.cpp: eekeeks}\\
+\file{physics\_kaon.f} phspwght (not called) & \csrc{physics/kaon/KaonCrossSections.cpp: phspwght}\\
+\file{cern/fint.f} & \csrc{physics/kaon/KaonCrossSections.cpp: fint}\\
+\file{physics\_kaon.f} (call of peeK) & \csrc{physics/kaon/KaonModel.cpp: KaonModel::sigccMain}\\
+\file{simc.f} calculate\_central, l.1153-1316 & \csrc{reactions/pion/PionProduction.cpp: PionProduction::prepareCentral}\\
+\file{shared/transp.f:134}-276 (decay) & \csrc{optics/CosyEngine.cpp: decayProducts}\\
+\file{shared/project.f} & \csrc{optics/CosyEngine.cpp: project}\\
+\file{radc.f:297}-308 & \csrc{radiation/Radc.cpp: generateRad}\\
+\file{results\_write.f:178}-234 & \csrc{output/NtupleLayout.cpp: UpstreamMesonColumns}\\
+\file{simc.f:383}-397 & \csrc{reactions/EepReactionBase.cpp: EepReactionBase::genVolume}\\
+\end{simctable}
+
+\begin{simcfindings}{footnotesize}{L{0.2\linewidth}L{0.48\linewidth}L{0.32\linewidth}}
+\caption{Fortran findings that touch kaon production (one finding per row; the common ones are in \ctabr{tab:findings}).}\lbl{tab:findings}\\
+\toprule\rowcolor{simchead}\simcth{id} & \simcth{Fortran behaviour} & \simcth{default / compat}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{id} & \simcth{Fortran behaviour} & \simcth{default / compat}\\\midrule\endhead
+\bottomrule\endlastfoot
+\finding{D-043 F1} & the single-precision callers of \code{fint} read 0 for every value: \code{saghai} = 0 & interpolated value / 0\\
+\finding{D-043 F2} & \code{saghai\_sigma0.dat} read one line off & records read in place / Fortran\\
+\finding{D-043 F3} & nodes 9, 10 of the $\Lambda$ $s$ grid are 5.0, 5.3 but the file blocks are 5.1, 5.4 & file grid / Fortran grid\\
+\finding{D-043 F5} & survival $\beta\gamma$ from the central momentum & kaon momentum / central\\
+\finding{D-043 F6} & SHMS $z_\mathrm{aero}$ stale; path factor without square root & 0 and square root / Fortran\\
+\finding{D-043 F13} & the central event sees $\varepsilon=t=\theta_{pq}=\varphi_{pq}=0$ & central kinematics / zeros\\
+\finding{D-006 kaon decay} & $K\to\pi\pi$ daughter with the kaon mass (294f662; fixed upstream 1fae2d7) & $M_\pi$ / $M_\pi$ ($M_K$ with \code{-{}-compat-target 294f662})\\
+\finding{U-A2} & upstream 59ccdf6 stops at the first event of a kaon run with the tree (66 values, 65 names) & 66 columns in both modes\\
+\finding{D-037 F7} & the drift after a decay uses the new slopes & track ends at the drift end / Fortran\\
+\finding{D-037 F4} & a particle that ranges out in the collimator continues (slow muons from kaon decays) & stopped / Fortran\\
+\finding{D-061 F1} & HRS transport lengths garbled: survival weight $+\infty$ for HRS kaons & intended lengths / Fortran\\
+\finding{D-061 F6} & HRS $z_\mathrm{aero}=-183$ cm does not match the HRS path end & kept in both\\
+\finding{D-043 F2 data} & the $\Sigma^0$ file has stray records near threshold & kept in both\\
+\finding{D-043 F7} & fixed decay model (70/30, equal-mass $p^\star$, no further decay) & kept in both\\
+\finding{D-043 F8} & Saghai $\varphi$ never set (0); $\theta_{pq}$ used in the interference terms & kept in both\\
+\finding{D-043 F9} & coherent production with the nucleon fit and the photon--nucleus $W$; coherent $\Lambda$ uses the $\Sigma$ branches & kept in both\\
+\finding{D-043 F10} & $M_p$ in the kinematics of the factorized model for every final state & kept in both\\
+\finding{D-043 F12} & $P^*_h$ message for the central event of $\Sigma$ and nuclear runs & kept in both\\
+\finding{D-043 F4} & quadruple precision in the Saghai sums & reproduced\\
+\finding{D-043 F14} & the relative momentum of the pair is never set for H and coherent production & not an output\\
+\finding{D-043 F16} & every stop exits with status 0 & exit status 3\\
+\finding{P10.1 kaon files} & tables read from the working directory & read from \file{data/kaon}, checked\\
+\end{simcfindings}
+
+\begin{simcfindingbox}
+\textbf{Final-nucleus mass of coherent production.} For \code{which\_kaon} $\ge10$ the input
+\code{targ\%mrec\_amu} (the hypernucleus) is first replaced by $M_A-M_p$, because it differs from that ``$A-1$'' guess
+by about $M_Y$ \fsrc{dbase.f:286-292}, and then by $M_A-M_N+M_Y$ \fsrc{dbase.f:432-439}: the input value is never used,
+so a hypernucleus binding energy cannot be given. The reference run \code{kaon\_he3coh\_k2c\_rad\_dec1\_A} prints both
+replacement messages. The Fortran report of the kaon references describes it as the analogue of the pion coherent-mass
+finding, but FORTRAN\_DIFFERENCES.md has no kaon entry. Kept in both modes.
+\end{simcfindingbox}
+
+\begin{simcrefs}
+\simcref{koltenuk} D.~M.~Koltenuk, Ph.D.\ thesis (named at \fsrc{physics\_kaon.f:176-177}; the factorized model; not
+  compared).
+\simcref{dt} D.~Drechsel and L.~Tiator, J.\ Phys.\ G \textbf{18}, 449 (1992) (CGLN response functions; not cited by the
+  code, used here only to compare the form of \eqr{eq:saghai}).
+\end{simcrefs}
+\end{document}

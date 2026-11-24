@@ -1,0 +1,536 @@
+% docs/physics/latex/07_rho.tex - SIMC++ physics note 07: exclusive rho0 electroproduction with one decay pion detected.
+% Standalone PDF docs/physics/pdf/SIMCpp_Physics_07_rho.pdf (copied to src/reactions/rho/ and src/physics/rho/);
+% a chapter of the book SIMC++ Physics Reference. Rules: docs/physics/README.md; structure: template_reaction.tex.
+\documentclass{simcnote}
+\simccommon
+\begin{document}
+\simcnotemeta{07}{Exclusive \texorpdfstring{$\rho^0$}{rho0} production}{Exclusive \texorpdfstring{$\rho^0$}{rho0} electroproduction: p(e,e\pr\texorpdfstring{$\rho^0$}{rho0})p with \texorpdfstring{$\rho^0\to\pi^+\pi^-$}{rho0 to pi+ pi-}}%
+  {Reaction plug-in \texttt{rho\_production} with the physics model \texttt{rho}: Breit--Wigner mass, generation over
+   4\texorpdfstring{$\pi$}{pi} in the centre of mass, the PYTHIA/HERMES-type cross section and the decay to the detected pion}
+\simcnotemaketitle
+\simcabstract{Diffractive $\rho^0$ electroproduction on the proton, detected through the scattered electron and one pion
+of the decay $\rho^0\to\pi^+\pi^-$. The electron direction and energy are generated; the $\rho$ mass is drawn from a
+Breit--Wigner, its direction flat over $4\pi$ in the photon--nucleon centre of mass, and the decay pion according to
+the decay distribution of $s$-channel helicity conservation. The weight is the virtual-photon flux times a cross
+section $\mathrm{d}\sigma/\mathrm{d}\Omega^*$ with an exponential $t$ slope, $W$ and $Q^2$ dependences fitted to
+photoproduction and HERMES data, and the ratio $R=\sigma_L/\sigma_T$. Deuterium and $^3$He are run as a nucleon at
+rest. Notation and common physics: note 00.}
+\simcnotetoc
+
+% =====================================================================================================================
+\section{The reaction in SIMC++}\lbl{sec:reaction}
+
+\subsection{Process and scope}
+The reaction is $e + p \to e' + \rho^0 + p$ followed by $\rho^0\to\pi^+\pi^-$ at the vertex; the hadron arm detects one
+of the two pions. The recoil proton and the other pion are not followed. On deuterium and $^3$He the same process runs on
+a nucleon at rest and the weight counts all $Z+N$ nucleons.
+
+What is simulated: the beam and the vertex, the electron's energy loss, multiple scattering and radiation, the
+$\rho$ mass distribution, the $\rho$ direction in the centre of mass, the $\rho\to\pi\pi$ decay angles, the decay pion
+through the hadron arm (including its decay in flight with \code{doing\_decay} = 1), and the cross section of
+\secr{sec:xsec}. What is not simulated: Fermi motion and binding for D and $^3$He (no momentum distribution or
+spectral function is loaded for these targets), non-resonant $\pi\pi$ production and $\rho$--$\omega$ interference,
+the helicity-frame decay distribution (the decay angle is measured from the laboratory axes), and nuclear effects
+other than the nucleon count. $A\ge4$ is refused at start-up.
+
+\subsection{Components}
+\begin{simctable}{footnotesize}{L{0.15\linewidth}L{0.15\linewidth}L{0.16\linewidth}L{0.25\linewidth}L{0.29\linewidth}}
+\caption{The SIMC++ components of $\rho^0$ production (one component per row).}\lbl{tab:components}\\
+\toprule\rowcolor{simchead}\simcth{role} & \simcth{interface} & \simcth{registered name} & \simcth{class} & \simcth{file}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{role} & \simcth{interface} & \simcth{registered name} & \simcth{class} & \simcth{file}\\\midrule\endhead
+\bottomrule\endlastfoot
+reaction & \code{IReaction} & \code{rho\_production} & \code{RhoProduction} & \file{reactions/rho/RhoProduction.cpp}\\
+meson kinematics, central event & (base class) & -- & \code{PionProduction} & \file{reactions/pion/PionProduction.cpp}\\
+reconstruction, generation volume & (base class) & -- & \code{EepReactionBase} & \file{reactions/EepReactionBase.cpp}\\
+cross section & \code{IPhysicsModel} & \code{rho} & \code{rho::RhoModel} & \file{physics/rho/RhoModel.cpp}\\
+cross-section kernel & (function) & -- & \code{rho::peerho} & \file{physics/rho/RhoPhysics.cpp}\\
+$\rho$ generation & (function) & -- & \code{rho::generateRho} & \file{physics/rho/RhoPhysics.cpp}\\
+$\rho$ decay & (function) & -- & \code{rho::rhoDecay} & \file{physics/rho/RhoPhysics.cpp}\\
+radiation & \code{IRadiator} & \code{simc\_rad} & \code{SimcRadiator} & \file{radiation/SimcRadiator.cpp}\\
+spectrometers & \code{ISpectrometer} & from the arm codes & e.g.\ \code{shms::ShmsSpectrometer} & spectrometers/\\
+\end{simctable}
+
+\subsection{Selection and override}
+\code{doing\_rho} = 1 selects \code{rho\_production} with the model \code{rho} (\ctabr{tab:defaults}). The set-up sets
+$M_h = M_\rho = 769.3$ MeV for the limits, the struck and the recoil nucleon masses $M_N = M_Y = M_p$, and the target flag
+from $A$: hydrogen ($A=1$), deuterium ($A=2$), $^3$He ($A=3$) \fsrc{dbase.f:209-214, 319-326}; any other $A$ stops the
+run. SIMC++ also refuses at start-up \code{doing\_rho} together with another reaction flag or with \code{doing\_pizero},
+and a hadron arm other than 1--5 (the calorimeter arms; the Fortran stops at the first decay). \code{doing\_hplus}
+chooses the charge of the detected pion, which is used only when tracking through the polarized-target field: both
+pions of the decay have the same distribution. The model and the reaction have no data files; the JSON keys are:
+\begin{simctable}{footnotesize}{L{0.27\linewidth}L{0.3\linewidth}L{0.37\linewidth}}
+\caption{JSON keys of the reaction and the model (one key per row).}\lbl{tab:json}\\
+\toprule\rowcolor{simchead}\simcth{key} & \simcth{meaning} & \simcth{example}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{key} & \simcth{meaning} & \simcth{example}\\\midrule\endhead
+\bottomrule\endlastfoot
+\code{pipeline.reaction} & the reaction & \code{"rho\_production"}\\
+\code{pipeline.physics.type} & the cross-section model & \code{"rho"}\\
+\code{pipeline.physics.verbose} & print the model's diagnostics (negative $R$, $\sigma_T$ or flux, ``crazy'' $\sigma$) & \code{true}\\
+\end{simctable}
+A replacement model must return $\Gamma'\,\mathrm{d}\sigma/\mathrm{d}\Omega^*$ in $\mu$b/(MeV\,sr$^2$), differential in
+the electron variables and in the $\rho$ solid angle \emph{in the centre of mass} (the generation is flat there, so
+there is no centre-of-mass jacobian in the weight); the decay is not part of the model.
+
+\subsection{Event flow}
+\begin{simctable}{footnotesize}{L{0.05\linewidth}L{0.33\linewidth}L{0.62\linewidth}}
+\caption{One try of $\rho^0$ production (one step per row; the general chain is \ctabr{tab:chain}).}\lbl{tab:flow}\\
+\toprule\rowcolor{simchead}\simcth{\#} & \simcth{C++ call} & \simcth{what is specific to this reaction}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{\#} & \simcth{C++ call} & \simcth{what is specific to this reaction}\\\midrule\endhead
+\bottomrule\endlastfoot
+1 & \code{StandardBeam::generate} & nothing\\
+2 & \code{RhoProduction::generate} & electron slopes and $E'$ (\eqr{eq:genel}); no hadron slopes; the empty Fermi block for D and $^3$He\\
+3 & \code{RhoProduction::completeEv} & $\vec q$, then \code{rho::generateRho}: mass, centre-of-mass direction, boost (\eqsr{eq:bw}{eq:rholab}); meson variables; electron solid-angle factor only\\
+4 & \code{SimcRadiator::radiate} & photon limits of \eqr{eq:radlimits}; a tail-1 photon calls \code{completeEv} again, which draws a new $\rho$\\
+5 & \code{RhoProduction::decay} & \code{rho::rhoDecay}: the decay pion becomes the hadron of the \code{orig} event (\eqsr{eq:decayangle}{eq:pionslopes})\\
+6 & \code{MonteCarlo::run} & the pion crosses the hadron arm\\
+7 & \code{EepReactionBase::completeRecon} & reconstructed pion kinematics (\eqr{eq:recon})\\
+8 & \code{RhoProduction::completeMain} & \code{RhoModel::sigccMain} at the $\rho$ vertex (\eqr{eq:peerho}); $n_\mathrm{tgt}=Z+N$\\
+\end{simctable}
+
+% =====================================================================================================================
+\section{Kinematics, generated variables and generation volume}\lbl{sec:gen}
+\subsection{Generated variables}
+After the beam part (\csecr{sec:beam}) the reaction draws the electron only:
+\begin{feqa}{reactions/rho/RhoProduction.cpp: RhoProduction::generate}{event.f:276-277, 300-316}
+y'_e &= y'_{e,\mathrm{min}} + \xi_1\Delta y'_e,\qquad x'_e = x'_{e,\mathrm{min}} + \xi_2\Delta x'_e,\nonumber\\
+E' &= E'_\mathrm{lo} + \xi_3\,(E'_\mathrm{hi}-E'_\mathrm{lo}),\qquad
+E'_\mathrm{lo} = \max(E'^\mathrm{gen}_\mathrm{min},\Sigma_\mathrm{min}),\quad E'_\mathrm{hi} = \min(E'^\mathrm{gen}_\mathrm{max},\Sigma_\mathrm{max}),
+\lbl{eq:genel}
+\end{feqa}
+with the generation weight of \ceqr{eq:genweight} (1 in practice). The hadron slopes are not drawn: the $\rho$ is
+generated in \code{completeEv}. For D and $^3$He the Fermi block of the meson reactions runs (four uniform numbers, and
+two more for $^3$He), but no momentum distribution and no spectral function are loaded for these targets, so $p_F=0$
+always; the energy of the struck nucleon is then
+\begin{feq}{reactions/rho/RhoProduction.cpp: RhoProduction::generate}{event.f:362-371}
+E_F = M_d - M_n\ \ (\text{D, with } E_m=M_p+M_n-M_d),\qquad E_F = M_p\ \ (^3\text{He}, E_m=0),\qquad E_F = M_p\ \ (\text{H}).
+\lbl{eq:efer}
+\end{feq}
+
+\subsection{The \texorpdfstring{$\rho$}{rho} in the centre of mass}
+\code{generateRho} draws, after $\vec q$ is known, a mass from a non-relativistic Breit--Wigner truncated at
+$\pm500$ MeV, and a direction flat in $\cos\theta^*$ and $\varphi^*$ in the photon--nucleon centre of mass:
+\begin{feqa}{physics/rho/RhoPhysics.cpp: generateRho}{generate\_rho.f:59-90}
+\vec\beta_\mathrm{cm} &= -\frac{|\vec q|\,\hat q + p_F\hat p_F}{\nu+E_F}\ \ (\text{the try fails if }|\vec\beta_\mathrm{cm}|>1),\qquad
+s = -Q^2+E_F^2+2\nu E_F,\nonumber\\
+M &= M_\rho + \tfrac12\Gamma_\rho\tan\Bigl[(2\xi_4-1)\arctan\frac{2\cdot500\ \mathrm{MeV}}{\Gamma_\rho}\Bigr],\qquad M_\rho = 769.3\ \mathrm{MeV},\ \Gamma_\rho = 150.2\ \mathrm{MeV},\nonumber\\
+E^*_\rho &= \frac{s+M^2-M_Y^2}{2\sqrt s}\ \ (\text{fails if }E^*_\rho<M),\qquad P^*_\rho = \sqrt{E^{*2}_\rho-M^2},
+\lbl{eq:bw}
+\end{feqa}
+($\vec\beta_\mathrm{cm}$ carries the sign convention of the boost routine, which boosts by $-\vec\beta$; $s$ omits the
+Fermi-momentum terms $-2\vec q\cdot\vec p_F - p_F^2$, which are 0 here). The arctangent bound restricts the mass to
+$269.3\ \mathrm{MeV}\le M\le1269.3$ MeV, 90.5\,\% of the Breit--Wigner area; no weight corrects for the truncation, and
+there is no threshold factor or momentum-dependent width. Then
+\begin{feqa}{physics/rho/RhoPhysics.cpp: generateRho}{generate\_rho.f:94-124}
+\varphi^* &= 2\pi\xi_5,\qquad \cos\theta^* = 2\xi_6-1,\qquad
+\vec p^{\,*}_\rho = P^*_\rho(\sin\theta^*\cos\varphi^*,\ \sin\theta^*\sin\varphi^*,\ \cos\theta^*),\nonumber\\
+(E_\rho,\vec p_\rho) &= \Lambda(\vec\beta_\mathrm{cm})\,(E^*_\rho,\vec p^{\,*}_\rho),\qquad \hat u_\rho = \vec p_\rho/P_\rho,\qquad
+\delta_\rho = 100\,(P_\rho/P_h^0-1),
+\lbl{eq:rholab}
+\end{feqa}
+with the angles $\theta^*$, $\varphi^*$ measured from the laboratory axes (the distribution is isotropic, so the
+orientation of the axes does not matter). The $\rho$ mass $M$ is kept as the hadron mass of the try until the decay
+and written to the tree column \code{Mrho}. The laboratory polar angle and azimuth of the $\rho$ are stored in the
+fields of its slopes; the compat mode then converts those numbers as slopes at the next try (see \secr{sec:eloss}).
+
+\subsection{Limits}
+The vertex and summed-energy limits are those of the meson reactions with $M_N=M_Y=M_p$ (note 06, \S2.2 has the general
+form) and with the hadron edges computed for $M_h=M_\rho$ at the momenta of the pion arm:
+\begin{feqa}{setup/SetupLimits.cpp: BuildLimits}{init.f:344-353, 411-425, 456-469}
+E_m &= P_m = 0\ (\text{H}),\qquad E_m = M_p+M_n-M_d\ (\text{D}),\qquad P_{m,\mathrm{max}} = 0\ (\text{D},\ ^3\text{He: no distribution}),\nonumber\\
+E_\gamma^\mathrm{tot,max} &= E_b^\mathrm{max}-E'_\mathrm{min}-E_{h,\mathrm{min}}-E_{m,\mathrm{min}}-T^\mathrm{min}_\mathrm{rec},\qquad
+E_{h,\mathrm{min/max}} = \sqrt{p_\mathrm{min/max}^2+M_\rho^2}+\Delta E_3^\mathrm{min/max},\nonumber\\
+\Sigma_\mathrm{max} &= \min\bigl(E_b^\mathrm{max}-E_{h,\mathrm{min}}-E_{m,\mathrm{min}}-T^\mathrm{min}_\mathrm{rec},\ E'_\mathrm{max}+E_{\gamma2}^\mathrm{max}\bigr)+d_E,
+\lbl{eq:limits}
+\end{feqa}
+and $\Sigma_\mathrm{min}$, $E'^\mathrm{gen}$ as for the kaon. The $\rho$ is not limited by the generation.
+
+\subsection{Generation volume}
+\begin{feq}{reactions/EepReactionBase.cpp: EepReactionBase::genVolume}{simc.f:383-397}
+V_\mathrm{gen} = \Delta\Omega_e\cdot4\pi\cdot(E'^\mathrm{gen}_\mathrm{max}-E'^\mathrm{gen}_\mathrm{min})\quad[\mathrm{sr^2\,MeV}],
+\lbl{eq:genvol}
+\end{feq}
+$4\pi$ being the centre-of-mass solid angle of the $\rho$.
+
+% =====================================================================================================================
+\section{Completing the event}\lbl{sec:complete}
+\subsection{Vertex}
+\code{RhoProduction::completeEv} computes the electron side (\ceqsr{eq:nuq2}{eq:qhat}), calls \code{generateRho} and
+then the meson variables of the $\rho$, with the mass $M$ of the try:
+\begin{feqa}{reactions/pion/PionProduction.cpp: PionProduction::pionMainKinematics}{event.f:723-771}
+W^2 &= M_p^2+2M_p\nu-Q^2,\qquad \theta_{pq} = \arccos(\hat u_\rho\cdot\hat q),\nonumber\\
+-t &= Q^2-M^2+2\nu E_\rho-2P_\rho|\vec q|\cos\theta_{pq},\qquad -t_\mathrm{min} = Q^2-M^2+2\nu E_\rho-2P_\rho|\vec q|,
+\lbl{eq:mesonvars}
+\end{feqa}
+and $\varphi_{pq}$ of \ceqr{eq:phipq}. The vertex $\vec P_m$ and $E_\mathrm{miss}$ (\ceqr{eq:pm}) are those of the $\rho$;
+the spectator mass and momentum are not set on this branch and stay 0, so $T_\mathrm{rec}=0$. The model later replaces
+$W$ by $\sqrt s$ and $-t$ by the value of \eqr{eq:peerhot}, both in GeV units (\secr{sec:xsec}).
+
+\subsection{The decay \texorpdfstring{$\rho\to\pi\pi$}{rho to pi pi}}
+After the radiation step, \code{RhoProduction::decay} replaces the hadron of the \code{orig} event (the $\rho$ after
+radiation) by one decay pion. The decay angle follows the distribution of $s$-channel helicity conservation for a
+ratio $R=\sigma_L/\sigma_T$ (the same parametrisation as the model, \eqr{eq:sigt}):
+\begin{feqa}{physics/rho/RhoPhysics.cpp: rhoDecay}{rho\_decay.f:48-77}
+R &= 0.33\,(Q^2/M_\rho^2)^{0.61},\qquad \varphi^\star = 2\pi\xi_1,\nonumber\\
+\cos\theta^\star &= 2\xi_{2k}-1\ \text{ until }\ \sin^2\theta^\star+2\varepsilon R\cos^2\theta^\star \ge (1+2\varepsilon R)\,\xi_{2k+1},\nonumber\\
+E^\star_\pi &= M/2\ \ (\text{fails if }<M_\pi),\qquad p^\star_\pi = \sqrt{E^{\star2}_\pi-M_\pi^2},\nonumber\\
+(E_\pi,\vec p_\pi) & = \Lambda(-\beta_\rho\hat u_\rho)\,\bigl(E^\star_\pi,\ p^\star_\pi\hat n(\theta^\star,\varphi^\star)\bigr),
+\lbl{eq:decayangle}
+\end{feqa}
+with $\beta_\rho = P_\rho/\sqrt{P_\rho^2+M^2}$ and $\varepsilon$ the vertex polarisation. The distribution
+$\sin^2\theta^\star+2\varepsilon R\cos^2\theta^\star$ is proportional to
+$(1-r^{04}_{00})\sin^2\theta^\star+2r^{04}_{00}\cos^2\theta^\star$ with $r^{04}_{00}=\varepsilon R/(1+\varepsilon R)$, the
+helicity-conserving form (the header comment of the routine says $\varepsilon R$; the code has $2\varepsilon R$). But
+$\theta^\star$ is measured from the laboratory $z$ axis in the $\rho$ rest frame, not from the $\rho$ direction in the
+helicity frame, and $\varphi^\star$ is flat; the column \code{Thrho} is this $\theta^\star$. The decay length of the
+$\rho$ is computed and not used (the decay is at the vertex). The pion is then expressed in the slopes of the hadron arm:
+\begin{feqa}{physics/rho/RhoPhysics.cpp: rhoDecay}{rho\_decay.f:92-157}
+p'_z &= p_z\cos\theta_h^0 \mp p_y\sin\theta_h^0\ \ (-\text{ beam right, arms 1, 3};\ +\text{ beam left, arms 2, 4, 5}),\quad\text{fails if }p'_z<0,\nonumber\\
+\alpha_\mathrm{oop} &= \arcsin\frac{p_x}{|\vec p_\pi|},\qquad \alpha = \arccos\frac{p_z}{|\vec p_\pi|\cos\alpha_\mathrm{oop}},\nonumber\\
+\alpha_\mathrm{inp} &= \begin{cases}\theta_h^0-\alpha\ \ (p_y<0),\quad \theta_h^0+\alpha\ \ (p_y\ge0) & \text{beam right}\\
+\alpha-\theta_h^0\ \ (p_y>0),\quad -(\alpha+\theta_h^0)\ \ [\text{compat: }+(\alpha+\theta_h^0)]\ \ (p_y\le0) & \text{beam left}\end{cases}\nonumber\\
+x'_\pi &= \tan\alpha_\mathrm{oop},\qquad y'_\pi = \tan\alpha_\mathrm{inp},\qquad \delta_\pi = 100\,(|\vec p_\pi|/P_h^0-1),\qquad
+E_\pi = \sqrt{|\vec p_\pi|^2+M_\pi^2},
+\lbl{eq:pionslopes}
+\end{feqa}
+and the physics angles follow from \ceqr{eq:physang}; the hadron mass of the try becomes $M_\pi$. In the default mode the
+argument of the arccosine is limited to $[-1,1]$ (rounding can push it above 1 and give NaN slopes in the compat mode).
+$x'_\pi=\tan\arcsin(p_x/p)$ is close to, but not exactly, the slope $p_x/p'_z$ of the arm frame. The beam-left sign of
+the compat mode affects only pions on the far side of the beam, whose $|y'|\ge\tan\theta^0_h$ lies outside every
+acceptance.
+
+\subsection{Reconstruction}
+The reconstructed hadron is the pion (mass $M_\pi$):
+\begin{feqa}{reactions/EepReactionBase.cpp: EepReactionBase::completeRecon}{event.f:1325-1336, 1353-1354}
+E_m^\mathrm{rec} &= \nu^\mathrm{rec}+M_p-E_\pi^\mathrm{rec},\qquad
+M_x = \operatorname{sign}(m^2)\sqrt{|m^2|},\ \ m^2 = (E_m^\mathrm{rec})^2-(P_m^\mathrm{rec})^2,\nonumber\\
+-t^\mathrm{rec} &= (Q^\mathrm{rec})^2-M_\pi^2+2\bigl(\nu^\mathrm{rec}E_\pi^\mathrm{rec}-P_\pi^\mathrm{rec}|\vec q^\mathrm{rec}|\cos\theta^\mathrm{rec}_{pq}\bigr),
+\lbl{eq:recon}
+\end{feqa}
+so $M_x$ is the mass of the unseen pion and proton system and $-t^\mathrm{rec}$ is the pion's, not the $\rho$'s.
+
+% =====================================================================================================================
+\section{Jacobians}\lbl{sec:jac}
+Only the electron slopes are generated flat; the $\rho$ is generated flat in the centre-of-mass solid angle, in which
+the model is differential:
+\begin{feq}{reactions/rho/RhoProduction.cpp: RhoProduction::completeEv}{event.f:1015-1016, 1018-1025}
+J = \bigl(1+x_e'^2+y_e'^2\bigr)^{-3/2}.
+\lbl{eq:jac}
+\end{feq}
+The model also computes the full centre-of-mass-to-laboratory jacobian and the collinear approximation (tree columns
+of the legacy layout only); neither enters the weight.
+
+% =====================================================================================================================
+\section{Cross-section model}\lbl{sec:xsec}
+\subsection{What the reaction requires from a model}
+\code{RhoProduction::completeMain} sets $S=1$ and calls \code{sigccMain(vertex, main)} with the \emph{$\rho$} vertex
+(the decay changes only the \code{orig} event). The model must return
+$\mathrm{d}^5\sigma/\mathrm{d}E'\mathrm{d}\Omega_e\mathrm{d}\Omega^*_\rho$ in $\mu$b/(MeV\,sr$^2$); it reads $E_\mathrm{in}$,
+$E'$, $\theta_e$, $\nu$, $Q^2$, $\vec q$, the $\rho$ four-momentum, $\varphi_{pq}$ and the Fermi momentum, and may
+write $W$, $-t$, the centre-of-mass angles and the diagnostic $\mathrm{d}\sigma/\mathrm{d}\Omega^*$ into the event.
+
+\subsection{The model \code{rho}}
+The code describes the model as the PYTHIA form with the modifications of the HERMES Monte Carlo
+\fsrc{rho\_physics.f:3-6}; it cites no paper. Kinematics, with the struck-nucleon energy $E_F$ of the generation (the
+compat mode recomputes it on shell, see below):
+\begin{feqa}{physics/rho/RhoPhysics.cpp: peerho}{rho\_physics.f:88-117, 233-238}
+s &= (\nu+E_F)^2-(|\vec q|+p_F\cos\theta_{Fq})^2-(p_F\sin\theta_{Fq})^2,\qquad W = \sqrt{s},\nonumber\\
+-t &= Q^2-M_\rho^2+2\nu E_\rho-2P_\rho|\vec q|\cos\theta_{pq},\nonumber\\
+-t_\mathrm{min} &= (q^*-P^*_\rho)^2-\Bigl(\frac{Q^2+M_\rho^2}{2W}\Bigr)^2,\qquad t' = \bigl|(-t)-(-t_\mathrm{min})\bigr|,
+\lbl{eq:peerhot}
+\end{feqa}
+in GeV, with $q^*$ and $P^*_\rho$ the photon and $\rho$ momenta after the boost to the photon--nucleon centre of mass (the
+construction of note 06, \fsrc{rho\_physics.f:163-189}); $-t_\mathrm{min}$ is $-(E^*_\gamma-E^*_\rho)^2+(q^*-P^*_\rho)^2$ for a recoil of mass $M_N$.
+Both $-t$ and $-t_\mathrm{min}$ use the nominal $M_\rho$, not the mass $M$ of the event. The cross section is
+\begin{feqa}{physics/rho/RhoPhysics.cpp: peerho}{rho\_physics.f:242-285}
+\sigma_0 &= 41.263\ \mu\mathrm{b}\cdot(\nu/\mathrm{GeV})^{-0.4765},\qquad R = 0.33\,(Q^2/M_\rho^2)^{0.61}\ (\ge0),\nonumber\\
+\sigma_T &= \sigma_0\,(1+\varepsilon R)\Bigl(\frac{M_\rho^2}{Q^2+M_\rho^2}\Bigr)^{2.575}\ (\ge0),\nonumber\\
+c\Delta\tau &= \frac{\hbar c}{\sqrt{\nu^2+Q^2+M_\rho^2}-\nu}\ [\mathrm{fm}],\nonumber\\
+b &= \begin{cases}\max\bigl(1,\ 4.4679+8.6106\log_{10}c\Delta\tau\bigr) & c\Delta\tau<2\ \mathrm{fm}\\ 7.0 & \text{otherwise}\end{cases}\ [\mathrm{GeV}^{-2}],\nonumber\\
+\frac{\mathrm{d}\sigma}{\mathrm{d}t\,\mathrm{d}\varphi^*} &= \frac{\sigma_T\,b\,e^{-bt'}}{2\pi}\ \ [\mu\mathrm{b/GeV^2/rad}],\qquad
+\frac{\mathrm{d}\sigma}{\mathrm{d}\Omega^*} = \frac{\mathrm{d}\sigma}{\mathrm{d}t\,\mathrm{d}\varphi^*}\cdot10^{-6}\cdot2q^*P^*_\rho\ \ [\mu\mathrm{b/sr}],
+\lbl{eq:sigt}
+\end{feqa}
+($q^*$, $P^*_\rho$ in MeV): a photoproduction fit in $\nu$ (``my rough fit to some old photoproduction data''), the
+HERMES value of $R$ and of the exponent 2.575 of the $Q^2$ propagator (instead of 2), and a slope $b$ that grows with
+the coherence length $c\Delta\tau$ of the hadronic fluctuation of the photon. $\sigma_T$ already contains the
+longitudinal part through $1+\varepsilon R$; there is no $\varphi$ dependence. The energy $\nu$ in $\sigma_0$ is the
+laboratory $\nu$; an equivalent photon energy computed with the Fermi momentum is not used. The coefficients are
+transcribed from the code and were not compared with PYTHIA or HERMES publications. The five-fold cross section is
+\begin{feqa}{physics/rho/RhoPhysics.cpp: peerho}{rho\_physics.f:289-296, 383-394}
+\Gamma' &= \frac{\alpha}{2\pi^2}\,\frac{E'}{E_\mathrm{in}}\,\frac{s-M_N^2}{2\,(E_F-p_F\cos\theta_{Fq})}\,\frac{1}{Q^2}\,\frac{1}{1-\varepsilon}\ \ [\mathrm{GeV}^{-1};\ 0\text{ if}\le0],\nonumber\\
+\sigma &= \Gamma'\,\frac{\mathrm{d}\sigma}{\mathrm{d}\Omega^*}\cdot10^{-3}\quad[\mu\mathrm{b/(MeV\,sr^2)}],\qquad
+\sigma\to0\ \text{if }\sigma>10^{10}\text{ or }\sigma<0\ \ [\text{default mode: also NaN}],
+\lbl{eq:peerho}
+\end{feqa}
+$\varepsilon$ recomputed from \ceqr{eq:epsilon}. The model writes $W$ in GeV and $-t$ in GeV$^2$ into the fields that
+held the MeV values of \eqr{eq:mesonvars}, which is why the tree columns \code{Wi} and \code{ti} come out in GeV/1000 and
+GeV$^2/10^6$. The struck-nucleon energy: the Fortran recomputes $E_F=\sqrt{p_F^2+M_N^2}$ and the off-shell branch tests the
+pion flags, never set in a $\rho$ run, so it writes back the on-shell $M_p$ (for D: 938.27 MeV instead of the
+$M_d-M_n=936.05$ MeV of the generation); the default mode keeps the $E_F$ of \eqr{eq:efer}. For hydrogen both are $M_p$.
+
+\subsection{Weight and units}
+\begin{feq}{reactions/rho/RhoProduction.cpp: RhoProduction::completeMain}{event.f:1518-1521, 1536-1538, 1561-1562}
+w = J\cdot w_\mathrm{gen}\cdot\sigma\cdot(Z+N)\cdot\bigl(1+V_C/E_b\bigr)^2_{[Z>1]}\quad[\mu\mathrm{b/(MeV\,sr^2)}],
+\lbl{eq:weight}
+\end{feq}
+matching $V_\mathrm{gen}$ in sr$^2$ MeV. There is no survival factor (the pion decay is simulated or ignored by the
+spectrometer models). The \texttt{.hist} line \code{CENTRAL.sigcc} is the model at the central momenta and angles of
+both arms, treating the central hadron as a $\rho$ of nominal mass with $\varphi_{pq}=0$ (both modes).
+
+% =====================================================================================================================
+\section{Radiation, energy loss and decays}\lbl{sec:rad}
+\subsection{Radiation}
+The photon limits are those of the meson case, with the $\rho$ as the hadron and the hadron edges computed with
+$M_\rho$:
+\begin{feqa}{radiation/Radc.cpp: generateRad}{radc.f:297-308, 372-389, 428-446}
+E_{\gamma1} &\in \bigl[-d_E,\ \min(\Sigma_\mathrm{max}-E',\ E^\mathrm{max}_{\gamma1})+d_E\bigr],\nonumber\\
+E_{\gamma2} &\in \bigl[E'-E'_\mathrm{max}-d_E,\ \min(E'-E'_\mathrm{min},\ E_\gamma^\mathrm{tot,max}-E_{\gamma1})+d_E\bigr],\nonumber\\
+E_{\gamma3} &\in \bigl[E_\rho-E_{h,\mathrm{max}}-d_E,\ \min(E_\rho-E_{h,\mathrm{min}},\ E_\gamma^\mathrm{tot,max}-E_{\gamma1}-E_{\gamma2})+d_E\bigr].
+\lbl{eq:radlimits}
+\end{feqa}
+The neutral $\rho$ radiates as tail 3 with $\lambda_3$ from its own $E_\rho$, $P_\rho$ (\ceqr{eq:lambda}); since the
+hadron edges describe the pion momenta, most tail-3 tries fail at these limits (about 70\,\% of them in the hydrogen
+reference kinematics). A tail-1 photon calls \code{completeEv} again, which draws a new $\rho$ (new mass and direction).
+The radiated $\rho$ (\code{orig}) is the one that decays.
+
+\subsection{Energy loss and multiple scattering}\lbl{sec:eloss}
+The energy loss $\Delta E_3$ and the thickness $t_3$ of the hadron leg are computed in \code{completeEv} for the $\rho$
+(its energy and Breit--Wigner mass) along its laboratory angle; in the compat mode that angle is the one converted from
+the previous try's $\rho$ angles stored in the slope fields, in the default mode it is the $\rho$'s own. In the
+spectrometer stage the pion energy at the entrance is $E_\pi-\Delta E_3$ (with $M_\pi$), and the pion scatters with
+$t_3$ and its own $\beta$.
+
+\subsection{Decays}
+The $\rho$ decays at the vertex (\eqr{eq:decayangle}). With \code{doing\_decay} = 1 the pion may decay in flight in the
+spectrometer ($\pi\to\mu\nu$, $p^\star=29.783$ MeV/$c$; the decay model of note 06, \S6.3); the tree columns
+\code{decdist} and \code{Mhadron} report it. In the default mode the decay is called only after a successful
+radiation step; the compat mode, like the Fortran, also calls it after a failed one, decaying the previous try's
+\code{orig} event: this changes no weight but consumes random numbers.
+
+\begin{simcfindingbox}
+\textbf{Electron-energy limit from the $\rho$ edge.} $\Sigma_\mathrm{max}$ of \eqr{eq:limits} assumes that the $\rho$
+carries at least $E_{h,\mathrm{min}}=\sqrt{p_\mathrm{min}^2+M_\rho^2}$, $p_\mathrm{min}$ being the lowest pion momentum of
+the hadron arm. A $\rho$ of mass $M$ that emits a pion of momentum $p$ forward has only $E_\rho=\gamma M$ with
+$p=\gamma p^\star_\pi+\gamma\beta E^\star_\pi$. Minimising $\gamma M$ over the Breit--Wigner range (our calculation from
+the decay kinematics, not a run): at $p=1$ GeV/$c$ the smallest $E_\rho$ is 1.149 GeV (for $M\approx570$ MeV) against
+$\sqrt{p^2+M_\rho^2}=1.262$ GeV, at 1.5 GeV/$c$ 1.646 against 1.686 GeV, and at 2.0 GeV/$c$ 2.144 against 2.143 GeV.
+Below about 2 GeV/$c$ electrons that are kinematically allowed are therefore not generated, and the tail-1 limit
+$\Sigma_\mathrm{max}-E'$ is cut the same way. The cut matters only for a pion arm below about 2 GeV/$c$, and only when the energy-conservation term of
+$\Sigma_\mathrm{max}$ is below $E'_\mathrm{max}+E^\mathrm{max}_{\gamma2}$. In the reference runs the electron acceptance
+is the binding term (\code{rho\_h\_k2\_rad\_A}: 4252 MeV against 3535 MeV in the \texttt{.hist}), so they are not
+affected. Not measured with a run; kept in both modes.
+\end{simcfindingbox}
+
+\begin{simcfindingbox}
+\textbf{Energy loss of the decay pion.} The pion's energy loss in the target (and the extreme losses that widen the
+hadron edges) is computed for the $\rho$ energy and the $\rho$ mass (or $M_\rho$), while the particle that crosses the
+target is the pion, with about half the energy and a different $\beta\gamma$. The effect on $\Delta E_3$ is expected to be
+small for relativistic pions (both are near the minimum of ionisation) but was not measured. Kept in both modes.
+\end{simcfindingbox}
+
+% =====================================================================================================================
+\section{Inputs and outputs}\lbl{sec:io}
+\subsection{Inputs}
+\begin{simctable}{footnotesize}{L{0.24\linewidth}L{0.12\linewidth}L{0.08\linewidth}L{0.56\linewidth}}
+\caption{Inputs specific to $\rho^0$ production (one input per row; the common inputs are those of note 01, \S7, and the
+user manual, chapter 4).}\lbl{tab:inputs}\\
+\toprule\rowcolor{simchead}\simcth{input} & \simcth{unit} & \simcth{default} & \simcth{meaning here}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{input} & \simcth{unit} & \simcth{default} & \simcth{meaning here}\\\midrule\endhead
+\bottomrule\endlastfoot
+\code{doing\_rho} & flag & 0 & 1 selects this reaction\\
+\code{doing\_hplus} & flag & 0 & charge of the detected pion (polarized-target tracking only)\\
+\code{targ\%A} & -- & 0 & 1, 2 or 3 (others refused)\\
+\code{targ\%Z} & -- & 0 & $n_\mathrm{tgt}=Z+N$; Coulomb correction for $Z>1$\\
+\code{hadron\_arm} & code & 0 & 1--5; selects the sign convention of \eqr{eq:pionslopes}\\
+\code{spec\%p\%P} & MeV/$c$ & 0 & $P_h^0$: the pion momentum of the hadron arm (also used with $M_\rho$ in the limits)\\
+\code{spec\%p\%theta} & deg & 0 & $\theta_h^0$ in \eqr{eq:pionslopes}\\
+\code{doing\_decay} & flag & 0 & pion decay in flight in the spectrometer\\
+\code{ctau} & cm & 0 & $c\tau$ of the pion (780.4 cm) when \code{doing\_decay} = 1\\
+\end{simctable}
+The inputs \code{transparency}, \code{pt\_b\_param} and \code{sigc\_*} are read and not used by this reaction.
+
+\subsection{Outputs}
+The sink \code{root\_tree} writes one entry of \code{h10} per success with the 67 columns of \tabr{tab:columns} (layout
+of upstream SIMC 59ccdf6; \code{-{}-tree-layout legacy} gives the 59 columns of SIMC 294f662). The hadron columns
+describe the decay pion, the vertex columns (\code{i}) the $\rho$. Column 67 repeats column 42 under the same name, as
+the Fortran declares it; the tree then has two branches \code{mmnuc}.
+
+\begin{simctable}{footnotesize}{L{0.06\linewidth}L{0.15\linewidth}L{0.13\linewidth}L{0.66\linewidth}}
+\caption{Tree columns of $\rho^0$ production (one column per row).}\lbl{tab:columns}\\
+\toprule\rowcolor{simchead}\simcth{\#} & \simcth{name} & \simcth{unit} & \simcth{content}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{\#} & \simcth{name} & \simcth{unit} & \simcth{content}\\\midrule\endhead
+\bottomrule\endlastfoot
+1 & \code{hsdelta} & \% & reconstructed $\delta$, \code{hs} arm\\
+2 & \code{hsyptar} & rad & reconstructed $y'$, \code{hs} arm\\
+3 & \code{hsxptar} & rad & reconstructed $x'$, \code{hs} arm\\
+4 & \code{hsytar} & cm & reconstructed horizontal target position, \code{hs} arm\\
+5 & \code{hsxfp} & cm & focal-plane $x$, \code{hs} arm\\
+6 & \code{hsxpfp} & rad & focal-plane $x'$, \code{hs} arm\\
+7 & \code{hsyfp} & cm & focal-plane $y$, \code{hs} arm\\
+8 & \code{hsypfp} & rad & focal-plane $y'$, \code{hs} arm\\
+9 & \code{hsdeltai} & \% & true $\delta$ (the pion for the hadron arm), \code{hs} arm\\
+10 & \code{hsyptari} & rad & true $y'$, \code{hs} arm\\
+11 & \code{hsxptari} & rad & true $x'$, \code{hs} arm\\
+12 & \code{hsytari} & cm & $z_t\sin\theta^0$ of the \code{hs} arm\\
+13 & \code{ssdelta} & \% & reconstructed $\delta$, \code{ss} arm\\
+14 & \code{ssyptar} & rad & reconstructed $y'$, \code{ss} arm\\
+15 & \code{ssxptar} & rad & reconstructed $x'$, \code{ss} arm\\
+16 & \code{ssytar} & cm & reconstructed horizontal target position, \code{ss} arm\\
+17 & \code{ssxfp} & cm & focal-plane $x$, \code{ss} arm\\
+18 & \code{ssxpfp} & rad & focal-plane $x'$, \code{ss} arm\\
+19 & \code{ssyfp} & cm & focal-plane $y$, \code{ss} arm\\
+20 & \code{ssypfp} & rad & focal-plane $y'$, \code{ss} arm\\
+21 & \code{ssdeltai} & \% & true $\delta$, \code{ss} arm\\
+22 & \code{ssyptari} & rad & true $y'$, \code{ss} arm\\
+23 & \code{ssxptari} & rad & true $x'$, \code{ss} arm\\
+24 & \code{ssytari} & cm & $-z_t\sin\theta^0$ of the \code{ss} arm\\
+25 & \code{q} & GeV/$c$ & $|\vec q^\mathrm{rec}|$\\
+26 & \code{nu} & GeV & $\nu^\mathrm{rec}$\\
+27 & \code{Q2} & (GeV/$c$)$^2$ & $(Q^\mathrm{rec})^2$\\
+28 & \code{W} & GeV & $W^\mathrm{rec}$ (proton mass)\\
+29 & \code{xbj} & -- & $x^\mathrm{rec}$\\
+30 & \code{epsilon} & -- & $\varepsilon^\mathrm{rec}$\\
+31 & \code{Em} & GeV & $E_m^\mathrm{rec}$ of \eqr{eq:recon}\\
+32 & \code{Pm} & GeV/$c$ & $P_m^\mathrm{rec}$\\
+33 & \code{qi} & GeV/$c$ & vertex $|\vec q|$\\
+34 & \code{nui} & GeV & vertex $\nu$\\
+35 & \code{Q2i} & (GeV/$c$)$^2$ & vertex $Q^2$\\
+36 & \code{Wi} & GeV/1000 & $\sqrt s$ of \eqr{eq:peerhot} (stored in GeV, divided by 1000 when written)\\
+37 & \code{xbji} & -- & vertex $x$\\
+38 & \code{epsiloni} & -- & vertex $\varepsilon$\\
+39 & \code{Emi} & GeV & vertex $E_\mathrm{miss}=\nu+M_A-E_\rho$\\
+40 & \code{Pmi} & GeV/$c$ & vertex $|\vec p_\rho-\vec q|$\\
+41 & \code{missmass} & GeV & $M_x$ of \eqr{eq:recon}\\
+42 & \code{mmnuc} & GeV & missing mass with $M_A$ in place of $M_p$\\
+43 & \code{phad} & GeV/$c$ & $P_\pi^\mathrm{rec}$\\
+44 & \code{t} & GeV$^2$ & $-t^\mathrm{rec}$ of the pion\\
+45 & \code{ti} & GeV$^2/10^6$ & $-t$ of \eqr{eq:peerhot} (stored in GeV$^2$, divided by $10^6$ when written)\\
+46 & \code{z} & -- & $E_\pi^\mathrm{rec}/\nu^\mathrm{rec}$\\
+47 & \code{zi} & -- & vertex $E_\rho/\nu$\\
+48 & \code{pt2} & GeV$^2$ & reconstructed $p_T^2$ of the pion\\
+49 & \code{pt2i} & GeV$^2$ & vertex $p_T^2$ of the $\rho$\\
+50 & \code{thetapq} & rad & $\theta^\mathrm{rec}_{pq}$ of the pion\\
+51 & \code{phipq} & rad & $\varphi^\mathrm{rec}_{pq}$ of the pion\\
+52 & \code{thetapqi} & rad & vertex $\theta_{pq}$ of the $\rho$\\
+53 & \code{phipqi} & rad & vertex $\varphi_{pq}$ of the $\rho$\\
+54 & \code{pmpar} & GeV/$c$ & $P^\mathrm{rec}_{m,\parallel}$\\
+55 & \code{pmper} & GeV/$c$ & $P^\mathrm{rec}_{m,\perp}$\\
+56 & \code{pmoop} & GeV/$c$ & $P^\mathrm{rec}_{m,\mathrm{oop}}$\\
+57 & \code{fry} & cm & minus the vertical raster coordinate\\
+58 & \code{radphot} & GeV & $E_{\gamma1}+E_{\gamma2}+E_{\gamma3}$\\
+59 & \code{pfermi} & GeV/$c$ & 0 ($p_F=0$ for every target)\\
+60 & \code{siglab} & $\mu$b/MeV/sr$^2$ & $\sigma$ of \eqr{eq:peerho} with the Coulomb factor\\
+61 & \code{sigcm} & $\mu$b/sr & $\mathrm{d}\sigma/\mathrm{d}\Omega^*$ of \eqr{eq:sigt}\\
+62 & \code{Weight} & $\mu$b/MeV/sr$^2$ & $w$ of \eqr{eq:weight}\\
+63 & \code{decdist} & cm & path of the pion before its decay (\code{doing\_decay} = 1), 0 otherwise\\
+64 & \code{Mhadron} & MeV & mass of the particle that reached the detectors ($M_\pi$, or $m_\mu$ after a decay)\\
+65 & \code{Mrho} & MeV & $M$ of \eqr{eq:bw}\\
+66 & \code{Thrho} & rad & $\theta^\star$ of \eqr{eq:decayangle}\\
+67 & \code{mmnuc} & GeV & the value of column 42 again\\
+\end{simctable}
+
+% =====================================================================================================================
+\section{Validation in SIMC++}\lbl{sec:validation}
+\begin{simctable}{footnotesize}{L{0.5\linewidth}L{0.22\linewidth}L{0.28\linewidth}}
+\caption{CTest tests that cover $\rho^0$ production (one test per row).}\lbl{tab:tests}\\
+\toprule\rowcolor{simchead}\simcth{test} & \simcth{labels} & \simcth{what it checks}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{test} & \simcth{labels} & \simcth{what it checks}\\\midrule\endhead
+\bottomrule\endlastfoot
+\code{rho\_sanity} & unit & kernels on simple inputs\\
+\code{rho\_setup} & unit & refusals and set-up values\\
+\code{l1\_peerho} & l1 & \eqsr{eq:peerhot}{eq:peerho} against the Fortran table\\
+\code{l1\_generate\_rho\_fixedrng} & l1 & \eqsr{eq:bw}{eq:rholab} with fixed random numbers\\
+\code{l1\_rho\_decay\_fixedrng} & l1 & \eqsr{eq:decayangle}{eq:pionslopes}\\
+\code{l1\_rho\_state} & l1 & set-up values and limits\\
+\code{l1\_generate\_rho\_branch\_fixedrng} & l1 & the generation of \eqr{eq:genel}\\
+\code{l1\_complete\_ev\_rho} & l1 & \eqr{eq:mesonvars}, $J$\\
+\code{l1\_complete\_recon\_ev\_rho} & l1 & \eqr{eq:recon}\\
+\code{l1\_complete\_main\_rho} & l1 & \eqr{eq:weight}\\
+\code{l1\_ranlux\_stream\_rho\_h} & l1 & the random stream of a captured H run\\
+\code{l1\_replay\_event\_capture\_rho\_h} & l1, replay & every routine of captured H events\\
+\code{l1\_replay\_event\_capture\_rho\_d} & l1, replay & every routine of captured D events\\
+\code{l1\_simcrun\_replay\_rho\_h} & l1, replay & complete H run from the captured RANLUX stream, bitwise\\
+\code{l1\_simcrun\_replay\_rho\_d} & l1, replay & complete D run, bitwise\\
+\code{l1\_montecarlo\_replay\_rho\_h} & l1, replay & spectrometer stage of the H capture\\
+\code{l1\_montecarlo\_replay\_rho\_d} & l1, replay & spectrometer stage of the D capture\\
+\code{l1\_simcrun\_ranlux\_up\_upf1\_rho\_h\_k1\_rad\_A\_s} & l1, replay, upstream\_layout & short H run against the 59ccdf6 Fortran, all files and the tree\\
+\code{regression\_upstream\_u59\_rho\_h\_k1\_norad\_A\_prefix2000} & regression\_upstream, slow & first 2000 events of a 59ccdf6 run\\
+\code{regression\_identity\_rho\_h\_k1\_rad} & regression & compat-mode outputs against the baseline\\
+\code{regression\_corrected\_rho\_h\_k1\_rad} & regression & default-mode outputs against the baseline\\
+\code{fortran\_diff\_D057\_rho\_kernels} & fortran\_diff, unit & the kernel corrections in both modes\\
+\code{fortran\_diff\_D057\_F1\_F2\_rho} & fortran\_diff, l1 & the $\rho$ angle in the energy loss; the decay after a failed radiation\\
+\code{fortran\_diff\_D057\_F15\_F18\_rho} & fortran\_diff, l1 & the \texttt{.hist} title and the hadron-arm report\\
+\end{simctable}
+The validation ledger (\code{project\_control/VALIDATION\_LEDGER.md}, entry of 2026-10-30) records all $\rho$ L1 tables
+and capture replays bitwise, the statistical comparison of the compat mode with the seven Fortran reference runs passed
+(\code{validation/simc\_compare}, seed 4242, $10^5$ events; one seed-4242 fluctuation cleared by other seeds) and a RANLUX
+compat run identical to \code{rho\_h\_k1\_norad\_A} (100000 events); the U.3 sweep (entry 2026-11-21) reproduces the eight
+59ccdf6 $\rho$ runs. FORTRAN\_DIFFERENCES.md \S13 gives the effect of the default-mode corrections.
+
+% =====================================================================================================================
+\section{Fortran origin and Fortran findings}\lbl{sec:origin}
+\begin{simctable}{footnotesize}{L{0.42\linewidth}L{0.58\linewidth}}
+\caption{Fortran routine $\to$ C++ function (one routine per row; the common routines are in \ctabr{tab:map}).}\lbl{tab:map}\\
+\toprule\rowcolor{simchead}\simcth{Fortran (upstream 59ccdf6)} & \simcth{C++ (src/...)}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{Fortran (upstream 59ccdf6)} & \simcth{C++ (src/...)}\\\midrule\endhead
+\bottomrule\endlastfoot
+\file{dbase.f:209}-214 (rho flags) & \csrc{core/RunSetup.cpp: DeriveReactionFlags}\\
+\file{dbase.f:319}-326 (rho masses) & \csrc{setup/SetupReaction.cpp: BuildReactionAndKinematics}\\
+\file{dbase.f:866}-885 (target check) & \csrc{setup/SetupBuilder.cpp: BuildRunSetup}\\
+\file{init.f:344}-510 (limits) & \csrc{setup/SetupLimits.cpp: BuildLimits}\\
+\file{event.f} generate, l.276-372 & \csrc{reactions/rho/RhoProduction.cpp: RhoProduction::generate}\\
+\file{event.f} generate, l.420-421 & \csrc{reactions/rho/RhoProduction.cpp: RhoProduction::decay}\\
+\file{event.f} complete\_ev, l.701-708, 914-951, 1015-1047 & \csrc{reactions/rho/RhoProduction.cpp: RhoProduction::completeEv}\\
+\file{event.f} complete\_ev, l.723-771 & \csrc{reactions/pion/PionProduction.cpp: PionProduction::pionMainKinematics}\\
+\file{event.f} complete\_recon\_ev, l.1325-1354 & \csrc{reactions/EepReactionBase.cpp: EepReactionBase::completeRecon}\\
+\file{event.f} complete\_main, l.1518-1521, 1561-1562 & \csrc{reactions/rho/RhoProduction.cpp: RhoProduction::completeMain}\\
+\file{generate\_rho.f} & \csrc{physics/rho/RhoPhysics.cpp: generateRho}\\
+\file{rho\_decay.f} & \csrc{physics/rho/RhoPhysics.cpp: rhoDecay}\\
+\file{rho\_physics.f} peerho & \csrc{physics/rho/RhoPhysics.cpp: peerho}\\
+\file{rho\_physics.f} (call of peerho) & \csrc{physics/rho/RhoModel.cpp: RhoModel::sigccMain}\\
+\file{radc.f:297}-308 & \csrc{radiation/Radc.cpp: generateRad}\\
+\file{results\_write.f:178}-242 & \csrc{output/NtupleLayout.cpp: UpstreamMesonColumns}\\
+\file{simc.f:383}-397 & \csrc{reactions/EepReactionBase.cpp: EepReactionBase::genVolume}\\
+\file{simc.f:729}-734 (\texttt{.hist} title) & \csrc{driver/RunReportRecords.cpp}\\
+\end{simctable}
+
+\begin{simcfindings}{footnotesize}{L{0.2\linewidth}L{0.48\linewidth}L{0.32\linewidth}}
+\caption{Fortran findings that touch $\rho^0$ production (one finding per row; the common ones are in \ctabr{tab:findings}).}\lbl{tab:findings}\\
+\toprule\rowcolor{simchead}\simcth{id} & \simcth{Fortran behaviour} & \simcth{default / compat}\\\midrule\endfirsthead
+\toprule\rowcolor{simchead}\simcth{id} & \simcth{Fortran behaviour} & \simcth{default / compat}\\\midrule\endhead
+\bottomrule\endlastfoot
+\finding{D-057 F1} & energy loss of the $\rho$ along the previous try's angle & own angle / Fortran\\
+\finding{D-057 F2} & decay also after a failed radiation (previous \code{orig}) & only after success / Fortran\\
+\finding{D-057 F3} & final hadron mass set to a mass, not its square (overwritten) & square / Fortran\\
+\finding{D-057 F6} & $E_F$ recomputed on shell in the model & generation $E_F$ / on shell\\
+\finding{D-057 F9} & beam-left pion slope sign for $p_y\le0$ & $-(\alpha+\theta_h^0)$ / $+(\alpha+\theta_h^0)$\\
+\finding{D-057 F15} & \texttt{.hist} title ``not set up'' for D and $^3$He & D/A title / Fortran\\
+\finding{D-057 F18} & hadron-arm reports and generated histograms use the $\rho$ & the decay pion / Fortran\\
+\finding{D-057 F20} & the ``crazy $\sigma$'' guard lets NaN through & NaN $\to0$ / Fortran\\
+\finding{D-057 F21} & arccosine argument above 1 by rounding: NaN slopes & limited / Fortran\\
+\finding{D-057 F19} & the hadron $\delta$ cut with the electron limit changes $\sum w$ by $-24$ to $-34$\,\% & hadron limit / Fortran\\
+\finding{D-051 F3} & \code{pfermi} 0/0 for hydrogen (fixed upstream e4dd175) & 0 / 0\\
+\finding{D-067 T14} & with the target field \code{mmnuc} (67) never filled & filled / Fortran\\
+\finding{U-B1} & \code{Wi}, \code{ti} in GeV/1000 and GeV$^2/10^6$ & kept in both\\
+\finding{U-D1} & vertex $z$, $p_T^2$ filled for every reaction (\code{zi}, \code{pt2i}) & followed in both\\
+\finding{D-018 herho} & the $^3$He flag is $A=3$ only (other targets: $A\ge3$) & kept; $A\ge4$ refused\\
+\finding{D-057 F4} & no Fermi motion or spectral function for D and $^3$He & kept in both\\
+\finding{D-057 F5} & $s$ without the Fermi terms in the generation & kept in both (latent)\\
+\finding{D-057 F7} & $t$, $t_\mathrm{min}$ of the model with the nominal $M_\rho$ & kept in both\\
+\finding{D-057 F8} & decay angle from the laboratory axes, not the helicity frame & kept in both\\
+\finding{D-057 F10} & $x'=\tan\arcsin(p_x/p)$ instead of $p_x/p'_z$ & kept in both\\
+\finding{D-057 F11} & tail-3 radiation of the neutral $\rho$ with $M_\rho$ edges & kept in both\\
+\finding{D-057 F12} & a tail-1 photon draws a new $\rho$ & kept in both\\
+\finding{D-057 F7b} & the model writes $W$, $t$ in GeV units into the event & kept in both\\
+\finding{D-057 F2b} & the decay never sets success itself & kept in both\\
+\finding{D-057 F13} & no hadron jacobian, $4\pi$ volume, no truncation factor & kept in both\\
+\finding{D-057 F14} & tree content of the legacy layout & kept in both\\
+\finding{D-057 F17} & \code{CENTRAL.sigcc} for a nominal-mass $\rho$ with $\varphi_{pq}=0$ & kept in both\\
+\finding{D-057 F22} & unused decay length; unreachable ``going backwards'' test & kept in both\\
+\finding{D-057 diag222} & diagnostics to unit 222 & printed with \code{verbose}\\
+\finding{D-057 literals} & quadruple-precision divisions & reproduced\\
+\finding{D-057 F16} & $A\ge4$ and calorimeter arms stop the run & refused at input\\
+\finding{P13.1 rho + other reaction} & \code{doing\_rho} with another reaction flag decays that hadron & refused at input\\
+\finding{P13.2 RANLUX} & RANLUX random numbers & \code{ranlux} reproduces the Fortran stream\\
+\end{simcfindings}
+\end{document}
